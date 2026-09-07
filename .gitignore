@@ -1,0 +1,35 @@
+# dependencies and builds
+node_modules/
+dist/
+target/
+.turbo/
+.vite/
+
+# env and secrets
+.env
+.env.*
+*.key
+*.pem
+
+# model weights are never committed
+*.onnx
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+models/
+
+# non-redistributable assets (keep local)
+assets/mixamo/
+assets/private/
+
+# aider
+.aider*
+!.aider.conf.yml
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
