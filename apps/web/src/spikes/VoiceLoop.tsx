@@ -42,6 +42,9 @@ export function VoiceLoop(): ReactElement {
   const [device, setDevice] = useState<CaptureHandle | null>(null);
   const [loadMs, setLoadMs] = useState<Record<string, number>>({});
   const [heapMb, setHeapMb] = useState<number | null>(null);
+  // State as well as the ref: a ref does not re-render, so the playback button would
+  // stay disabled after the first recording arrived.
+  const [hasRecording, setHasRecording] = useState(false);
 
   const vad = useRef<Worker | null>(null);
   const stt = useRef<Worker | null>(null);
@@ -50,6 +53,8 @@ export function VoiceLoop(): ReactElement {
   const playback = useRef<Playback>(new Playback());
   const marks = useRef<TurnMarks>(EMPTY_MARKS);
   const transcript = useRef('');
+  /** The last utterance handed to the recogniser, kept so it can be played back. */
+  const lastRecording = useRef<Float32Array | null>(null);
 
   const say = useCallback((line: string) => {
     setLog((previous) => [...previous.slice(-40), line]);
@@ -73,6 +78,23 @@ export function VoiceLoop(): ReactElement {
     vad.current = new Worker(new URL('./vad.worker.ts', import.meta.url), { type: 'module' });
     stt.current = new Worker(new URL('./stt.worker.ts', import.meta.url), { type: 'module' });
     tts.current = new Worker(new URL('./tts.worker.ts', import.meta.url), { type: 'module' });
+
+    // Without these a worker that throws at load, or an unhandled rejection inside one,
+    // produces no message and no error — the page simply stops mid-turn. That is what
+    // the first run did: TTS died and the turn was never closed, so nothing was recorded.
+    for (const [name, worker] of [
+      ['VAD', vad.current],
+      ['STT', stt.current],
+      ['TTS', tts.current],
+    ] as const) {
+      worker.addEventListener('error', (event: ErrorEvent) => {
+        say(`${name} worker crashed: ${event.message} (${event.filename}:${event.lineno})`);
+        setStatus(`${name} worker crashed — see the log.`);
+      });
+      worker.addEventListener('messageerror', () => {
+        say(`${name} worker could not deserialise a message`);
+      });
+    }
 
     let ready = 0;
     const oneReady = (name: string, ms?: number) => {
@@ -98,6 +120,20 @@ export function VoiceLoop(): ReactElement {
         marks.current = { ...marks.current, speechEnd: message['at'] as number };
       } else if (message['type'] === 'settled') {
         marks.current = { ...marks.current, vadSettled: message['at'] as number };
+        const stats = message['stats'] as {
+          sampleCount: number;
+          durationMs: number;
+          rms: number;
+          peak: number;
+          maxProbability: number;
+        };
+        say(
+          `utterance ${stats.sampleCount} samples = ${stats.durationMs} ms, ` +
+            `rms ${stats.rms.toFixed(3)}, peak ${stats.peak.toFixed(3)}, ` +
+            `max p(speech) ${stats.maxProbability.toFixed(2)}`,
+        );
+        lastRecording.current = (message['samples'] as Float32Array).slice();
+        setHasRecording(true);
         setStatus('Recognising…');
         stt.current?.postMessage(
           { type: 'transcribe', samples: message['samples'] },
@@ -123,6 +159,7 @@ export function VoiceLoop(): ReactElement {
           setStatus('Nothing recognised. Try again.');
           return;
         }
+        say(`transcript: "${text}" — asking for synthesis`);
         setStatus(`Speaking back: "${text}"`);
         tts.current?.postMessage({ type: 'speak', text });
       } else if (message['type'] === 'error') {
@@ -136,6 +173,7 @@ export function VoiceLoop(): ReactElement {
       if (message['type'] === 'ready') oneReady('TTS', message['loadMs'] as number);
       else if (message['type'] === 'progress') setStatus(`TTS ${String(message['file'])} ${String(message['percent'])}%`);
       else if (message['type'] === 'audio') {
+        say(`TTS chunk ${String(message['index'])}, ${(message['samples'] as Float32Array).length} samples`);
         const startsAt = playback.current.enqueue(
           message['samples'] as Float32Array,
           message['sampleRate'] as number,
@@ -303,6 +341,36 @@ export function VoiceLoop(): ReactElement {
               type="button"
             >
               Stop
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                // Synthesis on its own, with text the recogniser never touched. If this
+                // speaks and a real turn does not, the fault is upstream of TTS; if it
+                // does not speak either, TTS is the fault and the transcript is a
+                // separate problem.
+                say('synthesis self-test: fixed sentence, no microphone involved');
+                marks.current = EMPTY_MARKS;
+                transcript.current = '(self-test)';
+                tts.current?.postMessage({
+                  type: 'speak',
+                  text: 'The quick brown fox jumps over the lazy dog.',
+                });
+              }}
+              type="button"
+            >
+              Test synthesis only
+            </button>
+            <button
+              className="btn btn-ghost"
+              disabled={!hasRecording}
+              onClick={() => {
+                const recording = lastRecording.current;
+                if (recording !== null) playback.current.enqueue(recording, 16_000);
+              }}
+              type="button"
+            >
+              Play what the recogniser heard
             </button>
             <button
               className="btn btn-ghost"

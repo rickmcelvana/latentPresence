@@ -49,6 +49,19 @@ type OutboundMessage =
       readonly samples: Float32Array;
       readonly speechStartAt: number;
       readonly speechEndAt: number;
+      /**
+       * What was actually captured. Duration against sample count is the fastest way to
+       * catch a resampling mistake: two seconds of speech is 32000 samples at 16 kHz and
+       * 96000 at 48 kHz, and a recogniser fed the wrong rate returns fluent nonsense
+       * rather than an error.
+       */
+      readonly stats: {
+        readonly sampleCount: number;
+        readonly durationMs: number;
+        readonly rms: number;
+        readonly peak: number;
+        readonly maxProbability: number;
+      };
     }
   | { readonly type: 'error'; readonly message: string };
 
@@ -68,6 +81,8 @@ let speaking = false;
 let speechStartAt = 0;
 /** When speech last stopped — the honest end of the utterance, before the hangover. */
 let lastSpeechAt = 0;
+/** Highest Silero score in the current utterance, so a marginal detection is visible. */
+let maxProbability = 0;
 
 function freshState(): ort.Tensor {
   // Silero v5 carries one unified state of [2, 1, 128]; earlier versions used separate
@@ -80,6 +95,7 @@ function resetUtterance(): void {
   utterance = [];
   preroll = [];
   speaking = false;
+  maxProbability = 0;
   state = freshState();
 }
 
@@ -103,6 +119,7 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
 
   const probability = (result['output'] as ort.Tensor).data[0] as number;
   state = result['stateN'] as ort.Tensor;
+  if (probability > maxProbability) maxProbability = probability;
 
   if (!speaking) {
     preroll.push(samples);
@@ -139,6 +156,14 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
       offset += frame.length;
     }
 
+    let sumSquares = 0;
+    let peak = 0;
+    for (const sample of joined) {
+      sumSquares += sample * sample;
+      const magnitude = Math.abs(sample);
+      if (magnitude > peak) peak = magnitude;
+    }
+
     post({ type: 'speech-end', at: lastSpeechAt });
     post(
       {
@@ -147,6 +172,13 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
         samples: joined,
         speechStartAt,
         speechEndAt: lastSpeechAt,
+        stats: {
+          sampleCount: joined.length,
+          durationMs: Math.round((joined.length / SAMPLE_RATE) * 1000),
+          rms: Math.sqrt(sumSquares / Math.max(1, joined.length)),
+          peak,
+          maxProbability,
+        },
       },
       [joined.buffer],
     );
