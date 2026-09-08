@@ -20,3 +20,10 @@ Left: Rick's click-through of /gallery. `apps/desktop`, `site/` and `assets/` no
 Next: P0-T03 site skeleton and deploy script (owner: aider — architect writes the brief first), or P0-T04 Spike A if Rick prefers spikes first.
 Decisions: none proposed. Three judgement calls recorded in the commits — packages are `emitDeclarationOnly` because TS refuses `noEmit` on a referenced project (TS6310); pnpm 11's `minimumReleaseAge` protection kept, with oxlint pinned behind the window rather than excluded; token names follow latentCreate (`--bg`, `--text-muted`) rather than ADR-15's prose, values unchanged.
 Click-through: pending — `pnpm dev`, then http://localhost:5173/gallery
+
+## 2026-09-08 claude — P0-T03 site skeleton
+Did: wrote the P0-T03 brief with the feedback API contract verified against the running service (SURFACE.md); designed a mark of its own for latentPresence, teal, six PNGs from one SVG master (2326319); reviewed Rick's Aider run and fixed five defects (9900e87, 8909dd1) — deploy.sh died on every run from a doubled backslash in an eval, its own test resolved the site root one level too high so nothing ran, four colour literals sat outside :root, and `.reveal` hid content unconditionally so the page was blank without JS. 107 TS + 2 Rust tests, gate green.
+Left: `app.latentpresence.com` has no build behind it yet. The five Phase 0 spikes are untouched.
+Next: P0-T04 Spike A, browser voice loop latency (architect-direct).
+Decisions: ADR-16 amended — the server deploys by `git pull` then `pnpm build`, not rsync, so scripts/deploy.sh was deleted the day it was written and the DEPLOY_* variables left .env.example.
+Click-through: passed 2026-09-08 (/gallery, and the live site, docs and feedback form — a submission arrived tagged `App: Latent Presence`).

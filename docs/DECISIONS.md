@@ -19,7 +19,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-13 | Build loop: architect edits, gate, commit on green; Aider only when it saves context | accepted (amended) | 2026-09-07 |
 | ADR-14 | Scheduled tasks the character executes | accepted | 2026-09-07 |
 | ADR-15 | Design system: dark theme with teal accent, one `theme.css`, className coverage test | accepted | 2026-09-07 |
-| ADR-16 | Hosting: `latentpresence.com` static site + `app.latentpresence.com` app, self-hosted behind Caddy | accepted | 2026-09-07 |
+| ADR-16 | Hosting: `latentpresence.com` static site + `app.latentpresence.com` app, self-hosted behind Caddy; deploy by `git pull` on the server | accepted (amended) | 2026-09-08 |
 | ADR-17 | Development database is the remote MariaDB over the tunnel; latency policy for memory retrieval | accepted | 2026-09-07 |
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
@@ -115,11 +115,17 @@ Dark theme sharing the latentbeats.com tokens (ground `#0a0e1a`, panel `#161b22`
 State colours from the siblings: danger `#f85149`, success `#3fb950`, warning `#d29922`.
 Rules: one `theme.css` per app is the single source of styling truth; every className used in TSX has a rule there; `theme.test.ts` (ported from latentCreate, Rick's own Apache-2.0 code) fails the gate on any className without a rule, on any computed prefix nothing answers, and on stale exemptions. No colour literals outside `:root`; a second test enforces it. The `site/` pages use the same tokens in `site/css/style.css`. Components are styled the day they are written, never in a later CSS pass.
 
-## ADR-16 Hosting
+## ADR-16 Hosting (amended 2026-09-08)
 
 - `latentpresence.com`: static HTML in `site/` (landing, `docs/`, `feedback/`) in the style of latentbeats.com. The feedback form posts to `/api/feedback` with `source: "presence"`; Caddy proxies that path to the existing feedback API, which needs `presence` added to its source whitelist (Rick, one line in `tools/feedback-api`).
 - `app.latentpresence.com`: the `apps/web` build, static. It talks to the user's own endpoints and, when present, to the local companion at `http://127.0.0.1:<port>`. Chrome allows an HTTPS page to call `localhost` (mixed-content exemption) but applies Local Network Access rules: the companion must answer the CORS preflight including `Access-Control-Allow-Private-Network: true`, and the user sees a one-time permission prompt. Same for Ollama and LM Studio from the hosted app. Verified in P8-T03.
-- Deployment is a script that syncs `site/` and `apps/web/dist` to the server; Rick configures Caddy. No GitHub Pages.
+- **Deployment (amended 2026-09-08).** The server has a checkout of this repository and deploys with
+  `git pull`, then `pnpm install --frozen-lockfile && pnpm build`, which is what puts `apps/web/dist`
+  on disk — it is gitignored, so a pull alone does not bring it. Caddy serves `<checkout>/site` for
+  `latentpresence.com` and `<checkout>/apps/web/dist` for `app.latentpresence.com`; Rick configures
+  Caddy. No GitHub Pages, and no rsync: the `scripts/deploy.sh` written for P0-T03 was deleted the
+  day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
+  2026-09-08.
 
 ## ADR-17 Development database
 

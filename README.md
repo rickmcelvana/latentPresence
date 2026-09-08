@@ -33,6 +33,9 @@ docs/                research, decisions, plans, briefs, spikes
 
 Copy `.env.example` to `.env` for the companion's `DATABASE_URL`. `.env` is never committed.
 
+Deployment is a `git pull` on the server followed by `pnpm install --frozen-lockfile && pnpm build`;
+Caddy serves `site/` and `apps/web/dist` straight out of the checkout (ADR-16).
+
 ## Principles
 
 - **We ship no models.** Bring your own: LM Studio, vLLM, llama.cpp, Ollama, OpenRouter, NVIDIA, Anthropic, OpenAI, or in-browser models you download yourself after a consent screen that shows size and licence.
