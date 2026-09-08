@@ -16,10 +16,17 @@
 
 ## Rick's backlog (things only Rick can do)
 
-- [ ] Add `presence` to `normalize_source` in `tools/feedback-api` and proxy `latentpresence.com/api/feedback` in Caddy (needed by P0-T03).
-- [ ] Caddy sites for `latentpresence.com` (serves `site/`) and `app.latentpresence.com` (serves `apps/web/dist`). Deploy script arrives with P0-T03.
-- [ ] Confirm the tunnel to `10.0.0.1:3306` is up from the dev box before Spike C, and that MariaDB there is 11.8+ (`SELECT VERSION();`). If older, upgrade or Spike C uses the docker compose file.
+- [ ✅ ] Add `presence` to `normalize_source` in `tools/feedback-api` and proxy `latentpresence.com/api/feedback` in Caddy (needed by P0-T03).
+Done.
+
+- [ ✅ ] Caddy sites for `latentpresence.com` (serves `site/`) and `app.latentpresence.com` (serves `apps/web/dist`). Deploy script arrives with P0-T03.
+Done.
+
+- [ ✅ ] Confirm the tunnel to `10.0.0.1:3306` is up from the dev box before Spike C, and that MariaDB there is 11.8+ (`SELECT VERSION();`). If older, upgrade or Spike C uses the docker compose file.
+Done.
+
 - [ ] Linux box available for Spike E (P0-T08) when it comes up.
+
 - [ ] Character pipeline (P7): wait for `docs/pipeline/character.md`; the architect writes exact instructions first.
 
 ## Backlog (architect)
