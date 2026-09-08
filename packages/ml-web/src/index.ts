@@ -1,3 +1,7 @@
-import { describePackage, type PackageInfo } from '@latentpresence/protocol';
+import { PROTOCOL_VERSION } from '@latentpresence/protocol';
 
-export const packageInfo: PackageInfo = describePackage('@latentpresence/ml-web');
+/** Placeholder surface until this package is filled in. Keeps the wiring under test. */
+export const packageInfo = {
+  name: '@latentpresence/ml-web',
+  protocolVersion: PROTOCOL_VERSION,
+} as const;
