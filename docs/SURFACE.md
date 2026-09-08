@@ -24,6 +24,29 @@ Used by `packages/protocol`. Zod 4 moved several things that Zod 3 habits get wr
 | `.readonly()` | Freezes the parsed output (`Object.isFrozen` true) |
 | JSON Schema export | `z.toJSONSchema(schema)` exists — the path to MCP tool schemas in P5 |
 
+## Feedback API — 2026-09-08, verified by reading the running service's source
+
+`tools/feedback-api` in the latent-mastering repo, which Caddy proxies at
+`latentpresence.com/api/feedback`. Contract only; no code was taken from that repo.
+
+`POST /api/feedback`, `Content-Type: application/json`.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `kind` | string | yes | `bug`, `suggestion` or `other`. Anything else is silently coerced to `other` |
+| `message` | string | yes | Empty after trim gives `400` |
+| `_hp` | string | **yes** | Honeypot. Must be present, even as `""` — it is a bare `String` in the deserialiser, so omitting it fails the request before any handler runs. Non-empty is accepted-and-dropped with `204` |
+| `source` | string | no | Whitelisted: `mastering`, `mixing`, `presence`. Anything else stores as `unknown`. **`presence` is live** (Rick, 2026-09-07); the emails say "Latent Presence" |
+| `email` | string or null | no | Follow-up only |
+| `user_agent` | string or null | no | |
+| `screen_width` / `screen_height` | int or null | no | The reference form sends `window.innerWidth`/`innerHeight`, so these are viewport, not screen |
+
+Responses: `204` success (and for a tripped honeypot), `400` empty message, `429` rate limited
+(5 per IP per hour), `500` insert failed. A missing `_hp` is a deserialiser rejection, not a `400`.
+
+`GET /api/health` returns `ok` without touching the database. It exists to tell a missing Caddy
+route (404) from a dead service (502), which is how the latentbeats.com move actually failed.
+
 ## GitHub Actions used by `.github/workflows/ci.yml` — 2026-09-08, verified against the GitHub API
 
 `actions/checkout@v7` (v7.0.1), `actions/setup-node@v7` (v7.0.0), `pnpm/action-setup@v6` (v6.1.0),
