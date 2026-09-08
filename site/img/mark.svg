@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="latentPresence">
+  <!--
+    The latentPresence mark. Same bones as the other Latent app icons so the suite
+    reads as a family: a dark tile, one thin ring, and a flat geometric glyph in the
+    app's accent colour. Teal here (ADR-15), where latentCreate is blue.
+
+    The glyph is a dot held between two arcs: something is here, and something is
+    attending to it. latentCreate's three bars say audio; these two arcs say presence.
+    Deliberately abstract, so it does not collide with the speech-bubble and volume
+    glyphs every other app already uses.
+
+    This file is the master. The PNGs beside it are generated from it, so edit this
+    file and regenerate them; see README.md in this directory.
+  -->
+  <rect width="256" height="256" rx="56" fill="#0a0e1a"/>
+  <path d="M90 62 a76 76 0 0 0 0 132" fill="none" stroke="#2dd4bf" stroke-width="19" stroke-linecap="round"/>
+  <path d="M166 62 a76 76 0 0 1 0 132" fill="none" stroke="#2dd4bf" stroke-width="19" stroke-linecap="round"/>
+  <circle cx="128" cy="128" r="27" fill="#2dd4bf"/>
+  <circle cx="128" cy="128" r="104" fill="none" stroke="#3a4a5c" stroke-width="5"/>
+</svg>
