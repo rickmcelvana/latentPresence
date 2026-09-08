@@ -61,6 +61,54 @@ About **116 MB** on first run at those quantisations. fp16 variants, which suit 
 more: Kokoro fp16 is 163.23 MB and Moonshine fp16 is 15.52 + 76.25 MB. Whichever is chosen, ADR-09
 means the consent screen shows these numbers before a byte moves.
 
+## kokoro-js 1.2.1 `stream()` never terminates — 2026-09-08, verified by reading dist and by a live run
+
+`KokoroTTS.stream(text)` given a **plain string** hangs: no audio, no completion, no
+error. Read from `dist/kokoro.web.js`:
+
+- `stream()` builds a `TextSplitterStream`, `push`es the text, and **never calls
+  `close()`**.
+- The splitter only emits a sentence when its terminator is followed by more buffer
+  (`if (o === t) break;`). A sentence whose terminator is the last character stays
+  buffered and is emitted only by the flush inside `close()`.
+- Its async iterator is `for(;;) { if (sentences.length) yield …; else if (!closed) await
+  new Promise(r => resolver = r); }` — so once the buffer is drained it waits forever for
+  input that cannot arrive.
+
+Observed exactly that on 2026-09-08: every utterance reached "asking for synthesis" and
+nothing followed.
+
+**Use the splitter directly**, which `stream()` accepts and which keeps per-sentence
+streaming:
+
+```ts
+const sentences = new TextSplitterStream();
+sentences.push(text);
+sentences.close();
+for await (const chunk of tts.stream(sentences, { voice })) { … }
+```
+
+`generate()` is the non-streaming alternative, but it returns only when the whole
+utterance is synthesised, which would make "first audio" meaningless.
+
+## Moonshine on WebGPU — 2026-09-08, observed, not yet isolated
+
+On Rick's machine (Chrome, Arozzi Sfera Pro at 48 kHz resampled to 16 kHz):
+
+- **q8 + webgpu**: loads, and returns the *same* string regardless of the audio —
+  `"quartifies prconfirminé…"` with a repeating tail that grows with utterance length.
+  Identical output for different input means the encoder result is not reaching the
+  decoder; this is not the model guessing badly.
+- **fp16 + webgpu**: fails to load, throwing a bare ONNX Runtime wasm exception pointer.
+
+Capture was ruled out first: the buffer handed to the recogniser plays back as clean
+speech, 31744 samples for 1984 ms (16 kHz exactly), RMS ~0.1–0.26, peak ~0.5–1.0, Silero
+confidence 0.97–1.00.
+
+Still to test: wasm, which is transformers.js's default backend for q8 and the
+best-covered path, and fp32 on webgpu. Recorded here so the next person does not spend
+the same evening on the microphone.
+
 ## Feedback API — 2026-09-08, verified by reading the running service's source
 
 `tools/feedback-api` in the latent-mastering repo, which Caddy proxies at

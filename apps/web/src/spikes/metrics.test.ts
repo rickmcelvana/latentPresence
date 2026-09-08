@@ -122,7 +122,7 @@ describe('summarise', () => {
 });
 
 describe('the consent manifest', () => {
-  const dtypes: readonly SpikeDtype[] = ['q8', 'fp16'];
+  const dtypes: readonly SpikeDtype[] = ['q8', 'fp16', 'fp32'];
 
   it('can answer size, licence and source for every model, at every precision', () => {
     // ADR-09: the screen cannot do its job with a field missing, and a model added
@@ -152,7 +152,9 @@ describe('the consent manifest', () => {
     // figure for both would understate fp16 by more than a hundred megabytes.
     expect(formatMb(totalBytes(modelsFor('q8')))).toBe('122.8 MB');
     expect(formatMb(totalBytes(modelsFor('fp16')))).toBe('257.2 MB');
+    expect(formatMb(totalBytes(modelsFor('fp32')))).toBe('436.9 MB');
     expect(totalBytes(modelsFor('fp16'))).toBeGreaterThan(totalBytes(modelsFor('q8')));
+    expect(totalBytes(modelsFor('fp32'))).toBeGreaterThan(totalBytes(modelsFor('fp16')));
   });
 
   it('keeps the VAD model the same whichever precision is chosen', () => {

@@ -17,7 +17,7 @@
  * the spike always asks explicitly. Both backends run the same precision, or the
  * comparison measures the quantisation rather than the backend.
  */
-export type SpikeDtype = 'q8' | 'fp16';
+export type SpikeDtype = 'q8' | 'fp16' | 'fp32';
 
 export interface ModelDownload {
   /** What to call it on screen. */
@@ -58,6 +58,14 @@ const SIZES = {
     moonshine: 15_520_000 + 76_250_000,
     // model_fp16.onnx
     kokoro: 163_230_000,
+  },
+  // The unquantised graphs. Large, but the reference point: if recognition is correct
+  // here and wrong at q8, the quantisation is the fault rather than the pipeline.
+  fp32: {
+    // encoder_model.onnx + decoder_model_merged.onnx
+    moonshine: 30_880_000 + 78_230_000,
+    // model.onnx
+    kokoro: 325_530_000,
   },
 } as const satisfies Record<SpikeDtype, { moonshine: number; kokoro: number }>;
 

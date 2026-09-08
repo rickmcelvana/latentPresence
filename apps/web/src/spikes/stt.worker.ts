@@ -23,6 +23,19 @@ type OutboundMessage =
   | { readonly type: 'result'; readonly text: string }
   | { readonly type: 'error'; readonly message: string };
 
+/**
+ * ONNX Runtime throws raw wasm exception pointers, which stringify to a bare number like
+ * "321827440" and say nothing. Name that for what it is rather than printing the pointer
+ * and leaving the reader to wonder.
+ */
+function describe(error: unknown): string {
+  if (error instanceof Error) return error.stack ?? error.message;
+  if (typeof error === 'number') {
+    return `ONNX Runtime wasm exception (pointer ${error}) — usually an unsupported op or dtype for this backend`;
+  }
+  return String(error);
+}
+
 function post(message: OutboundMessage): void {
   (self as unknown as Worker).postMessage(message);
 }
@@ -74,7 +87,7 @@ self.addEventListener('message', (event: MessageEvent<InboundMessage>) => {
         : output.text;
       post({ type: 'result', text: text.trim() });
     } catch (error) {
-      post({ type: 'error', message: error instanceof Error ? error.message : String(error) });
+      post({ type: 'error', message: describe(error) });
     }
   })();
 });

@@ -298,6 +298,7 @@ export function VoiceLoop(): ReactElement {
               >
                 <option value="q8">q8</option>
                 <option value="fp16">fp16</option>
+                <option value="fp32">fp32</option>
               </select>
             </label>
           </div>
