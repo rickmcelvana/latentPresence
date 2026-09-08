@@ -1,25 +1,29 @@
-/*
- * theme.css — the single source of styling truth for apps/web (ADR-15).
- *
- * Tokens are the latentbeats base with a teal accent. Colour literals live here in
- * :root and nowhere else; a test enforces that from P0-T02b, which also adds the
- * button, panel, input, pill and drawer primitives and the /gallery route.
- * Every className used in TSX gets its rule in this file, in the same commit.
- */
+/* theme.css -- the single source of styling truth for apps/web (ADR-15).
+
+   Every className used in TSX has a rule in this file, added the day the component is
+   written. `theme.test.ts` fails the gate on a class with no rule, on a computed prefix
+   nothing answers to, on a stale exemption, and on any colour literal outside :root.
+
+   The palette follows latentbeats.com, the umbrella brand, with one deliberate
+   difference: latentPresence is teal where the rest of the suite is blue. Token *names*
+   match latentCreate so moving between the repos costs nothing. Do not fork these
+   values -- change the site, then follow it. */
 
 :root {
-  color-scheme: dark;
-
-  /* ground and surfaces */
-  --ground: #0a0e1a;
+  /* Ground and surfaces -- latentbeats.com */
+  --bg: #0a0e1a;
+  --bg-elev: #11161f99;
   --panel: #161b22;
+  --panel-hover: #1f242c;
   --border: #2a3441;
+  --border-bright: #3a4a5c;
 
-  /* text */
+  /* Text */
   --text: #d6deeb;
-  --muted: #8b949e;
+  --text-muted: #8b949e;
 
-  /* teal accent */
+  /* Teal accent -- this app only (ADR-15). --on-accent because the accent is light
+     enough that white text on a filled button fails contrast. */
   --accent: #2dd4bf;
   --accent-hover: #5eead4;
   --accent-dim: #0d9488;
@@ -27,18 +31,33 @@
   --accent-glow-strong: rgba(13, 148, 136, 0.42);
   --on-accent: #06201d;
 
-  /* state */
+  /* State -- from the sibling apps; the site does not define these. */
   --danger: #f85149;
   --success: #3fb950;
   --warning: #d29922;
 
-  /* shape and motion */
+  /* Depth */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-drawer: -8px 0 32px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(3, 6, 12, 0.62);
+
+  /* Type */
+  --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+
+  /* Shape and motion */
   --radius: 12px;
   --radius-lg: 16px;
+  --radius-pill: 999px;
   --transition: 180ms ease;
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+  /* Layout scale -- spacious by design; no crowding. */
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 40px;
+  --drawer-width: 380px;
 }
 
 * {
@@ -49,41 +68,558 @@ html,
 body,
 #root {
   height: 100%;
+  margin: 0;
 }
 
 body {
-  margin: 0;
-  background: var(--ground);
+  background: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans);
-  font-size: 16px;
+  font-family: var(--font);
+  font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
-.boot {
+/* --- Base typography ------------------------------------------------------
+   Headings and copy are styled here rather than per view so a new screen reads
+   like the rest of the app before anyone touches its stylesheet. */
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 28px;
+}
+
+h2 {
+  font-size: 20px;
+}
+
+h3 {
+  font-size: 16px;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+kbd {
+  padding: 1px var(--gap-xs);
+  background: var(--panel-hover);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--gap-xs);
+}
+
+/* --- Shared scrollbar treatment -------------------------------------------
+   One rule for every pane that can overflow. The UA default reads as un-themed
+   against the dark ground. Standard properties carry Firefox; the
+   ::-webkit-scrollbar block carries the Chromium the app actually runs in. */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-bright) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* --- Focus ----------------------------------------------------------------
+   One visible ring, on :focus-visible only, so a mouse click does not leave a
+   halo but a keyboard user is never lost. Every interactive primitive below
+   opts into this instead of inventing its own. */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Primitive: button ---------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-sm);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--panel-hover);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition),
+    box-shadow var(--transition);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--panel);
+  border-color: var(--accent-dim);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--panel);
+  border-color: var(--border-bright);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--panel);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-sm {
+  padding: var(--gap-xs) var(--gap-sm);
+  font-size: 13px;
+}
+
+/* --- Primitive: panel ----------------------------------------------------- */
+
+.panel {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--gap-md);
+  padding: var(--gap-lg);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-md);
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.panel-note {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* --- Primitive: input ----------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-width: 0;
+}
+
+.field-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.input,
+.textarea,
+.select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.input:hover:not(:disabled),
+.textarea:hover:not(:disabled),
+.select:hover:not(:disabled) {
+  border-color: var(--border-bright);
+}
+
+.input:focus-visible,
+.textarea:focus-visible,
+.select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input:disabled,
+.textarea:disabled,
+.select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input[aria-invalid='true'],
+.textarea[aria-invalid='true'],
+.select[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.select {
+  appearance: auto;
+}
+
+/* --- Primitive: pill ------------------------------------------------------ */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: 2px var(--gap-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  transition:
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.pill-accent {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.pill-ok {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.pill-warn {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.pill-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* --- Primitive: drawer ----------------------------------------------------
+   Slides in from the right over a scrim. Settings, schedules and the plan panel
+   all live in one of these, so the animation and the scrim are defined once. */
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  animation: fade-in var(--transition);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--drawer-width), 100vw);
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-drawer);
+  animation: slide-in var(--transition);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  padding: var(--gap-md) var(--gap-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding: var(--gap-lg);
+  overflow-y: auto;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawer-scrim {
+    animation: none;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* --- Boot screen ---------------------------------------------------------- */
+
+.boot-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 2rem;
+  padding: var(--gap-xl);
   text-align: center;
 }
 
-.boot__title {
-  margin: 0;
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+.boot-title {
+  font-size: clamp(32px, 6vw, 56px);
   color: var(--accent);
   text-shadow: 0 0 32px var(--accent-glow);
 }
 
-.boot__status {
-  margin: 0;
-  color: var(--muted);
+.boot-status {
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 13px;
+}
+
+/* --- Gallery (dev route) --------------------------------------------------
+   Renders every primitive in every state so a person can look at the whole
+   system at once, and so Playwright can screenshot it later. Dev only. */
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xl);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.gallery-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.gallery-note {
+  color: var(--text-muted);
+}
+
+.gallery-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--gap-md);
+}
+
+.gallery-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--gap-sm);
+}
+
+.gallery-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.gallery-swatch-chip {
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--gap-sm);
+}
+
+.gallery-swatch-name {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.gallery-swatch-bg {
+  background: var(--bg);
+}
+
+.gallery-swatch-panel {
+  background: var(--panel);
+}
+
+.gallery-swatch-panel-hover {
+  background: var(--panel-hover);
+}
+
+.gallery-swatch-border {
+  background: var(--border);
+}
+
+.gallery-swatch-border-bright {
+  background: var(--border-bright);
+}
+
+.gallery-swatch-text {
+  background: var(--text);
+}
+
+.gallery-swatch-text-muted {
+  background: var(--text-muted);
+}
+
+.gallery-swatch-accent {
+  background: var(--accent);
+}
+
+.gallery-swatch-accent-hover {
+  background: var(--accent-hover);
+}
+
+.gallery-swatch-accent-dim {
+  background: var(--accent-dim);
+}
+
+.gallery-swatch-on-accent {
+  background: var(--on-accent);
+}
+
+.gallery-swatch-danger {
+  background: var(--danger);
+}
+
+.gallery-swatch-success {
+  background: var(--success);
+}
+
+.gallery-swatch-warning {
+  background: var(--warning);
 }
