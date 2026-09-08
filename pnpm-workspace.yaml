@@ -5,3 +5,13 @@ packages:
 # pnpm 11 refuses dependency versions published in the last few days unless they are
 # listed here. Keep that protection: pin ranges a little behind the very newest release
 # rather than adding exclusions.
+
+# Native install scripts, allowed or denied one at a time. transformers.js brings
+# onnxruntime-node and sharp for its Node runtime, and protobufjs builds alongside them.
+# apps/web is a browser bundle and imports none of the three, so these are denied: a
+# native postinstall we never use is build time and supply-chain surface for nothing.
+# If anything here ever runs transformers.js under Node, this is the list to revisit.
+allowBuilds:
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false

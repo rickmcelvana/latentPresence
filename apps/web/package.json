@@ -19,12 +19,15 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.0.1",
+    "kokoro-js": "1.2.1",
+    "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4",
     "vite": "^8.2.2"
   }
 }
