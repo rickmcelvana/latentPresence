@@ -11,6 +11,16 @@
     "es2024": true
   },
   "ignorePatterns": ["**/dist/**", "**/target/**", "**/node_modules/**"],
+  "overrides": [
+    {
+      // Worker.postMessage has no targetOrigin parameter -- its second argument is the
+      // transfer list, so "insert self.location.origin" would send the origin string as
+      // a transferable. The rule cannot tell a Worker from a window; these files only
+      // ever post to workers.
+      "files": ["apps/web/src/spikes/**"],
+      "rules": { "unicorn/require-post-message-target-origin": "off" }
+    }
+  ],
   "rules": {
     "typescript/no-explicit-any": "error",
     // `_hp` is the feedback API's honeypot field. The name is fixed by that service's

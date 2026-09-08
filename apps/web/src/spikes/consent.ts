@@ -7,9 +7,17 @@
  *
  * Sizes and licences are from the Hugging Face API on 2026-09-08 and are recorded in
  * `docs/SURFACE.md`. They are written down rather than fetched so the screen can be
- * shown before any network call — asking the network how big a download is, in order
- * to decide whether to make it, gives the game away.
+ * shown before any network call — asking the network how big a download is, in order to
+ * decide whether to make it, gives the game away.
  */
+
+/**
+ * The precisions the spike offers. transformers.js maps `q8` to the `_quantized` file
+ * and `fp16` to `_fp16`; on wasm it would default to `q8` and on webgpu to `fp32`, so
+ * the spike always asks explicitly. Both backends run the same precision, or the
+ * comparison measures the quantisation rather than the backend.
+ */
+export type SpikeDtype = 'q8' | 'fp16';
 
 export interface ModelDownload {
   /** What to call it on screen. */
@@ -18,7 +26,7 @@ export interface ModelDownload {
   readonly repo: string;
   /** SPDX identifier as the repository states it. */
   readonly licence: string;
-  /** Bytes fetched on first use, at the quantisation the spike asks for. */
+  /** Bytes fetched on first use, at the precision being asked for. */
   readonly bytes: number;
   /** Where the user can go and look before agreeing. */
   readonly sourceUrl: string;
@@ -26,35 +34,57 @@ export interface ModelDownload {
   readonly stage: 'vad' | 'stt' | 'tts';
 }
 
-export const SPIKE_MODELS: readonly ModelDownload[] = [
-  {
-    label: 'Silero VAD',
-    repo: 'onnx-community/silero-vad',
-    licence: 'MIT',
-    bytes: 2_240_000,
-    sourceUrl: 'https://huggingface.co/onnx-community/silero-vad',
-    stage: 'vad',
-  },
-  {
-    label: 'Moonshine tiny (speech to text)',
-    repo: 'onnx-community/moonshine-tiny-ONNX',
-    licence: 'MIT',
-    // Encoder 7.94 MB + merged decoder 20.24 MB, both quantised.
-    bytes: 28_180_000,
-    sourceUrl: 'https://huggingface.co/onnx-community/moonshine-tiny-ONNX',
-    stage: 'stt',
-  },
-  {
-    label: 'Kokoro 82M (text to speech)',
-    repo: 'onnx-community/Kokoro-82M-v1.0-ONNX',
-    licence: 'Apache-2.0',
-    bytes: 86_030_000,
-    sourceUrl: 'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX',
-    stage: 'tts',
-  },
-];
+const SILERO: ModelDownload = {
+  label: 'Silero VAD',
+  repo: 'onnx-community/silero-vad',
+  licence: 'MIT',
+  // Loaded directly through onnxruntime-web, always the fp32 graph: it is 2 MB, and
+  // quantising a model this small buys nothing.
+  bytes: 2_243_022,
+  sourceUrl: 'https://huggingface.co/onnx-community/silero-vad',
+  stage: 'vad',
+};
 
-export function totalBytes(models: readonly ModelDownload[] = SPIKE_MODELS): number {
+/** Byte sizes per precision, read from the HF API rather than estimated. */
+const SIZES = {
+  q8: {
+    // encoder_model_quantized.onnx + decoder_model_merged_quantized.onnx
+    moonshine: 7_940_000 + 20_240_000,
+    // model_quantized.onnx
+    kokoro: 92_360_000,
+  },
+  fp16: {
+    // encoder_model_fp16.onnx + decoder_model_merged_fp16.onnx
+    moonshine: 15_520_000 + 76_250_000,
+    // model_fp16.onnx
+    kokoro: 163_230_000,
+  },
+} as const satisfies Record<SpikeDtype, { moonshine: number; kokoro: number }>;
+
+/** Everything the spike fetches at a given precision, in pipeline order. */
+export function modelsFor(dtype: SpikeDtype): readonly ModelDownload[] {
+  return [
+    SILERO,
+    {
+      label: `Moonshine tiny (speech to text, ${dtype})`,
+      repo: 'onnx-community/moonshine-tiny-ONNX',
+      licence: 'MIT',
+      bytes: SIZES[dtype].moonshine,
+      sourceUrl: 'https://huggingface.co/onnx-community/moonshine-tiny-ONNX',
+      stage: 'stt',
+    },
+    {
+      label: `Kokoro 82M (text to speech, ${dtype})`,
+      repo: 'onnx-community/Kokoro-82M-v1.0-ONNX',
+      licence: 'Apache-2.0',
+      bytes: SIZES[dtype].kokoro,
+      sourceUrl: 'https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX',
+      stage: 'tts',
+    },
+  ];
+}
+
+export function totalBytes(models: readonly ModelDownload[]): number {
   return models.reduce((sum, model) => sum + model.bytes, 0);
 }
 

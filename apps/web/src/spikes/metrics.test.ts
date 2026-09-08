@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SPIKE_MODELS, formatMb, totalBytes } from './consent';
+import { type SpikeDtype, formatMb, modelsFor, totalBytes } from './consent';
 import { EMPTY_MARKS, type TurnMarks, median, summarise, timeTurn } from './metrics';
 
 /** A turn where every stage took a round number, so the arithmetic is easy to read. */
@@ -122,28 +122,44 @@ describe('summarise', () => {
 });
 
 describe('the consent manifest', () => {
-  it('can answer size, licence and source for every model', () => {
+  const dtypes: readonly SpikeDtype[] = ['q8', 'fp16'];
+
+  it('can answer size, licence and source for every model, at every precision', () => {
     // ADR-09: the screen cannot do its job with a field missing, and a model added
     // later without a licence would slip through as an empty table cell.
-    expect(SPIKE_MODELS.length).toBeGreaterThan(0);
-    for (const model of SPIKE_MODELS) {
-      expect(model.label, model.repo).not.toBe('');
-      expect(model.licence, model.repo).not.toBe('');
-      expect(model.bytes, model.repo).toBeGreaterThan(0);
-      expect(model.sourceUrl, model.repo).toMatch(/^https:\/\/huggingface\.co\//);
-      expect(model.sourceUrl, model.repo).toContain(model.repo);
+    for (const dtype of dtypes) {
+      const models = modelsFor(dtype);
+      expect(models.length).toBeGreaterThan(0);
+      for (const model of models) {
+        expect(model.label, model.repo).not.toBe('');
+        expect(model.licence, model.repo).not.toBe('');
+        expect(model.bytes, model.repo).toBeGreaterThan(0);
+        expect(model.sourceUrl, model.repo).toMatch(/^https:\/\/huggingface\.co\//);
+        expect(model.sourceUrl, model.repo).toContain(model.repo);
+      }
     }
   });
 
   it('covers all three stages of the pipeline', () => {
     // A stage with no entry is a stage that downloads without consent.
-    expect(new Set(SPIKE_MODELS.map((model) => model.stage))).toEqual(
+    expect(new Set(modelsFor('q8').map((model) => model.stage))).toEqual(
       new Set(['vad', 'stt', 'tts']),
     );
   });
 
-  it('totals the download the user is agreeing to', () => {
-    expect(totalBytes()).toBe(116_450_000);
-    expect(formatMb(totalBytes())).toBe('116.5 MB');
+  it('quotes a different total per precision, because the download differs', () => {
+    // The screen has to be right about the specific thing being fetched. Quoting one
+    // figure for both would understate fp16 by more than a hundred megabytes.
+    expect(formatMb(totalBytes(modelsFor('q8')))).toBe('122.8 MB');
+    expect(formatMb(totalBytes(modelsFor('fp16')))).toBe('257.2 MB');
+    expect(totalBytes(modelsFor('fp16'))).toBeGreaterThan(totalBytes(modelsFor('q8')));
+  });
+
+  it('keeps the VAD model the same whichever precision is chosen', () => {
+    // Silero is loaded directly through onnxruntime-web, not transformers, so the
+    // dtype toggle must not appear to change it.
+    const [q8Vad] = modelsFor('q8');
+    const [fp16Vad] = modelsFor('fp16');
+    expect(q8Vad).toEqual(fp16Vad);
   });
 });
