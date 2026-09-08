@@ -13,6 +13,10 @@
   "ignorePatterns": ["**/dist/**", "**/target/**", "**/node_modules/**"],
   "rules": {
     "typescript/no-explicit-any": "error",
+    // `_hp` is the feedback API's honeypot field. The name is fixed by that service's
+    // deserialiser (docs/SURFACE.md), so renaming it to satisfy a style rule would
+    // silently break every report the form sends.
+    "eslint/no-underscore-dangle": ["error", { "allow": ["_hp"] }],
     // React 19 automatic JSX runtime: React is not imported for JSX (ADR-11 toolchain).
     "react/react-in-jsx-scope": "off"
   }

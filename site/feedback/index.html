@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Report a bug / send feedback — latentPresence</title>
+  <meta name="description" content="Tell us what went wrong or what you'd like to see in latentPresence. We read every report." />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="icon" type="image/svg+xml" href="../img/mark.svg" />
+  <link rel="icon" type="image/png" sizes="16x16" href="../img/presence_16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../img/presence_32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="../img/presence_48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="../img/presence_180x180.png" />
+  <link rel="manifest" href="../site.webmanifest" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a class="wordmark" href="../"><img class="logo" src="../img/mark.svg" width="28" height="28" alt=""> latentPresence</a>
+      <div class="nav-links">
+        <a href="../#features">Features</a>
+        <a href="../docs/">Docs</a>
+        <a class="btn btn-primary" href="https://app.latentpresence.com">Open the app</a>
+      </div>
+    </nav>
+
+    <div class="feedback-wrap">
+      <h1>Report a bug or send feedback</h1>
+      <p class="lead">We read every one of these. No account needed.</p>
+
+      <form id="feedback-form" novalidate>
+        <div class="form-field">
+          <label for="kind">Type</label>
+          <select id="kind" name="kind" required>
+            <option value="bug">Bug</option>
+            <option value="suggestion">Suggestion</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="message">What happened?</label>
+          <textarea id="message" name="message" required placeholder="What were you doing, and what went wrong (or what would you like to see)?"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="email">Email (optional, only for follow-up)</label>
+          <input type="email" id="email" name="email" autocomplete="email" />
+        </div>
+        <div class="form-field hp-field" aria-hidden="true">
+          <label for="_hp">Leave this field empty</label>
+          <input type="text" id="_hp" name="_hp" tabindex="-1" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" type="submit">Send</button>
+        <p id="form-status" class="form-status" role="status"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="feedback.js" defer></script>
+</body>
+</html>

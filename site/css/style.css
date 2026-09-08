@@ -1,0 +1,576 @@
+/* ==========================================================================
+   latentPresence.com — static site stylesheet
+   Same bones as latentbeats.com/mastering, teal accent against the shared base.
+   ========================================================================== */
+
+:root {
+  --bg: #0a0e1a;
+  --bg-elev: #11161f99;
+  --panel: #161b22;
+  --panel-hover: #1f242c;
+  --border: #2a3441;
+  --border-bright: #3a4a5c;
+  --text: #d6deeb;
+  --text-muted: #8b949e;
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-dim: #0d9488;
+  --accent-glow: rgba(45, 212, 191, 0.22);
+  --accent-glow-strong: rgba(13, 148, 136, 0.42);
+  --accent-glow-lift: rgba(45, 212, 191, 0.45);
+  --accent-glow-soft: rgba(45, 212, 191, 0.28);
+  --accent-wash: rgba(45, 212, 191, 0.10);
+  --on-accent: #06201d;
+  --gradient-accent: linear-gradient(135deg, rgba(45, 212, 191, 0.14) 0%, rgba(13, 148, 136, 0.05) 100%);
+  --gradient-accent-strong: linear-gradient(135deg, rgba(45, 212, 191, 0.20) 0%, rgba(13, 148, 136, 0.08) 100%);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 8px 32px rgba(13, 148, 136, 0.28);
+  /* State colours, matching apps/web/src/theme.css so the site and the app agree. */
+  --danger: #f85149;
+  --success: #3fb950;
+  --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --transition: 180ms ease;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ==========================================================================
+   Nav
+   ========================================================================== */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.nav .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  user-select: none;
+  white-space: nowrap;
+}
+.nav .wordmark .logo {
+  display: block;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  line-height: 0;
+  border-radius: 9px;
+  object-fit: contain;
+  transition: transform var(--transition), filter var(--transition),
+              box-shadow var(--transition);
+}
+.nav .wordmark:hover .logo {
+  filter: brightness(1.12);
+  transform: scale(1.05);
+}
+.nav .wordmark span {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-left: auto;
+  padding-left: 1rem;
+}
+.nav-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  transition: color var(--transition);
+}
+.nav-links a:hover { color: var(--text); }
+.nav-links .btn-primary,
+.nav-links .btn-primary:hover { color: var(--on-accent); }
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition), transform var(--transition),
+              box-shadow var(--transition);
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 0 var(--accent-glow);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+  box-shadow: 0 6px 24px var(--accent-glow-lift);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-large {
+  padding: 0.9rem 2rem;
+  font-size: 1rem;
+}
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+
+.hero {
+  position: relative;
+  padding: 6.5rem 0 5.5rem;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -25%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70rem;
+  height: 34rem;
+  background: radial-gradient(ellipse at center, var(--accent-dim) 0%, transparent 70%);
+  opacity: 0.38;
+  pointer-events: none;
+  z-index: 0;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, var(--accent-wash), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero > * { position: relative; z-index: 1; }
+.hero .eyebrow {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  margin-bottom: 1.5rem;
+  background: var(--gradient-accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent-hover);
+  letter-spacing: 0.02em;
+}
+.hero h1 {
+  font-size: clamp(2.1rem, 5.2vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.4rem;
+  max-width: 46rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.hero h1 .accent {
+  background: linear-gradient(120deg, var(--accent-hover), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 24px var(--accent-glow-soft));
+}
+.hero p.lead {
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 40rem;
+  margin: 0 auto 2.25rem;
+}
+.hero .cta-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.hero .fine-print {
+  margin-top: 1.75rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Section headings
+   ========================================================================== */
+
+.section {
+  padding: 4.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.section h2 {
+  text-align: center;
+  font-size: 1.9rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75rem;
+}
+.section .section-lead {
+  text-align: center;
+  color: var(--text-muted);
+  max-width: 36rem;
+  margin: 0 auto 3rem;
+  font-size: 1.0625rem;
+}
+
+/* ==========================================================================
+   Story
+   ========================================================================== */
+
+.story {
+  max-width: 44rem;
+  margin: 0 auto;
+  text-align: center;
+}
+.story p {
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+  margin: 0 0 1.25rem;
+}
+.story p:last-child { margin-bottom: 0; }
+
+/* ==========================================================================
+   Feature grid
+   ========================================================================== */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+}
+.feature-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem 1.5rem 1.5rem;
+  overflow: hidden;
+  transition: background var(--transition), border-color var(--transition),
+              transform var(--transition), box-shadow var(--transition);
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.feature-card:hover {
+  background: var(--panel-hover);
+  border-color: var(--accent-dim);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+.feature-card:hover::before { opacity: 1; }
+.feature-card .card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  background: var(--gradient-accent);
+  border: 1px solid var(--border);
+  color: var(--accent-hover);
+}
+.feature-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.0625rem;
+  color: var(--accent-hover);
+  letter-spacing: -0.005em;
+}
+.feature-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+/* ==========================================================================
+   How it works — numbered steps
+   ========================================================================== */
+
+.how-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 2.5rem;
+  counter-reset: step;
+}
+.how-step {
+  text-align: center;
+  position: relative;
+}
+.how-step::before {
+  counter-increment: step;
+  content: counter(step);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--gradient-accent);
+  border: 1px solid var(--border-bright);
+  color: var(--accent-hover);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 0 24px var(--accent-glow);
+}
+.how-step h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.0625rem;
+  color: var(--text);
+}
+.how-step p {
+  color: var(--text-muted);
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* ==========================================================================
+   Privacy promise
+   ========================================================================== */
+
+.promise {
+  max-width: 44rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.25rem;
+}
+.promise p {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  border-left: 3px solid var(--accent-dim);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.footer {
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+.footer .wordmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.footer .wordmark .logo {
+  display: block;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+}
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition);
+}
+.footer-links a:hover { color: var(--accent); }
+
+/* ==========================================================================
+   Docs page
+   ========================================================================== */
+
+.docs-content {
+  max-width: 44rem;
+  margin: 3rem auto 5rem;
+}
+.docs-content h1 {
+  font-size: 2.1rem;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.01em;
+}
+.docs-content .lead {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+.docs-content h2 {
+  font-size: 1.4rem;
+  margin-top: 2.75rem;
+  color: var(--accent-hover);
+  letter-spacing: -0.005em;
+}
+.docs-content p,
+.docs-content li { color: var(--text-muted); }
+.docs-content p { margin-bottom: 1rem; }
+.docs-content em { color: var(--text); font-style: normal; }
+.docs-content dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem 1.25rem;
+  margin-top: 1rem;
+}
+.docs-content dt {
+  color: var(--text);
+  font-weight: 600;
+}
+.docs-content dd { margin: 0; }
+.docs-content ul { padding-left: 1.25rem; }
+.docs-content li { margin-bottom: 0.5rem; }
+
+/* ==========================================================================
+   Feedback form
+   ========================================================================== */
+
+.feedback-wrap {
+  max-width: 32rem;
+  margin: 3rem auto 5rem;
+}
+.feedback-wrap h1 {
+  font-size: 1.85rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+.feedback-wrap p.lead {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+.form-field { margin-bottom: 1.25rem; }
+.form-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.form-field textarea,
+.form-field select,
+.form-field input[type="text"],
+.form-field input[type="email"] {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  transition: border-color var(--transition);
+}
+.form-field textarea { min-height: 8rem; resize: vertical; }
+.form-field textarea:focus,
+.form-field select:focus,
+.form-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.hp-field { position: absolute; left: -9999px; top: -9999px; }
+.form-status {
+  margin-top: 1rem;
+  font-size: 0.9375rem;
+}
+.form-status.success { color: var(--accent-hover); }
+.form-status.error { color: var(--danger); }
+
+/* ==========================================================================
+   Scroll reveal (progressive enhancement, respects reduced motion)
+   ========================================================================== */
+
+/* The hiding rule is scoped to `.js`, which the inline script in <head> adds before
+   first paint. Unscoped, a visitor whose JavaScript never runs gets a page whose
+   features and steps are permanently invisible. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 480ms ease, transform 480ms ease;
+}
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js .reveal { opacity: 1; transform: none; transition: none; }
+  .btn-primary:hover { transform: none; }
+  .feature-card:hover { transform: none; }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .hero { padding: 4rem 0 3.5rem; }
+  .section { padding: 3.5rem 0; }
+  .nav-links { gap: 1rem; }
+  .nav .wordmark { gap: 0.45rem; font-size: 1.0625rem; }
+  .nav .wordmark .logo { width: 24px; height: 24px; }
+  .nav-links .btn { padding: 0.5rem 1rem; font-size: 0.875rem; }
+}

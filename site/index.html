@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>latentPresence — A conversational AI you talk to face to face</title>
+  <meta name="description" content="latentPresence is an open-source conversational AI: a full-body character in a 3D set that joins your video call, listens, reacts, and answers in voice." />
+  <meta name="theme-color" content="#0a0e1a" />
+  <link rel="canonical" href="https://latentpresence.com/" />
+  <link rel="icon" type="image/svg+xml" href="img/mark.svg" />
+  <link rel="icon" type="image/png" sizes="16x16" href="img/presence_16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="img/presence_32x32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="img/presence_48x48.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="img/presence_180x180.png" />
+  <link rel="manifest" href="site.webmanifest" />
+  <!-- Marks the document as scripted before first paint, so the scroll-reveal rules
+       can hide things without hiding them from anyone whose JavaScript never runs. -->
+  <script>document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a class="wordmark" href="/"><img class="logo" src="img/mark.svg" width="28" height="28" alt=""> latentPresence</a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="docs/">Docs</a>
+        <a class="btn btn-primary" href="https://app.latentpresence.com">Open the app</a>
+      </div>
+    </nav>
+  </div>
+
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Open source · Bring your own models</span>
+      <h1>A conversational AI you talk to <span class="accent">face to face.</span></h1>
+      <p class="lead">
+        A full-body character lives in a small 3D set and joins you in a video call.
+        You speak or type, it listens, reacts, and answers in voice with matching
+        expression and body language.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary btn-large" href="https://app.latentpresence.com">Open the app</a>
+        <a class="btn btn-secondary btn-large" href="docs/">Read the docs</a>
+      </div>
+      <p class="fine-print">Early development. Nothing here is finished yet.</p>
+    </div>
+  </section>
+
+  <section class="section" id="story">
+    <div class="container">
+      <h2>Why a face changes everything</h2>
+      <div class="story">
+        <p>
+          Most assistants are a text box. You type, they answer, and the conversation
+          stays abstract. A face that listens and reacts changes what talking to one
+          feels like: it becomes something you talk to, not something you type at.
+        </p>
+        <p>
+          This one remembers you, helps you plan, runs tasks you schedule, answers from
+          your own documents, and can run your smart home through Home Assistant. The
+          character renders on your machine, the models are yours, and the memory lives
+          where you put it.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <h2>What it does</h2>
+      <p class="section-lead">Six things that set it apart from a chat window.</p>
+      <div class="feature-grid">
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </div>
+          <h3>It has a face.</h3>
+          <p>A full-body VRM character with lip sync, expressions and idle life, rendered in the browser with three.js.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </div>
+          <h3>It reads the room.</h3>
+          <p>Voice, text and — only if you turn the camera on — your face feed one estimate of how you seem, and the character's mood answers it.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <h3>It remembers.</h3>
+          <p>Episodes, facts with the dates they were true, plans, and a self-model it edits. In your MariaDB, your SQLite, or your browser.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3>It does things later.</h3>
+          <p>"Every weekday at eight, summarise my notes folder." Visible in a panel, cancellable, and confirmed aloud when you create it.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>It answers from your documents.</h3>
+          <p>Your PDFs, notes and databases, with citations you can open.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="card-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>It runs on your models.</h3>
+          <p>Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA, Anthropic, OpenAI, or models you download into your own browser.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="container">
+      <h2>How it works</h2>
+      <div class="how-steps">
+        <div class="how-step reveal">
+          <h3>Pick your models</h3>
+          <p>Choose where speech, language and voice run — locally, remotely, or in your browser.</p>
+        </div>
+        <div class="how-step reveal">
+          <h3>Allow the mic</h3>
+          <p>Talk or type. The character hears you and watches your camera only if you turn it on.</p>
+        </div>
+        <div class="how-step reveal">
+          <h3>Talk</h3>
+          <p>Ask, plan, read documents together, or just think out loud. Replies come in voice with matching expression.</p>
+        </div>
+        <div class="how-step reveal">
+          <h3>It remembers</h3>
+          <p>Facts, episodes, plans and schedules are stored in the database you pointed it at.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="privacy">
+    <div class="container">
+      <h2>Privacy promise</h2>
+      <div class="promise">
+        <p>No telemetry, ever. Nothing leaves your machine unless you point it somewhere.</p>
+        <p>We ship no models. Anything that runs in your browser is downloaded by you, after a screen showing its size, licence and source.</p>
+        <p>Your memory lives in your database, not ours.</p>
+        <p>The camera is off until you turn it on, and video never leaves the page.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <a class="wordmark" href="/"><img class="logo" src="img/mark.svg" width="24" height="24" alt=""> latentPresence</a>
+      <div class="footer-links">
+        <a href="docs/">Docs</a>
+        <a href="feedback/">Feedback</a>
+        <a href="https://github.com/rickmcelvana/latentPresence">GitHub</a>
+      </div>
+      <p>Apache-2.0. Part of the Latent suite.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var els = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) {
+        els.forEach(function (el) { el.classList.add('is-visible'); });
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      els.forEach(function (el) { io.observe(el); });
+    })();
+  </script>
+</body>
+</html>
