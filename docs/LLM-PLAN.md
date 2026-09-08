@@ -56,8 +56,8 @@ Done when: `docs/spikes/D-smart-turn.md` says pass or fail with numbers; if fail
 Done when: `docs/spikes/E-tauri.md` lists what worked (mic, AudioWorklet, WebGPU, WebGL, tray, notifications) per OS, and states whether Linux ships via Tauri or via "companion + Chrome".
 
 ### P0-T09 Phase 0 retrospective — owner: main
-Flip ADR-01..07 to accepted or amend; update `PROJECT.md` to Phase 1.
-Done when: `docs/DECISIONS.md` has no `proposed` status among ADR-01..07.
+Check each spike write-up against ADR-01..07 and amend any the spikes invalidated (Linux shell, Smart Turn in browser, tunnel latency budget); update `PROJECT.md` to Phase 1.
+Done when: every spike doc is linked from `docs/DECISIONS.md`, and no ADR contradicts a measured result.
 
 ---
 
