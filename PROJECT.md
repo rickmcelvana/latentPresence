@@ -1,24 +1,32 @@
-# latentAura — project status
+# PROJECT.md — latentPresence (living document)
 
-Updated: 2026-09-07 by claude
+> Load at the start of every session. Update at the end. Session-start rule: check this file against `git log` since the last session note; fix drift before new work.
 
-## Where we are
+## Snapshot
 
-- Phase: **0 — Foundations and spikes** (not started; planning complete).
-- Current task: none in progress.
-- Next task: **P0-T01 Monorepo scaffold** (owner: main), after Rick reviews the open questions below.
-- Blockers: ADR-01..13 are `proposed`; ADR-10 (licence) needs Rick.
+- **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
+- **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
+- **Phase:** **0 — Foundations and spikes.** Not started. Planning complete; all 19 ADRs accepted 2026-09-07.
+- **Current task:** none in progress.
+- **Next task:** **P0-T01 Monorepo scaffold** (architect-direct), then P0-T02 protocol package and P0-T02b design system in the same session if context allows.
+- **Blockers:** none for code. Rick-side items are in the backlog below.
+- **Default character:** Alice (name chosen 2026-09-07). Placeholder VRM until P7-T02.
+- **Dev database:** remote MariaDB at `10.0.0.1` over the tunnel; `DATABASE_URL` in `.env`. Spike C measures RTT.
+- **Test counts:** none yet (no code).
 
-## Open questions for Rick
+## Rick's backlog (things only Rick can do)
 
-1. Licence: Apache-2.0 (recommended) or MIT? (ADR-10)
-2. Avatar direction: agree with semi-realistic full-body VRM as the base, with LAM/Gaussian as later plugins? (RESEARCH §2)
-3. Platform: agree with browser-first + Rust companion, Tauri for Windows/Linux, macOS gated on spikes? (RESEARCH §8)
-4. Do you have a macOS or Linux machine for Spike E, or should those wait?
-5. MariaDB: is 11.8 installed locally, or should Phase 0 use the docker compose file?
-6. Character art: will you produce the default character in parallel with Phases 1–3, or after? (P7-T02)
-7. Name of the default character and persona voice, or leave for Phase 1?
-8. Ollama cloud model string: confirm `kimi-k2.7-code:cloud` is what your daemon lists (`ollama list`).
+- [ ] Add `presence` to `normalize_source` in `tools/feedback-api` and proxy `latentpresence.com/api/feedback` in Caddy (needed by P0-T03).
+- [ ] Caddy sites for `latentpresence.com` (serves `site/`) and `app.latentpresence.com` (serves `apps/web/dist`). Deploy script arrives with P0-T03.
+- [ ] Confirm the tunnel to `10.0.0.1:3306` is up from the dev box before Spike C, and that MariaDB there is 11.8+ (`SELECT VERSION();`). If older, upgrade or Spike C uses the docker compose file.
+- [ ] Linux box available for Spike E (P0-T08) when it comes up.
+- [ ] Character pipeline (P7): wait for `docs/pipeline/character.md`; the architect writes exact instructions first.
+
+## Backlog (architect)
+
+- Port model discovery (Ollama `/api/tags` capabilities, LM Studio listing, cloud presets) from latentCreate `crates/llm-bridge` to TypeScript in P1-T02.
+- Port `theme.test.ts` from latentCreate in P0-T02b and add a no-colour-literals test.
+- Scheduled tasks (ADR-14) are P6-T07 and P6-T08; tray mode is P8-T05.
 
 ## Phase checklist
 
@@ -28,15 +36,16 @@ Updated: 2026-09-07 by claude
 - [ ] P3 Affect engine and emotion sensing
 - [ ] P4 Memory and MariaDB
 - [ ] P5 Knowledge and tools
-- [ ] P6 Presence and life
+- [ ] P6 Presence, life and schedules
 - [ ] P7 Character pipeline and realism (parallel)
-- [ ] P8 Desktop and distribution
+- [ ] P8 Desktop and distribution (Windows first)
 - [ ] P9 Polish and 1.0
 
 ## Last three sessions
 
+- 2026-09-07 claude — planning session 2: renamed to latentPresence, accepted all ADRs from Rick's answers, added scheduler, design system, hosting, dev-DB and build-loop decisions; adopted the latent build loop; no code.
 - 2026-09-07 claude — planning session 1: research + all planning docs written; no code.
 
 ## Quick links
 
-- Rules: `CLAUDE.md` · Workflow: `docs/WORKFLOW.md` · Tasks: `docs/LLM-PLAN.md` · Decisions: `docs/DECISIONS.md` · Research: `docs/RESEARCH.md` · Original brief: `docs/brainstorm.md`
+Rules `CLAUDE.md` · Loop `docs/WORKFLOW.md` · Tasks `docs/LLM-PLAN.md` · Decisions `docs/DECISIONS.md` · Research `docs/RESEARCH.md` · Original brief `docs/brainstorm.md`

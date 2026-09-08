@@ -1,4 +1,4 @@
-# latentAura — Development Plan (human developers)
+# latentPresence — Development Plan (human developers)
 
 This is the base plan a small human team could follow. `docs/LLM-PLAN.md` breaks the same phases into agent-sized tasks. Estimates assume one to two developers and exist only for sequencing; there is no deadline.
 
@@ -13,13 +13,15 @@ Each phase ends with a demo and a short retrospective note in `docs/SESSION-LOG.
 Goal: a repo that builds, tests and deploys an empty app, plus answers to the four questions that could change the architecture.
 
 Deliverables
-- Monorepo per ADR-11, CI (lint, typecheck, unit tests, web build, cargo build), static deploy of `apps/web` to GitHub Pages or similar.
-- `packages/protocol`: provider interfaces (`LLMProvider`, `STTProvider`, `TTSProvider`, `EmbeddingProvider`, `MemoryStore`, `AvatarRenderer`) with zod schemas and capability flags.
+- Monorepo per ADR-11 with `pnpm gate` mirroring CI (typecheck, lint, unit tests, web build, cargo fmt, clippy, cargo test).
+- Design system: `theme.css` with the teal tokens, primitives, a `/gallery` route, and the className-coverage and no-colour-literal tests in the gate (ADR-15).
+- `site/` skeleton for latentpresence.com (landing, docs placeholder, feedback form) and a deploy script for both hosts.
+- `packages/protocol`: provider interfaces (`LLMProvider`, `STTProvider`, `TTSProvider`, `EmbeddingProvider`, `MemoryStore`, `AvatarRenderer`, `Schedule`) with zod schemas and capability flags.
 - Spike A: in-browser voice loop latency. Silero VAD + Moonshine STT + Kokoro TTS in workers on WebGPU; measure end of speech to first audio.
 - Spike B: VRM in react-three-fiber with wawa-lipsync driving mouth shapes from a TTS audio node; measure frame time on integrated GPU.
-- Spike C: Rust companion skeleton with MariaDB 11.8 vector table, insert and cosine search from a TS client.
+- Spike C: Rust companion skeleton with a MariaDB 11.8 vector table, insert and cosine search from a TS client, measured over the tunnel to the remote dev database and in CI.
 - Spike D: Smart Turn v3 in onnxruntime-web; if it fails, document the adaptive VAD fallback.
-- Spike E: Tauri 2 shell on Windows and Linux running spike A and B; note WebKitGTK gaps. macOS if hardware is available.
+- Spike E: Tauri 2 shell on Windows (WebView2) running spikes A and B, then on Rick's Linux box; macOS deferred.
 
 Exit criteria: spikes documented in `docs/spikes/`, ADR-01 to ADR-07 flipped to accepted or amended.
 
@@ -92,9 +94,9 @@ Deliverables
 
 Exit criteria: ask a question answered only by a private PDF and get a cited answer; ask for a fact from a registered database and get a correct query preview; turn on a light.
 
-## Phase 6 — Presence and life (3–5 weeks)
+## Phase 6 — Presence, life and schedules (4–6 weeks)
 
-Goal: the character feels continuous and present rather than request-driven.
+Goal: the character feels continuous and present rather than request-driven, and can act on your behalf later.
 
 Deliverables
 - Idle behaviours in the set (reading, stretching, looking outside) driven by mood and time of day.
@@ -103,8 +105,9 @@ Deliverables
 - Sleep: idle-triggered consolidation with a visible "she's resting" state.
 - Inner monologue: private reasoning channel summarised into a peekable panel; never spoken unless asked.
 - Multiple characters and personas, each with separate memory namespaces.
+- Scheduled tasks (ADR-14): one-shot and recurring jobs the character runs with a tool allowlist, catch-up policies for missed runs, a Schedules panel, spoken confirmation on creation, results delivered at the next session or by notification.
 
-Exit criteria: leave the app open for an hour; the character does something reasonable every few minutes without being annoying (measured by a user-tunable interruption budget).
+Exit criteria: leave the app open for an hour; the character does something reasonable every few minutes without being annoying (measured by a user-tunable interruption budget). A scheduled reminder set by voice fires on time.
 
 ## Phase 7 — Character pipeline and realism (parallel track, 4–8 weeks of art time)
 
@@ -112,24 +115,25 @@ Goal: a semi-realistic custom full-body character and a documented pipeline.
 
 Deliverables
 - `docs/pipeline/character.md`: image to mesh to rig (UniRig or Rigify) to ARKit blendshapes to VRM 1.0 export; validation checklist.
-- The default latentAura character with PBR materials and 52 ARKit shapes, plus a stylised alternative.
+- The default latentPresence character with PBR materials and 52 ARKit shapes, plus a stylised alternative.
 - Higher-fidelity set with baked lighting and time-of-day variants.
 - Optional Audio2Face-3D bridge in the companion for NVIDIA GPUs.
 - Experimental LAM head renderer plugin (research spike, not release-blocking).
 
 Exit criteria: the pipeline reproduced by someone other than Rick from the doc alone.
 
-## Phase 8 — Desktop and distribution (3–4 weeks)
+## Phase 8 — Desktop and distribution, Windows first (3–4 weeks)
 
-Goal: one-click local install with the companion bundled.
+Goal: one-click Windows install with the companion bundled, and the hosted app reaching local services.
 
 Deliverables
-- Tauri 2 app for Windows and Linux with the companion as a sidecar; macOS if spikes pass.
+- Tauri 2 app for Windows with the companion as a sidecar; Linux only if Spike E passed; macOS deferred (ADR-07).
+- Tray mode that keeps the character alive for schedules and check-ins; optional compact always-on-top presence window.
 - Auto-update, crash-safe settings, first-run wizard (choose providers, connect MariaDB or use SQLite, download browser models).
-- Hosted web build that can connect to a local companion (pairing token, CORS).
-- Installers signed where feasible; reproducible builds in CI.
+- `app.latentpresence.com` connecting to a local companion, Ollama or LM Studio (pairing, CORS, Chrome Local Network Access).
+- Unsigned installers (owner decision, as in latentCreate); reproducible builds in CI; draft GitHub release on tag.
 
-Exit criteria: fresh machine to first conversation in under ten minutes following the README.
+Exit criteria: fresh Windows machine to first conversation in under ten minutes following the README.
 
 ## Phase 9 — Polish and 1.0 release (4–6 weeks)
 
@@ -146,6 +150,8 @@ Deliverables
 
 ## Cross-cutting rules
 
+- The build loop is architect edits, `pnpm gate`, commit on green (ADR-13). Tests land with the code in the same commit.
+- Every component is styled in `theme.css` the day it is written; the gate fails on an unstyled className (ADR-15).
 - Every phase adds tests: unit for `core`, integration for companion, Playwright for the voice loop with synthetic audio.
 - Every provider gets a fake implementation for tests and demos.
 - Performance budgets: first audio < 800 ms (server) / < 1.2 s (browser models), 60 fps at 1080p on mid-range GPU, under 400 MB browser memory without models.

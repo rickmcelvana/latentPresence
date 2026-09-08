@@ -1,4 +1,4 @@
-# Aider defaults for latentAura. Aider never commits in this repo; the main AI audits and commits.
+# Aider defaults for latentPresence. Aider never commits in this repo; the main AI audits and commits.
 model: ollama_chat/kimi-k2.7-code:cloud
 auto-commits: false
 dirty-commits: false

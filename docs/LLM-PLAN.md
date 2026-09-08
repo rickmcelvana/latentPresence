@@ -1,34 +1,39 @@
-# latentAura — LLM execution plan
+# latentPresence — LLM execution plan
 
 Same phases as `docs/PLAN.md`, broken into tasks an agent can pick up cold. Read `PROJECT.md` first to find the current phase and next task. Do not read this whole file; jump to the current phase.
 
 Task format
 - **ID** `P<phase>-T<nn>`. Stable; never renumber. Add new tasks at the end of a phase.
-- **Owner** `main` (Claude/DeepSeek writes the code), `aider` (main AI writes a brief in `docs/aider/briefs/`, Aider executes, main audits), or `human` (Rick, usually art or accounts).
+- **Owner** `main` (the architect writes it, architect-direct lane), `aider` (a candidate for an Aider brief when it would save architect context; the architect may still do it directly), or `human` (Rick: art, accounts, server).
 - **Depends** task IDs that must be done first.
-- **Done when** acceptance criteria; the auditor checks these, not the prose.
+- **Done when** acceptance criteria; the reviewer checks these, not the prose.
 - Status lives only in `PROJECT.md` and the session log, never here.
 
 Conventions for all tasks
 - Interfaces in `packages/protocol` change only in `main`-owned tasks.
-- Every provider gets a `Fake*` implementation and a unit test.
-- Commit after each task with message `P1-T03: <summary>`.
+- Every provider gets a `Fake*` implementation and a unit test. Tests land with the code.
+- Every new className gets its rule in `theme.css` in the same commit (ADR-15).
+- `pnpm gate` green, then commit with message `P1-T03: <summary>`. Never commit red.
 
 ---
 
 ## Phase 0 — Foundations and spikes
 
 ### P0-T01 Monorepo scaffold — owner: main
-Create the layout in ADR-11 with pnpm workspaces, Vite + React in `apps/web`, empty packages with `package.json`, `tsconfig` project references, Biome config, Vitest, a cargo workspace in `companion/` with an `axum` hello server. Add `.editorconfig`, `.gitattributes` (LFS for `assets/**/*.vrm`, `*.glb`, `*.wav`), `.gitignore`.
-Done when: `pnpm install && pnpm -r build && pnpm -r test` and `cargo build` succeed from a clean clone; CI workflow runs them.
+Create the layout in ADR-11 with pnpm workspaces, Vite + React 19 + TypeScript strict in `apps/web`, empty packages with `package.json` and `tsconfig` project references, oxlint, Vitest, a cargo workspace in `companion/` with an `axum` hello server, `LICENSE` (Apache-2.0) and `NOTICE`, `.editorconfig`, `.env.example` with `DATABASE_URL`. Root `pnpm gate` chains `tsc -b`, oxlint, vitest, vite build, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --workspace`, in CI order; `gate:app` and `gate:rust` run half each. CI workflow on `ubuntu` and `windows` runs the same commands the README gives a contributor.
+Done when: `pnpm install && pnpm gate` succeeds from a clean clone on Windows; CI green.
 
 ### P0-T02 Protocol package — owner: main
-`packages/protocol`: zod schemas and TS types for `LLMProvider`, `STTProvider`, `TTSProvider`, `EmbeddingProvider`, `OmniProvider`, `MemoryStore`, `AvatarRenderer`, `AffectState`, `UserAffect`, `ConversationEvent`, `ToolCall`, plus capability flag objects. Companion HTTP/WS API schema (`/health`, `/db/*`, `/ingest/*`, `/mcp/*`) as zod.
+`packages/protocol`: zod schemas and TS types for `LLMProvider`, `STTProvider`, `TTSProvider`, `EmbeddingProvider`, `OmniProvider`, `MemoryStore`, `AvatarRenderer`, `AffectState`, `UserAffect`, `ConversationEvent`, `ToolCall`, `Schedule`, plus capability flag objects. Companion HTTP/WS API schema (`/health`, `/db/*`, `/ingest/*`, `/mcp/*`, `/schedules/*`) as zod.
 Done when: package builds, exports documented in its README, one test per schema round-trips a sample.
 
-### P0-T03 Static deploy — owner: aider
-GitHub Actions job that builds `apps/web` and deploys to Pages on `main`. Base path configurable.
-Done when: a pushed commit produces a live URL rendering the placeholder page.
+### P0-T02b Design system — owner: main
+`apps/web/src/theme.css` with the ADR-15 tokens (latentbeats base, teal accent, `--on-accent`), base typography, scrollbar treatment, button, panel, input, pill and drawer primitives, focus-visible rings. Port `theme.test.ts` from latentCreate (className coverage, computed prefixes, stale exemptions) and add a test that no colour literal (`#`, `rgb(`, `hsl(`) appears outside `:root`. A `/gallery` dev route renders every primitive in every state for click-through and later Playwright screenshots.
+Done when: both tests green in the gate; Rick's click-through of `/gallery` passes; tokens documented at the top of `theme.css`.
+
+### P0-T03 Site skeleton and deploy script — owner: aider
+`site/` static pages in the latentbeats.com structure: `index.html` (landing with the same sections: hero, story, features, how it works, privacy, footer), `docs/index.html` (placeholder), `feedback/index.html` + `feedback.js` (posting to `/api/feedback` with `source: "presence"`), `css/style.css` with the ADR-15 tokens, favicons, `site.webmanifest`, `robots.txt`, `sitemap.xml`. `scripts/deploy.sh` syncs `site/` and `apps/web/dist` to the server paths Rick specifies (rsync over SSH, dry-run flag). No GitHub Pages.
+Done when: the site renders locally with no unstyled element; the feedback form's payload matches the API's expected shape; deploy dry-run lists the right files. Live feedback needs Rick's backlog item (source whitelist + Caddy).
 
 ### P0-T04 Spike A: browser voice loop latency — owner: main
 Worker-hosted Silero VAD (onnxruntime-web), Moonshine tiny STT (transformers.js, WebGPU with WASM fallback), Kokoro TTS (kokoro-js). Wire mic to VAD to STT to echo text to TTS. Measure and log end-of-speech to first-audio.
@@ -39,16 +44,16 @@ react-three-fiber scene loading a CC-licensed VRM 1.0 sample, wawa-lipsync drivi
 Done when: `docs/spikes/B-vrm-lipsync.md` records fps on integrated and discrete GPU, and a screenshot.
 
 ### P0-T06 Spike C: companion + MariaDB vector — owner: main
-Rust `companion` with sqlx (mysql), migration creating `chunks(id, doc_id, text, embedding VECTOR(768), VECTOR INDEX)`, endpoints to insert and to query top-k by `VEC_DISTANCE_COSINE`. TS client in `packages/protocol` tests against a local MariaDB 11.8 (docker compose file in `companion/dev/`).
-Done when: `docs/spikes/C-mariadb-vector.md` records insert and query latency at 10k and 100k rows.
+Rust `companion` with sqlx (mysql), migration creating `chunks(id, doc_id, text, embedding VECTOR(768), VECTOR INDEX)`, endpoints to insert and to query top-k by `VEC_DISTANCE_COSINE`. TS client in `packages/protocol` tests against the remote MariaDB over the tunnel (`DATABASE_URL` from `.env`) and, for CI, a MariaDB 11.8 service container (compose file in `companion/dev/`). Measure tunnel RTT separately from query time.
+Done when: `docs/spikes/C-mariadb-vector.md` records RTT, insert and query latency at 10k and 100k rows over the tunnel and in CI, and states whether the per-turn retrieval budget (100 ms) holds remotely.
 
 ### P0-T07 Spike D: Smart Turn v3 in browser — owner: main
 Load the ONNX model with onnxruntime-web in a worker, feed 8 s windows from VAD, log probabilities and inference time.
 Done when: `docs/spikes/D-smart-turn.md` says pass or fail with numbers; if fail, documents the adaptive silence design.
 
-### P0-T08 Spike E: Tauri shell — owner: aider
-`apps/desktop` Tauri 2 project pointing at the `apps/web` dev server; run spikes A and B inside it on Windows and, if available, Linux.
-Done when: `docs/spikes/E-tauri.md` lists what worked (mic, AudioWorklet, WebGPU, WebGL) per OS.
+### P0-T08 Spike E: Tauri shell — owner: main
+`apps/desktop` Tauri 2 project pointing at the `apps/web` dev server; run spikes A and B inside it on Windows (WebView2), then on Rick's Linux box (WebKitGTK). macOS not tested (no hardware, deferred by ADR-07).
+Done when: `docs/spikes/E-tauri.md` lists what worked (mic, AudioWorklet, WebGPU, WebGL, tray, notifications) per OS, and states whether Linux ships via Tauri or via "companion + Chrome".
 
 ### P0-T09 Phase 0 retrospective — owner: main
 Flip ADR-01..07 to accepted or amend; update `PROJECT.md` to Phase 1.
@@ -62,9 +67,9 @@ Done when: `docs/DECISIONS.md` has no `proposed` status among ADR-01..07.
 `packages/core/conversation`: explicit states `idle | listening | thinking | speaking | interrupted`, typed event bus, transition table, timers. No DOM, no audio APIs; ports for `AudioIn`, `AudioOut`, providers.
 Done when: unit tests cover every transition including barge-in during `thinking` and during `speaking`.
 
-### P1-T02 OpenAI-compatible LLM provider — owner: aider
-`packages/providers/llm/openai-compatible.ts` using AI SDK with base URL, key, model, headers. Presets: Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA (`https://integrate.api.nvidia.com/v1`), DeepSeek, Kimi.
-Done when: streaming text and tool calls work against Ollama and NVIDIA in a manual test; `FakeLLMProvider` replays a scripted stream.
+### P1-T02 OpenAI-compatible LLM provider and model discovery — owner: main
+`packages/providers/llm/openai-compatible.ts` using AI SDK with base URL, key, model, headers. Presets: Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA (`https://integrate.api.nvidia.com/v1`), DeepSeek, Kimi. Model discovery ported from latentCreate `crates/llm-bridge` (`ollama.rs`, `docs/LLM-SURFACE.md`): Ollama `/api/tags` capabilities (`completion`, `thinking`, cloud), context length, LM Studio listing, `/v1/models` fallback; embedding models excluded from the chat picker. Verified shapes recorded in `docs/SURFACE.md`.
+Done when: streaming text and tool calls work against Ollama and NVIDIA in a manual test; the picker hides embedding models and flags thinking models; `FakeLLMProvider` replays a scripted stream; fixtures captured from a live Ollama.
 
 ### P1-T03 Anthropic and Google native providers — owner: aider
 Depends: P1-T02. Same interface, native adapters, prompt caching flag for Anthropic.
@@ -252,7 +257,7 @@ Done when: a plan appears on the whiteboard and a search result on the screen wi
 
 ---
 
-## Phase 6 — Presence and life
+## Phase 6 — Presence, life and schedules
 
 ### P6-T01 Idle behaviour planner — owner: main
 Behaviour tree or utility system selecting idle activities by mood, time of day and elapsed idle time; hooks into clips and set props.
@@ -278,15 +283,23 @@ Done when: toggling the panel shows current private notes; TTS never includes th
 Character packs (VRM, persona, voice, memory namespace); switcher; per-character settings.
 Done when: two characters keep separate memories in one database.
 
+### P6-T07 Scheduler core — owner: main
+Depends: P4-T03. `packages/core/scheduler` per ADR-14: `Schedule` model (cron or one-shot, task prompt, allowed tools, delivery mode, catch-up policy), a tick loop with a fixed timestep, missed-run reconciliation on wake, execution through the normal agent loop with the schedule's tool allowlist, results stored as memory episodes. Companion endpoints `/schedules/*` and a `schedules` table; companion-side execution for tool-only jobs.
+Done when: unit tests cover cron parsing, next-run computation across DST, each catch-up policy, and delivery routing; a simulated week replays deterministically.
+
+### P6-T08 Schedule tools and panel — owner: aider
+Depends: P6-T07. Agent tools `schedule.create`, `schedule.list`, `schedule.cancel`, `schedule.run_now`; natural-language time parsing with the character reading back the interpreted time before confirming; Schedules panel listing upcoming runs, last results, pause and cancel; OS notification delivery in the desktop app.
+Done when: "remind me Thursday at 9 to call the vet" creates a schedule the panel shows with the right next run, and the reminder is spoken at the next session after it fires.
+
 ---
 
 ## Phase 7 — Character pipeline and realism (parallel)
 
-### P7-T01 Pipeline doc — owner: main + human
-`docs/pipeline/character.md` from concept image to VRM 1.0 with validation checklist and tool versions.
-Done when: a second person reproduces a character from the doc.
+### P7-T01 Pipeline doc and concept art — owner: main + human
+The architect generates Alice's concept sheet and turnaround (front, side, back, face close-ups, neutral expression, T-pose or A-pose) through comfy-mcp during a session, iterating with Rick. Then `docs/pipeline/character.md`: exact steps from the approved images to VRM 1.0 (tool, version, settings, export options, validation) for mesh generation, UniRig or Rigify rigging, ARKit blendshapes, VRM export and expression mapping, written so Rick can follow it without asking.
+Done when: Rick approves the concept sheet; Rick follows the doc without needing to ask a question, or every question asked is folded back into the doc.
 
-### P7-T02 Default character — owner: human
+### P7-T02 Default character: Alice — owner: human
 Semi-realistic full-body VRM with PBR materials, 52 ARKit shapes, VRM expression mapping; plus a stylised alternative.
 Done when: passes the validation checklist; loads in P2-T01 with all expressions.
 
@@ -306,21 +319,25 @@ Done when: `docs/spikes/F-lam.md` records feasibility and licence status.
 
 ## Phase 8 — Desktop and distribution
 
-### P8-T01 Tauri app with companion sidecar — owner: main
-Bundle companion as a sidecar; local pairing token; window management; OS keychain for secrets.
+### P8-T01 Tauri app with companion sidecar (Windows) — owner: main
+Bundle companion as a sidecar; local pairing token; window management; OS keychain for secrets; NSIS installer.
 Done when: fresh Windows VM installs and talks in under 10 minutes.
 
 ### P8-T02 First-run wizard — owner: aider
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
 Done when: no step requires the docs.
 
-### P8-T03 Hosted web to local companion pairing — owner: aider
-Pairing code, CORS allowlist, HTTPS-to-localhost caveats documented.
-Done when: the Pages build talks to a local companion after pairing.
+### P8-T03 Hosted app to local services — owner: main
+`app.latentpresence.com` reaching the companion, Ollama and LM Studio on `localhost`: pairing code, CORS allowlist, Chrome Local Network Access preflight (`Access-Control-Allow-Private-Network: true`) and its permission prompt, onboarding copy per backend, Firefox behaviour verified. Facts recorded in `docs/SURFACE.md`.
+Done when: the deployed app talks to a local companion and a local Ollama from Chrome and Firefox after the prompts; a fresh user can follow the on-screen copy.
 
 ### P8-T04 Auto-update and CI releases — owner: aider
-Tauri updater, signed artifacts where possible, release workflow on tags.
+Tauri updater, unsigned artifacts (owner decision as in latentCreate; SmartScreen will warn), release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E passed.
 Done when: an update installs from a test channel.
+
+### P8-T05 Tray mode: background presence — owner: main
+Depends: P6-T07. Close-to-tray keeps the core alive for schedules and check-ins; a compact always-on-top "presence" window option; OS notifications; explicit "quit" ends everything.
+Done when: a schedule fires with the main window closed and the notification appears; memory use in tray mode under 300 MB with browser models unloaded.
 
 ---
 
@@ -329,7 +346,7 @@ Done when: an update installs from a test channel.
 ### P9-T01 Accessibility and reduced motion — owner: aider
 ### P9-T02 Performance budgets in CI — owner: aider
 ### P9-T03 Security review — owner: main
-### P9-T04 Docs site — owner: aider
+### P9-T04 Docs in `site/docs/` (user guide, provider setup, privacy) — owner: aider
 ### P9-T05 Model registry and privacy page — owner: aider
 ### P9-T06 Release 1.0 — owner: main + human
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.

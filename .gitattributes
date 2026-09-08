@@ -1,0 +1,15 @@
+# Executors must not decide line endings (lesson from latentCreate T-002).
+* text=auto eol=lf
+
+# Large approved assets go through LFS. Model weights are never committed at all (.gitignore).
+*.vrm filter=lfs diff=lfs merge=lfs -text
+*.vrma filter=lfs diff=lfs merge=lfs -text
+*.glb filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text

@@ -1,4 +1,4 @@
-# latentAura — Research
+# latentPresence — Research
 
 Status: first pass, 2026-09-07. Everything here is a recommendation for Rick to confirm; confirmed choices move to `docs/DECISIONS.md`.
 
@@ -8,7 +8,7 @@ Scope reminder from `docs/brainstorm.md`: conversational AI with a realistic-sty
 
 ## 1. What already exists (and why we are not just forking it)
 
-| Project | Stack | Strong at | Gap vs latentAura |
+| Project | Stack | Strong at | Gap vs latentPresence |
 |---|---|---|---|
 | [AIRI](https://github.com/moeru-ai/airi) (MIT, ~45k stars, v0.11 in 2026) | Vue, three-vrm, WebGPU, Electron (migrated off Tauri) | Browser-native VTuber companion, voice chat, game play, mobile | Anime/VTuber aesthetic and streamer framing; no MariaDB, no RAG over your documents, no affect model driving body, voice and wording together |
 | [Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber) | Python backend + web client, Live2D | Offline voice loop, interruptions, vision, tools | Live2D (proprietary Cubism SDK), 2D, Python-centric, v2 rewrite pending |
@@ -16,7 +16,7 @@ Scope reminder from `docs/brainstorm.md`: conversational AI with a realistic-sty
 | [OpenAvatarChat](https://github.com/HumanAIGC-Engineering/OpenAvatarChat) + [LAM](https://github.com/aigc3d/LAM) | Python, WebGL | Photoreal one-shot Gaussian **head** avatars rendering in real time on the web | Head only, Python server required, research code |
 | Replika, Kindroid, Nomi, Character.AI, Sesame, Hume EVI | Proprietary | Polished emotional voice | Closed, cloud only, no BYO models, no data ownership |
 
-Takeaway: "VRM avatar + local LLM + voice" is a solved, crowded loop. latentAura should not compete on that loop alone. Its distinct territory is **realistic full-body presence in a lived-in set, one affect model that drives face, body, voice and wording, a serious memory/planning/knowledge layer on MariaDB, and everything BYO and open**. See section 9.
+Takeaway: "VRM avatar + local LLM + voice" is a solved, crowded loop. latentPresence should not compete on that loop alone. Its distinct territory is **realistic full-body presence in a lived-in set, one affect model that drives face, body, voice and wording, a serious memory/planning/knowledge layer on MariaDB, and everything BYO and open**. See section 9.
 
 We will still learn from AIRI and Amica (both MIT) for specific mechanics: VRM expression mapping, transformers.js pipelines, provider abstraction. We do not fork them because their architecture (Vue/Electron, Next.js) and framing differ, and a fork carries their aesthetic decisions.
 
@@ -51,6 +51,8 @@ A **semi-realistic full-body VRM 1.0 character** rendered with three.js, standin
 6. Animation: [Quaternius Universal Animation Library](https://quaternius.com/) (CC0, 250+ clips) retargeted to VRM. Mixamo clips may be used locally but must not be redistributed in the repo. [Mesh2Motion](https://mesh2motion.org/) is an open retarget tool.
 
 Output: a repeatable pipeline in `docs/pipeline/character.md` (Phase 7) so others can bring their own character.
+
+Division of labour (ADR-18): the architect generates concept and turnaround images through the ComfyUI connected to Claude Code (comfy-mcp) and writes exact instructions for each later step. Rick runs the mesh, rig and blendshape tools. The default character is Alice.
 
 ### 2.4 Lip sync and facial animation
 
@@ -138,6 +140,8 @@ All channels fuse into one `UserAffect` estimate (valence, arousal, confidence, 
   - Plans and brainstorms: structured documents (title, goal, phases, tasks, status) with versions.
   - Consolidation job ("sleep"): when idle, summarise episodes into facts, decay stale facts, dedupe.
 - Embeddings are BYO (Ollama `nomic-embed-text` or `bge-m3`, OpenAI, or in-browser via transformers.js). Dimension is stored per collection; changing the embedding model triggers a re-index.
+- Postgres with pgvector was considered since it also runs on Rick's server. It would work equally well. MariaDB stays because its vector support is native (no extension), Rick prefers it, and one adapter is enough for v1 (ADR-05).
+- The development MariaDB is remote (Canada, over a tunnel), so every retrieval pays a WAN round trip. The kernel therefore batches retrieval into one call per turn, caches self-model blocks and recent turns in process, and never blocks the speaking path on a write (ADR-17). SQLite via `sqlite-vec` is the zero-setup fallback for users without a database.
 
 ---
 
@@ -150,6 +154,10 @@ All channels fuse into one `UserAffect` estimate (valence, arousal, confidence, 
 
 ---
 
+## 7b. Scheduled tasks
+
+Users will want "do this later" and "do this every morning": reminders, nightly re-indexing, a morning briefing from a notes folder, a Home Assistant routine with judgement in it. Existing companions mostly lack this; assistants that have it (cloud) run the job on their servers. Our constraint is that the core runs in the browser, so the job runs wherever the core is alive: the open tab, or the desktop app in tray mode. Missed jobs are reconciled on wake with a per-job catch-up policy. Tool-only jobs can be delegated to the companion so they run with the app closed. Every schedule is visible and cancellable, and the character confirms new schedules aloud so nothing is created silently. Design in ADR-14; tasks P6-T07, P6-T08, P8-T05.
+
 ## 8. Platform and language
 
 ### 8.1 What AIRI learned the hard way
@@ -159,8 +167,8 @@ AIRI adopted Tauri early, then spent three months fighting WebKit (macOS WKWebVi
 ### 8.2 Recommendation
 
 - **Browser-first.** The full experience must run in Chrome or Edge (WebGPU, AudioWorklet, WebCodecs) as a static site. This also gives us the hosted "bring your own AI" web version for free.
-- **Rust companion** (`latentaura-companion`): a headless local process (axum, tokio, sqlx/mysql) that any browser talks to over localhost. It provides MariaDB access, document indexing, the MCP host, an optional Audio2Face bridge and optional local model proxies. It is "power mode" and works with the hosted web app, a local static build, or the desktop shell.
-- **Desktop shell is Tauri 2** on Windows and Linux first. WebView2 is Chromium; Linux WebKitGTK is the risk to test in Phase 0. macOS via Tauri only if WebKit passes the audio and WebGPU spikes; otherwise macOS ships as "companion + Chrome/Edge" until it does. Electron stays a documented fallback, not a plan.
+- **Rust companion** (`latentpresence-companion`): a headless local process (axum, tokio, sqlx/mysql) that any browser talks to over localhost. It provides MariaDB access, document indexing, the MCP host, an optional Audio2Face bridge and optional local model proxies. It is "power mode" and works with the hosted web app, a local static build, or the desktop shell.
+- **Desktop shell is Tauri 2, Windows first** (Rick's decision 2026-09-07). WebView2 is Chromium so the browser-first build runs unchanged. Linux gets a spike on Rick's Linux box (WebKitGTK is the risk). macOS is deferred: no hardware, and WebKit is where AIRI failed. Electron stays a documented fallback. Because the product is browser-first, catching other platforms up later is packaging work, not product work.
 - Language split: TypeScript for everything user-facing and for the conversation core (must run in the browser). Rust for the companion. No Python in the core. Python is allowed only in external BYO model servers the user runs anyway.
 - Frontend: Vite, React, react-three-fiber + drei, @pixiv/three-vrm, zustand, Web Workers for ML (transformers.js, onnxruntime-web). Monorepo with pnpm workspaces, Biome for lint and format, Vitest, Playwright for end-to-end.
 
@@ -168,7 +176,11 @@ Why not Bevy and WASM: three-vrm and the whole avatar and animation ecosystem ar
 
 ---
 
-## 9. Differentiators to build (proposals)
+### 8.3 Hosting and site
+
+Same shape as the other latent apps: `latentpresence.com` is a static site (landing, docs, feedback form posting to `/api/feedback` through Caddy to the existing feedback API with `source: "presence"`), and `app.latentpresence.com` serves the `apps/web` build. The hosted app reaches local services (companion, Ollama, LM Studio) because browsers exempt `localhost` from mixed-content blocking; Chrome's Local Network Access rules add a preflight header requirement and a one-time permission prompt, which the companion and the onboarding copy must handle (ADR-16, P8-T03). Design tokens are shared with latentbeats.com, with a teal accent for this product (ADR-15).
+
+## 9. Differentiators to build (accepted 2026-09-07)
 
 1. **Affect Engine as the single source of truth.** A persistent mood (pleasure, arousal, dominance plus discrete emotion events with decay) drives face, posture, gesture selection, TTS style hints, response length and wording. Mood persists across sessions in MariaDB. Most projects bolt an emoji onto an expression; we make body, voice and words agree.
 2. **A lived-in set with diegetic UI.** The character lives in a room. Time of day tracks the user's clock; weather comes from a tool. Brainstorms appear on a whiteboard, search results on a screen, memories in a notebook. The video-call framing keeps the camera on the character while tools happen in the world.
