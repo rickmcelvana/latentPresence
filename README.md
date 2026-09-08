@@ -1,8 +1,8 @@
-# latentPresence
+# latentPresence W.I.P.
 
 A conversational AI you talk to face to face. A realistic-styled, full-body character lives in a small 3D set and joins you in a video call: you speak or type, it listens, reacts, and answers in voice with matching expression and body language. It remembers you, helps you brainstorm and plan, runs tasks you schedule, answers from your own documents and databases, and can run your smart home through Home Assistant.
 
-Site: https://latentpresence.com · App: https://app.latentpresence.com (both pending first deploy)
+Site: https://latentpresence.com · App: https://app.latentpresence.com
 
 **Status: Phase 0, scaffold up.** See `PROJECT.md` for the current task.
 
@@ -35,7 +35,7 @@ Copy `.env.example` to `.env` for the companion's `DATABASE_URL`. `.env` is neve
 
 ## Principles
 
-- **We ship no models.** Bring your own: Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA, Anthropic, OpenAI, or in-browser models you download yourself after a consent screen that shows size and licence.
+- **We ship no models.** Bring your own: LM Studio, vLLM, llama.cpp, Ollama, OpenRouter, NVIDIA, Anthropic, OpenAI, or in-browser models you download yourself after a consent screen that shows size and licence.
 - **Browser-first.** The whole thing runs as a static web page in Chrome or Edge. A Windows desktop app and an optional local companion add power features.
 - **Your data stays yours.** Memory lives in your MariaDB, or SQLite, or the browser. No telemetry.
 - **Open.** Apache-2.0 code, permissive dependencies, CC0 assets.
@@ -65,7 +65,6 @@ mic / text ──▶ VAD + turn detection ──▶ STT ──▶ LLM (+ tools, 
 | `docs/PLAN.md` | Phased plan for humans |
 | `docs/LLM-PLAN.md` | Task-level plan for agents |
 | `docs/WORKFLOW.md` | Build loop, session ritual, agent hand-offs |
-| `docs/brainstorm.md` | The original idea |
 
 ## Licence
 
