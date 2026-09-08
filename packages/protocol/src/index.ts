@@ -14,6 +14,18 @@
 export const PROTOCOL_VERSION = 1;
 
 export * from './common';
+export * from './media';
 export * from './affect';
 export * from './conversation';
 export * from './schedule';
+export * from './capabilities';
+export * from './memory';
+export * from './avatar';
+export * from './companion';
+
+export * from './providers/shared';
+export * from './providers/llm';
+export * from './providers/stt';
+export * from './providers/tts';
+export * from './providers/embedding';
+export * from './providers/omni';

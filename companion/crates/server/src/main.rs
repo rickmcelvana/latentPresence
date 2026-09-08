@@ -11,11 +11,21 @@ use serde::Serialize;
 
 const DEFAULT_PORT: u16 = 8787;
 
+/// Matches `HealthResponseSchema` in `packages/protocol`. The browser parses this
+/// answer to decide a companion is present and what it can do, so the two move together.
 #[derive(Debug, Serialize)]
 struct Health {
     status: &'static str,
     service: &'static str,
     version: &'static str,
+    database: DatabaseHealth,
+}
+
+#[derive(Debug, Serialize)]
+struct DatabaseHealth {
+    /// `mariadb`, `sqlite` or `none`. Nothing is wired until P0-T06.
+    kind: &'static str,
+    connected: bool,
 }
 
 async fn health() -> Json<Health> {
@@ -23,6 +33,10 @@ async fn health() -> Json<Health> {
         status: "ok",
         service: env!("CARGO_PKG_NAME"),
         version: env!("CARGO_PKG_VERSION"),
+        database: DatabaseHealth {
+            kind: "none",
+            connected: false,
+        },
     })
 }
 
@@ -90,6 +104,9 @@ mod tests {
         assert_eq!(body["status"], "ok");
         assert_eq!(body["service"], "latentpresence-companion");
         assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
+        // The page needs to know whether memory is available before it offers it.
+        assert_eq!(body["database"]["kind"], "none");
+        assert_eq!(body["database"]["connected"], false);
     }
 
     #[test]
