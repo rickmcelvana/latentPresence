@@ -24,6 +24,43 @@ Used by `packages/protocol`. Zod 4 moved several things that Zod 3 habits get wr
 | `.readonly()` | Freezes the parsed output (`Object.isFrozen` true) |
 | JSON Schema export | `z.toJSONSchema(schema)` exists — the path to MCP tool schemas in P5 |
 
+## Browser voice stack — 2026-09-08, verified by installing the packages and querying the HF API
+
+For P0-T04 (Spike A). Versions, model ids, licences and byte sizes below are read from the installed
+packages and from `huggingface.co/api/models/...`, not recalled.
+
+**transformers.js is pinned to v3, not the current v4.** `kokoro-js@1.2.1` depends on
+`@huggingface/transformers@^3.5.1`. Taking v4.2.0 for speech recognition would put two major versions
+of transformers.js in the bundle, each with its own ONNX Runtime. v3.8.1 supports Moonshine
+(`MoonshineForConditionalGeneration`, the `automatic-speech-recognition` pipeline) and offers
+`webgpu` and `wasm` devices, so one copy serves both ends of the pipeline.
+
+**`@ricky0123/vad-web@0.0.30` is not used.** It depends on `onnxruntime-web@^1.17.0`, which resolves
+to 1.29.0, while transformers 3.8.1 pins the exact dev build `1.22.0-dev.20250409-89f8206ba4`. Two
+runtimes, ~91 MB of package each. Silero VAD runs directly instead, on an `onnxruntime-web` declared
+at that same exact version so pnpm and Vite resolve one copy. **That pin is not arbitrary: it must
+track whatever `@huggingface/transformers` depends on, and moving one without the other silently
+doubles the runtime.**
+
+`env.backends.onnx` from transformers is the ORT *Env* (configuration), not the namespace — it has
+no `InferenceSession`, so it cannot be used to avoid the direct dependency.
+
+`kokoro-js@1.2.1` was last published 2025-05-03. It is a thin wrapper (tokeniser, phonemiser, voice
+table) over transformers.js, so it ageing is a maintenance note rather than a blocker.
+
+### Models the spike downloads
+
+| Model | Repo | Licence | File | Size |
+|---|---|---|---|---|
+| Silero VAD | `onnx-community/silero-vad` | MIT | `onnx/model.onnx` | 2.24 MB |
+| Moonshine tiny (encoder) | `onnx-community/moonshine-tiny-ONNX` | MIT | `onnx/encoder_model_quantized.onnx` | 7.94 MB |
+| Moonshine tiny (decoder) | `onnx-community/moonshine-tiny-ONNX` | MIT | `onnx/decoder_model_merged_quantized.onnx` | 20.24 MB |
+| Kokoro 82M | `onnx-community/Kokoro-82M-v1.0-ONNX` | Apache-2.0 | `onnx/model_q8f16.onnx` | 86.03 MB |
+
+About **116 MB** on first run at those quantisations. fp16 variants, which suit WebGPU better, cost
+more: Kokoro fp16 is 163.23 MB and Moonshine fp16 is 15.52 + 76.25 MB. Whichever is chosen, ADR-09
+means the consent screen shows these numbers before a byte moves.
+
 ## Feedback API — 2026-09-08, verified by reading the running service's source
 
 `tools/feedback-api` in the latent-mastering repo, which Caddy proxies at
