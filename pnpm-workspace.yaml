@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11 refuses dependency versions published in the last few days unless they are
+# listed here. Keep that protection: pin ranges a little behind the very newest release
+# rather than adding exclusions.

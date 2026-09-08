@@ -1,0 +1,17 @@
+latentPresence
+Copyright 2026 latentPresence contributors
+
+This product includes software developed as part of the Latent suite.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+latentPresence ships no AI models and performs no inference of its own. Speech
+recognition, speech synthesis, language, embedding and affect models are either
+downloaded by the user at runtime, after an explicit consent screen showing size,
+licence and source, or reached through endpoints the user configures (Ollama,
+LM Studio, vLLM, llama.cpp, or a cloud provider with the user's own key). Models
+and weights obtained through this application carry their own licences, which the
+user is responsible for reviewing and complying with.
+
+Character, set and animation assets are distributed under their own licences,
+recorded alongside them in assets/.

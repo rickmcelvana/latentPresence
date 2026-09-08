@@ -1,0 +1,29 @@
+{
+  "name": "@latentpresence/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@latentpresence/avatar": "workspace:*",
+    "@latentpresence/core": "workspace:*",
+    "@latentpresence/ml-web": "workspace:*",
+    "@latentpresence/protocol": "workspace:*",
+    "@latentpresence/providers": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "vite": "^8.2.2"
+  }
+}

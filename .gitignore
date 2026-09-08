@@ -8,6 +8,7 @@ target/
 # env and secrets
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 
@@ -33,3 +34,12 @@ assets/private/
 Thumbs.db
 .vscode/
 .idea/
+
+# typescript incremental build state
+*.tsbuildinfo
+.tsbuild/
+
+# test and tooling output
+coverage/
+playwright-report/
+test-results/

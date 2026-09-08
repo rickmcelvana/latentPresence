@@ -1,0 +1,89 @@
+/*
+ * theme.css — the single source of styling truth for apps/web (ADR-15).
+ *
+ * Tokens are the latentbeats base with a teal accent. Colour literals live here in
+ * :root and nowhere else; a test enforces that from P0-T02b, which also adds the
+ * button, panel, input, pill and drawer primitives and the /gallery route.
+ * Every className used in TSX gets its rule in this file, in the same commit.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ground and surfaces */
+  --ground: #0a0e1a;
+  --panel: #161b22;
+  --border: #2a3441;
+
+  /* text */
+  --text: #d6deeb;
+  --muted: #8b949e;
+
+  /* teal accent */
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-dim: #0d9488;
+  --accent-glow: rgba(45, 212, 191, 0.22);
+  --accent-glow-strong: rgba(13, 148, 136, 0.42);
+  --on-accent: #06201d;
+
+  /* state */
+  --danger: #f85149;
+  --success: #3fb950;
+  --warning: #d29922;
+
+  /* shape and motion */
+  --radius: 12px;
+  --radius-lg: 16px;
+  --transition: 180ms ease;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.boot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.boot__title {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  text-shadow: 0 0 32px var(--accent-glow);
+}
+
+.boot__status {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}

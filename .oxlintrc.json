@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "ignorePatterns": ["**/dist/**", "**/target/**", "**/node_modules/**"],
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    // React 19 automatic JSX runtime: React is not imported for JSX (ADR-11 toolchain).
+    "react/react-in-jsx-scope": "off"
+  }
+}

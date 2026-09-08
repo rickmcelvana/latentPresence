@@ -4,7 +4,34 @@ A conversational AI you talk to face to face. A realistic-styled, full-body char
 
 Site: https://latentpresence.com · App: https://app.latentpresence.com (both pending first deploy)
 
-**Status: planning complete, no code yet.** See `PROJECT.md`.
+**Status: Phase 0, scaffold up.** See `PROJECT.md` for the current task.
+
+## Quick start
+
+Requires Node 22+, pnpm 11+ and a stable Rust toolchain (`rustfmt` and `clippy` components).
+
+```bash
+pnpm install
+pnpm gate
+```
+
+`pnpm gate` is the whole check, in the order CI runs it: `tsc -b`, oxlint, vitest, `vite build`,
+`cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`. `pnpm gate:app` and `pnpm gate:rust`
+run half each. `pnpm dev` starts the web app on Vite's dev server.
+
+```
+apps/web/            Vite + React 19 app, deployed to app.latentpresence.com
+site/                static marketing site, docs and feedback form (P0-T03)
+packages/protocol/   shared types and the companion API schema
+packages/core/       conversation engine, affect engine, memory kernel, scheduler
+packages/providers/  llm, stt, tts, embedding and omni adapters
+packages/avatar/     three.js / VRM renderer, animation, lip sync, set
+packages/ml-web/     worker wrappers for transformers.js and onnxruntime-web models
+companion/           Rust workspace: the optional local service
+docs/                research, decisions, plans, briefs, spikes
+```
+
+Copy `.env.example` to `.env` for the companion's `DATABASE_URL`. `.env` is never committed.
 
 ## Principles
 
@@ -42,4 +69,4 @@ mic / text ──▶ VAD + turn detection ──▶ STT ──▶ LLM (+ tools, 
 
 ## Licence
 
-Apache-2.0. `LICENSE` and `NOTICE` land with the first code commit (P0-T01).
+Apache-2.0, see `LICENSE` and `NOTICE`. Assets carry their own licences, recorded alongside them.

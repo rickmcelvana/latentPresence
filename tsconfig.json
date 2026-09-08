@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/core" },
+    { "path": "./packages/providers" },
+    { "path": "./packages/avatar" },
+    { "path": "./packages/ml-web" },
+    { "path": "./apps/web" }
+  ]
+}

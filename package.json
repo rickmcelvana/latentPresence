@@ -1,0 +1,30 @@
+{
+  "name": "latentpresence",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "gate": "pnpm run gate:app && pnpm run gate:rust",
+    "gate:app": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "gate:rust": "pnpm run rust:fmt && pnpm run rust:clippy && pnpm run rust:test",
+    "typecheck": "tsc -b",
+    "lint": "oxlint --deny-warnings",
+    "test": "vitest run",
+    "build": "pnpm --filter @latentpresence/web run build",
+    "dev": "pnpm --filter @latentpresence/web run dev",
+    "rust:fmt": "cargo fmt --manifest-path companion/Cargo.toml --all --check",
+    "rust:clippy": "cargo clippy --manifest-path companion/Cargo.toml --all-targets -- -D warnings",
+    "rust:test": "cargo test --manifest-path companion/Cargo.toml --workspace",
+    "clean": "tsc -b --clean"
+  },
+  "devDependencies": {
+    "oxlint": "^1.80.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "latentpresence-companion"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Optional local service for latentPresence: MariaDB vector memory, document ingest, MCP tools."
+
+[[bin]]
+name = "latentpresence-companion"
+path = "src/main.rs"
+
+[dependencies]
+axum.workspace = true
+serde.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+http-body-util.workspace = true
+serde_json.workspace = true
+tower = { workspace = true, features = ["util"] }
