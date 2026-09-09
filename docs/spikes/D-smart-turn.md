@@ -1,163 +1,182 @@
 # Spike D — Smart Turn v3 in the browser
 
-**Status: harness built and benched; the labelled run on Rick's machine is outstanding.**
+**Status: done. Go, on fp32/WebGPU at a 100 ms candidate and a 0.7 threshold.**
 Task P0-T07. Brief: `docs/briefs/P0-T07.md`. Verified library facts: `docs/SURFACE.md`.
+Raw logs: `docs/spikes/raw/D-runs-2026-09-08.md`.
 
 ## The question
 
 Spike A measured 947 ms from end of speech to first audio on WebGPU, and **512 ms of it
 was the VAD hangover** — silence, waited through to be sure the person had stopped. That
-is 54% of the latency, and the only part of it that is a guess rather than work: the
-pipeline itself is 435 ms, inside ADR-20's 500 ms budget.
+is 54% of the latency, and the only part of it that is a guess rather than work.
 
-Smart Turn v3 is a semantic endpointer: it judges whether the *sentence* sounds finished
-instead of counting silence. If it can answer in a browser well inside 512 ms, first audio
-comes down with no other change. If it cannot, P1-T07 ships adaptive silence and this
-document says what that design is.
+Smart Turn v3 judges whether the *sentence* sounds finished instead of counting silence.
+The question is whether it can do that in a browser, fast enough to be worth it, without
+interrupting people mid-thought.
 
 ## What was built
 
 `/spike/turn`, a second dev-only route beside Spike A's, dropped from production builds by
-the same plugin in `apps/web/vite.config.ts` (now covering both spikes). It **reuses Spike
-A's capture and VAD** rather than growing its own copies.
+the same plugin in `apps/web/vite.config.ts`. It **reuses Spike A's capture and VAD**.
 
-| Piece | What it does |
-|---|---|
-| `vad.worker.ts` | Unchanged by default. New optional `candidateMs` emits a `candidate` — the utterance so far, capped at 8 s — after a *short* silence without closing the turn, and `end-turn` lets the page take the turn early |
-| `turn-audio.ts` | The preprocessing transformers.js does not do: last 8 s, zero-pad at the **front**, zero-mean unit-variance over the whole padded window |
-| `smart-turn.worker.ts` | `WhisperFeatureExtractor(chunk_length=8)` built from an inline config, then onnxruntime-web |
-| `turn-metrics.ts` | Detection latency, the confusion matrix, and the probability spread |
-| `TurnDetect.tsx` | Consent, configuration, the label control, results, Markdown export |
+The VAD runs with a short *candidate* silence. Every pause past it, the utterance so far
+goes to the model; a probability over the threshold ends the turn there. Spike A's 500 ms
+hangover stays as the backstop, so a turn always ends whether or not the model fires — and
+which of the two closed it is the result. Every utterance is labelled **before** it is
+spoken, complete or incomplete, and the label is fixed at `speech-start`.
 
-**How a turn ends.** The VAD runs with a short candidate silence (200 ms by default). Every
-pause past it, the utterance goes to the model; a probability over the threshold ends the
-turn *there*. Spike A's 500 ms hangover stays as the backstop, so a turn always ends even
-if the model never fires — and which of the two closed it is most of the result.
+Two things the harness refuses to do: report a probability from a feature block that is
+not a Whisper log-mel (the clamp makes the block span exactly 2.0, checked every
+inference), and average a false fire into a single accuracy figure. Interrupting someone
+and falling through to the timer are different mistakes, so the matrix keeps four cells.
 
-### Two things the harness refuses to do
+## Results — 2026-09-08, Rick's machine
 
-- **Report a probability from a feature block that is not a Whisper log-mel.** Whisper's
-  final clamp, `(max(x, x.max() - 8) + 4) / 4`, makes the block span exactly 2.0 for any
-  input that is not perfectly flat. The worker checks that and the dims on every inference
-  and discards the probability if either fails. Spike A's q8 bug produced fluent, wrong
-  output that nothing in the harness could see; this is the version of that check that
-  runs on the machine taking the measurement.
-- **Average a false fire into an accuracy figure.** Interrupting someone mid-sentence and
-  falling through to the timer are different mistakes — one is a regression, the other is
-  what already happens today — so the matrix keeps four cells and each rate is taken over
-  its own label.
+Eight runs: four build/backend combinations at two settings, twenty labelled utterances
+each — ten finished sentences, ten trailed off mid-thought and held. Arozzi Sfera Pro,
+Chrome, NVIDIA Blackwell.
 
-Every utterance is labelled **before** it is spoken, complete or incomplete, and the label
-is fixed at `speech-start` rather than at the end.
+### Latency
 
-## Bench, 2026-09-08 — architect, synthetic audio
+| Build / backend | Candidate 200 ms, threshold 0.5 | Candidate 100 ms, threshold 0.7 |
+|---|---|---|
+| gpu (fp32) / **webgpu** | 273 ms median, 311 worst | **168 ms median, 224 worst** |
+| gpu (fp32) / wasm | 469 ms median, 480 worst | 376 ms median, 473 worst |
+| cpu (int8) / webgpu | will not load | will not load |
+| cpu (int8) / wasm | 392 ms median, 408 worst | 301 ms median, 433 worst |
 
-Run through the dev preview to answer the question `docs/SURFACE.md` had left open —
-*whether either build runs under onnxruntime-web at all* — before Rick spends an evening
-on a microphone. Six deterministic pseudo-speech clips, 2.5 s each, identical across all
-four configurations, twelve inferences each, medians of the warm pass.
+Against Spike A's 512 ms hangover, the recommended configuration answers in **168 ms** —
+**344 ms saved**, and the worst case still beats the old median by nearly 300 ms.
 
-**This is not the spike's result.** Synthetic audio says nothing about whether the model
-endpoints real speech correctly. It says what the thing costs and whether it works.
+The split at 100 ms / 0.7 on WebGPU: 128 ms of candidate silence, 22 ms of log-mel, 14 ms
+of inference, the rest scheduling. **The wait is now nearly all deliberate silence rather
+than work**, which is a much better place to be: it is a dial, not a cost.
 
-Chromium 152 (the Claude desktop app's browser, not Chrome), Windows 11, 16 cores,
-NVIDIA Blackwell.
+### Accuracy
 
-| Build | Backend | Load | Features | Inference | Probabilities on the six clips |
-|---|---|---|---|---|---|
-| cpu (int8) | wasm | 528 ms | 31 ms | **153 ms** | 0.799, 0.375, 0.107, 0.559, 0.911, 0.500 |
-| cpu (int8) | webgpu | — | — | — | **will not load** |
-| gpu (fp32) | wasm | 744 ms | 32 ms | 222 ms | 0.831, 0.106, 0.014, 0.142, 0.723, 0.790 |
-| gpu (fp32) | **webgpu** | 996 ms | 38 ms | **8 ms** | 0.831, 0.106, 0.014, 0.142, 0.723, 0.790 |
+Pooled over the six runs that produced probabilities — same speaker, same script:
 
-Loads are warm, from browser cache. The first cold load of the int8 build was 1080 ms.
+| | fired | held off |
+|---|---|---|
+| complete (60) | 50 | 10 |
+| incomplete (61) | **2** | 59 |
 
-### It runs, and the fast path is very fast
+- **False fire — interrupting a pause — 2 of 61, 3.3%.** Both were in the first run, and
+  none of the five later runs fired on a single incomplete utterance: **0 of 51**.
+- Miss — a finished sentence falling through to the timer — 10 of 60, 17%. A miss costs
+  the 512 ms already being paid today, so it is a disappointment rather than a regression.
 
-fp32 on WebGPU is **8 ms** an inference — nineteen times quicker than int8 on wasm, and
-the graph's own `input_features` → `logits` names came back exactly as the offline read of
-the protobuf said they would.
+**The separation is the striking part.** Finished sentences score 0.70–0.99; trailed-off
+ones score 0.005–0.03 almost without exception. In the recommended configuration the ten
+incomplete utterances scored 0.005, 0.005, 0.005, 0.005, 0.005, 0.006, 0.006, 0.006,
+0.007, 0.023. That is not a model hedging near a threshold — it is a model that is sure,
+and it means the exact threshold matters much less than it might have.
 
-**Feature extraction is not the bottleneck.** 31–38 ms for an 800-frame Whisper log-mel in
-JavaScript was the thing most likely to sink this, and it did not. No Rust companion is
-needed for turn detection.
+The recommended configuration on its own: **9 of 10 complete fired, 0 of 10 incomplete
+fired**, one miss at p=0.490.
 
-### The WebGPU path is correct, not merely fast
+### The twenty-first turn
 
-fp32 on WebGPU returned probabilities **identical to fp32 on wasm** on all six clips. That
-is the cross-check Spike A had to invent after the fact: same graph, two backends, same
-answers. Whatever this model gets wrong, it is not getting it wrong because of WebGPU.
+The first run recorded twenty-one turns where twenty were spoken, and Rick recalls a bell
+in the background. The count fits, and the run is an outlier in exactly the way that
+suggests: it holds the only two false fires of the evening (0.851 and 0.926) and the only
+incomplete readings above 0.03 apart from two isolated cases elsewhere.
 
-### int8 on WebGPU fails loudly, which is a mercy
+**The log cannot say which row it was.** Nothing about the audio was recorded per turn, so
+a bell and a sentence look identical in the table. If the spurious turn is one of the two
+fires, that run's false-fire rate was 1 in 10; if it is one of the nine that held off, it
+was 2 in 10. Either way it does not move the recommendation, which rests on the five later
+runs and their 0 of 51.
+
+That gap is now closed: the VAD already computed duration, RMS, peak and max p(speech) for
+its `settled` message, and candidates carry them too. The next spurious turn will be
+identifiable — a bell is short and peaky and not very speech-like — instead of remembered.
+
+### Two answers that arrived too late
+
+`probability 0.979 arrived for turn 1, already closed`, twice, both on wasm, both on the
+cold first turn. The model had judged the sentence finished; the answer arrived after the
+512 ms backstop had closed the turn, and the matrix recorded both as misses.
+
+That is a backend problem wearing an accuracy problem's clothes. On wasm, a 224 ms
+candidate plus a 222 ms inference leaves under 70 ms of headroom before the timer, and the
+first inference is cold. Those turns are now recorded as `late` — credited as fires in the
+matrix, kept out of the latency medians, and counted separately. The pooled figures above
+already treat them that way.
+
+### int8 does not load on WebGPU, on real hardware too
+
+Twenty consecutive `[WebGPU] Kernel "[DequantizeLinear] ... In the case of dequantizing
+int32 there is no zero point"` errors, matching the bench exactly. It fails loudly rather
+than returning nonsense, which is the opposite of Spike A's Moonshine q8 and the reason
+this cost minutes instead of an evening. The int8 build works on wasm — 150 ms an
+inference — but it is a different graph with different opinions (`docs/SURFACE.md`), so it
+is a fallback for a machine without a GPU, not a cheaper default.
+
+### What cannot be concluded
+
+Each run is a **separate take** of the same script, so accuracy differences *between* runs
+are mostly what was said, not the configuration. The bench established that fp32 gives
+identical probabilities on wasm and WebGPU, so the gap between those two rows is speech,
+not backend. Latency is the thing that compares cleanly across runs.
+
+## What this does to the 947 ms
+
+Spike A: 947 ms = 512 ms hangover + 435 ms of pipeline (recognition 180, synthesis 245).
+Replacing the hangover with a 168 ms answer, run sequentially:
 
 ```
-[WebGPU] Kernel "[DequantizeLinear] inner.encoder.conv1.bias_DequantizeLinear" failed.
-Error: In the case of dequantizing int32 there is no zero point.
-```
-
-It refuses to load rather than returning nonsense. Spike A's Moonshine q8 on WebGPU
-produced confident garbage for every utterance and cost an evening to find; this one says
-so. The combination is still worth knowing about because it is the one a naive "quantised
-is smaller, WebGPU is faster" default would pick.
-
-### int8 and fp32 do not agree, and the difference crosses the threshold
-
-Same audio, same preprocessing, different answers: 0.375 against 0.106, 0.559 against
-0.142, 0.500 against 0.790. Two of those land on opposite sides of the 0.5 cut-off.
-
-On synthetic clips this is not an accuracy claim — neither column is "right". What it does
-say is that **the two builds are not interchangeable**: a threshold tuned on one does not
-carry to the other, and the 8.7 MB download is not a free substitute for the 32.4 MB one.
-Since fp32 on WebGPU is also the fastest path by a factor of nineteen, the cheap download
-only matters for a machine with no GPU — which is precisely where Spike A already said to
-use a server.
-
-### What this does to the 947 ms, on these numbers
-
-With a 200 ms candidate silence, fp32 on WebGPU:
-
-```
-200 ms  candidate silence
- 38 ms  log-mel
-  8 ms  inference
-~10 ms  two port hops and scheduling
+168 ms  end of speech to "the turn is over"
+180 ms  recognition
+245 ms  synthesis to first audio
 ------
-~256 ms  end of speech to an answer, against 512 ms of hangover
+593 ms  first audio, still with no language model in the loop
 ```
 
-947 − 512 + 256 ≈ **690 ms** to first audio, still with no language model in the loop.
-A 100 ms candidate would put it near 590 ms. Both are subject to the accuracy result
-below, which is the part that decides whether any of it is usable.
+**But turn detection and recognition do not have to be sequential.** They consume the same
+buffered window and neither depends on the other, so both can start when the candidate is
+cut. Turn detection takes 40 ms of work after that point; recognition takes 180 ms. Running
+them together:
 
-## Outstanding — the labelled run
+```
+128 ms  candidate silence
+180 ms  recognition (turn detection finishes inside this, at 40 ms)
+245 ms  synthesis
+------
+553 ms  first audio
+```
 
-Everything above is cost. None of it is correctness on speech, and correctness is what
-decides this spike. What is left needs a person, a microphone and headphones:
-
-1. **Ten complete and ten incomplete utterances**, minimum, per configuration, labelled
-   before speaking. The incomplete ones are the point: a real mid-sentence pause, trailed
-   off and held, which is exactly what a silence timer gets wrong.
-2. **The false-fire rate** — how often the model interrupted a pause. This is the number
-   the go/no-go turns on. A model that never interrupts and saves 256 ms is a win; one
-   that interrupts one pause in five is worse than waiting.
-3. **The miss rate**, for completeness. A miss costs the 512 ms already being paid.
-4. Worth a second pass at **threshold 0.7 and candidate 100 ms** — both are adjustable on
-   the page and every probability is recorded, so a second run can answer "what would a
-   different threshold have done" without re-speaking anything.
-
-Run at `/spike/turn` under `pnpm dev`. The page defaults to fp32 / WebGPU on the strength
-of the bench; the other three stay selectable.
+The cost is a speculative recognition pass per candidate that turns out not to end the
+turn — median one candidate per turn, so usually the pass you keep. **This is a design
+implication, not a measurement**; it needs its own verification in P1. It is written up as
+**ADR-21 (proposed)**, along with the question it forces: ADR-20's 500 ms pipeline budget
+was measured with the hangover carved out as a tuning constant, and turn detection is no
+longer a tuning constant. Counted honestly, the best measured path is **553 ms against a
+500 ms budget** — 53 ms over, with the candidate silence the obvious dial.
 
 ## Go / no-go
 
-**Not yet decided.** What can be said on evidence:
+**Go.** Smart Turn v3 replaces the VAD hangover.
 
-- **It runs in a browser, comfortably.** 8 ms an inference and 38 ms of feature extraction
-  on a GPU. The technical risk this spike existed to retire is retired.
-- **The preprocessing was the real hazard, and it is handled.** Front-padding and waveform
-  normalisation are both absent from transformers.js and both silent when wrong
-  (`docs/SURFACE.md`).
-- **Whether it is *better* than waiting 512 ms is unanswered**, and cannot be answered with
-  synthetic audio. If the false-fire rate on real pauses is low, ADR-20's arithmetic
-  improves by roughly 256 ms. If it is not, P1-T07 ships adaptive silence and this document
-  gains that design.
+1. **fp32 on WebGPU, 100 ms candidate, 0.7 threshold.** 168 ms median, 344 ms faster than
+   the hangover it replaces, and it did not interrupt a single one of the ten held pauses.
+2. **The false-fire risk this spike existed to size is small.** 0 of 51 across the five
+   later runs, and the probability separation is wide enough that the threshold is not a
+   knife edge. The 3.3% pooled figure is carried by one run that also contains an utterance
+   nobody spoke.
+3. **The remaining latency is deliberate silence, not work.** 128 of the 168 ms is the
+   candidate window. Shortening it is the next lever, and it can be pulled without
+   touching the model.
+4. **int8 is a no-GPU fallback, not a cheaper default.** It will not run on WebGPU at all,
+   and its probabilities differ from fp32's by enough to need their own threshold.
+
+### Left untested
+
+- **A candidate shorter than 100 ms.** 60–80 ms would take the answer under 130 ms; the
+  risk is more candidates per turn and more chances to fire inside a word.
+- **Overlapped recognition**, above. The arithmetic is sound; the implementation is P1's.
+- **Anyone but Rick, and any language but English.** The model's own benchmark reports
+  94.3% on English and as low as 79% on Vietnamese, so a second speaker is worth a session
+  before this is called settled for everyone.
+- **Barge-in interaction.** The 500 ms hangover is still the backstop here. Whether it
+  stays at all once P1-T08 handles interruption is a P1 question.
