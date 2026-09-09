@@ -6,8 +6,8 @@ import type { SpikeDtype } from './consent';
  * Kokoro through kokoro-js.
  *
  * `stream()` yields per sentence, which is what makes "first audio" a real measurement
- * rather than "the whole utterance finished". The 800 ms budget in RESEARCH §3.3 assumes
- * streaming synthesis; if this ever stops streaming, the budget stops being reachable.
+ * rather than "the whole utterance finished". ADR-20's pipeline budget assumes streaming
+ * synthesis; if this ever stops streaming, the budget stops being reachable.
  *
  * The splitter is built here rather than letting `stream()` take a plain string, because
  * that path in kokoro-js 1.2.1 never terminates: it creates a TextSplitterStream, pushes

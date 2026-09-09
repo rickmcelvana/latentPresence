@@ -23,7 +23,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-17 | Development database is the remote MariaDB over the tunnel; latency policy for memory retrieval | accepted | 2026-09-07 |
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
-| ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | **proposed** | 2026-09-08 |
+| ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted | 2026-09-08 |
 
 ---
 
@@ -128,7 +128,7 @@ Rules: one `theme.css` per app is the single source of styling truth; every clas
   day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
   2026-09-08.
 
-## ADR-20 Voice pipeline performance (proposed 2026-09-08)
+## ADR-20 Voice pipeline performance (accepted 2026-09-08)
 
 From Spike A (`docs/spikes/A-voice-loop.md`), measured on Rick's machine over twenty
 clean turns.

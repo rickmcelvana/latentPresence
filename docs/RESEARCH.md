@@ -98,7 +98,7 @@ Design: a `TTSProvider` interface with capability flags (`streaming`, `wordTimes
 - End of turn: [Pipecat Smart Turn v3](https://huggingface.co/pipecat-ai/smart-turn-v3) (BSD-2, ONNX, CPU under 100 ms, audio-based, 23 languages) or [LiveKit turn-detector](https://huggingface.co/livekit/turn-detector) (open weights, transcript-based). Spike: run Smart Turn v3 in onnxruntime-web. Fallback: VAD silence timer with adaptive thresholds.
 - Barge-in: user speech during playback fades TTS within ~100 ms, cancels the LLM stream, and records what was actually heard (transcript truncated at the interruption point).
 - Backchannels: pre-synthesised "mm-hm", "right", breaths, played in user pauses below the end-of-turn threshold, gated by affect state.
-- Latency target: first audio under 800 ms after end of turn (streaming LLM, sentence splitter, streaming TTS, audio queue).
+- Latency target (**superseded by ADR-20, 2026-09-08**): this said first audio under 800 ms after end of turn. Spike A measured 947 ms with no model call in the loop at all, so the single figure is replaced by two: **under 500 ms for the pipeline excluding the model call** (measured 435 ms on WebGPU), and an end-to-end number that is reported rather than promised because it depends on the user's LLM.
 - Reference architectures: [Kyutai Unmute](https://github.com/kyutai-labs/unmute) (modular STT/LLM/TTS, low latency), Pipecat, LiveKit Agents. We borrow the pipeline shape, not the Python.
 
 ### 3.4 Audio-native and speech-to-speech models

@@ -204,10 +204,11 @@ So either turn detection gets much cheaper, or 800 ms is the wrong target.
 
 - ADR-06 stands. The cascaded pipeline is fast enough; nothing here argues for going
   omni-first.
-- **The 800 ms target in RESEARCH §3.3 should be restated** as two numbers: under 500 ms
-  from end of speech to first audio *excluding the model call*, and a separate end-to-end
+- **The 800 ms target in RESEARCH §3.3 was restated** as two numbers: under 500 ms from
+  end of speech to first audio *excluding the model call*, and a separate end-to-end
   figure that depends on which LLM the user points at. One number covering both hides
-  which part is the project's responsibility.
+  which part is the project's responsibility. ADR-20, accepted 2026-09-08; RESEARCH §3.3
+  and `docs/PLAN.md` follow it.
 
 ### Left untested
 

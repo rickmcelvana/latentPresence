@@ -29,7 +29,13 @@ interface CompletedTurn {
   readonly result: TurnResult;
 }
 
-const BUDGET_MS = 800;
+/**
+ * ADR-20: the budget this project owns is the pipeline *excluding* the model call and
+ * excluding the VAD hangover, which is a tuning constant P0-T07 exists to shrink. The
+ * retired single figure of 800 ms covered the LLM too, and judged the pipeline against a
+ * number most of which belonged to somebody else's model.
+ */
+const PIPELINE_BUDGET_MS = 500;
 
 /** Milliseconds as whole numbers: sub-millisecond digits are noise, not precision. */
 function ms(value: number | null): string {
@@ -252,6 +258,12 @@ export function VoiceLoop(): ReactElement {
   }, []);
 
   const summary = summarise(turns.map((turn) => turn.result));
+  /** The headline less the hangover: what ADR-20 holds this project to. */
+  const pipelineMs =
+    summary.medianEndToFirstAudioMs === null || summary.medianHangoverMs === null
+      ? null
+      : summary.medianEndToFirstAudioMs - summary.medianHangoverMs;
+  const withinBudget = pipelineMs !== null && pipelineMs <= PIPELINE_BUDGET_MS;
   const models = modelsFor(dtype);
 
   const asMarkdown = () => {
@@ -264,6 +276,7 @@ export function VoiceLoop(): ReactElement {
       `- turns: ${summary.runs} (${summary.incomplete} incomplete)`,
       `- **end of speech to first audio: median ${ms(summary.medianEndToFirstAudioMs)} ms, worst ${ms(summary.worstEndToFirstAudioMs)} ms**`,
       `- of which hangover ${ms(summary.medianHangoverMs)} ms, STT ${ms(summary.medianSttMs)} ms, TTS ${ms(summary.medianTtsMs)} ms (medians)`,
+      `- **pipeline excluding the hangover: ${ms(pipelineMs)} ms** against ADR-20's ${PIPELINE_BUDGET_MS} ms`,
       '',
       '| # | transcript | end→audio | hangover | STT | TTS |',
       '|---|---|---|---|---|---|',
@@ -282,8 +295,9 @@ export function VoiceLoop(): ReactElement {
         <h1>Spike A — browser voice loop</h1>
         <p className="panel-note">
           Microphone to VAD to speech recognition to speech synthesis, with the transcript
-          echoed straight back. No language model. The number that matters is end of
-          speech to first audio, against a {BUDGET_MS} ms budget.
+          echoed straight back. No language model. The pipeline budget is{' '}
+          {PIPELINE_BUDGET_MS} ms from end of speech to first audio, not counting the VAD
+          hangover (ADR-20).
         </p>
       </header>
 
@@ -426,15 +440,8 @@ export function VoiceLoop(): ReactElement {
             <span className="panel-title">
               Median {ms(summary.medianEndToFirstAudioMs)} ms · worst {ms(summary.worstEndToFirstAudioMs)} ms
             </span>
-            <span
-              className={`pill ${
-                summary.medianEndToFirstAudioMs !== null &&
-                summary.medianEndToFirstAudioMs <= BUDGET_MS
-                  ? 'pill-ok'
-                  : 'pill-warn'
-              }`}
-            >
-              budget {BUDGET_MS} ms
+            <span className={`pill ${withinBudget ? 'pill-ok' : 'pill-warn'}`}>
+              pipeline {ms(pipelineMs)} / {PIPELINE_BUDGET_MS} ms
             </span>
           </div>
           <table className="spike-results">

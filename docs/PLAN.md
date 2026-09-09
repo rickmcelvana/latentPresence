@@ -154,5 +154,5 @@ Deliverables
 - Every component is styled in `theme.css` the day it is written; the gate fails on an unstyled className (ADR-15).
 - Every phase adds tests: unit for `core`, integration for companion, Playwright for the voice loop with synthetic audio.
 - Every provider gets a fake implementation for tests and demos.
-- Performance budgets: first audio < 800 ms (server) / < 1.2 s (browser models), 60 fps at 1080p on mid-range GPU, under 400 MB browser memory without models.
+- Performance budgets (ADR-20, measured in Spike A): voice pipeline under 500 ms from end of speech to first audio **excluding the model call** — 435 ms on WebGPU with fp32; end-to-end reported rather than promised, since it depends on the user's LLM. WebGPU is required for synthesis (wasm Kokoro is 3779 ms). 60 fps at 1080p on a mid-range GPU, under 400 MB browser memory without models.
 - No telemetry. Ever.
