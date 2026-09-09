@@ -475,3 +475,53 @@ was measuring an index would produce a confident, wrong number about whether the
 budget holds, which is precisely the failure Spike A's q8 path was. P0-T06 must declare
 `DISTANCE=cosine` on the index, query with `VEC_DISTANCE_COSINE`, and **prove the index is
 used with `EXPLAIN`** rather than inferring it from the timing.
+
+## Tauri 2, for P0-T08 Spike E — 2026-09-09, verified against the registries and the Tauri docs
+
+| Package | Version | Source |
+|---|---|---|
+| `@tauri-apps/cli` | **2.11.4** | npm registry, live call |
+| `@tauri-apps/api` | **2.11.1** | npm registry, live call |
+| `tauri` (crate) | **2.11.5** | crates.io API, live call |
+| `wry` (the webview binding) | **0.57.0** | crates.io API, live call |
+
+### Linux system prerequisites, quoted from the Tauri docs
+
+`https://tauri.app/start/prerequisites/`, read 2026-09-09. The webview package is
+**`4.1` on every distribution** — not `4.0`, which is the soup2 generation Tauri moved off
+in 2.0.0-alpha.3.
+
+```
+Debian/Ubuntu  libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev
+               libssl-dev libayatana-appindicator3-dev librsvg2-dev
+Arch           webkit2gtk-4.1 base-devel curl wget file openssl appmenu-gtk-module
+               libappindicator-gtk3 librsvg xdotool
+Fedora         webkit2gtk4.1-devel openssl-devel curl wget file
+               libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+```
+
+Rust is required (rustup); Node LTS is required only because the frontend is JavaScript.
+Neither has a pinned minimum in that page.
+
+### WebGPU on WebKitGTK is **not established**, and that is the finding to go and get
+
+This is the one fact P0-T08 turns on, and **no source consulted settles it**, so nothing
+here asserts it. The WebGPU implementation-status wiki maintained by the GPU for the Web
+working group lists Chromium, Firefox, Safari and Servo, and says of the WebKit entry only
+that WebGPU is enabled by default "In macOS Tahoe 26, iOS 26, iPadOS 26, and visionOS 26" —
+**every one of them an Apple platform**. WebKitGTK and WPE are absent from the page
+entirely. Absence from a status table is not evidence of absence in the port, so this must
+be a live call on the actual box rather than an inference.
+
+**It matters more than anything else in the spike.** Three Phase 0 results depend on
+WebGPU: Spike A measured synthesis at 947 ms on WebGPU against **3779 ms on wasm**, Spike D
+found Smart Turn's int8 build will not load on WebGPU at all and fp32/WebGPU is the go
+configuration, and Spike B's avatar wants a GPU path. If the Tauri webview on Linux has no
+`navigator.gpu`, the voice pipeline on that platform is not slower — it is outside ADR-20's
+500 ms budget by a factor of seven, and ADR-07's pre-written fallback ("that platform ships
+as companion + Chrome/Edge") is the answer rather than a disappointment.
+
+Check it **inside the Tauri webview**, never in a browser on the same machine — a Chrome on
+that box proves nothing about WebKitGTK. Record the WebKitGTK version beside the answer
+(`pkg-config --modversion webkit2gtk-4.1`), because this is a moving target and a bare yes
+or no with no version against it will be worthless in six months.

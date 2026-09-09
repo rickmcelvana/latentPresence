@@ -7,7 +7,7 @@
 - **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
 - **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
 - **Phase:** **0 — Foundations and spikes.** P0-T01, P0-T02, P0-T02b, P0-T03, P0-T04 and P0-T07 landed 2026-09-08; **P0-T05 and P0-T06 landed 2026-09-09**. ADR-16 amended, ADR-20 accepted, **ADR-21 accepted 2026-09-09** (turn detection counts inside the pipeline budget). 21 ADRs accepted.
-- **Current task:** **P0-T08 Spike E** — needs a Linux box with a display.
+- **Current task:** **P0-T08 Spike E** — the Tauri shell, brief written (`docs/briefs/P0-T08.md`). **Moving to Rick's Linux box 2026-09-09** for the WebKitGTK leg, which is the one with the decision in it.
 - **Next task:** P0-T09, the Phase 0 retrospective. Every other Phase 0 task has landed.
 - **Blockers:** none. No Docker anywhere, so CI uses a service container rather than a local one.
 - **Default character:** Alice (name chosen 2026-09-07). Placeholder VRM until P7-T02.
@@ -19,6 +19,7 @@
 - **Avatar (Spike B, done 2026-09-09):** **Go.** A full-body VRM 1.0 with MToon, spring bones and constraints runs at **120.5 fps median at 1916×1076** on an RTX 5060 Ti — the budgeted 1080p — and the worst frame of the run (15.0 ms) still fits inside 60 fps. Quadrupling the pixels moved neither the median nor the 5th percentile, so the scene is display-bound, not fill-rate bound. Lip sync reads as speech. **wawa-lipsync emits fifteen Oculus visemes, not VRM's five**; the mapping is in `packages/avatar` with tests. `docs/spikes/B-vrm-lipsync.md`.
 - **Memory store (Spike C, done 2026-09-09):** **Go.** MariaDB 11.8.8 stores `VECTOR(768)` bit-exactly and answers a top-8 at **100k rows in 4.90 ms median, 8.47 ms p95** on the LAN, `EXPLAIN` naming the index at 10k and 100k. Against the 100 ms per-turn budget that is ~12x headroom locally; over the 39.8 ms tunnel one statement is 44 ms, two 86 ms, three 128 ms, so **ADR-17's one-call rule is confirmed with arithmetic**. `mhnsw_ef_search` is session-settable and at 320 the p95 is still 12 ms, so recall is an affordable dial — but recall itself is **not measurable from a random fixture** and belongs to P4. `docs/spikes/C-mariadb-vector.md`.
 - **Server tuning is a shipping requirement, not a preference:** the stock `mhnsw_max_cache_size` is **16 MB** against 307 MB of vectors at 100k rows, which cost a **5x** query slowdown and made 100k unreachable. It is `GLOBAL`-only, so no application user can set it and the product cannot detect or fix it from inside. Whatever ships must document it.
+- **Linux handoff (2026-09-09):** the repo is portable — `.gitattributes` forces `eol=lf`, no script is platform-specific, and **no LFS payload is actually committed**, so a plain `git pull && pnpm install` is enough. Spike E's risk is the webview, not the toolchain.
 - **Live:** `latentpresence.com` serves the site, docs and feedback form; a submission was confirmed end to end on 2026-09-08. Deploy is `git pull` + `pnpm build` on the server (ADR-16). `app.latentpresence.com` has no build behind it yet.
 
 ## Rick's backlog (things only Rick can do)
@@ -52,7 +53,7 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - [ ✅ ] **Raise the MariaDB vector settings.** Done 2026-09-09 — `mhnsw_max_cache_size` 2 GiB, `innodb_buffer_pool_size` 4 GiB on the 16 GB box, and the update agent that polluted the first benchmark moved off it. That change is the whole finding of Spike C.
 
-- [ ] Linux box available for Spike E (P0-T08) when it comes up.
+- [ ] **Before the Linux session:** install the Tauri prerequisites for that distro (`docs/SURFACE.md`, "Tauri 2"; the webview package is **4.1**, not 4.0), plus rustup and Node 22 LTS if the box lacks them. `.env` is optional — Spike E does not touch the database.
 
 - [ ] Character pipeline (P7): wait for `docs/pipeline/character.md`; the architect writes exact instructions first.
 
