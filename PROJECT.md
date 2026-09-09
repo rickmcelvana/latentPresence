@@ -16,7 +16,7 @@
 - **Test counts (2026-09-09):** 173 TypeScript, 2 Rust. `pnpm gate` green; CI green on ubuntu and windows.
 - **Voice pipeline (Spike A, 2026-09-08):** 947 ms end of speech to first audio on WebGPU/fp32; 435 ms excluding the VAD hangover, against ADR-20's 500 ms pipeline budget. WebGPU is required — wasm synthesis is 3779 ms. q8 recognition is broken on WebGPU. Details in `docs/spikes/A-voice-loop.md`.
 - **Turn detection (Spike D, 2026-09-08):** **Go.** Smart Turn v3 on fp32/WebGPU with a 100 ms candidate and a 0.7 threshold answers in **168 ms** against the 512 ms hangover it replaces, and interrupted 0 of 51 held pauses across the five runs after the first. int8 will not load on WebGPU at all (loudly) and is a no-GPU fallback. First audio becomes ~593 ms sequential, ~553 ms once recognition overlaps turn detection - which ADR-21 makes P1's job, against an unchanged 500 ms budget. `docs/spikes/D-smart-turn.md`.
-- **Avatar (Spike B, 2026-09-09):** **Go.** A full-body VRM 1.0 with MToon, spring bones and constraints held **570 consecutive frames with no misses at 120 Hz** (median frame 8.3 ms, worst 8.8) at 958×538 on an RTX 5060 Ti, and the lip sync reads as speech. Vsync hid the real cost, and the reading was at a quarter of the budgeted pixels — a 1080p-equivalent reading is outstanding. **wawa-lipsync emits fifteen Oculus visemes, not VRM's five**; the mapping is in `packages/avatar` with tests. `docs/spikes/B-vrm-lipsync.md`.
+- **Avatar (Spike B, done 2026-09-09):** **Go.** A full-body VRM 1.0 with MToon, spring bones and constraints runs at **120.5 fps median at 1916×1076** on an RTX 5060 Ti — the budgeted 1080p — and the worst frame of the run (15.0 ms) still fits inside 60 fps. Quadrupling the pixels moved neither the median nor the 5th percentile, so the scene is display-bound, not fill-rate bound. Lip sync reads as speech. **wawa-lipsync emits fifteen Oculus visemes, not VRM's five**; the mapping is in `packages/avatar` with tests. `docs/spikes/B-vrm-lipsync.md`.
 - **Live:** `latentpresence.com` serves the site, docs and feedback form; a submission was confirmed end to end on 2026-09-08. Deploy is `git pull` + `pnpm build` on the server (ADR-16). `app.latentpresence.com` has no build behind it yet.
 
 ## Rick's backlog (things only Rick can do)
@@ -40,7 +40,7 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - [ ✅ ] **Run `/spike/avatar`** (P0-T05). Done 2026-09-09 — 120.5 fps median, no dropped frame in 570, lip sync passes from mic and from a file. No integrated GPU on that board, so the GPU-preference comparison could not be run at all.
 
-- [ ] **One more `/spike/avatar` reading, five minutes**: set **Render scale** to **2× (1080p-equivalent)**, let it settle, **Take the reading**, paste the Markdown. The first run was at 958×538 and `docs/PLAN.md` budgets 60 fps at **1080p** — four times the pixels. This is the difference between a measured pass and an extrapolated one.
+- [ ✅ ] **The 1080p reading.** Done 2026-09-09 — 1916×1076, 120.5 fps median, unchanged from 540p.
 
 - [ ] Whenever hardware allows: the same page on **a different class of GPU** — a laptop, or anything with integrated graphics. Not urgent; the current card is well above "mid-range", so the interesting number is a worse machine, not this one.
 
@@ -59,7 +59,7 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 ## Phase checklist
 
-- [ ] P0 Foundations and spikes — T01, T02, T02b, T03, T04, T05, T07 done (B pending one 1080p reading); C in progress; E and the retrospective to go
+- [ ] P0 Foundations and spikes — T01, T02, T02b, T03, T04, T05, T07 done; C in progress; E and the retrospective to go
 - [ ] P1 Conversation core
 - [ ] P2 Avatar and stage v1
 - [ ] P3 Affect engine and emotion sensing

@@ -1,6 +1,6 @@
 # Spike B — VRM avatar and lip sync
 
-**Status: go. One reading outstanding — 1080p, which is the size the budget is written against.**
+**Status: done. Go — measured at the resolution the budget is written against.**
 Task P0-T05. Brief: `docs/briefs/P0-T05.md`. Verified library facts: `docs/SURFACE.md`.
 
 ## The question
@@ -70,46 +70,55 @@ Chrome, Windows 11, NVIDIA GeForce RTX 5060 Ti, reported by WebGL as
 `ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)`
 and by WebGPU as `nvidia / blackwell`.
 
-| | |
-|---|---|
-| Canvas | asked 960×540, rendered **958×538**, dpr 1 |
-| Avatar load | 650 ms |
-| VRMA clip | loaded |
-| **Median** | **120.5 fps** (8.3 ms) |
-| **5th percentile** | **117.6 fps** |
-| Worst frame | 8.8 ms |
-| Frames | 570, after the warm-up |
+Two runs, 570 frames each after the warm-up, at 1× and at 2× the stage's CSS size. The
+canvas figures are read from the drawing buffer rather than from what was asked for.
+
+| | 1× | 2× |
+|---|---|---|
+| Canvas | **958×538** (0.52 Mpx) | **1916×1076** (2.06 Mpx) |
+| **Median** | **120.5 fps** (8.3 ms) | **120.5 fps** (8.3 ms) |
+| **5th percentile** | **117.6 fps** | **117.6 fps** |
+| Worst frame | 8.8 ms | **15.0 ms** |
+| Avatar load | 650 ms | 116 ms (cached) |
+| VRMA clip | loaded | loaded |
+
+1080p is 2.07 Mpx, so the 2× run is the budgeted resolution to within half a percent.
 
 Lip sync: **passes.** Driven from the microphone and from a voice-only audio file. It
 reads as speech rather than as chewing, which is the question the five-shape mapping had
 to answer.
 
-### What the frame rate actually says, and what it does not
+### What the frame times say, and what they do not
 
 Read as frame *times* rather than as a frame rate, this is a stronger result than 120 fps
 sounds — and a narrower one.
 
-The median frame is 8.3 ms and the worst in 570 consecutive frames is 8.8 ms. A dropped
-frame at 120 Hz would be 16.6 ms. **There is not one.** So the scene held a 120 Hz vsync
-for the entire window without a single miss, which is why the 5th percentile is 117.6 fps
-rather than something ugly: there are no bad frames to find.
+The median frame is 8.3 ms. A dropped frame at 120 Hz would be 16.6 ms, and across 570
+frames at 1× there is **not one**; at 2× there is a single 15.0 ms frame, which is one
+hitch in 570 and still under the two-period mark. That is why the 5th percentile is 117.6
+fps in both runs rather than something ugly: there are almost no bad frames to find.
 
-**But 8.3 ms is the display's period, not the scene's cost.** Vsync means the loop waits;
-it does not mean the work took 8.3 ms. The GPU cost is somewhere below that and this run
-cannot say how far below. Against the 60 fps the plan asks for — a 16.6 ms budget — the
-scene never came close to missing a frame at twice that rate, which is the useful
-statement. "It renders in 8.3 ms" would not be.
+**But 8.3 ms is the display's period, not the scene's cost.** Vsync means the loop waited;
+it does not mean the work took 8.3 ms. The GPU cost is somewhere below that, and neither
+run can say how far below.
 
-### The measurement was taken at a quarter of the budgeted resolution
+### Four times the pixels cost nothing measurable
 
-`docs/PLAN.md` budgets **60 fps at 1080p**. This was measured at 958×538 — 0.52 megapixels
-against 1080p's 2.07, so **four times fewer pixels**. Frame cost does not scale linearly
-with resolution, but it does not ignore it either, and extrapolating a pass at 540p into a
-pass at 1080p is exactly the kind of claim this spike exists to avoid making.
+This is the finding. `docs/PLAN.md` budgets **60 fps at 1080p**, and the first run was at
+958×538 — a quarter of the pixels. Extrapolating a 540p pass into a 1080p pass is exactly
+the claim this spike exists not to make, so the page grew a render-scale control and the
+run was repeated at 2×.
 
-So the page now offers a **render scale**: at 2× the drawing buffer is 1916×1076, which is
-2.06 megapixels against 1080p's 2.07 — the same shader work and fill rate, inside a column
-that is only 1056 px wide. One more reading settles it. See "Outstanding" below.
+**The median and the 5th percentile are identical.** 0.52 megapixels and 2.06 megapixels
+produce the same 120.5 fps median and the same 117.6 fps 5th percentile. Quadrupling the
+fill rate did not move either number, which says the scene is nowhere near fill-rate bound
+— it is bound by the display, and the headroom underneath is large enough to absorb 4× the
+pixels without showing.
+
+The only thing that moved is the worst single frame, 8.8 ms → 15.0 ms. **Even that frame
+fits inside a 60 fps budget of 16.67 ms.** So at the budgeted resolution, the worst frame
+of the run still meets the target the plan sets, and every other frame is twice as fast as
+it needs to be.
 
 ### The GPU-preference comparison could not be run, for a plainer reason than expected
 
@@ -168,29 +177,21 @@ than worked around. Both were chased to the environment before anything reached 
 
 ## Outstanding
 
-One reading, five minutes, same page:
-
-1. `pnpm dev`, <http://localhost:5173/spike/avatar>, accept.
-2. Set **Render scale** to **2× — 1920×1080 (1080p-equivalent)**. The frame window resets
-   itself.
-3. Let it settle, **Take the reading**, and paste the Markdown.
-
-If the median holds near 120 fps the budget is met with room to spare. If it drops toward
-60, the answer is still a pass but the headroom claim changes, and P2 will want to know
-before it builds a set behind the character.
-
-Not blocking, whenever hardware allows: a second GPU class — a laptop, or an integrated
-adapter — since this card is well above "mid-range".
+Nothing blocking. Whenever hardware allows: the same page on **a different class of GPU** —
+a laptop, or anything with integrated graphics. This card is well above "mid-range", so
+the interesting number is a worse machine, not this one. There is no integrated adapter on
+that motherboard to select, and the Linux box is identical hardware.
 
 ## Go / no-go
 
 **Go.** ADR-03 stands: a full-body VRM 1.0 with MToon materials, spring bones and node
-constraints renders in a browser at a conversational frame rate, and the lip sync reads as
-speech.
+constraints renders in a browser at a conversational frame rate **at 1080p**, and the lip
+sync reads as speech.
 
-1. **570 consecutive frames, no misses, at 120 Hz.** Against a 60 fps budget that is twice
-   the required rate with no dropped frame at all — though at 540p, and the 1080p reading
-   is what closes it.
+1. **The budgeted resolution is met with the budget to spare.** 120.5 fps median at
+   2.06 megapixels against a target of 60, and the worst frame of the whole run — 15.0 ms
+   — still fits inside 60 fps's 16.67 ms. Quadrupling the pixels moved neither the median
+   nor the 5th percentile.
 2. **The integration risk is retired.** three-vrm with react-three-fiber under React 19 was
    the thing most likely to not work; it resolves, loads and builds. The r3f peer range is
    `>=19 <19.3`, so a React 19.3 bump needs attention when it comes.
@@ -202,9 +203,9 @@ speech.
 
 ### Left untested
 
-- **1080p**, above. The one reading that is actually outstanding.
-- **The scene's real cost.** Vsync hid it. A GPU timer query or an unthrottled context
-  would give the headroom; nothing here needed it.
+- **The scene's real cost.** Vsync hid it in both runs. A GPU timer query or an unthrottled
+  context would give the headroom as a number; the 4× pixel test bounds it well enough that
+  nothing here needed one.
 - **Any other GPU**, and any integrated adapter — none exists on that motherboard.
 - **A second character.** The sample is a *constraint twist sample*, not a character — the
   right thing for measuring and the wrong thing for judging how the product looks. Do not
