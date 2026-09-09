@@ -7,11 +7,11 @@
 - **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
 - **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
 - **Phase:** **0 — Foundations and spikes.** P0-T01, P0-T02, P0-T02b, P0-T03, P0-T04 and P0-T07 landed 2026-09-08. ADR-16 amended, ADR-20 accepted, **ADR-21 accepted 2026-09-09** (turn detection counts inside the pipeline budget). 21 ADRs accepted.
-- **Current task:** **P0-T06 Spike C** — unblocked by `.env`, starting.
-- **Next task:** P0-T08 Spike E (blocked on a Linux box with a display), then P0-T09 the retrospective.
-- **Blockers:** none. **No Docker anywhere**, so Spike C's local-container path does not exist: development goes over the tunnel and CI uses a GitHub Actions service container. Rick has in-house and remote servers available on request.
+- **Current task:** **P0-T06 Spike C** — blocked on a server, see below.
+- **Next task:** P0-T08 Spike E (needs a Linux box with a display), then P0-T09 the retrospective.
+- **Blockers:** **Spike C has no server that can run it.** The MariaDB on the tunnel is **10.11.18**; the `VECTOR` type arrived in **11.7.1**, so the type, the index and the `VEC_*` functions are all absent (verified by live call 2026-09-09). No Docker anywhere, so there is no local container either. Rick has in-house and remote servers and has offered access.
 - **Default character:** Alice (name chosen 2026-09-07). Placeholder VRM until P7-T02.
-- **Dev database:** remote MariaDB at `10.0.0.1` over the tunnel; `DATABASE_URL` in `.env`. Spike C measures RTT.
+- **Dev database:** MariaDB at `10.0.0.1` over the tunnel, `DATABASE_URL` in `.env`, grants are `ALL PRIVILEGES ON latentpresence.*`. **Version 10.11.18 — too old for vectors (need 11.7.1+).** Round trip measured at **p50 39.8 ms, p95 40.5** over thirty `SELECT 1`s, against a 100 ms per-turn retrieval budget: one query fits, two do not. `docs/SURFACE.md`.
 - **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22, rustc 1.97, axum 0.8. Verified facts in `docs/SURFACE.md`.
 - **Test counts (2026-09-09):** 173 TypeScript, 2 Rust. `pnpm gate` green; CI green on ubuntu and windows.
 - **Voice pipeline (Spike A, 2026-09-08):** 947 ms end of speech to first audio on WebGPU/fp32; 435 ms excluding the VAD hangover, against ADR-20's 500 ms pipeline budget. WebGPU is required — wasm synthesis is 3779 ms. q8 recognition is broken on WebGPU. Details in `docs/spikes/A-voice-loop.md`.
@@ -44,7 +44,13 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - [ ] Whenever hardware allows: the same page on **a different class of GPU** — a laptop, or anything with integrated graphics. Not urgent; the current card is well above "mid-range", so the interesting number is a worse machine, not this one.
 
-- [ ✅ ] **Unblock Spike C (P0-T06)**: `.env` now carries `DATABASE_URL`. Done. No Docker anywhere, so the local-container path is off the table and CI uses a service container instead.
+- [ ✅ ] `.env` now carries `DATABASE_URL`. Done — and it revealed the item below.
+
+- [ ] **A MariaDB 11.7+ for Spike C.** The server on the tunnel is **10.11.18**, so it has no `VECTOR` type, no vector index and no `VEC_*` functions; the ticked "11.8+" check did not match what is actually answering. No Docker anywhere, so there is no local fallback. Three ways out, and this is Rick's call:
+  1. **Upgrade the box at `10.0.0.1`** to 11.8 LTS from MariaDB's own Debian repo. Keeps the tunnel RTT figure in the spike, which is the number P4 actually needs.
+  2. **Stand 11.8 up on another in-house server** and point `DATABASE_URL` at it. Fastest if the current box is doing other work; the RTT then measures a different path.
+  3. **Let CI do it** with a `mariadb:11.8` service container in the workflow. Costs nothing and needs no server, but measures GitHub's hardware and a loopback connection — it proves the SQL and says nothing about the tunnel.
+  1 or 2 answers the spike; 3 alone does not, but is worth having either way.
 
 - [ ] Linux box available for Spike E (P0-T08) when it comes up.
 

@@ -327,3 +327,63 @@ and enough emotion presets for the P3 affect work.
 `expressions` and `lookAt` blocks present — but its single animation has **three channels**. It
 proves the VRMA loading path and nothing about how an idle looks. A real idle clip is an asset
 decision for P2/P7; there is no CC0 VRMA in that repository to take.
+
+## MariaDB vector, and the dev server — 2026-09-09, verified by live call and against the docs
+
+### The dev server cannot do this yet
+
+Probed over the tunnel with the credentials now in `.env`:
+
+| | |
+|---|---|
+| `SELECT VERSION()` | **`10.11.18-MariaDB-0+deb12u1`** (Debian 12) |
+| `VEC_DISTANCE_COSINE` | `ER_SP_DOES_NOT_EXIST` |
+| `VEC_DISTANCE_EUCLIDEAN` | `ER_SP_DOES_NOT_EXIST` |
+| `VEC_FromText` / `VEC_ToText` | `ER_SP_DOES_NOT_EXIST` |
+| Grants | `ALL PRIVILEGES ON latentpresence.*`, so schema work is permitted |
+| Tables | none yet |
+
+**The `VECTOR` type and vector indexes arrived in MariaDB 11.7.1.** 10.11 is the previous
+LTS and has none of it — not the type, not the index, not the functions. The backlog item
+asking for 11.8+ was ticked, but the server answering on the tunnel today is 10.11.18, so
+P0-T06 cannot be measured against it. Recorded here rather than discovered again.
+
+### Round-trip latency over the tunnel is the other finding
+
+Thirty `SELECT 1` round trips, which is protocol overhead and network and nothing else:
+
+```
+min 37.76   p50 39.78   p95 40.49   max 41.63 ms
+```
+
+**Roughly 40 ms per round trip**, and the per-turn retrieval budget in `docs/LLM-PLAN.md`
+is 100 ms. One query fits with room to spare; two do not leave much, and a pattern that
+does a lookup and then a follow-up read has spent 80 ms before the server has done any
+work. That is a design constraint for P4 whatever the server version turns out to be:
+retrieval wants to be one statement, and the companion wants to be near the database
+rather than near the browser.
+
+### The syntax, from the MariaDB docs
+
+```sql
+CREATE TABLE embeddings (
+        doc_id BIGINT UNSIGNED PRIMARY KEY,
+        embedding VECTOR(1536) NOT NULL,
+        VECTOR INDEX (embedding) M=8 DISTANCE=cosine
+);
+```
+
+- The indexed vector column **must be `NOT NULL`**, and a table may have **only one**
+  vector index.
+- `M` is 3–200: larger is more accurate, slower, and hungrier for memory.
+- `DISTANCE` is `cosine` or `euclidean` and **defaults to `euclidean`**.
+- `VEC_FromText()` parses a JSON array string into the binary type; `VEC_ToText()` reverses
+  it. Distance functions are `VEC_DISTANCE`, `VEC_DISTANCE_COSINE`, `VEC_DISTANCE_EUCLIDEAN`.
+
+**The trap worth writing down:** a query whose distance function differs from the one the
+index was built with **falls back to a full table scan**. It does not error and it does not
+warn — it returns the right rows slowly. A benchmark that measured that while believing it
+was measuring an index would produce a confident, wrong number about whether the retrieval
+budget holds, which is precisely the failure Spike A's q8 path was. P0-T06 must declare
+`DISTANCE=cosine` on the index, query with `VEC_DISTANCE_COSINE`, and **prove the index is
+used with `EXPLAIN`** rather than inferring it from the timing.
