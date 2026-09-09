@@ -34,7 +34,8 @@ Done.
 
 - [ ✅ ] **Run `/spike/turn`** (P0-T07 go/no-go). Done — eight runs, 2026-09-08. Go on fp32/WebGPU at 100 ms / 0.7.
 
-- [ ] **Decide ADR-21** (proposed): turn detection counts inside ADR-20's 500 ms pipeline budget, and the budget stays at 500 rather than being restated to fit the measured 553 ms. The architect has taken the recommended option; say if you would rather move the number.
+- [ ✅ ] **Decide ADR-21** (proposed): turn detection counts inside ADR-20's 500 ms pipeline budget, and the budget stays at 500 rather than being restated to fit the measured 553 ms. The architect has taken the recommended option; say if you would rather move the number.
+Answer: Recommended ADR-21 option accepted.
 
 - [ ] Linux box available for Spike E (P0-T08) when it comes up.
 
