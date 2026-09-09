@@ -39,3 +39,53 @@ jobs:
       # The same two commands the README gives a contributor.
       - run: pnpm install --frozen-lockfile
       - run: pnpm gate
+
+  # P0-T06. Proves the vector schema, the binary encoding and the index against a real
+  # MariaDB, which the rest of the gate cannot: no Docker exists on the development
+  # machine, so this job is the only automated exercise of the SQL.
+  #
+  # It is not the spike's measurement. This runs a couple of thousand rows on GitHub's
+  # hardware over loopback; the numbers in docs/spikes/C-mariadb-vector.md come from a real
+  # server over a real network. What this catches is the schema breaking.
+  vector:
+    name: mariadb vector
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        # Pinned to the version the development server runs, so CI and development agree
+        # about what "it works" means (docs/SURFACE.md, 2026-09-09).
+        image: mariadb:11.8.8
+        env:
+          # Ephemeral, and reachable only from this job's own container for its lifetime.
+          # Not a secret: nothing outside the runner can connect to it, and it is destroyed
+          # with the job.
+          MARIADB_ROOT_PASSWORD: ci-throwaway-root
+          MARIADB_DATABASE: latentpresence
+          MARIADB_USER: presenceuser
+          MARIADB_PASSWORD: ci-throwaway
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: companion
+
+      # The migration runs first, inside `bench`, so a schema that MariaDB rejects fails
+      # here rather than on someone's machine.
+      - name: schema, encoding and index against a real MariaDB
+        env:
+          DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
+        run: >-
+          cargo run --release --manifest-path companion/Cargo.toml
+          --bin latentpresence-companion -- bench 2000

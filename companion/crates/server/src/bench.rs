@@ -235,10 +235,22 @@ pub async fn run(target_rows: usize) -> Result<(), Box<dyn std::error::Error>> {
     // rather than a copy, so P4 inherits something that has been exercised.
     sqlx::query("TRUNCATE TABLE chunks").execute(&pool).await?;
 
-    for milestone in [10_000usize, 100_000] {
-        if milestone > target_rows {
-            break;
-        }
+    // The row counts P0-T06 asks for, or whatever was requested if it is smaller than the
+    // first. CI runs a couple of thousand rows against a service container: that proves
+    // the schema, the binary encoding and the index on a real MariaDB in seconds, which is
+    // the part the gate can own. The hundred-thousand figure is a measurement, not a test,
+    // and belongs on a machine someone is watching.
+    let asked: Vec<usize> = [10_000usize, 100_000]
+        .into_iter()
+        .filter(|milestone| *milestone <= target_rows)
+        .collect();
+    let milestones = if asked.is_empty() {
+        vec![target_rows]
+    } else {
+        asked
+    };
+
+    for milestone in milestones {
         let existing = db::count(&pool).await? as usize;
         let throughput = fill(&pool, milestone - existing).await?;
         println!("\n  fill to {milestone}: {throughput:.0} rows/s");
