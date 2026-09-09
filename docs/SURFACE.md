@@ -129,6 +129,64 @@ and start from v3.2.
 Untested here: whether either build runs under onnxruntime-web, which is the whole
 question P0-T07 answers.
 
+## Smart Turn v3 input surface — 2026-09-08, verified by reading the graphs and the reference code
+
+The model card does not state the input format; it points at the GitHub repo. So both
+`smart-turn-v3.2-cpu.onnx` and `-gpu.onnx` were downloaded and their protobuf graph
+headers read directly, and `pipecat-ai/smart-turn`'s `inference.py` and `audio_utils.py`
+were read at `main`. Both graphs agree:
+
+| | Name | Type | Shape |
+|---|---|---|---|
+| Input | `input_features` | float32 | `[batch, 80, 800]` |
+| Output | `logits` | float32 | `[batch, 1]` |
+
+- **80 mel bins, 800 frames.** Not Whisper's usual 3000-frame 30 s window: the extractor is
+  `WhisperFeatureExtractor(chunk_length=8)`, so `n_samples` is 128 000 and
+  `nb_max_frames` is `128000 // 160` = 800. A summary of the model card claimed
+  `(1, 128, 3000)`; the graph says otherwise, which is why the graph was read.
+- **`logits` is a misnomer.** `inference.py` reads `outputs[0][0]` straight as a
+  probability, and the graph does contain a `Sigmoid`. Treat the output as already
+  activated — but assert it lies in `[0, 1]` rather than trusting the name either way.
+- **cpu is int8, gpu is fp32.** The cpu graph's producer is `onnx.quantize`; the gpu
+  graph's is `pytorch`. They are the same 8M-parameter model (Whisper tiny encoder plus a
+  linear head) at two precisions after all, despite the file names. Exact bytes:
+  8 679 182 and 32 411 198. Given Spike A, int8 on WebGPU is the combination to distrust.
+- Opset 18, IR version 10.
+
+### Preprocessing, which is where this goes wrong silently
+
+`inference.py` does three things around the extractor that the extractor does not do:
+
+1. `truncate_audio_to_last_n_seconds(audio, 8)` keeps the **last** 8 s, and when the audio
+   is shorter it pads with zeros **at the beginning**. transformers.js pads at the *end*
+   (`waveform.set(audio)` at offset 0), so the padding has to be done on our side and the
+   extractor handed exactly 128 000 samples, or every short utterance is fed backwards
+   relative to training.
+2. `do_normalize=True` applies `zero_mean_unit_var_norm` — `(x - mean) / sqrt(var + 1e-7)`,
+   population variance — to the waveform before the mel. It runs over the **whole padded
+   128 000 samples**: `do_normalize` forces `return_attention_mask=True` in `pad()`, and
+   with the array already at `max_length` the mask is all ones. **transformers.js's
+   `WhisperFeatureExtractor` has no `do_normalize` at all**, so this must be applied by us
+   or the features are on the wrong scale.
+3. Everything else — Hann window, `n_fft` 400, `hop_length` 160, slaney mel filters over
+   0–8000 Hz, `log10`, then `(max(x, x.max() - 8) + 4) / 4` — matches
+   `@huggingface/transformers` 3.8.1's `WhisperFeatureExtractor` exactly, once it is
+   constructed with `{ feature_size: 80, n_fft: 400, hop_length: 160, sampling_rate: 16000,
+   chunk_length: 8, n_samples: 128000, nb_max_frames: 800 }`. Python computes 801 STFT
+   frames and drops the last; the JS caps at `nb_max_frames`. Same 800 frames.
+
+`WhisperFeatureExtractor` is exported from the `@huggingface/transformers` top level and
+its constructor takes a plain config object — no `from_pretrained`, so no hub fetch and
+nothing to declare on the consent screen for the extractor itself. There are no deep
+imports (one `exports` entry), so importing it pulls the whole barrel including ONNX
+Runtime; that is worker-only and the build guard already covers it.
+
+The clamp in step 3 gives a free runtime check: for any input that is not perfectly flat,
+`max - min` over the feature block is **exactly 2.0**. A mel that is wrong in shape or
+scale generally will not satisfy that.
+
+
 ## Feedback API — 2026-09-08, verified by reading the running service's source
 
 `tools/feedback-api` in the latent-mastering repo, which Caddy proxies at
