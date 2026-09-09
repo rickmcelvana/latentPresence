@@ -84,12 +84,12 @@ Done when: table-driven tests over 40 tricky inputs pass.
 Done when: both real providers play audio in the app; capability flags correct.
 
 ### P1-T06 STT providers — owner: aider
-`moonshine-browser` (worker), `whisper-browser`, `openai-compatible-stt` (`/audio/transcriptions`), `FakeSTTProvider`. `dtype` is set explicitly and q8 is never offered on WebGPU: it returns the same fluent nonsense for every utterance, with no error (Spike A, ADR-20).
-Done when: live transcription visible in the transcript panel with both a browser model and a server.
+`moonshine-browser` (worker), `whisper-browser`, `openai-compatible-stt` (`/audio/transcriptions`), `FakeSTTProvider`. `dtype` is set explicitly and q8 is never offered on WebGPU: it returns the same fluent nonsense for every utterance, with no error (Spike A, ADR-20). Recognition starts on the candidate window, in parallel with turn detection, and is discarded if the turn turns out not to be over (ADR-21) — so a provider must tolerate being cancelled mid-transcription.
+Done when: live transcription visible in the transcript panel with both a browser model and a server, and a cancelled recognition leaves no partial text in the transcript.
 
 ### P1-T07 VAD and turn detection — owner: main
-Depends: P0-T07. Silero VAD worker, Smart Turn v3 worker or adaptive silence per spike result, exposing `speechStart`, `speechEnd`, `turnEnd(probability)`.
-Done when: tests with recorded audio fixtures detect turn ends within 300 ms of the labelled point.
+Depends: P0-T07. Silero VAD worker plus a **Smart Turn v3 worker** — adaptive silence is no longer the fallback, Spike D decided it (ADR-21). fp32 build on WebGPU, 100 ms candidate silence, 0.7 threshold; int8 is the no-GPU fallback and must never be offered on WebGPU, where it does not load. The 500 ms hangover stays as the backstop, and an answer arriving after it is reported as late rather than as a miss. Exposes `speechStart`, `speechEnd`, `turnEnd(probability)`.
+Done when: tests with recorded audio fixtures detect turn ends within 300 ms of the labelled point, and the candidate window is handed to recognition (P1-T06) at the same moment it is handed to the endpointer — ADR-21's overlap, without which the pipeline is 40 ms over budget on its own.
 
 ### P1-T08 Audio output queue and barge-in — owner: main
 Depends: P1-T01. AudioWorklet playback queue; on user speech start, fade out in 100 ms, cancel LLM stream, mark transcript with the spoken prefix.

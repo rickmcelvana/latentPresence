@@ -149,7 +149,7 @@ them together:
 The cost is a speculative recognition pass per candidate that turns out not to end the
 turn — median one candidate per turn, so usually the pass you keep. **This is a design
 implication, not a measurement**; it needs its own verification in P1. It is written up as
-**ADR-21 (proposed)**, along with the question it forces: ADR-20's 500 ms pipeline budget
+**ADR-21 (accepted 2026-09-09)**, along with the question it forces: ADR-20's 500 ms budget
 was measured with the hangover carved out as a tuning constant, and turn detection is no
 longer a tuning constant. Counted honestly, the best measured path is **553 ms against a
 500 ms budget** — 53 ms over, with the candidate silence the obvious dial.

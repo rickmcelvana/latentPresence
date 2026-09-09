@@ -6,7 +6,7 @@
 
 - **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
 - **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
-- **Phase:** **0 — Foundations and spikes.** P0-T01, P0-T02, P0-T02b, P0-T03, P0-T04 and P0-T07 landed 2026-09-08. ADR-16 amended and ADR-20 accepted; 20 ADRs accepted, **ADR-21 proposed** (turn detection inside the pipeline budget) and awaiting Rick.
+- **Phase:** **0 — Foundations and spikes.** P0-T01, P0-T02, P0-T02b, P0-T03, P0-T04 and P0-T07 landed 2026-09-08. ADR-16 amended, ADR-20 accepted, **ADR-21 accepted 2026-09-09** (turn detection counts inside the pipeline budget). 21 ADRs accepted.
 - **Current task:** none in progress.
 - **Next task:** P0-T05 Spike B or P0-T06 Spike C.
 - **Blockers:** none for code. Rick-side items are in the backlog below.
@@ -15,7 +15,7 @@
 - **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22, rustc 1.97, axum 0.8. Verified facts in `docs/SURFACE.md`.
 - **Test counts (2026-09-08):** 150 TypeScript, 2 Rust. `pnpm gate` green; CI green on ubuntu and windows.
 - **Voice pipeline (Spike A, 2026-09-08):** 947 ms end of speech to first audio on WebGPU/fp32; 435 ms excluding the VAD hangover, against ADR-20's 500 ms pipeline budget. WebGPU is required — wasm synthesis is 3779 ms. q8 recognition is broken on WebGPU. Details in `docs/spikes/A-voice-loop.md`.
-- **Turn detection (Spike D, 2026-09-08):** **Go.** Smart Turn v3 on fp32/WebGPU with a 100 ms candidate and a 0.7 threshold answers in **168 ms** against the 512 ms hangover it replaces, and interrupted 0 of 51 held pauses across the five runs after the first. int8 will not load on WebGPU at all (loudly) and is a no-GPU fallback. First audio becomes ~593 ms sequential, ~553 ms if recognition overlaps turn detection (ADR-21, proposed). `docs/spikes/D-smart-turn.md`.
+- **Turn detection (Spike D, 2026-09-08):** **Go.** Smart Turn v3 on fp32/WebGPU with a 100 ms candidate and a 0.7 threshold answers in **168 ms** against the 512 ms hangover it replaces, and interrupted 0 of 51 held pauses across the five runs after the first. int8 will not load on WebGPU at all (loudly) and is a no-GPU fallback. First audio becomes ~593 ms sequential, ~553 ms once recognition overlaps turn detection - which ADR-21 makes P1's job, against an unchanged 500 ms budget. `docs/spikes/D-smart-turn.md`.
 - **Live:** `latentpresence.com` serves the site, docs and feedback form; a submission was confirmed end to end on 2026-09-08. Deploy is `git pull` + `pnpm build` on the server (ADR-16). `app.latentpresence.com` has no build behind it yet.
 
 ## Rick's backlog (things only Rick can do)
@@ -34,8 +34,8 @@ Done.
 
 - [ ✅ ] **Run `/spike/turn`** (P0-T07 go/no-go). Done — eight runs, 2026-09-08. Go on fp32/WebGPU at 100 ms / 0.7.
 
-- [ ✅ ] **Decide ADR-21** (proposed): turn detection counts inside ADR-20's 500 ms pipeline budget, and the budget stays at 500 rather than being restated to fit the measured 553 ms. The architect has taken the recommended option; say if you would rather move the number.
-Answer: Recommended ADR-21 option accepted.
+- [ ✅ ] **Decide ADR-21**: turn detection counts inside ADR-20's 500 ms pipeline budget, and the budget stays at 500 rather than being restated to fit the measured 553 ms.
+Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and the spike write-up.
 
 - [ ] Linux box available for Spike E (P0-T08) when it comes up.
 
@@ -61,7 +61,7 @@ Answer: Recommended ADR-21 option accepted.
 
 ## Last three sessions
 
-- 2026-09-08 claude — P0-T07 Spike D closed: built `/spike/turn` on Spike A's capture and VAD after reading the model's real input surface off both ONNX graphs, then Rick ran eight configurations. **168 ms against the 512 ms hangover, 0 of 51 held pauses interrupted.** Two harness defects the run exposed are fixed. ADR-21 proposed.
+- 2026-09-08 claude — P0-T07 Spike D closed: built `/spike/turn` on Spike A's capture and VAD after reading the model's real input surface off both ONNX graphs, then Rick ran eight configurations. **168 ms against the 512 ms hangover, 0 of 51 held pauses interrupted.** Two harness defects the run exposed are fixed. ADR-21 proposed, accepted the next day.
 - 2026-09-08 claude — P0-T04 Spike A: voice loop measured at 947 ms on WebGPU/fp32 (435 ms excluding the VAD hangover). Found q8 recognition broken on WebGPU, a kokoro-js `stream()` hang, and two measurement bugs of my own. ADR-20 accepted. Rick ran the machine.
 - 2026-09-08 claude — P0-T03 site: reviewed the Aider run (deploy script failed on every run, three bugs in its own test, four colour literals, invisible-without-JS content), Rick deployed and verified live. ADR-16 amended to `git pull`; rsync script deleted.
 

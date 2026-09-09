@@ -95,10 +95,10 @@ Design: a `TTSProvider` interface with capability flags (`streaming`, `wordTimes
 ### 3.3 Turn-taking, interruption, flow
 
 - VAD: Silero VAD in the browser (onnxruntime-web), the de facto standard.
-- End of turn: [Pipecat Smart Turn v3](https://huggingface.co/pipecat-ai/smart-turn-v3) (BSD-2, ONNX, CPU under 100 ms, audio-based, 23 languages) or [LiveKit turn-detector](https://huggingface.co/livekit/turn-detector) (open weights, transcript-based). Spike: run Smart Turn v3 in onnxruntime-web. Fallback: VAD silence timer with adaptive thresholds.
+- End of turn (**settled by Spike D, 2026-09-08**): [Pipecat Smart Turn v3](https://huggingface.co/pipecat-ai/smart-turn-v3) (BSD-2, ONNX, audio-based, 23 languages). It runs in onnxruntime-web: 8 ms an inference on fp32/WebGPU, and 168 ms from end of speech to an answer including the candidate silence, against the 512 ms VAD hangover it replaces. The adaptive-silence fallback is not needed and [LiveKit turn-detector](https://huggingface.co/livekit/turn-detector) was not evaluated. `docs/spikes/D-smart-turn.md`, ADR-21.
 - Barge-in: user speech during playback fades TTS within ~100 ms, cancels the LLM stream, and records what was actually heard (transcript truncated at the interruption point).
 - Backchannels: pre-synthesised "mm-hm", "right", breaths, played in user pauses below the end-of-turn threshold, gated by affect state.
-- Latency target (**superseded by ADR-20, 2026-09-08**): this said first audio under 800 ms after end of turn. Spike A measured 947 ms with no model call in the loop at all, so the single figure is replaced by two: **under 500 ms for the pipeline excluding the model call** (measured 435 ms on WebGPU), and an end-to-end number that is reported rather than promised because it depends on the user's LLM.
+- Latency target (**superseded by ADR-20, 2026-09-08; amended by ADR-21, 2026-09-09**): this said first audio under 800 ms after end of turn. Spike A measured 947 ms with no model call in the loop at all, so the single figure is replaced by two: **under 500 ms for the pipeline excluding the model call**, and an end-to-end number that is reported rather than promised because it depends on the user's LLM. That 500 ms now **includes turn detection**, which Spike D turned from a tuning constant into measured work; the best measured path is 553 ms, so the budget is a target rather than a description of what exists.
 - Reference architectures: [Kyutai Unmute](https://github.com/kyutai-labs/unmute) (modular STT/LLM/TTS, low latency), Pipecat, LiveKit Agents. We borrow the pipeline shape, not the Python.
 
 ### 3.4 Audio-native and speech-to-speech models
@@ -206,7 +206,7 @@ Code: MIT or Apache-2.0 (Rick to choose; recommendation is Apache-2.0 for the pa
 |---|---|
 | Uncanny valley with a semi-realistic body | Invest in micro-motion; offer a stylisation slider; keep stylised VRM characters supported |
 | In-browser ML pressure (VAD, STT, TTS, SER, face tracking, 3D at once) | Workers, WebGPU, quality tiers, and a "companion does the heavy lifting" mode |
-| Smart Turn v3 may not run in onnxruntime-web | Fallback to adaptive VAD timers; run it in the companion |
+| ~~Smart Turn v3 may not run in onnxruntime-web~~ **Retired 2026-09-08** — it runs, at 8 ms an inference on fp32/WebGPU (Spike D) | — |
 | Tauri on macOS and Linux WebKit | Browser-first, spikes in Phase 0, Electron as documented fallback |
 | MariaDB is heavy for casual users | Companion can also use SQLite; MariaDB is recommended, not required |
 | Kokoro-class in-browser TTS lacks emotion | Emotion via prosody hints (speed, pauses) plus expressive backends when available |

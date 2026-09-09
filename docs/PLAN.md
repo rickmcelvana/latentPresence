@@ -20,7 +20,7 @@ Deliverables
 - Spike A: in-browser voice loop latency. Silero VAD + Moonshine STT + Kokoro TTS in workers on WebGPU; measure end of speech to first audio.
 - Spike B: VRM in react-three-fiber with wawa-lipsync driving mouth shapes from a TTS audio node; measure frame time on integrated GPU.
 - Spike C: Rust companion skeleton with a MariaDB 11.8 vector table, insert and cosine search from a TS client, measured over the tunnel to the remote dev database and in CI.
-- Spike D: Smart Turn v3 in onnxruntime-web; if it fails, document the adaptive VAD fallback.
+- Spike D (**done 2026-09-08**): Smart Turn v3 in onnxruntime-web. Go — 168 ms on fp32/WebGPU against a 512 ms hangover, no held pause interrupted in the recommended configuration. `docs/spikes/D-smart-turn.md`.
 - Spike E: Tauri 2 shell on Windows (WebView2) running spikes A and B, then on Rick's Linux box; macOS deferred.
 
 Exit criteria: spikes documented in `docs/spikes/`, ADR-01 to ADR-07 flipped to accepted or amended.
@@ -32,7 +32,7 @@ Goal: talk to any LLM by voice or text with natural turn-taking, with a placehol
 Deliverables
 - `packages/core` conversation engine as an explicit state machine: `idle → listening → thinking → speaking → interrupted`, with an event bus.
 - Streaming LLM with sentence chunking to streaming TTS; audio queue with barge-in fade and cancellation.
-- Turn-taking using VAD plus Smart Turn or adaptive silence; backchannel scheduler (v1: simple).
+- Turn-taking using VAD plus Smart Turn v3, recognition overlapping turn detection (ADR-21); backchannel scheduler (v1: simple).
 - Provider settings UI: OpenAI-compatible base URL and key, Anthropic, NVIDIA, Ollama and LM Studio presets with CORS instructions; STT and TTS choices (browser, server, cloud).
 - Text chat panel with transcript, interruptions marked, latency badges.
 - Persona v1: system prompt template with name, voice, style; inline tag protocol (`[emote:]`, `[gesture:]`) parsed and stripped.
@@ -154,5 +154,5 @@ Deliverables
 - Every component is styled in `theme.css` the day it is written; the gate fails on an unstyled className (ADR-15).
 - Every phase adds tests: unit for `core`, integration for companion, Playwright for the voice loop with synthetic audio.
 - Every provider gets a fake implementation for tests and demos.
-- Performance budgets (ADR-20, measured in Spike A): voice pipeline under 500 ms from end of speech to first audio **excluding the model call** — 435 ms on WebGPU with fp32; end-to-end reported rather than promised, since it depends on the user's LLM. WebGPU is required for synthesis (wasm Kokoro is 3779 ms). 60 fps at 1080p on a mid-range GPU, under 400 MB browser memory without models.
+- Performance budgets (ADR-20, amended by ADR-21): voice pipeline under 500 ms from end of speech to first audio **excluding the model call**, and **including turn detection** — measured 553 ms on WebGPU with fp32 once Smart Turn v3 is counted and recognition overlaps it, so 53 ms over and not yet met; end-to-end reported rather than promised, since it depends on the user's LLM. WebGPU is required for synthesis (wasm Kokoro is 3779 ms). 60 fps at 1080p on a mid-range GPU, under 400 MB browser memory without models.
 - No telemetry. Ever.
