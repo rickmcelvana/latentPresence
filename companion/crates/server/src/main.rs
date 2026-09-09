@@ -9,6 +9,10 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use axum::{Json, Router, routing::get};
 use serde::Serialize;
 
+mod bench;
+mod db;
+mod vector;
+
 const DEFAULT_PORT: u16 = 8787;
 
 /// Matches `HealthResponseSchema` in `packages/protocol`. The browser parses this
@@ -66,6 +70,18 @@ fn bind_address() -> SocketAddr {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // `bench` is P0-T06's measurement run, not part of serving. It is a subcommand rather
+    // than a second binary so it shares the pool, the migrations and the encoding the
+    // product actually uses - a benchmark against a copy of the code measures the copy.
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("bench") {
+        let rows = args
+            .get(2)
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(100_000);
+        return bench::run(rows).await;
+    }
+
     let address = bind_address();
     let listener = tokio::net::TcpListener::bind(address).await?;
     println!("latentpresence-companion listening on http://{address}");
