@@ -85,13 +85,12 @@ pub fn decode(bytes: &[u8]) -> Result<Vec<f32>, VectorError> {
     Ok(decode_unchecked(bytes))
 }
 
-/// Unpack without the width check. Panics on a length that is not a multiple of four,
-/// which cannot come from the protocol and would be a bug on this side.
+/// Unpack without the width check. A trailing partial word is dropped rather than
+/// reported; only `decode` is allowed to see bytes off the wire, and it has already
+/// rejected any length that is not `EMBEDDING_BYTES`.
 pub fn decode_unchecked(bytes: &[u8]) -> Vec<f32> {
-    bytes
-        .chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes(chunk.try_into().expect("chunks_exact yields four bytes")))
-        .collect()
+    let (words, _partial) = bytes.as_chunks::<4>();
+    words.iter().copied().map(f32::from_le_bytes).collect()
 }
 
 #[cfg(test)]
