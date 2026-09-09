@@ -13,6 +13,9 @@ export const SPIKE_VOICE_PATH = '/spike/voice';
 /** The dev-only turn-detection measurement page (P0-T07). */
 export const SPIKE_TURN_PATH = '/spike/turn';
 
+/** The dev-only avatar and lip-sync measurement page (P0-T05). */
+export const SPIKE_AVATAR_PATH = '/spike/avatar';
+
 /**
  * The spike pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
@@ -39,6 +42,17 @@ const TurnDetect = lazy(async () => {
 });
 
 /**
+ * Spike B (P0-T05). Same guard again: three.js, three-vrm and react-three-fiber are a
+ * megabyte of bundle for a route nobody can open. Unlike the other two, this one stops
+ * being dev-only in Phase 2 — the avatar is the product.
+ */
+const AvatarStage = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./spikes/AvatarStage');
+  return { default: module.AvatarStage };
+});
+
+/**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
  * The stage and the call framing arrive in Phase 2.
@@ -60,6 +74,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
         <TurnDetect />
+      </Suspense>
+    );
+  }
+
+  if (import.meta.env.DEV && path === SPIKE_AVATAR_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
+        <AvatarStage />
       </Suspense>
     );
   }

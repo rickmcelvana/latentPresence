@@ -20,14 +20,20 @@
   },
   "devDependencies": {
     "@huggingface/transformers": "3.8.1",
+    "@pixiv/three-vrm": "3.5.5",
+    "@pixiv/three-vrm-animation": "3.5.5",
+    "@react-three/fiber": "9.7.0",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.5.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@types/three": "0.185.4",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^30.0.1",
     "kokoro-js": "1.2.1",
     "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4",
-    "vite": "^8.2.2"
+    "three": "0.185.1",
+    "vite": "^8.2.2",
+    "wawa-lipsync": "0.0.2"
   }
 }

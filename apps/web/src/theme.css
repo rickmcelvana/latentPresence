@@ -633,7 +633,10 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: var(--gap-lg);
-  max-width: 900px;
+  /* 960 px of stage, plus 24 px of panel padding and 24 px of page padding on each side.
+     Spike B measures at a fixed canvas size, so the column has to be able to hold one
+     rather than silently shrinking it (P0-T05). */
+  max-width: 1056px;
   margin: 0 auto;
   padding: var(--gap-xl) var(--gap-lg);
 }
@@ -712,6 +715,20 @@ kbd {
 
 .spike-results td {
   font-family: var(--font-mono);
+}
+
+/* The avatar stage. A fixed box, because a frame rate without the size it was measured
+   at is not a measurement (P0-T05). */
+.spike-stage {
+  position: relative;
+  overflow: hidden;
+  /* Definite, and not shrunk by the column it sits in. `max-width: 100%` here quietly
+     clamped a 960 px stage to 800 inside `.spike`, so every frame rate would have been
+     quoted against a size it was not measured at. The page scrolls instead. */
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
 }
 
 .spike-log {
