@@ -256,3 +256,74 @@ Notes that cost time once:
   each package's `exports`, so there is no build step for packages.
 - oxlint's `react` plugin has no `jsx-uses-react` rule; only `react/react-in-jsx-scope` needs turning
   off for the React 19 automatic runtime.
+
+## Avatar stack for P0-T05 — 2026-09-09, verified against the npm registry and the files themselves
+
+| Package | Version | Licence | Note |
+|---|---|---|---|
+| `three` | **0.185.1** | MIT | Not 0.186.0: published 2026-09-08 and inside pnpm 11's release-age window. three-vrm is developed against `^0.180.0`, r3f needs `>=0.156` |
+| `@pixiv/three-vrm` | 3.5.5 | MIT | Peer `three: >=0.137`. Pulls six sibling packages (`-core`, `-materials-mtoon`, `-materials-hdr-emissive-multiplier`, `-materials-v0compat`, `-node-constraint`, `-springbone`) all pinned to the same version |
+| `@pixiv/three-vrm-animation` | 3.5.5 | MIT | The VRMA loader plugin |
+| `@react-three/fiber` | 9.7.0 | MIT | Peer **`react: >=19 <19.3`** |
+| `wawa-lipsync` | 0.0.2 | MIT | See below. No `repository` field, no dependencies, 125 KB unpacked |
+
+`@react-three/drei` was not taken. The spike needs a camera and a loop, not a helper library.
+
+### The r3f peer range is a live constraint, not a formality
+
+`>=19 <19.3` against this repo's React `^19.2.8`. It resolves today and **a bump to React 19.3
+breaks it**, which is a thing to notice when it happens rather than discover in CI.
+
+### wawa-lipsync does not speak VRM
+
+Its `VISEMES` enum is the Oculus/ARKit set — fifteen values, `viseme_sil`, `viseme_PP`, `viseme_FF`,
+`viseme_TH`, `viseme_DD`, `viseme_kk`, `viseme_CH`, `viseme_SS`, `viseme_nn`, `viseme_RR`,
+`viseme_aa`, `viseme_E`, `viseme_I`, `viseme_O`, `viseme_U`. VRM 1.0 has **five** mouth expressions
+plus silence, which is also what `VisemeSchema` in `packages/protocol` says.
+
+So a mapping layer is not optional, and nine of the fifteen have no VRM equivalent at all. Read out
+of the published `dist/index.d.ts`, not from the README:
+
+- `Lipsync` is constructed with `{ fftSize, historySize }`, connected with
+  `connectAudio(el: HTMLMediaElement)` or `connectMicrophone()`, and stepped with `processAudio()`
+  once per frame. After each step, `lipsync.viseme` is the current winner and `lipsync.features`
+  carries `{ bands, deltaBands, volume, centroid }`.
+- Per-viseme scores exist (`computeVisemeScores`) but are a pure function taking features as
+  arguments rather than a property, so the ergonomic path is the winning viseme plus `volume` as
+  its weight.
+- It is version 0.0.2, last published 2025-11-07, with no repository link in the manifest. Small
+  enough to read end to end, which is the reason to accept it for a spike and the reason to keep
+  the mapping in our own code where it can be tested.
+
+### The sample avatar: redistributable, but not Creative Commons
+
+`VRM1_Constraint_Twist_Sample.vrm` from `pixiv/three-vrm` (10 776 032 bytes). The repository is MIT
+and carries no separate asset licence, and the file's own embedded `VRMC_vrm.meta` — read out of the
+glTF JSON chunk — says:
+
+```
+authors: ["pixiv Inc."]          copyrightInformation: (c) 2022 pixiv Inc.
+licenseUrl: https://vrm.dev/licenses/1.0/
+avatarPermission: everyone       commercialUsage: corporation
+allowRedistribution: true        modification: allowModificationRedistribution
+creditNotation: unnecessary
+```
+
+**That is the VRM Public License 1.0, not CC0 or CC-BY**, which is what ADR-11 asks of assets. It is
+redistributable on its own terms, so the honest handling is to fetch it at run time behind the same
+consent screen the model spikes use — size, licence and source on screen — rather than commit it and
+quietly acquire an asset that does not match the repo's licence policy. It is a placeholder until
+Alice lands in P7-T02 either way.
+
+It is VRM **1.0** (`specVersion: "1.0"`), 3 meshes, 171 nodes, 19 images, and uses
+`VRMC_springBone`, `VRMC_materials_mtoon` and `VRMC_node_constraint`. Its expression presets are
+`aa, ee, ih, oh, ou` plus `blink, blinkLeft, blinkRight`, `lookUp/Down/Left/Right` and
+`neutral, happy, angry, sad, relaxed, surprised` — **exactly the five visemes `VisemeSchema` defines**,
+and enough emotion presets for the P3 affect work.
+
+### The sample animation is a loader test, not an idle
+
+`test.vrma` from the same repo, 11 548 bytes: `VRMC_vrm_animation` spec 1.0, 51 human bones mapped,
+`expressions` and `lookAt` blocks present — but its single animation has **three channels**. It
+proves the VRMA loading path and nothing about how an idle looks. A real idle clip is an asset
+decision for P2/P7; there is no CC0 VRMA in that repository to take.
