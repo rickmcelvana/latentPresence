@@ -391,6 +391,32 @@ statement**, and a remote deployment wants the companion near the database rathe
 near the browser. Measure and report both; a LAN figure alone would say the network is
 free, which is true in exactly one deployment.
 
+### How a VECTOR column crosses the wire — 2026-09-09, verified by protocol probe
+
+Whether sqlx can read a `VECTOR` column at all decides how P0-T06 is written, and the
+answer people give in forum threads is "not yet, cast it to text". **That is wrong for
+MariaDB's implementation**, and the protocol says so:
+
+| | |
+|---|---|
+| Column type code for `VECTOR(4)` | **253** — `MYSQL_TYPE_VAR_STRING`, with the binary flag |
+| Payload for `[1,2,3,4]` | `0000803f 00000040 00004040 00008040` |
+| Interpretation | **little-endian `f32`, 4 bytes per dimension, no length prefix** |
+
+There is no new wire type. A `VECTOR` arrives looking exactly like a `VARBINARY`, so a
+driver that has never heard of vectors reads it as bytes and is correct — **sqlx needs no
+custom `Type` impl and no `::text` cast**; `Vec<u8>` on the way out, `&[u8]` on the way in.
+
+**Binding raw binary straight into a `VECTOR` column works.** A 16-byte little-endian f32
+buffer sent as a prepared-statement parameter inserted cleanly and read back through
+`VEC_ToText` as `[9,8,7,6]`. So the text path is optional, and for this project it is the
+wrong one: 768 dimensions is **3072 bytes as binary against roughly 7–8 KB as a JSON
+array**, plus server-side parsing on every insert. The benchmark should use binary and
+report the difference if it measures both.
+
+This also explains the `key_len` of 3074 seen on the index: 3072 bytes of vector plus a
+two-byte length prefix.
+
 ### The syntax, from the MariaDB docs
 
 ```sql
