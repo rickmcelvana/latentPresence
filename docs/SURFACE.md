@@ -366,6 +366,40 @@ about **307 MB of raw vectors against a 16 MB index cache**. That ratio is the t
 beside any latency figure, because a fast number at a low `ef_search` is a fast number for
 a worse answer.
 
+**Measured, later the same day: that ratio was the whole story.** Rick raised
+`mhnsw_max_cache_size` to 2 GiB and `innodb_buffer_pool_size` to 4 GiB (16 GB box) and
+restarted. Nothing else changed, and the same benchmark binary against the same 10,000 rows
+went from a **7.52 ms** top-8 median to **1.51 ms** — a fivefold difference bought with a
+setting, not with code. Both readings are honest; they measure different servers.
+
+Two things follow for anyone reading a vector benchmark, ours included. The 16 MB default
+is not a tuning preference, it is a cliff: below the working-set size the index cache
+thrashes and the latency you measure is disk, not search. And a vector latency quoted
+without `mhnsw_max_cache_size`, `innodb_buffer_pool_size` and `mhnsw_ef_search` beside it
+is not a number anybody can reproduce.
+
+`mhnsw_max_cache_size` is **`GLOBAL`-only** — `SET GLOBAL` needs `SUPER`, which a
+database-scoped application user does not have. It is an operator's setting, so it belongs
+in deployment documentation rather than in anything the product does at runtime.
+
+**`mhnsw_ef_search`, by contrast, is `SESSION`-settable** — `SET SESSION mhnsw_ef_search =
+40` succeeds as the ordinary application user (verified by live call, 2026-09-09). So
+recall-versus-latency is a dial the product can turn per connection at runtime, while the
+cache size is not.
+
+**To get exact nearest neighbours instead of approximate ones, add `+ 0` to the ordering
+expression.** `ORDER BY VEC_DISTANCE_COSINE(embedding, ?) LIMIT 8` plans as `type=index
+key=embedding`; `ORDER BY VEC_DISTANCE_COSINE(embedding, ?) + 0 LIMIT 8` plans as
+`type=ALL` with no key and returns the true top-k by full scan. Verified by `EXPLAIN` on
+both forms against the same table. Useful for measuring recall, and a trap in the other
+direction: an arithmetic expression wrapped around the distance silently costs the index.
+At 100k rows the exact form took **247 ms** against the index form's single-digit
+milliseconds.
+
+Two other forms that look like they should defeat the index **do not** — a derived table
+(`SELECT id FROM (SELECT id, VEC_DISTANCE_COSINE(…) AS d FROM t) x ORDER BY d`) and
+`LIMIT 8 OFFSET 0` both still plan as `type=index key=embedding`.
+
 ### `10.0.0.1` over the tunnel — too old, but it gave the number that matters
 
 | | |
