@@ -80,11 +80,11 @@ Stream tokens to sentence-or-clause chunks suited for TTS (handles abbreviations
 Done when: table-driven tests over 40 tricky inputs pass.
 
 ### P1-T05 TTS providers — owner: aider
-`kokoro-browser` (worker), `openai-compatible-tts` (server or cloud `/audio/speech`), `FakeTTSProvider`. Interface supports streaming chunks and optional word timestamps and emotion hints.
+`kokoro-browser` (worker), `openai-compatible-tts` (server or cloud `/audio/speech`), `FakeTTSProvider`. `kokoro-browser` requires WebGPU (3779 ms on wasm against 245 ms on WebGPU); without it the user is steered to a server endpoint. Build the `TextSplitterStream` and close it rather than passing a string to `stream()`, which never returns (Spike A, `docs/SURFACE.md`). Interface supports streaming chunks and optional word timestamps and emotion hints.
 Done when: both real providers play audio in the app; capability flags correct.
 
 ### P1-T06 STT providers — owner: aider
-`moonshine-browser` (worker), `whisper-browser`, `openai-compatible-stt` (`/audio/transcriptions`), `FakeSTTProvider`.
+`moonshine-browser` (worker), `whisper-browser`, `openai-compatible-stt` (`/audio/transcriptions`), `FakeSTTProvider`. `dtype` is set explicitly and q8 is never offered on WebGPU: it returns the same fluent nonsense for every utterance, with no error (Spike A, ADR-20).
 Done when: live transcription visible in the transcript panel with both a browser model and a server.
 
 ### P1-T07 VAD and turn detection — owner: main

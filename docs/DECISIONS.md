@@ -23,6 +23,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-17 | Development database is the remote MariaDB over the tunnel; latency policy for memory retrieval | accepted | 2026-09-07 |
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
+| ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | **proposed** | 2026-09-08 |
 
 ---
 
@@ -126,6 +127,40 @@ Rules: one `theme.css` per app is the single source of styling truth; every clas
   Caddy. No GitHub Pages, and no rsync: the `scripts/deploy.sh` written for P0-T03 was deleted the
   day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
   2026-09-08.
+
+## ADR-20 Voice pipeline performance (proposed 2026-09-08)
+
+From Spike A (`docs/spikes/A-voice-loop.md`), measured on Rick's machine over twenty
+clean turns.
+
+**The single 800 ms target in RESEARCH §3.3 is replaced by two numbers.** One figure
+covering both the pipeline and the model call hides which half is this project's
+responsibility, and the measured pipeline already exceeds 800 ms with no model in the
+loop.
+
+- **Pipeline: under 500 ms from end of speech to first audio, excluding the model call.**
+  Measured 435 ms on WebGPU with fp32, of which recognition is 180 ms and synthesis
+  245 ms. This is the number the project owns and can be held to.
+- **End to end: reported, not promised.** It depends on which LLM the user points at, and
+  a local model's first token can exceed the whole remaining allowance. The transcript
+  panel shows both (P1-T11 already specifies latency badges).
+
+**WebGPU is required for synthesis, not preferred.** Kokoro takes 3779 ms on wasm against
+245 ms on WebGPU — fifteen times slower, and not a conversation. ADR-01 stands as
+browser-first, but a machine without WebGPU is steered to a server TTS endpoint rather
+than left on wasm Kokoro. The BYO provider design already allows this, so ADR-06 is
+unchanged.
+
+**Recognition precision is chosen per stage and never inherited.** transformers.js
+defaults to q8 on wasm and fp32 on WebGPU. The WebGPU q8 path returns fluent nonsense —
+the same string for every utterance — with no error. P1-T06 sets `dtype` explicitly and
+does not offer q8 on WebGPU.
+
+**Consequence for P0-T07.** The VAD hangover is 512 ms of the 947 ms total: more than half
+the latency of the working configuration is waiting to be sure the person stopped talking.
+Smart Turn v3 is therefore load-bearing rather than an optimisation, and its spike should
+be treated as such.
+
 
 ## ADR-17 Development database
 

@@ -27,3 +27,10 @@ Left: `app.latentpresence.com` has no build behind it yet. The five Phase 0 spik
 Next: P0-T04 Spike A, browser voice loop latency (architect-direct).
 Decisions: ADR-16 amended — the server deploys by `git pull` then `pnpm build`, not rsync, so scripts/deploy.sh was deleted the day it was written and the DEPLOY_* variables left .env.example.
 Click-through: passed 2026-09-08 (/gallery, and the live site, docs and feedback form — a submission arrived tagged `App: Latent Presence`).
+
+## 2026-09-08 claude — P0-T04 Spike A
+Did: built the voice-loop harness at /spike/voice (consent screen, three workers, per-turn timing) and measured it with Rick at the microphone. Twenty clean turns: **947 ms end of speech to first audio on WebGPU/fp32**, of which 512 ms is the VAD hangover, against 4397 ms on wasm where Kokoro takes 3779 ms. Found four real problems on the way: q8 recognition returns the same fluent nonsense for every utterance on WebGPU, kokoro-js `stream()` given a string never returns, the production build was shipping 21 MB of ONNX Runtime for an unreachable route, and my own marks were kept in one slot while turns overlap. Write-up in `docs/spikes/A-voice-loop.md`.
+Left: mixed precision untested (fp32 costs 437 MB; Kokoro q8 works on WebGPU, so ~204 MB is likely). Cold-load and wasm-memory figures unmeasured.
+Next: P0-T07 Spike D, promoted ahead of B and C — the hangover is 54% of the latency, so turn detection decides whether the target is reachable.
+Decisions: **ADR-20 proposed** — WebGPU required for synthesis, precision chosen per stage never inherited, and the single 800 ms target replaced by two numbers because one figure hides which half the project owns.
+Click-through: n/a — Rick ran the spike directly and supplied the numbers.

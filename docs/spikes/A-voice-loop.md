@@ -1,6 +1,6 @@
 # Spike A — browser voice loop latency
 
-**Status: stack findings settled; timing numbers pending a clean run.**
+**Status: done. Go, with three conditions — see the bottom.**
 Task P0-T04. Brief: `docs/briefs/P0-T04.md`. Verified library facts: `docs/SURFACE.md`.
 
 ## The question
@@ -78,10 +78,9 @@ than the backend.
 
 ## Findings so far (2026-09-08)
 
-Three runs on Rick's machine — Chrome, Arozzi Sfera Pro at 48 kHz resampled to 16 kHz.
-Timing numbers are not usable yet (see *Why the first runs produced no timings*), but the
-following are settled, and they matter more than the milliseconds because they decide
-what P1 is allowed to build on.
+From the first three runs on Rick's machine — Chrome, Arozzi Sfera Pro at 48 kHz
+resampled to 16 kHz. These decide what P1 is allowed to build on, and they are what made
+the timing runs possible; the timings themselves are under **Results**.
 
 ### Recognition: q8 is unusable on WebGPU
 
@@ -136,28 +135,89 @@ turn now takes the speaker over, which is what barge-in does anyway.
 
 ## Results
 
-**Pending.** To be filled in from a run on Rick's machine, per backend:
+Ten turns per configuration, **zero incomplete**, every transcript correct. Four short
+questions repeated in rotation, spoken into an Arozzi Sfera Pro switched to cardioid, on
+headphones — the earlier runs had it omnidirectional beside open speakers and it was
+transcribing its own replies. Raw logs in `docs/spikes/raw/`.
 
-Raw logs from every run are kept in `docs/spikes/raw/`.
+Only the two configurations that recognise correctly are timed. Timing webgpu / q8 would
+measure a pipeline producing the wrong answer.
 
-Only the two configurations that recognise correctly are worth timing: **wasm / q8** and
-**webgpu / fp32**. Timing webgpu / q8 would measure a pipeline producing the wrong answer.
+| | wasm / q8 | webgpu / fp32 |
+|---|---|---|
+| End of speech → first audio, median | **4397 ms** | **947 ms** |
+| Worst | 4661 ms | 1225 ms |
+| — of which VAD hangover | 512 ms | 512 ms |
+| — of which recognition | 104 ms | 180 ms |
+| — of which synthesis | 3779 ms | 245 ms |
+| **Pipeline excluding the hangover** | **3885 ms** | **435 ms** |
+| Model load, warm | STT 1399, TTS 1168 ms | STT 1681, TTS 1639 ms |
+| Download | 122.8 MB | 436.9 MB |
+| JS heap after | 19 MB | 17 MB |
 
-### WASM / q8
+Utterances were 2.2–2.7 s of speech; recognition and synthesis times are for one short
+sentence, which is also the unit the sentence splitter will feed TTS in P1-T04.
 
-- Machine, browser, GPU:
-- Microphone, device sample rate, graph sample rate:
-- Model load (cold / warm):
-- Turns (target ≥ 10), incomplete:
-- **End of speech → first audio: median … ms, worst … ms**
-- Of which: hangover … ms, STT … ms, TTS … ms (medians)
-- JS heap after:
+### What the numbers say
 
-### WebGPU / fp32
+**Synthesis is the whole story, and it needs a GPU.** Kokoro is 15× slower on wasm —
+3779 ms against 245 ms. No amount of tuning closes that; an 82M-parameter vocoder is not a
+CPU job. Recognition, by contrast, is comfortable everywhere, and *faster* on wasm/q8
+(104 ms) than on webgpu/fp32 (180 ms): Moonshine tiny is small enough that GPU dispatch
+overhead outweighs the compute, and the quantised graph is smaller to move.
 
-_(same fields)_
+**The hangover is the largest single component of the good configuration.** 512 ms of the
+947 ms median is waiting to be sure the person stopped talking — it resolves at exactly
+512 ms every time, because the 500 ms threshold is checked at the 32 ms frame boundary.
+Actual pipeline work is 435 ms. That is the number to compare against the ~400 ms this
+spike was given, and it is close enough to call viable.
+
+**The 800 ms budget is not reachable as configured, and the LLM has not been added yet.**
+947 ms already exceeds it with no model call in the loop. The arithmetic that matters:
+
+- 435 ms of pipeline is fixed cost, on a GPU.
+- That leaves 365 ms of the 800 for turn detection *and* an LLM producing enough tokens to
+  start a sentence. A local model's first token alone is usually more than that.
+
+So either turn detection gets much cheaper, or 800 ms is the wrong target.
 
 ## Go / no-go
 
-**Pending the numbers.** The write-up must say which stage is at fault if the budget is
-missed, and must not report the WASM figure twice if WebGPU silently fell back.
+**Go**, with three conditions that are now evidence rather than opinion.
+
+1. **WebGPU is required, not preferred.** ADR-01 says browser-first; this says browser-first
+   *with a GPU*. The wasm path works and is honest as a fallback, but at 4.4 s per turn it
+   is not a conversation. A machine without WebGPU should be steered to a server TTS
+   endpoint rather than left on wasm Kokoro — which is what the BYO provider design already
+   allows, so nothing in ADR-06 has to change.
+
+2. **Precision is chosen per stage, never inherited.** transformers.js defaults to q8 on
+   wasm and fp32 on webgpu; the webgpu q8 path silently produces fluent nonsense. P1-T06's
+   browser STT provider must set `dtype` explicitly and must not offer q8 on WebGPU.
+
+3. **P0-T07 is now load-bearing, not optional.** The hangover is 54% of the good
+   configuration's latency. Smart Turn v3 cutting end-of-turn detection to ~150 ms would
+   bring first audio to roughly 600 ms with no other change, which is the difference
+   between a demo and a conversation.
+
+### Amendments this suggests
+
+- ADR-06 stands. The cascaded pipeline is fast enough; nothing here argues for going
+  omni-first.
+- **The 800 ms target in RESEARCH §3.3 should be restated** as two numbers: under 500 ms
+  from end of speech to first audio *excluding the model call*, and a separate end-to-end
+  figure that depends on which LLM the user points at. One number covering both hides
+  which part is the project's responsibility.
+
+### Left untested
+
+- **Mixed precision.** fp32 was used for both stages to get a clean comparison, which costs
+  436.9 MB. Kokoro q8 demonstrably works on WebGPU — it synthesised fine in the broken-q8
+  run, it was reading garbage text — so STT fp32 with TTS q8 would likely give the same
+  latency for about 204 MB. Worth measuring before P1 picks defaults.
+- **Cold load.** All load figures are warm, from browser cache. The first-run download of
+  123–437 MB is unmeasured and is the number a new user actually experiences.
+- **Memory.** 17–19 MB is the JS heap only; the models live in wasm memory, which this does
+  not count. `performance.measureUserAgentSpecificMemory()` would, and was not wired up.
+- **fp16 anywhere.** It will not load for Moonshine on WebGPU (ONNX Runtime wasm
+  exception); Kokoro fp16 was never reached.
