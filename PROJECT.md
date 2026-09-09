@@ -58,7 +58,14 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - [ ✅ ] **Before the Linux session:** the Tauri prerequisites. Done — verified 2026-09-09 on Fedora 44: `webkit2gtk4.1-devel` **2.52.5**, plus gtk3, libappindicator-gtk3, librsvg2, openssl and libxdo devel packages all present. `wget` is absent and stays absent; Tauri lists it only to fetch things and `curl` is there. Rust is Fedora's system **1.98.0** with no rustup, Node **22.23.2** via nvm.
 
-- [ ] **Back on Windows: run the Spike E shell** to fill in the WebView2 column. `pnpm dev`, then `cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml` and run the binary; pick "Spike E — webview capabilities" from the boot screen and the table prints to the terminal. WebView2 is Chromium so the expectation is that it passes — expectations are not results. That closes P0-T08.
+- [ ] **Back on Windows: run the Spike E shell** to fill in the WebView2 column. That is the only thing standing between P0-T08 and closed. In order:
+  1. `npm i -g pnpm@12` — do this **first**. The repo pin moved to 12.3.4 and a global pnpm 11 will fight it on the next install.
+  2. `git pull && pnpm install` — no LFS step; the Tauri icons are deliberately pinned out of LFS in `.gitattributes`.
+  3. `pnpm dev` in one terminal, and leave it up. The shell points at that dev server.
+  4. `cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml` in a second terminal, then run `apps\desktop\src-tauri\target\debug\latentpresence-desktop.exe` **from that terminal, not from Explorer** — the result prints to stdout and you need to be able to read it.
+  5. In the window, click **"Spike E — webview capabilities"**. A markdown table prints to the terminal; paste it back. No `GDK_BACKEND` business — that was Linux.
+  - **The WebView2 version records itself**: the probe prints `navigator.userAgent`, which carries the Chromium/Edge build. No registry key needed.
+  - WebView2 is Chromium so the expectation is that it passes. Expectations are not results — Chrome on Linux was "obviously fine" too, and it wasn't.
 
 - [ ] **On the Windows box, before its next `pnpm install`:** `npm i -g pnpm@12` (or enable corepack). The repo pin moved to **pnpm 12.3.4** on 2026-09-09 and a global pnpm 11 will fight it. CI needs nothing — `pnpm/action-setup@v6` reads the pin.
 
@@ -86,11 +93,13 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - 2026-09-09 claude — **P0-T06 Spike C closed. Go**: top-8 at 100k rows in **4.90 ms median / 8.47 ms p95** on the LAN, `EXPLAIN` naming the index, storage bit-exact, CI running the schema against a real MariaDB. The finding was a default: a **16 MB** `mhnsw_max_cache_size` against 307 MB of vectors cost 5x on queries and made 100k unreachable. Two of my own measurement failures — a periodic fixture that let a probe collide with a stored row at distance 0.000000, and a whole run taken while the server installed a kernel — were caught and every number re-taken on an idle box.
 - 2026-09-09 claude — P0-T05 Spike B closed on Rick's run: **570 frames, no misses at 120 Hz**, lip sync passes. Read as frame times it is a pass with unknown headroom, and it was taken at a quarter of the budgeted pixels, so a render-scale control was added and one 1080p reading is outstanding. Spike C unblocked by `.env`.
-- 2026-09-09 claude — ADR-21 accepted and followed through; then P0-T05 Spike B: verified the avatar stack against the registry and the asset files, found that wawa-lipsync speaks Oculus rather than VRM, and built `/spike/avatar`. The VRM and VRMA load. Frame rate needs a visible window, which this session did not have.
+- 2026-09-09 claude — **P0-T08 Spike E, Linux leg. No-go for Tauri on Linux**: `navigator.gpu` is undefined in WebKitGTK 2.52.5 and the JS bindings are absent from the build, so ADR-07's own fallback clause fires and Linux ships as companion + Chrome. Two controls earned their keep — MiniBrowser dying byte-identically proved the Wayland crash is the port rather than Tauri, and the Chrome control found that Chrome has no WebGPU adapter on that box either. Also got main green: rustc 1.98's new clippy lint had CI red on a docs commit, on both runners, before this session started.
 
 ## Spike harness
 
-Three dev-only routes in `apps/web`, all dropped from production builds by the guard in `vite.config.ts` (it fails the build if any reaches a chunk). `/spike/voice` is Spike A: consent, Silero + Moonshine + Kokoro, per-turn timing. `/spike/turn` is Spike D: the same capture and VAD with a short candidate silence, plus Smart Turn v3 and a labelled confusion matrix. `/spike/avatar` is Spike B: a VRM in react-three-fiber with lip sync and a frame-rate model. Delete A and D at P0-T09 if Phase 1 has replaced them; **B's guard entries come out at P2-T01 deliberately**, because the avatar stops being dev-only there.
+Four dev-only routes in `apps/web`, all dropped from production builds by the guard in `vite.config.ts` (it fails the build if any reaches a chunk). `/spike/voice` is Spike A: consent, Silero + Moonshine + Kokoro, per-turn timing. `/spike/turn` is Spike D: the same capture and VAD with a short candidate silence, plus Smart Turn v3 and a labelled confusion matrix. `/spike/avatar` is Spike B: a VRM in react-three-fiber with lip sync and a frame-rate model. `/spike/shell` is Spike E: the webview capability probe, which prints a copyable markdown table and hands it to the Tauri host if there is one. Delete A and D at P0-T09 if Phase 1 has replaced them; **B's guard entries come out at P2-T01 deliberately**, because the avatar stops being dev-only there. E goes when P0-T08 closes.
+
+The boot screen carries a **dev-only index of those routes**. It is not decoration: a Tauri window has no address bar, so without it the shell opens on `/` and no spike route is reachable from inside it at all.
 
 ## Quick links
 
