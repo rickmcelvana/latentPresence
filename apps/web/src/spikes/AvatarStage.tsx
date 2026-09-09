@@ -35,6 +35,17 @@ const STAGE_HEIGHT = 540;
 /** How hard to push `features.volume` before it counts as an open mouth. */
 const MOUTH_GAIN = 3;
 
+/**
+ * Render scales offered, as a multiplier on the stage's CSS size.
+ *
+ * `docs/PLAN.md` budgets 60 fps at **1080p**, and the stage is 960×540 — four times fewer
+ * pixels. Rather than extrapolate from a 540p reading, the canvas is asked for a larger
+ * drawing buffer: at 2× the backing store is 1916×1076, which is 2.06 megapixels against
+ * 1080p's 2.07. Same shader work, same fill rate, and it still fits the column.
+ */
+const RENDER_SCALES = [1, 2] as const;
+type RenderScale = (typeof RENDER_SCALES)[number];
+
 type Phase = 'consent' | 'loading' | 'ready';
 type Power = 'high-performance' | 'low-power';
 
@@ -167,6 +178,7 @@ function Stage({
 export function AvatarStage(): ReactElement {
   const [phase, setPhase] = useState<Phase>('consent');
   const [power, setPower] = useState<Power>('high-performance');
+  const [renderScale, setRenderScale] = useState<RenderScale>(1);
   const [status, setStatus] = useState('Waiting for consent.');
   const [log, setLog] = useState<readonly string[]>([]);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -277,7 +289,7 @@ export function AvatarStage(): ReactElement {
   const asMarkdown = (): string => {
     const stats = result?.measured === true ? result.stats : null;
     return [
-      `### ${power} · asked for ${STAGE_WIDTH}×${STAGE_HEIGHT} · dpr ${window.devicePixelRatio}`,
+      `### ${power} · stage ${STAGE_WIDTH}×${STAGE_HEIGHT} at ${renderScale}× · display dpr ${window.devicePixelRatio}`,
       '',
       `- canvas actually rendered at: ${canvasSize === null ? 'not read' : `${canvasSize[0]}×${canvasSize[1]}`}`,
       `- WebGL renderer: ${renderer}`,
@@ -341,6 +353,25 @@ export function AvatarStage(): ReactElement {
 
           <div className="spike-controls">
             <label className="field">
+              <span className="field-label">Render scale</span>
+              <select
+                className="select"
+                onChange={(event) => {
+                  setRenderScale(Number(event.target.value) as RenderScale);
+                  recorder.reset();
+                  setResult(null);
+                }}
+                value={renderScale}
+              >
+                {RENDER_SCALES.map((scale) => (
+                  <option key={scale} value={scale}>
+                    {scale}× — {STAGE_WIDTH * scale}×{STAGE_HEIGHT * scale}
+                    {scale === 2 ? ' (1080p-equivalent)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
               <span className="field-label">GPU preference</span>
               <select
                 className="select"
@@ -365,7 +396,7 @@ export function AvatarStage(): ReactElement {
         <section className="panel">
           <div className="panel-header">
             <span className="panel-title">
-              {power} · {STAGE_WIDTH}×{STAGE_HEIGHT}
+              {power} · {STAGE_WIDTH}×{STAGE_HEIGHT} at {renderScale}×
             </span>
             {stats === null ? (
               <span className="pill">measuring…</span>
@@ -381,9 +412,12 @@ export function AvatarStage(): ReactElement {
             {loaded === null ? null : (
               <Canvas
                 camera={{ fov: 30, near: 0.1, far: 20 }}
-                // Remounted when the preference changes: a WebGL context cannot be moved
-                // to another adapter, so reusing it would report the first one forever.
-                key={power}
+                // `dpr` sets the drawing buffer relative to the CSS size, which is how the
+                // 1080p reading is taken without a 1080p-wide page.
+                dpr={renderScale}
+                // Remounted when either changes: a WebGL context cannot be moved to
+                // another adapter, so reusing it would report the first one forever.
+                key={`${power}-${renderScale}`}
                 gl={{ antialias: true, powerPreference: power }}
               >
                 <Stage
