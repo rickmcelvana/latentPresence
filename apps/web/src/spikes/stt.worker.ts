@@ -15,13 +15,13 @@ const MODEL_ID = 'onnx-community/moonshine-tiny-ONNX';
 
 type InboundMessage =
   | { readonly type: 'load'; readonly device: 'webgpu' | 'wasm'; readonly dtype: SpikeDtype }
-  | { readonly type: 'transcribe'; readonly samples: Float32Array };
+  | { readonly type: 'transcribe'; readonly samples: Float32Array; readonly turnId: number };
 
 type OutboundMessage =
   | { readonly type: 'ready'; readonly loadMs: number }
   | { readonly type: 'progress'; readonly file: string; readonly percent: number }
-  | { readonly type: 'result'; readonly text: string }
-  | { readonly type: 'error'; readonly message: string };
+  | { readonly type: 'result'; readonly text: string; readonly turnId: number }
+  | { readonly type: 'error'; readonly message: string; readonly turnId: number | null };
 
 /**
  * ONNX Runtime throws raw wasm exception pointers, which stringify to a bare number like
@@ -85,9 +85,13 @@ self.addEventListener('message', (event: MessageEvent<InboundMessage>) => {
       const text = Array.isArray(output)
         ? output.map((part) => part.text).join(' ')
         : output.text;
-      post({ type: 'result', text: text.trim() });
+      post({ type: 'result', text: text.trim(), turnId: message.turnId });
     } catch (error) {
-      post({ type: 'error', message: describe(error) });
+      post({
+        type: 'error',
+        message: describe(error),
+        turnId: message.type === 'transcribe' ? message.turnId : null,
+      });
     }
   })();
 });

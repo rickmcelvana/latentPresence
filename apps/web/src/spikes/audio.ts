@@ -129,6 +129,27 @@ export class Playback {
   private context: AudioContext | null = null;
   private nextStart = 0;
   private clockOffset = 0;
+  private scheduled: AudioBufferSourceNode[] = [];
+
+  /**
+   * Drop whatever is still queued and start scheduling from now.
+   *
+   * Without this, a new turn's first chunk is scheduled behind the tail of the previous
+   * answer, and "first audio" measures how long the last reply was rather than how long
+   * this one took to produce. A real pipeline abandons the old answer on barge-in
+   * (P1-T08); the spike does the same so the number means what it says.
+   */
+  reset(): void {
+    for (const source of this.scheduled) {
+      try {
+        source.stop();
+      } catch {
+        // Already finished; nothing to stop.
+      }
+    }
+    this.scheduled = [];
+    this.nextStart = 0;
+  }
 
   /** Returns the performance-clock time the chunk will begin sounding. */
   enqueue(samples: Float32Array, sampleRate: number): number {
@@ -150,14 +171,15 @@ export class Playback {
 
     const startAt = Math.max(context.currentTime, this.nextStart);
     source.start(startAt);
+    this.scheduled.push(source);
     this.nextStart = startAt + buffer.duration;
 
     return startAt * 1000 + this.clockOffset;
   }
 
   async close(): Promise<void> {
+    this.reset();
     await this.context?.close();
     this.context = null;
-    this.nextStart = 0;
   }
 }

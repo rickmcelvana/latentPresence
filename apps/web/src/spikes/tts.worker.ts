@@ -22,7 +22,7 @@ const VOICE = 'af_heart';
 
 type InboundMessage =
   | { readonly type: 'load'; readonly device: 'webgpu' | 'wasm'; readonly dtype: SpikeDtype }
-  | { readonly type: 'speak'; readonly text: string };
+  | { readonly type: 'speak'; readonly text: string; readonly turnId: number };
 
 type OutboundMessage =
   | { readonly type: 'ready'; readonly loadMs: number }
@@ -32,9 +32,10 @@ type OutboundMessage =
       readonly samples: Float32Array;
       readonly sampleRate: number;
       readonly index: number;
+      readonly turnId: number;
     }
-  | { readonly type: 'done' }
-  | { readonly type: 'error'; readonly message: string };
+  | { readonly type: 'done'; readonly turnId: number }
+  | { readonly type: 'error'; readonly message: string; readonly turnId: number | null };
 
 /**
  * ONNX Runtime throws raw wasm exception pointers, which stringify to a bare number like
@@ -70,7 +71,7 @@ async function load(device: 'webgpu' | 'wasm', dtype: SpikeDtype): Promise<void>
   post({ type: 'ready', loadMs: performance.now() - started });
 }
 
-async function speak(text: string): Promise<void> {
+async function speak(text: string, turnId: number): Promise<void> {
   if (tts === null) throw new Error('speak before load');
 
   const sentences = new TextSplitterStream();
@@ -83,12 +84,12 @@ async function speak(text: string): Promise<void> {
     // without the library's own reference going with it.
     const samples = Float32Array.from(chunk.audio.audio);
     post(
-      { type: 'audio', samples, sampleRate: chunk.audio.sampling_rate, index },
+      { type: 'audio', samples, sampleRate: chunk.audio.sampling_rate, index, turnId },
       [samples.buffer],
     );
     index += 1;
   }
-  post({ type: 'done' });
+  post({ type: 'done', turnId });
 }
 
 self.addEventListener('message', (event: MessageEvent<InboundMessage>) => {
@@ -96,9 +97,13 @@ self.addEventListener('message', (event: MessageEvent<InboundMessage>) => {
   void (async () => {
     try {
       if (message.type === 'load') await load(message.device, message.dtype);
-      else await speak(message.text);
+      else await speak(message.text, message.turnId);
     } catch (error) {
-      post({ type: 'error', message: describe(error) });
+      post({
+        type: 'error',
+        message: describe(error),
+        turnId: message.type === 'speak' ? message.turnId : null,
+      });
     }
   })();
 });

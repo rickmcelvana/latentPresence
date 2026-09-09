@@ -41,11 +41,12 @@ type InboundMessage =
 
 type OutboundMessage =
   | { readonly type: 'ready'; readonly stateDims: readonly number[] }
-  | { readonly type: 'speech-start'; readonly at: number }
-  | { readonly type: 'speech-end'; readonly at: number }
+  | { readonly type: 'speech-start'; readonly at: number; readonly turnId: number }
+  | { readonly type: 'speech-end'; readonly at: number; readonly turnId: number }
   | {
       readonly type: 'settled';
       readonly at: number;
+      readonly turnId: number;
       readonly samples: Float32Array;
       readonly speechStartAt: number;
       readonly speechEndAt: number;
@@ -83,6 +84,12 @@ let speechStartAt = 0;
 let lastSpeechAt = 0;
 /** Highest Silero score in the current utterance, so a marginal detection is visible. */
 let maxProbability = 0;
+/**
+ * Identifies the utterance. A turn's recognition and synthesis outlive the next
+ * utterance starting — someone speaks again while the answer is still playing — so every
+ * mark has to say which turn it belongs to or two turns share one set and both are lost.
+ */
+let turnId = 0;
 
 function freshState(): ort.Tensor {
   // Silero v5 carries one unified state of [2, 1, 128]; earlier versions used separate
@@ -130,12 +137,13 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
 
   if (!speaking && probability >= SPEECH_ON) {
     speaking = true;
+    turnId += 1;
     speechStartAt = at;
     lastSpeechAt = at;
     // The pre-roll becomes the head of the utterance, so the first word survives.
     utterance = [...preroll];
     preroll = [];
-    post({ type: 'speech-start', at });
+    post({ type: 'speech-start', at, turnId });
     return;
   }
 
@@ -164,11 +172,12 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
       if (magnitude > peak) peak = magnitude;
     }
 
-    post({ type: 'speech-end', at: lastSpeechAt });
+    post({ type: 'speech-end', at: lastSpeechAt, turnId });
     post(
       {
         type: 'settled',
         at,
+        turnId,
         samples: joined,
         speechStartAt,
         speechEndAt: lastSpeechAt,

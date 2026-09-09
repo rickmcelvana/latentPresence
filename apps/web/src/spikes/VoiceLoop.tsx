@@ -31,6 +31,11 @@ interface CompletedTurn {
 
 const BUDGET_MS = 800;
 
+/** Milliseconds as whole numbers: sub-millisecond digits are noise, not precision. */
+function ms(value: number | null): string {
+  return value === null ? 'n/a' : String(Math.round(value));
+}
+
 export function VoiceLoop(): ReactElement {
   const [phase, setPhase] = useState<Phase>('consent');
   const [backend, setBackend] = useState<Backend>('webgpu');
@@ -51,8 +56,18 @@ export function VoiceLoop(): ReactElement {
   const tts = useRef<Worker | null>(null);
   const capture = useRef<CaptureHandle | null>(null);
   const playback = useRef<Playback>(new Playback());
-  const marks = useRef<TurnMarks>(EMPTY_MARKS);
-  const transcript = useRef('');
+  /**
+   * Marks and transcripts per turn, not one slot.
+   *
+   * Recognition and synthesis for one turn outlive the next utterance starting - someone
+   * speaks again while the answer is still playing. With a single slot the new
+   * speech-start wiped the turn in flight and the two scrambled each other; the first
+   * real run produced fifteen turns and fifteen incomplete results because of it.
+   */
+  const marksByTurn = useRef<Map<number, TurnMarks>>(new Map());
+  const textByTurn = useRef<Map<number, string>>(new Map());
+  /** Which turn owns the speaker right now, so a new answer can take it over. */
+  const playingTurn = useRef<number | null>(null);
   /** The last utterance handed to the recogniser, kept so it can be played back. */
   const lastRecording = useRef<Float32Array | null>(null);
 
@@ -60,11 +75,17 @@ export function VoiceLoop(): ReactElement {
     setLog((previous) => [...previous.slice(-40), line]);
   }, []);
 
-  const finishTurn = useCallback(() => {
-    const result = timeTurn(marks.current);
-    setTurns((previous) => [...previous, { text: transcript.current, result }]);
-    marks.current = EMPTY_MARKS;
-    transcript.current = '';
+  const updateMarks = useCallback((turnId: number, patch: Partial<TurnMarks>) => {
+    const current = marksByTurn.current.get(turnId) ?? EMPTY_MARKS;
+    marksByTurn.current.set(turnId, { ...current, ...patch });
+  }, []);
+
+  const finishTurn = useCallback((turnId: number) => {
+    const result = timeTurn(marksByTurn.current.get(turnId) ?? EMPTY_MARKS);
+    const text = textByTurn.current.get(turnId) ?? '';
+    setTurns((previous) => [...previous, { text, result }]);
+    marksByTurn.current.delete(turnId);
+    textByTurn.current.delete(turnId);
     setSpeaking(false);
     const memory = (performance as { memory?: { usedJSHeapSize: number } }).memory;
     if (memory) setHeapMb(Math.round(memory.usedJSHeapSize / 1_000_000));
@@ -97,10 +118,12 @@ export function VoiceLoop(): ReactElement {
     }
 
     let ready = 0;
-    const oneReady = (name: string, ms?: number) => {
+    const oneReady = (name: string, loadedInMs?: number) => {
       ready += 1;
-      if (typeof ms === 'number') setLoadMs((previous) => ({ ...previous, [name]: Math.round(ms) }));
-      say(`${name} ready${typeof ms === 'number' ? ` in ${Math.round(ms)} ms` : ''}`);
+      if (typeof loadedInMs === 'number') {
+        setLoadMs((previous) => ({ ...previous, [name]: Math.round(loadedInMs) }));
+      }
+      say(`${name} ready${typeof loadedInMs === 'number' ? ` in ${Math.round(loadedInMs)} ms` : ''}`);
       if (ready === 3) {
         setPhase('ready');
         setStatus('Models loaded. Start the microphone and say something.');
@@ -113,13 +136,13 @@ export function VoiceLoop(): ReactElement {
         say(`VAD state shape ${JSON.stringify(message['stateDims'])}`);
         oneReady('VAD');
       } else if (message['type'] === 'speech-start') {
-        marks.current = { ...EMPTY_MARKS, speechStart: message['at'] as number };
+        updateMarks(message['turnId'] as number, { speechStart: message['at'] as number });
         setSpeaking(true);
         setStatus('Listening — you are speaking.');
       } else if (message['type'] === 'speech-end') {
-        marks.current = { ...marks.current, speechEnd: message['at'] as number };
+        updateMarks(message['turnId'] as number, { speechEnd: message['at'] as number });
       } else if (message['type'] === 'settled') {
-        marks.current = { ...marks.current, vadSettled: message['at'] as number };
+        updateMarks(message['turnId'] as number, { vadSettled: message['at'] as number });
         const stats = message['stats'] as {
           sampleCount: number;
           durationMs: number;
@@ -136,7 +159,7 @@ export function VoiceLoop(): ReactElement {
         setHasRecording(true);
         setStatus('Recognising…');
         stt.current?.postMessage(
-          { type: 'transcribe', samples: message['samples'] },
+          { type: 'transcribe', samples: message['samples'], turnId: message['turnId'] },
           [(message['samples'] as Float32Array).buffer],
         );
       } else if (message['type'] === 'error') {
@@ -150,21 +173,23 @@ export function VoiceLoop(): ReactElement {
       else if (message['type'] === 'progress') setStatus(`STT ${String(message['file'])} ${String(message['percent'])}%`);
       else if (message['type'] === 'result') {
         const now = performance.now();
+        const turnId = message['turnId'] as number;
         const text = String(message['text']);
-        transcript.current = text;
-        marks.current = { ...marks.current, sttFirstResult: now, sttDone: now };
+        textByTurn.current.set(turnId, text);
+        updateMarks(turnId, { sttFirstResult: now, sttDone: now });
         if (text === '') {
           say('Empty transcript — turn discarded.');
-          finishTurn();
+          finishTurn(turnId);
           setStatus('Nothing recognised. Try again.');
           return;
         }
         say(`transcript: "${text}" — asking for synthesis`);
         setStatus(`Speaking back: "${text}"`);
-        tts.current?.postMessage({ type: 'speak', text });
+        tts.current?.postMessage({ type: 'speak', text, turnId });
       } else if (message['type'] === 'error') {
         say(`STT error: ${String(message['message'])}`);
-        finishTurn();
+        const failed = message['turnId'];
+        if (typeof failed === 'number') finishTurn(failed);
       }
     });
 
@@ -174,26 +199,35 @@ export function VoiceLoop(): ReactElement {
       else if (message['type'] === 'progress') setStatus(`TTS ${String(message['file'])} ${String(message['percent'])}%`);
       else if (message['type'] === 'audio') {
         say(`TTS chunk ${String(message['index'])}, ${(message['samples'] as Float32Array).length} samples`);
+        const turnId = message['turnId'] as number;
+        // A new turn takes the speaker from the old one. Otherwise its first chunk is
+        // scheduled behind the previous answer's tail, and "first audio" would measure
+        // how long the last reply was rather than how long this one took to produce.
+        if (playingTurn.current !== turnId) {
+          playback.current.reset();
+          playingTurn.current = turnId;
+        }
         const startsAt = playback.current.enqueue(
           message['samples'] as Float32Array,
           message['sampleRate'] as number,
         );
         if ((message['index'] as number) === 0) {
-          marks.current = { ...marks.current, ttsFirstAudio: startsAt };
+          updateMarks(turnId, { ttsFirstAudio: startsAt });
         }
       } else if (message['type'] === 'done') {
-        finishTurn();
+        finishTurn(message['turnId'] as number);
         setStatus('Listening.');
       } else if (message['type'] === 'error') {
         say(`TTS error: ${String(message['message'])}`);
-        finishTurn();
+        const failed = message['turnId'];
+        if (typeof failed === 'number') finishTurn(failed);
       }
     });
 
     vad.current.postMessage({ type: 'load' });
     stt.current.postMessage({ type: 'load', device: backend, dtype });
     tts.current.postMessage({ type: 'load', device: backend, dtype });
-  }, [backend, dtype, finishTurn, say]);
+  }, [backend, dtype, finishTurn, say, updateMarks]);
 
   const startMic = useCallback(async () => {
     const handle = await startCapture((samples, at) => {
@@ -228,8 +262,8 @@ export function VoiceLoop(): ReactElement {
       `- load: ${Object.entries(loadMs).map(([k, v]) => `${k} ${v} ms`).join(', ') || 'n/a'}`,
       `- JS heap after: ${heapMb === null ? 'not reported' : `${heapMb} MB`}`,
       `- turns: ${summary.runs} (${summary.incomplete} incomplete)`,
-      `- **end of speech to first audio: median ${summary.medianEndToFirstAudioMs ?? 'n/a'} ms, worst ${summary.worstEndToFirstAudioMs ?? 'n/a'} ms**`,
-      `- of which hangover ${summary.medianHangoverMs ?? 'n/a'} ms, STT ${summary.medianSttMs ?? 'n/a'} ms, TTS ${summary.medianTtsMs ?? 'n/a'} ms (medians)`,
+      `- **end of speech to first audio: median ${ms(summary.medianEndToFirstAudioMs)} ms, worst ${ms(summary.worstEndToFirstAudioMs)} ms**`,
+      `- of which hangover ${ms(summary.medianHangoverMs)} ms, STT ${ms(summary.medianSttMs)} ms, TTS ${ms(summary.medianTtsMs)} ms (medians)`,
       '',
       '| # | transcript | end→audio | hangover | STT | TTS |',
       '|---|---|---|---|---|---|',
@@ -351,11 +385,13 @@ export function VoiceLoop(): ReactElement {
                 // does not speak either, TTS is the fault and the transcript is a
                 // separate problem.
                 say('synthesis self-test: fixed sentence, no microphone involved');
-                marks.current = EMPTY_MARKS;
-                transcript.current = '(self-test)';
+                // Negative ids cannot collide with the VAD's, which count up from 1.
+                const selfTestId = -Date.now();
+                textByTurn.current.set(selfTestId, '(synthesis self-test)');
                 tts.current?.postMessage({
                   type: 'speak',
                   text: 'The quick brown fox jumps over the lazy dog.',
+                  turnId: selfTestId,
                 });
               }}
               type="button"
@@ -388,8 +424,7 @@ export function VoiceLoop(): ReactElement {
         <section className="panel">
           <div className="panel-header">
             <span className="panel-title">
-              Median {summary.medianEndToFirstAudioMs ?? '—'} ms · worst{' '}
-              {summary.worstEndToFirstAudioMs ?? '—'} ms
+              Median {ms(summary.medianEndToFirstAudioMs)} ms · worst {ms(summary.worstEndToFirstAudioMs)} ms
             </span>
             <span
               className={`pill ${

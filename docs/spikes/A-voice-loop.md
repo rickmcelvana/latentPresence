@@ -1,6 +1,6 @@
 # Spike A — browser voice loop latency
 
-**Status: harness built and verified; numbers pending a run on Rick's machine.**
+**Status: stack findings settled; timing numbers pending a clean run.**
 Task P0-T04. Brief: `docs/briefs/P0-T04.md`. Verified library facts: `docs/SURFACE.md`.
 
 ## The question
@@ -76,11 +76,74 @@ than the backend.
   build fail, then restoring it. Before that guard existed, a production build shipped
   three worker chunks and a 21 MB ONNX Runtime wasm to a route nobody could open.
 
+## Findings so far (2026-09-08)
+
+Three runs on Rick's machine — Chrome, Arozzi Sfera Pro at 48 kHz resampled to 16 kHz.
+Timing numbers are not usable yet (see *Why the first runs produced no timings*), but the
+following are settled, and they matter more than the milliseconds because they decide
+what P1 is allowed to build on.
+
+### Recognition: q8 is unusable on WebGPU
+
+| Backend | Precision | Result |
+|---|---|---|
+| wasm | q8 | **Correct.** "What's the weather like today?", "Who owns that silver car?" |
+| webgpu | fp32 | **Correct.** Same sentences, recognised cleanly |
+| webgpu | q8 | **Broken.** The same string for every utterance: `"quartifies prconfirminé…"` with a tail that repeats as the utterance grows |
+| webgpu | fp16 | **Will not load.** ONNX Runtime wasm exception |
+
+Identical output for different audio is not a model guessing badly — the encoder result is
+not reaching the decoder. Capture was excluded first: the buffer handed to the recogniser
+plays back as clean speech, 31744 samples for 1984 ms (16 kHz exactly), RMS 0.1–0.26,
+Silero confidence 0.97–1.00.
+
+**Consequence for P1:** the browser STT provider cannot default to `q8` on WebGPU. Either
+the backend is chosen per precision, or WebGPU takes fp32 and pays 109 MB for Moonshine
+instead of 28 MB. Neither is free, and the choice needs to be explicit rather than left to
+transformers.js, which defaults to q8 on wasm and fp32 on webgpu.
+
+### Synthesis: kokoro-js `stream()` with a string never returns
+
+Found by reading its `dist`, then fixed here: it builds a `TextSplitterStream`, pushes the
+text and never closes it, so the iterator waits forever for input that cannot arrive. The
+splitter is now constructed, pushed and closed on our side, which keeps per-sentence
+streaming. Details in `docs/SURFACE.md`.
+
+### The microphone hears the answer
+
+Several transcripts contain the previous reply back again — "Who owns that silver car?
+What's the weather like today? What's the weather like today?" — because the speakers were
+open while the mic was live. Browser echo cancellation is on and does not cover an external
+microphone next to speakers.
+
+For measurement this has to be removed, not worked around: **the timing runs need
+headphones**. For the product it is the real problem barge-in solves (P1-T08), and it is a
+point in favour of doing that properly rather than by muting the microphone during
+playback.
+
+### Why the first runs produced no timings
+
+A defect in this harness, not in the stack. Marks were held in one slot, and turns overlap
+— someone speaks again while the previous answer is still playing — so a new `speech-start`
+wiped the turn in flight and the two scrambled each other. Fifteen turns, fifteen
+incomplete. The timing model refused to produce numbers from the wreckage, which is what it
+is for, but the harness had to be fixed: every mark now carries a turn id from the VAD
+through recognition and synthesis.
+
+The playback queue had the same shape of bug. A new answer was scheduled behind the tail of
+the previous one, so "first audio" would have measured how long the *last* reply was. A new
+turn now takes the speaker over, which is what barge-in does anyway.
+
 ## Results
 
 **Pending.** To be filled in from a run on Rick's machine, per backend:
 
-### WebGPU / q8
+Raw logs from every run are kept in `docs/spikes/raw/`.
+
+Only the two configurations that recognise correctly are worth timing: **wasm / q8** and
+**webgpu / fp32**. Timing webgpu / q8 would measure a pipeline producing the wrong answer.
+
+### WASM / q8
 
 - Machine, browser, GPU:
 - Microphone, device sample rate, graph sample rate:
@@ -90,7 +153,7 @@ than the backend.
 - Of which: hangover … ms, STT … ms, TTS … ms (medians)
 - JS heap after:
 
-### WASM / q8
+### WebGPU / fp32
 
 _(same fields)_
 
