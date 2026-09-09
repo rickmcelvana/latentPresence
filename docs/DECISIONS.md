@@ -168,7 +168,23 @@ out of the 435 ms. The 500 ms figure stands; what counts against it has changed.
 
 ## ADR-17 Development database
 
-Development uses the always-on MariaDB on Rick's remote Linux server at `10.0.0.1` over the tunnel (Postgres is also there, unused). Connection details live in `.env` (never committed); the companion reads `DATABASE_URL`. Because every memory retrieval crosses a WAN round trip, the memory kernel is designed for it from day one: one batched retrieval call per turn, a small in-process cache for self-model blocks and recent turns, and writes that never block the speaking path. Spike C measures the tunnel RTT so the latency budget is real. Users without a MariaDB get the SQLite adapter automatically.
+Development uses an always-on MariaDB on one of Rick's Linux servers. Connection details live in `.env` (never committed); the companion reads `DATABASE_URL`. Because a memory retrieval may cross a WAN round trip, the memory kernel is designed for it from day one: one batched retrieval call per turn, a small in-process cache for self-model blocks and recent turns, and writes that never block the speaking path. Users without a MariaDB get the SQLite adapter automatically.
+
+**Amended 2026-09-09.** The host moved from `10.0.0.1` over the tunnel to `192.168.40.101`
+on the LAN, because the first is MariaDB 10.11.18 and the `VECTOR` type needs 11.7.1+. The
+new one is 11.8.8 and does everything P0-T06 asks of it.
+
+The design above stands, and is now measured rather than assumed. Thirty round trips to
+each: **39.8 ms p50 over the tunnel, 0.43 ms p50 on the LAN** (`docs/SURFACE.md`). Against
+the 100 ms per-turn retrieval budget, one statement fits either way and two do not fit
+remotely — so "one batched retrieval call per turn" is a requirement with a number behind
+it, not a precaution.
+
+**What the move costs us:** development no longer crosses a WAN, so the dev loop will not
+notice a chatty retrieval design. The pressure that would have caught it is gone. P4 keeps
+the one-call rule deliberately, and P0-T06 reports both networks rather than only the fast
+one — a LAN figure alone would say the network is free, which is true in exactly one
+deployment.
 
 ## ADR-18 Default character: Alice
 
