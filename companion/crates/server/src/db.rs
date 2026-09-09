@@ -238,6 +238,24 @@ pub async fn any_id(pool: &MySqlPool) -> Result<Option<u64>, DbError> {
     }
 }
 
+/// The MHNSW tuning the server is actually running, as `name=value` pairs.
+///
+/// Reported beside every latency. `mhnsw_ef_search` trades recall for speed at query time,
+/// so a fast number at a low `ef_search` is a fast number for a worse answer, and a
+/// latency quoted without it cannot be compared with anyone else's.
+pub async fn mhnsw_settings(pool: &MySqlPool) -> Result<String, DbError> {
+    let rows = sqlx::query("SHOW VARIABLES LIKE 'mhnsw%'")
+        .fetch_all(pool)
+        .await?;
+    let mut pairs = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let name: String = row.try_get("Variable_name")?;
+        let value: String = row.try_get("Value")?;
+        pairs.push(format!("{name}={value}"));
+    }
+    Ok(pairs.join(", "))
+}
+
 /// How many rows are in the table, for the benchmark's own bookkeeping.
 pub async fn count(pool: &MySqlPool) -> Result<i64, DbError> {
     let row = sqlx::query("SELECT COUNT(*) AS n FROM chunks")
@@ -246,16 +264,37 @@ pub async fn count(pool: &MySqlPool) -> Result<i64, DbError> {
     Ok(row.try_get("n")?)
 }
 
+/// One step of SplitMix64. Deterministic, cheap, and well spread across the whole range.
+fn split_mix(state: u64) -> u64 {
+    let mut z = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
 /// A deterministic pseudo-embedding, for filling a table without a model.
 ///
-/// Not random: a benchmark that cannot be re-run against the same data is a benchmark
-/// whose second reading means nothing. Normalised, because cosine distance on unnormalised
-/// vectors measures something nobody asked about.
+/// Deterministic rather than random: a benchmark that cannot be re-run against the same
+/// data is a benchmark whose second reading means nothing.
+///
+/// Hashed rather than smooth. The first version of this was `sin(seed * k + i * k2)`,
+/// which looks like noise and is not: sine is periodic, so seeds a fixed distance apart
+/// produce nearly the same vector. The benchmark noticed — a probe built from seed
+/// 1_000_020 came back at **distance 0.000000** from the row for seed 6701. Colliding
+/// probes are the easiest possible query for a nearest-neighbour index and would have
+/// flattered every latency in the write-up.
+///
+/// Normalised, because cosine distance on unnormalised vectors measures something nobody
+/// asked about.
 pub fn synthetic_embedding(seed: u64) -> Vec<f32> {
     let mut values: Vec<f32> = (0..EMBEDDING_DIMENSIONS)
         .map(|i| {
-            let x = (seed as f64) * 0.618_033_988_749_895 + (i as f64) * 0.013;
-            x.sin() as f32
+            let bits = split_mix(
+                seed.wrapping_mul(0x0000_0100_0000_01B3)
+                    .wrapping_add(i as u64),
+            );
+            // Top 24 bits into [-1, 1): enough entropy for a float, and no denormals.
+            ((bits >> 40) as f32 / (1u32 << 23) as f32) - 1.0
         })
         .collect();
     let norm = values.iter().map(|v| v * v).sum::<f32>().sqrt();
@@ -265,6 +304,14 @@ pub fn synthetic_embedding(seed: u64) -> Vec<f32> {
         }
     }
     values
+}
+
+/// Cosine similarity, for the fixture's own tests. Not used against the database — that is
+/// MariaDB's job — but needed to prove the fixture generates vectors that are actually
+/// distinct from one another.
+#[cfg(test)]
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
 }
 
 #[cfg(test)]
@@ -281,11 +328,38 @@ mod tests {
     }
 
     #[test]
-    fn synthetic_embeddings_are_reproducible_and_distinct() {
-        // Reproducible, or a second run of the benchmark measures different data. Distinct,
-        // or the index has nothing to tell apart and every distance is zero.
+    fn synthetic_embeddings_are_reproducible() {
+        // Or a second run of the benchmark measures different data than the first.
         assert_eq!(synthetic_embedding(7), synthetic_embedding(7));
         assert_ne!(synthetic_embedding(7), synthetic_embedding(8));
+    }
+
+    #[test]
+    fn no_two_seeds_produce_nearly_the_same_vector() {
+        // The bug this replaced: a smooth `sin(seed * k + i * k2)` fixture is periodic, so
+        // distant seeds collide. The benchmark found a probe at distance 0.000000 from a
+        // stored row, which is the easiest possible query for a nearest-neighbour index
+        // and would have flattered every latency in the write-up.
+        //
+        // Includes the exact pair that collided, and the far-apart seeds the probes use.
+        let pairs = [(6701u64, 1_000_020u64), (0, 1), (1, 11), (42, 1_000_000)];
+
+        for (a, b) in pairs {
+            let similarity = cosine_similarity(&synthetic_embedding(a), &synthetic_embedding(b));
+            assert!(
+                similarity.abs() < 0.2,
+                "seeds {a} and {b} are too close: cosine similarity {similarity}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_vector_is_still_identical_to_itself() {
+        // The other half of the property: distinct seeds must differ, and the same seed
+        // must not. A fixture that failed this would make every distance meaningless.
+        let similarity = cosine_similarity(&synthetic_embedding(99), &synthetic_embedding(99));
+
+        assert!((similarity - 1.0).abs() < 1e-5, "{similarity}");
     }
 
     #[test]

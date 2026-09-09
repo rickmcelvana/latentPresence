@@ -221,11 +221,12 @@ pub async fn run(target_rows: usize) -> Result<(), Box<dyn std::error::Error>> {
     let version: String = sqlx::query_scalar("SELECT VERSION()")
         .fetch_one(&pool)
         .await?;
-    let ef_search: String = sqlx::query_scalar("SELECT @@mhnsw_ef_search")
-        .fetch_one(&pool)
-        .await
-        .unwrap_or_else(|_| "unknown".into());
-    println!("server {version}, mhnsw_ef_search {ef_search}");
+    // Via SHOW VARIABLES rather than `SELECT @@name`: the latter came back as neither a
+    // String nor an i64 and fell through to a placeholder, which would have left the
+    // write-up unable to say what recall the latency bought. SHOW VARIABLES is verified to
+    // work against this server (docs/SURFACE.md) and returns everything as strings.
+    let settings = db::mhnsw_settings(&pool).await.unwrap_or_default();
+    println!("server {version}, {settings}");
 
     verify_storage_round_trip(&pool).await?;
 
