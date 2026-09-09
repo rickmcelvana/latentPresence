@@ -14,10 +14,18 @@ import { median } from './metrics';
 export type TurnLabel = 'complete' | 'incomplete';
 
 /**
- * Who closed the turn. `hangover` is Spike A's 512 ms timer, still in place as the
- * backstop: without it a turn the model never fires on would never end at all.
+ * Who closed the turn.
+ *
+ * `hangover` is Spike A's 512 ms timer, still in place as the backstop: without it a turn
+ * the model never fires on would never end at all.
+ *
+ * `late` is the backstop winning a race it was not meant to be in — the model did say the
+ * turn was over, but its answer arrived after the timer had already closed it. The 2026-09-08
+ * run hit this twice, both on wasm, both on the cold first turn, both with p≈0.978. Folding
+ * those into `hangover` charged the model with two misses it did not commit and made a slow
+ * backend look like an inaccurate one, which is a different bug with a different fix.
  */
-export type TurnEnding = 'smart-turn' | 'hangover';
+export type TurnEnding = 'smart-turn' | 'hangover' | 'late';
 
 /** One run of the model, at one candidate silence. A turn may produce several. */
 export interface CandidateMarks {
@@ -124,9 +132,15 @@ export interface ConfusionMatrix {
   readonly missRate: number | null;
 }
 
-/** The turn ended because the model said so, rather than because the timer gave up. */
+/**
+ * The model judged the turn finished — whether or not it got there in time.
+ *
+ * The confusion matrix is about judgement, so `late` counts as a fire: the model was right
+ * and slow, not wrong. How often that happened is reported separately, by
+ * `summariseDetection`, because being right too late still costs the full hangover.
+ */
 function fired(turn: LabelledTurn): boolean {
-  return turn.ending === 'smart-turn';
+  return turn.ending !== 'hangover';
 }
 
 export function confusion(turns: readonly LabelledTurn[]): ConfusionMatrix {
@@ -208,6 +222,12 @@ export interface DetectionSummary {
   readonly medianInferenceMs: number | null;
   /** Model runs per turn. A turn answered on the fourth try costs four inferences. */
   readonly medianCandidatesPerTurn: number | null;
+  /**
+   * Turns where the model said "finished" but the backstop had already closed the turn.
+   * A backend problem, not an accuracy one: on wasm the candidate silence plus a 222 ms
+   * inference leaves under 70 ms of headroom before the 512 ms timer.
+   */
+  readonly lateAnswers: number;
 }
 
 /**
@@ -219,7 +239,9 @@ export interface DetectionSummary {
  * which is where a model that rarely fires is supposed to look bad.
  */
 export function summariseDetection(turns: readonly LabelledTurn[]): DetectionSummary {
-  const firedTurns = turns.filter(fired);
+  // Only turns the model actually ended. A `late` turn's latency is the timer's, so
+  // including it would let a backend that keeps missing the backstop report a fast median.
+  const firedTurns = turns.filter((turn) => turn.ending === 'smart-turn');
   const timings = firedTurns
     .map((turn) => turn.detection)
     .filter((result): result is CandidateResult => result !== null)
@@ -236,5 +258,6 @@ export function summariseDetection(turns: readonly LabelledTurn[]): DetectionSum
     medianFeaturesMs: median(timings.map((timing) => timing.featuresMs)),
     medianInferenceMs: median(timings.map((timing) => timing.inferenceMs)),
     medianCandidatesPerTurn: median(turns.map((turn) => turn.probabilities.length)),
+    lateAnswers: turns.filter((turn) => turn.ending === 'late').length,
   };
 }

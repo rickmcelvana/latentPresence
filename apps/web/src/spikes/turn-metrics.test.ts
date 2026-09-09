@@ -119,6 +119,20 @@ describe('confusion', () => {
     expect(matrix.missRate).toBe(0);
   });
 
+  it('credits a late answer as a fire, because the model was right and slow', () => {
+    // The 2026-09-08 run: p=0.979 on a finished sentence, arriving after the 512 ms
+    // backstop had closed the turn. Counting that as a miss blames the model for a
+    // problem that belongs to the backend.
+    const matrix = confusion([
+      turn({ label: 'complete', ending: 'late' }),
+      turn({ label: 'complete', ending: 'smart-turn' }),
+    ]);
+
+    expect(matrix.truePositives).toBe(2);
+    expect(matrix.falseNegatives).toBe(0);
+    expect(matrix.missRate).toBe(0);
+  });
+
   it('says "not measured" rather than zero when a label was never spoken', () => {
     const matrix = confusion([turn({ label: 'complete', ending: 'smart-turn' })]);
 
@@ -206,11 +220,27 @@ describe('summariseDetection', () => {
     expect(summary.medianCandidatesPerTurn).toBe(2);
   });
 
+  it('keeps a late answer out of the latency medians and counts it separately', () => {
+    // Its detection time is the timer's, not the model's. A backend that keeps losing
+    // that race would otherwise report the median of the few turns it won.
+    const slower = timeCandidate({ ...MARKS, inferenceDone: 1900 });
+    const summary = summariseDetection([
+      turn({ ending: 'smart-turn' }),
+      turn({ ending: 'late', detection: slower }),
+      turn({ ending: 'late', detection: slower }),
+    ]);
+
+    expect(summary.turns).toBe(1);
+    expect(summary.medianDetectionMs).toBe(275);
+    expect(summary.lateAnswers).toBe(2);
+  });
+
   it('has nothing to say about a run with no turns', () => {
     expect(summariseDetection([])).toMatchObject({
       turns: 0,
       medianDetectionMs: null,
       worstDetectionMs: null,
+      lateAnswers: 0,
     });
   });
 });

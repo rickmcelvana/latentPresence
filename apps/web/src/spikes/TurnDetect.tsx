@@ -44,6 +44,26 @@ const DEFAULT_THRESHOLD = 0.5;
  */
 const DEFAULT_CANDIDATE_MS = 200;
 
+/**
+ * What the VAD heard, carried through so a turn nobody spoke can be identified later.
+ *
+ * The 2026-09-08 run recorded twenty-one turns where twenty were spoken, and the extra one
+ * could not be told from the rest because nothing about the audio was kept. A bell is short,
+ * peaky and not very speech-like; a sentence is none of those. Now the record says which.
+ */
+interface UtteranceStats {
+  readonly durationMs: number;
+  readonly rms: number;
+  readonly peak: number;
+  readonly maxProbability: number;
+}
+
+/** A turn as it goes into the table: the metrics shape, plus what the page needs to track it. */
+interface RecordedTurn extends LabelledTurn {
+  readonly id: number;
+  readonly stats: UtteranceStats | null;
+}
+
 interface TurnInFlight {
   readonly label: TurnLabel;
   readonly probabilities: number[];
@@ -52,6 +72,8 @@ interface TurnInFlight {
   /** The most recent candidate that produced a complete set of marks. */
   lastResult: CandidateResult | null;
   nextCandidate: number;
+  /** From the most recent candidate, so a spurious turn can be recognised afterwards. */
+  stats: UtteranceStats | null;
 }
 
 function ms(value: number | null): string {
@@ -64,6 +86,12 @@ function percent(value: number | null): string {
 
 function probability(value: number | null): string {
   return value === null ? 'n/a' : value.toFixed(3);
+}
+
+/** Duration, level and how sure the VAD was — enough to spot a turn nobody spoke. */
+function describeStats(stats: UtteranceStats | null): string {
+  if (stats === null) return '—';
+  return `${stats.durationMs} ms, peak ${stats.peak.toFixed(2)}, p(speech) ${stats.maxProbability.toFixed(2)}`;
 }
 
 export function TurnDetect(): ReactElement {
@@ -79,7 +107,7 @@ export function TurnDetect(): ReactElement {
   const [label, setLabel] = useState<TurnLabel>('complete');
   const [status, setStatus] = useState('Waiting for consent.');
   const [log, setLog] = useState<readonly string[]>([]);
-  const [turns, setTurns] = useState<readonly LabelledTurn[]>([]);
+  const [turns, setTurns] = useState<readonly RecordedTurn[]>([]);
   const [speaking, setSpeaking] = useState(false);
   const [device, setDevice] = useState<CaptureHandle | null>(null);
   const [loadMs, setLoadMs] = useState<number | null>(null);
@@ -110,7 +138,7 @@ export function TurnDetect(): ReactElement {
     setLog((previous) => [...previous.slice(-60), line]);
   }, []);
 
-  /** Close a turn, whichever of the two things ended it. */
+  /** Close a turn, whichever of the things ended it. */
   const finishTurn = useCallback((turnId: number, ending: LabelledTurn['ending']) => {
     const turn = inFlight.current.get(turnId);
     if (turn === undefined) return;
@@ -118,13 +146,37 @@ export function TurnDetect(): ReactElement {
     setTurns((previous) => [
       ...previous,
       {
+        id: turnId,
         label: turn.label,
         ending,
         probabilities: [...turn.probabilities],
         detection: turn.lastResult,
+        stats: turn.stats,
       },
     ]);
     setSpeaking(false);
+  }, []);
+
+  /**
+   * A probability for a turn the hangover already closed.
+   *
+   * If it would have fired, the model was right and merely slow, and the turn is re-marked
+   * `late` rather than left looking like a miss. On wasm this is not hypothetical: a 224 ms
+   * candidate plus a 222 ms inference leaves under 70 ms before the backstop, and the cold
+   * first turn lost that race in both wasm runs on 2026-09-08 with p≈0.978.
+   */
+  const recordLateAnswer = useCallback((turnId: number, value: number, fired: boolean) => {
+    setTurns((previous) =>
+      previous.map((turn) =>
+        turn.id === turnId
+          ? {
+              ...turn,
+              ending: fired ? 'late' : turn.ending,
+              probabilities: [...turn.probabilities, value],
+            }
+          : turn,
+      ),
+    );
   }, []);
 
   const loadModels = useCallback(() => {
@@ -174,6 +226,7 @@ export function TurnDetect(): ReactElement {
           marks: new Map(),
           lastResult: null,
           nextCandidate: 0,
+          stats: null,
         });
         setSpeaking(true);
         setStatus(`Listening — ${labelRef.current} utterance in progress.`);
@@ -188,6 +241,7 @@ export function TurnDetect(): ReactElement {
           speechEnd: message['speechEndAt'] as number,
           candidateAt: message['at'] as number,
         });
+        turn.stats = message['stats'] as UtteranceStats;
         const samples = message['samples'] as Float32Array;
         smartTurn.current?.postMessage({ type: 'infer', samples, turnId, candidateIndex: index }, [
           samples.buffer,
@@ -251,7 +305,12 @@ export function TurnDetect(): ReactElement {
 
         const turn = inFlight.current.get(turnId);
         if (turn === undefined) {
-          say(`probability ${value.toFixed(3)} arrived for turn ${turnId}, already closed`);
+          const tooLate = value >= thresholdRef.current;
+          say(
+            `p=${value.toFixed(3)} arrived for turn ${turnId} after the hangover closed it` +
+              `${tooLate ? ' — would have fired, counted as late not as a miss' : ''}`,
+          );
+          recordLateAnswer(turnId, value, tooLate);
           return;
         }
 
@@ -284,7 +343,7 @@ export function TurnDetect(): ReactElement {
 
     vad.current.postMessage({ type: 'load', candidateMs });
     smartTurn.current.postMessage({ type: 'load', build, backend });
-  }, [backend, build, candidateMs, finishTurn, say]);
+  }, [backend, build, candidateMs, finishTurn, recordLateAnswer, say]);
 
   const startMic = useCallback(async () => {
     const handle = await startCapture((samples, at) => {
@@ -338,6 +397,7 @@ export function TurnDetect(): ReactElement {
         `features ${ms(detection.medianFeaturesMs)} ms, ` +
         `inference ${ms(detection.medianInferenceMs)} ms (medians)`,
       `- model runs per turn, median: ${ms(detection.medianCandidatesPerTurn)}`,
+      `- answers that arrived after the backstop (right but too slow): ${detection.lateAnswers}`,
       `- against Spike A's ${SPIKE_A_HANGOVER_MS} ms hangover: ` +
         `${beatsHangover ? 'faster' : 'not faster'}`,
       '',
@@ -354,8 +414,8 @@ export function TurnDetect(): ReactElement {
         `sd ${probability(probabilities.standardDeviation)}` +
         `${probabilities.outOfRange ? ' — SOME OUTSIDE [0, 1]' : ''}`,
       '',
-      '| # | label | ended by | probabilities | end→answer | silence | features | inference |',
-      '|---|---|---|---|---|---|---|---|',
+      '| # | label | ended by | probabilities | end→answer | silence | features | inference | utterance |',
+      '|---|---|---|---|---|---|---|---|---|',
       ...turns.map((turn, i) => {
         const cells =
           turn.detection?.complete === true
@@ -368,7 +428,8 @@ export function TurnDetect(): ReactElement {
             : ' | | | ';
         return (
           `| ${i + 1} | ${turn.label} | ${turn.ending} | ` +
-          `${turn.probabilities.map((p) => p.toFixed(3)).join(', ') || '—'} | ${cells} |`
+          `${turn.probabilities.map((p) => p.toFixed(3)).join(', ') || '—'} | ${cells} | ` +
+          `${describeStats(turn.stats)} |`
         );
       }),
     ];
@@ -541,6 +602,9 @@ export function TurnDetect(): ReactElement {
             {percent(matrix.missRate)} of complete · silence{' '}
             {ms(detection.medianSilenceMs)} ms, features {ms(detection.medianFeaturesMs)} ms,
             inference {ms(detection.medianInferenceMs)} ms
+            {detection.lateAnswers > 0
+              ? ` · ${detection.lateAnswers} answered after the backstop`
+              : ''}
           </p>
           <p className="panel-note">
             Probabilities: {probabilities.count} readings, {probability(probabilities.min)}–
@@ -558,11 +622,12 @@ export function TurnDetect(): ReactElement {
                 <th>Silence</th>
                 <th>Features</th>
                 <th>Inference</th>
+                <th>Utterance</th>
               </tr>
             </thead>
             <tbody>
               {turns.map((turn, index) => (
-                <tr key={`${index}-${turn.label}`}>
+                <tr key={turn.id}>
                   <td>{index + 1}</td>
                   <td>{turn.label}</td>
                   <td>{turn.ending}</td>
@@ -581,6 +646,7 @@ export function TurnDetect(): ReactElement {
                         : 'marks incomplete'}
                     </td>
                   )}
+                  <td>{describeStats(turn.stats)}</td>
                 </tr>
               ))}
             </tbody>

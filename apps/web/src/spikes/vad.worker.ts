@@ -43,6 +43,43 @@ let candidateMs: number | null = null;
  */
 const PREROLL_MS = 300;
 
+/**
+ * What was actually captured. Duration against sample count is the fastest way to catch a
+ * resampling mistake: two seconds of speech is 32000 samples at 16 kHz and 96000 at
+ * 48 kHz, and a recogniser fed the wrong rate returns fluent nonsense rather than an error.
+ */
+interface UtteranceStats {
+  readonly sampleCount: number;
+  readonly durationMs: number;
+  readonly rms: number;
+  readonly peak: number;
+  readonly maxProbability: number;
+}
+
+/**
+ * Level and duration of one buffer, for telling speech from the room it was recorded in.
+ *
+ * `highestProbability` is passed rather than read from module scope: it is the only field
+ * that is not a property of the samples, and hiding that would make the stats look more
+ * self-contained than they are.
+ */
+function statsFor(samples: Float32Array, highestProbability: number): UtteranceStats {
+  let sumSquares = 0;
+  let peak = 0;
+  for (const sample of samples) {
+    sumSquares += sample * sample;
+    const magnitude = Math.abs(sample);
+    if (magnitude > peak) peak = magnitude;
+  }
+  return {
+    sampleCount: samples.length,
+    durationMs: Math.round((samples.length / SAMPLE_RATE) * 1000),
+    rms: Math.sqrt(sumSquares / Math.max(1, samples.length)),
+    peak,
+    maxProbability: highestProbability,
+  };
+}
+
 type InboundMessage =
   | {
       readonly type: 'load';
@@ -77,6 +114,14 @@ type OutboundMessage =
       readonly turnId: number;
       readonly samples: Float32Array;
       readonly speechEndAt: number;
+      /**
+       * What the VAD thought it heard. Carried because the 2026-09-08 run produced
+       * twenty-one turns where twenty were spoken, and nothing in the record could say
+       * which one was the room rather than the person — a bell, a chair, a door. A short
+       * window with a high peak and a middling `maxProbability` looks nothing like a
+       * sentence, but only if the numbers were kept.
+       */
+      readonly stats: UtteranceStats;
     }
   | {
       readonly type: 'settled';
@@ -91,13 +136,7 @@ type OutboundMessage =
        * 96000 at 48 kHz, and a recogniser fed the wrong rate returns fluent nonsense
        * rather than an error.
        */
-      readonly stats: {
-        readonly sampleCount: number;
-        readonly durationMs: number;
-        readonly rms: number;
-        readonly peak: number;
-        readonly maxProbability: number;
-      };
+      readonly stats: UtteranceStats;
     }
   | { readonly type: 'error'; readonly message: string };
 
@@ -224,7 +263,14 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
       candidateOffered = true;
       const window = collectUtterance(TURN_WINDOW_SAMPLES);
       post(
-        { type: 'candidate', at, turnId, samples: window, speechEndAt: lastSpeechAt },
+        {
+          type: 'candidate',
+          at,
+          turnId,
+          samples: window,
+          speechEndAt: lastSpeechAt,
+          stats: statsFor(window, maxProbability),
+        },
         [window.buffer],
       );
     }
@@ -234,14 +280,7 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
     // The hangover expired. `speechEndAt` is when speech actually stopped, not now:
     // conflating the two would charge the pipeline for a tuning constant.
     const joined = collectUtterance();
-
-    let sumSquares = 0;
-    let peak = 0;
-    for (const sample of joined) {
-      sumSquares += sample * sample;
-      const magnitude = Math.abs(sample);
-      if (magnitude > peak) peak = magnitude;
-    }
+    const stats = statsFor(joined, maxProbability);
 
     post({ type: 'speech-end', at: lastSpeechAt, turnId });
     post(
@@ -252,13 +291,7 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
         samples: joined,
         speechStartAt,
         speechEndAt: lastSpeechAt,
-        stats: {
-          sampleCount: joined.length,
-          durationMs: Math.round((joined.length / SAMPLE_RATE) * 1000),
-          rms: Math.sqrt(sumSquares / Math.max(1, joined.length)),
-          peak,
-          maxProbability,
-        },
+        stats,
       },
       [joined.buffer],
     );
