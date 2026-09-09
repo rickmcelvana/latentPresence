@@ -109,6 +109,26 @@ Still to test: wasm, which is transformers.js's default backend for q8 and the
 best-covered path, and fp32 on webgpu. Recorded here so the next person does not spend
 the same evening on the microphone.
 
+## Smart Turn v3 — 2026-09-08, verified against the HF API (for P0-T07)
+
+`pipecat-ai/smart-turn-v3`, BSD-2-Clause. Checked ahead of the spike so it does not start
+by discovering the model moved. There are three revisions and two builds each, and the
+choice matters:
+
+| File | Size |
+|---|---|
+| `smart-turn-v3.0.onnx` | 8.76 MB |
+| `smart-turn-v3.1-cpu.onnx` / `-gpu.onnx` | 8.68 / 32.41 MB |
+| `smart-turn-v3.2-cpu.onnx` / `-gpu.onnx` | 8.68 / 32.41 MB |
+
+The cpu and gpu builds are different graphs, not the same graph at two precisions — the
+gpu one is nearly four times the size. Spike A found that assuming a backend's default is
+how you get fluent nonsense (ADR-20), so P0-T07 should try both rather than picking one,
+and start from v3.2.
+
+Untested here: whether either build runs under onnxruntime-web, which is the whole
+question P0-T07 answers.
+
 ## Feedback API — 2026-09-08, verified by reading the running service's source
 
 `tools/feedback-api` in the latent-mastering repo, which Caddy proxies at
