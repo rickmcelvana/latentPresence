@@ -20,6 +20,7 @@
     "rust:fmt": "cargo fmt --manifest-path companion/Cargo.toml --all --check",
     "rust:clippy": "cargo clippy --manifest-path companion/Cargo.toml --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path companion/Cargo.toml --workspace",
+    "gate:desktop": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all --check && cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {

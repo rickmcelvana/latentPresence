@@ -523,7 +523,45 @@ Fedora         webkit2gtk4.1-devel openssl-devel curl wget file
 Rust is required (rustup); Node LTS is required only because the frontend is JavaScript.
 Neither has a pinned minimum in that page.
 
-### WebGPU on WebKitGTK is **not established**, and that is the finding to go and get
+**Verified on Fedora 44, 2026-09-09.** The listed packages were all present and the shell
+built and ran: `webkit2gtk4.1-devel` 2.52.5, `gtk3-devel` 3.24.52, `libappindicator-gtk3-devel`,
+`librsvg2-devel`, `openssl-devel`, `libxdo-devel`, `curl`, `file`. **`wget` was absent and
+nothing needed it** — Tauri lists it only to fetch things. rustup is *not* required either:
+Fedora's system `rustc` 1.98.0 built the shell fine.
+
+### WebGPU on WebKitGTK — **measured 2026-09-09: it is not there**
+
+Superseding the "not established" note below, which was written before the live call.
+Inside the Tauri webview on Fedora 44 with **webkit2gtk4.1 2.52.5**, `navigator.gpu` is
+**undefined**. In the same library, `strings` finds the WebGPU IPC plumbing
+(`WebKit::WebGPU::… convertToBacking(GPU…)`), the preference name `WebGPUEnabled`, and the
+literal message `WebGPU platform is unsupported.` — but **zero** occurrences of the JS
+interface names `GPUAdapter`, `GPUDevice`, `GPUCanvasContext`, `GPUQueue` or `GPUBuffer`,
+in the library or in `WebKitWebProcess`. The port carries the scaffolding and does not
+expose the API.
+
+Also measured on that box, and needed by anyone reading this later:
+
+| Fact | Value |
+|---|---|
+| `pkg-config --modversion webkit2gtk-4.1` | **2.52.5** |
+| Tauri window on GNOME **Wayland** + NVIDIA 610.57.04 | **dies on first commit** — `wp_linux_drm_syncobj_surface_v1` error 2, "Explicit Sync only supported on dmabuf buffers". `GDK_BACKEND=x11` is required |
+| The same crash in WebKitGTK's own `MiniBrowser` | **yes, byte-identical** — so it is the port, not Tauri or wry |
+| `gtk3-widget-factory` on the same session | runs clean — so it is not GTK3 either |
+| WebGL 2 renderer string in the webview | `Apple GPU` — WebKit's masked string, so hardware-vs-software is **not knowable** from it |
+| `getUserMedia` inside the webview | `NotAllowedError` from wry's default permission handler; no prompt is drawn |
+
+**Chrome 153.0.8010.36 on the same box, as a control:** `navigator.gpu` exists but
+`requestAdapter()` returns **null** as launched — Chrome's GPU sandbox cannot open the
+Vulkan ICD JSONs (`vkCreateInstance: Found no drivers!`) even though `vulkaninfo` reports
+the RTX 5060 Ti as a conformant Vulkan 1.4 device. `--disable-gpu-sandbox` gives
+`nvidia / blackwell`; `--enable-unsafe-webgpu` gives `google / swiftshader`, which is
+software and passes a naive presence check. One box, one distro, one very new driver —
+enough to decide Tauri-vs-Chrome, not enough to characterise Chrome on Linux.
+
+Full detail and the quoted errors: `docs/spikes/E-tauri.md`.
+
+### WebGPU on WebKitGTK was **not established** before the spike — kept for the record
 
 This is the one fact P0-T08 turns on, and **no source consulted settles it**, so nothing
 here asserts it. The WebGPU implementation-status wiki maintained by the GPU for the Web

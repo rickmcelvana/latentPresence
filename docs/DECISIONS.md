@@ -10,7 +10,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-04 | Vercel AI SDK as LLM and tool harness; MCP for tools | accepted | 2026-09-07 |
 | ADR-05 | TS memory kernel with `MemoryStore` adapters; MariaDB 11.8 Vector primary, SQLite and IndexedDB fallbacks | accepted | 2026-09-07 |
 | ADR-06 | Cascaded voice pipeline by default; omni models optional | accepted | 2026-09-07 |
-| ADR-07 | Desktop shell: Tauri 2, **Windows first**; Linux on Rick's box in Phase 0; macOS deferred; Electron is the fallback | accepted (amended) | 2026-09-07 |
+| ADR-07 | Desktop shell: Tauri 2, **Windows first**; **Linux ships as companion + Chrome — no WebGPU in WebKitGTK (2026-09-09)**; macOS deferred; Electron is the fallback | accepted (amended) | 2026-09-09 |
 | ADR-08 | Smart home via Home Assistant MCP only | accepted | 2026-09-07 |
 | ADR-09 | No models shipped; runtime download with consent and licence display, or BYO endpoints | accepted | 2026-09-07 |
 | ADR-10 | Code licence Apache-2.0 | accepted | 2026-09-07 |
@@ -51,9 +51,11 @@ Episodic log, bi-temporal facts, editable self-model blocks, plans, schedules. M
 
 Silero VAD, Smart Turn v3 (or adaptive silence), STT provider, LLM provider, sentence splitter, TTS provider, audio queue, lip sync. `OmniProvider` (audio in, audio out) is an optional path for models like Qwen3-Omni. RESEARCH §3.
 
-## ADR-07 Tauri 2, Windows first (amended 2026-09-07)
+## ADR-07 Tauri 2, Windows first (amended 2026-09-07, amended 2026-09-09)
 
 Development and the first release target Windows, where Tauri uses WebView2 (Chromium) and the browser-first build runs unchanged. Linux gets its Phase 0 spike on Rick's Linux machine (WebKitGTK is the risk). macOS is deferred: no hardware, and WebKit is where AIRI failed. If Tauri blocks a platform later, that platform ships as "companion + Chrome/Edge", and Electron is the documented fallback shell. Browser-first means catching other platforms up later is packaging work, not product work.
+
+**Amendment 2026-09-09 — the Linux clause fired.** P0-T08 Spike E measured the Tauri webview on Fedora 44 with WebKitGTK 2.52.5: `navigator.gpu` is **undefined**, and the JS bindings for it are not in the build. Not a device that cannot be found — an API that is not there. Spikes A, D and B all require WebGPU, so **Linux ships as companion + Chrome**, which is this ADR's own fallback rather than a new decision. Windows/WebView2 is unchanged and still unmeasured; the spike does not close until it is. Two constraints come with the fallback and are Phase 8's to handle, not new decisions: Chrome on Linux gave **no WebGPU adapter as launched** on that box (its GPU sandbox could not read the Vulkan ICDs) and needed `--disable-gpu-sandbox` for a hardware adapter, and forcing WebGPU on with `--enable-unsafe-webgpu` yielded **SwiftShader**, software, which passes a naive check. `docs/spikes/E-tauri.md`.
 
 ## ADR-08 Smart home through Home Assistant
 

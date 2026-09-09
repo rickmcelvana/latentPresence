@@ -1,0 +1,26 @@
+[package]
+name = "latentpresence-desktop"
+version = "0.0.0"
+description = "Tauri shell for latentPresence — P0-T08 Spike E"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/rickmcelvana/latentPresence"
+
+# Deliberately its own workspace, not a member of `companion/`. `pnpm gate` runs cargo
+# against `companion/Cargo.toml` only, so this crate is NOT gated — see
+# `docs/spikes/E-tauri.md` for why, and `pnpm gate:desktop` for the one command that
+# does check it.
+[workspace]
+
+[lib]
+name = "latentpresence_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = "2.6.3"
+
+[dependencies]
+# Versions verified against crates.io on 2026-09-09, docs/SURFACE.md.
+tauri = "2.11.5"
+tauri-plugin-log = "2"
+log = "0.4"

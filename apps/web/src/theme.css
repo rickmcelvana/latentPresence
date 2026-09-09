@@ -731,6 +731,31 @@ kbd {
   background: var(--bg);
 }
 
+/* P0-T08. The dev-only route index on the boot screen — the only navigation that exists
+   inside a Tauri window, which has no address bar. */
+.boot-routes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: var(--gap-lg) 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+/* Spike E (P0-T08). A pass/fail verdict, used both for the headline line and for the
+   Present column, so a failed row reads as failed at a glance rather than being one
+   short word in a table of short words. */
+.spike-verdict-yes {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.spike-verdict-no {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .spike-log {
   max-height: 220px;
   margin: 0;
