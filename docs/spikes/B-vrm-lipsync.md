@@ -1,6 +1,6 @@
 # Spike B — VRM avatar and lip sync
 
-**Status: harness built and wired; the frame-rate run is outstanding and needs Rick.**
+**Status: go. One reading outstanding — 1080p, which is the size the budget is written against.**
 Task P0-T05. Brief: `docs/briefs/P0-T05.md`. Verified library facts: `docs/SURFACE.md`.
 
 ## The question
@@ -64,92 +64,149 @@ smoothed with a frame-rate-independent half-life so the same constant behaves th
 30 fps and at 144. Every viseme is driven every frame, not just the winner, because a
 shape left at its last weight is a mouth stuck in the previous sound.
 
-## Verified here, 2026-09-09
+## Results — 2026-09-09, Rick's machine
 
-- **The stack resolves and builds.** three 0.185.1, `@pixiv/three-vrm` 3.5.5,
-  `@pixiv/three-vrm-animation` 3.5.5, `@react-three/fiber` 9.7.0 under React 19.2.8, and
-  `wawa-lipsync` 0.0.2. `pnpm gate` green, 173 tests.
-- **The avatar and the clip load.** `VRM1_Constraint_Twist_Sample.vrm` through
-  `GLTFLoader` + `VRMLoaderPlugin` in **230–730 ms warm**, and `test.vrma` parses into a
-  `VRMAnimation` through `VRMAnimationLoaderPlugin`. The VRMA path exists.
-- **Nothing downloads before consent.** Zero requests to `githubusercontent` with the page
-  open and the button untouched; both assets appear immediately after it.
-- **The spike stays out of production.** `pnpm build` passes with the guard extended.
-- **The WebGL adapter is reachable**: `ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti
-  (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)`.
+Chrome, Windows 11, NVIDIA GeForce RTX 5060 Ti, reported by WebGL as
+`ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Ti (0x00002D04) Direct3D11 vs_5_0 ps_5_0, D3D11)`
+and by WebGPU as `nvidia / blackwell`.
 
-### `powerPreference` is ignored on Windows
+| | |
+|---|---|
+| Canvas | asked 960×540, rendered **958×538**, dpr 1 |
+| Avatar load | 650 ms |
+| VRMA clip | loaded |
+| **Median** | **120.5 fps** (8.3 ms) |
+| **5th percentile** | **117.6 fps** |
+| Worst frame | 8.8 ms |
+| Frames | 570, after the warm-up |
 
-Chrome logs it plainly:
+Lip sync: **passes.** Driven from the microphone and from a voice-only audio file. It
+reads as speech rather than as chewing, which is the question the five-shape mapping had
+to answer.
+
+### What the frame rate actually says, and what it does not
+
+Read as frame *times* rather than as a frame rate, this is a stronger result than 120 fps
+sounds — and a narrower one.
+
+The median frame is 8.3 ms and the worst in 570 consecutive frames is 8.8 ms. A dropped
+frame at 120 Hz would be 16.6 ms. **There is not one.** So the scene held a 120 Hz vsync
+for the entire window without a single miss, which is why the 5th percentile is 117.6 fps
+rather than something ugly: there are no bad frames to find.
+
+**But 8.3 ms is the display's period, not the scene's cost.** Vsync means the loop waits;
+it does not mean the work took 8.3 ms. The GPU cost is somewhere below that and this run
+cannot say how far below. Against the 60 fps the plan asks for — a 16.6 ms budget — the
+scene never came close to missing a frame at twice that rate, which is the useful
+statement. "It renders in 8.3 ms" would not be.
+
+### The measurement was taken at a quarter of the budgeted resolution
+
+`docs/PLAN.md` budgets **60 fps at 1080p**. This was measured at 958×538 — 0.52 megapixels
+against 1080p's 2.07, so **four times fewer pixels**. Frame cost does not scale linearly
+with resolution, but it does not ignore it either, and extrapolating a pass at 540p into a
+pass at 1080p is exactly the kind of claim this spike exists to avoid making.
+
+So the page now offers a **render scale**: at 2× the drawing buffer is 1916×1076, which is
+2.06 megapixels against 1080p's 2.07 — the same shader work and fill rate, inside a column
+that is only 1056 px wide. One more reading settles it. See "Outstanding" below.
+
+### The GPU-preference comparison could not be run, for a plainer reason than expected
+
+The brief anticipated Chrome ignoring `powerPreference`, and it does on Windows:
 
 ```
 The powerPreference option is currently ignored when calling requestAdapter()
 on Windows. See https://crbug.com/369219127
 ```
 
-So the integrated-versus-discrete comparison the brief asked for **cannot be made this way
-on Windows**. The control is still there and the WebGL context takes its own hint, but if
-both settings report the same adapter, the write-up gets one number and a sentence saying
-why — not the discrete figure printed under two headings.
+But the machine settles it first: **there is no integrated GPU on that motherboard**, so
+there is no second adapter to select. Rick's Linux box is the same hardware and the other
+machines in the house are headless. A laptop is possible but not today.
+
+Recorded as untested rather than as a result. It matters for the "browser-first on a
+modest machine" claim in ADR-01, and it wants a genuinely different GPU class rather than
+a second preference string on the same card.
+
+### The idle clip loads and does nothing visible
+
+The screenshot shows the character in its rest pose, arms out. `test.vrma` loaded and its
+clip is playing; it has **three animation channels**, so there is nothing much for it to
+animate. That is exactly what the file was expected to do — it proves the VRMA path and
+says nothing about how an idle looks — and the screenshot is the confirmation rather than
+a disappointment. A real idle clip is an asset decision for P2/P7.
+
+### Also verified
+
+- **The stack resolves and builds.** three 0.185.1, `@pixiv/three-vrm` 3.5.5,
+  `@pixiv/three-vrm-animation` 3.5.5, `@react-three/fiber` 9.7.0 under React 19.2.8, and
+  `wawa-lipsync` 0.0.2. `pnpm gate` green, 173 tests.
+- **Nothing downloads before consent.** Zero requests to `githubusercontent` with the page
+  open and the button untouched; both assets appear immediately after it.
+- **The spike stays out of production.** `pnpm build` passes with the guard extended.
 
 ### Two defects found while driving it
 
-Both mine, both fixed:
+Both mine, both fixed before the run:
 
 - **The stage was not the size it claimed.** `max-width: 100%` inside a 900 px column
   clamped the 960 px stage to 800, so every frame rate would have been quoted against a
   size it was never measured at. The column now fits a real stage, and the page reports
-  the canvas's **actual backing store** beside the size it asked for, so a future clamp is
-  visible rather than assumed.
-- **The GPU preference only existed on the consent screen**, so comparing the two settings
-  meant reloading and re-downloading. It is on the running panel now, and switching it
-  remounts the canvas and resets the frame window.
+  the canvas's **actual backing store** beside the size it asked for — which is how the
+  958×538 above is known rather than assumed.
+- **The GPU preference only existed on the consent screen**, so comparing settings meant
+  reloading and re-downloading.
 
-## Not verified here — and why
+### A note on how the first attempt went wrong
 
-**No frame rate, and no confirmation that anything is actually drawn.** The browser pane
-available to this session is hidden, and a hidden page does not render: `requestAnimationFrame`
-never fires and `ResizeObserver` never delivers its callbacks. That produced two symptoms
-that looked like page bugs and were not — a canvas stuck at its intrinsic 300×150, and a
-frame window that never filled — and both were chased to the environment before anything
-was written down here.
+The session before this one could not measure anything: the browser pane it had was
+hidden, and a hidden page neither runs `requestAnimationFrame` nor delivers
+`ResizeObserver` callbacks. That produced two symptoms that looked exactly like page bugs
+— a canvas stuck at its intrinsic 300×150, and a frame window that never filled — and one
+wrong diagnosis along the way (React StrictMode), which was tested and disproved rather
+than worked around. Both were chased to the environment before anything reached this file.
 
-This is the right outcome anyway. A frame rate measured inside an embedded, throttled pane
-at whatever size it happened to be would be worse evidence than one from a real browser
-window at a stated size. Spikes A and D were both run on the machine for the same reason.
+## Outstanding
 
-## Outstanding — the run
+One reading, five minutes, same page:
 
-`pnpm dev`, then <http://localhost:5173/spike/avatar>, in a normal Chrome window.
+1. `pnpm dev`, <http://localhost:5173/spike/avatar>, accept.
+2. Set **Render scale** to **2× — 1920×1080 (1080p-equivalent)**. The frame window resets
+   itself.
+3. Let it settle, **Take the reading**, and paste the Markdown.
 
-1. Accept the consent screen. Confirm the avatar appears and is framed head-and-shoulders.
-2. Let it settle for a few seconds, then **Take the reading**. Record median fps, 5th
-   percentile, worst frame, and the canvas size the page reports.
-3. Switch **GPU preference** to low-power and take a second reading. If the adapter string
-   does not change, say so — that is the Windows limitation above, not a result.
-4. **Drive the mouth from the microphone** and watch the lips against the mapping table.
-   The question is not whether it is accurate — it cannot be, with five shapes — but
-   whether it reads as speech or as chewing. If consonants look wrong, the table above is
-   the thing to change, and it is one file with tests.
-5. Screenshot, for the write-up.
+If the median holds near 120 fps the budget is met with room to spare. If it drops toward
+60, the answer is still a pass but the headroom claim changes, and P2 will want to know
+before it builds a set behind the character.
+
+Not blocking, whenever hardware allows: a second GPU class — a laptop, or an integrated
+adapter — since this card is well above "mid-range".
 
 ## Go / no-go
 
-**Not yet decided.** What can be said:
+**Go.** ADR-03 stands: a full-body VRM 1.0 with MToon materials, spring bones and node
+constraints renders in a browser at a conversational frame rate, and the lip sync reads as
+speech.
 
-- **The stack works together.** three-vrm and react-three-fiber under React 19 was the
-  integration risk, and it resolves, loads and builds. The r3f peer range is `>=19 <19.3`,
-  so a React 19.3 bump will need attention.
-- **The VRMA path exists**, though `test.vrma` has three animation channels and proves the
-  loader rather than anything about how an idle looks. A real idle clip is an asset
-  decision for P2/P7; there is no CC0 VRMA in that repository to take.
-- **Whether ADR-03 stands is unanswered**, and needs a frame rate from a real window.
+1. **570 consecutive frames, no misses, at 120 Hz.** Against a 60 fps budget that is twice
+   the required rate with no dropped frame at all — though at 540p, and the 1080p reading
+   is what closes it.
+2. **The integration risk is retired.** three-vrm with react-three-fiber under React 19 was
+   the thing most likely to not work; it resolves, loads and builds. The r3f peer range is
+   `>=19 <19.3`, so a React 19.3 bump needs attention when it comes.
+3. **The five-shape mapping is enough.** Nine Oculus visemes with no VRM equivalent sounded
+   like it would look wrong, and it does not. The table in `packages/avatar` is the thing
+   to tune if it ever does, and it is one file with tests.
+4. **The VRMA path exists**, unexercised. `test.vrma` proves the loader; a real idle clip
+   is a P2/P7 asset decision.
 
 ### Left untested
 
-- Frame rate, anywhere, on any adapter.
-- Whether the lip sync reads as speech.
-- Integrated graphics, which Windows may not let us select at all.
-- A second character. The sample is a *constraint twist sample*, not a character — the
+- **1080p**, above. The one reading that is actually outstanding.
+- **The scene's real cost.** Vsync hid it. A GPU timer query or an unthrottled context
+  would give the headroom; nothing here needed it.
+- **Any other GPU**, and any integrated adapter — none exists on that motherboard.
+- **A second character.** The sample is a *constraint twist sample*, not a character — the
   right thing for measuring and the wrong thing for judging how the product looks. Do not
   let a screenshot of it become the reference for what Alice should be.
+- **Memory.** Not recorded this run.
