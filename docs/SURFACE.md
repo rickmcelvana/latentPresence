@@ -239,16 +239,36 @@ route (404) from a dead service (502), which is how the latentbeats.com move act
 `Swatinem/rust-cache@v2` (v2.9.2), `dtolnay/rust-toolchain@stable` (branch exists; that repo tags by
 toolchain name, not by release). First green run on `main`: 2026-09-08.
 
-## pnpm 11.24.0 — 2026-09-08, verified by live call
+## pnpm 12.3.4 — 2026-09-09, verified by live call on the Fedora box
+
+Was 11.24.0 (2026-09-08). **pnpm 12 manages its own version**: running a global pnpm 12 in a repo
+pinned to 11 rewrites `packageManager` to `pnpm@12.3.4+sha512.…` and prepends a
+`packageManagerDependencies` document to `pnpm-lock.yaml` carrying the `@pnpm/exe.*` binaries for
+every platform. It is not a stray edit to revert — it comes back on the next install. The bump was
+taken deliberately on 2026-09-09 rather than fought.
+
+CI needs no change: `pnpm/action-setup@v6` runs with no `version` input and reads `packageManager`
+out of `package.json`, so it follows the pin wherever it goes. **A second machine with a global
+pnpm 11 will not**, so Rick's Windows box needs pnpm 12 before its next install.
 
 `minimumReleaseAge` is on by default with roughly a 24-hour cutoff. A dependency published inside the
 window fails the install unless it is listed in `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`.
-We keep the protection and pin ranges slightly behind the newest release instead of excluding.
+We keep the protection and pin ranges slightly behind the newest release instead of excluding. That
+was verified on 11.24.0 and is **not** re-verified here.
 
-## Toolchain versions the gate is green against — 2026-09-08
+## Toolchain versions the gate is green against — 2026-09-08, extended 2026-09-09
 
 TypeScript 7.0.2 (native port), Vite 8.2.2, Vitest 5.0.0, oxlint 1.81.0, React 19.2.8, Node 22.22.3,
 rustc 1.97.1, axum 0.8.9, tokio 1.53.1.
+
+**Rick's Fedora 44 box, 2026-09-09:** Node 22.23.2, pnpm 12.3.4, **rustc 1.98.0** (Fedora's system
+package, `1.98.0-1.fc44` — no rustup on that machine). Gate green there, 173 TypeScript and 17 Rust.
+
+**rustc 1.98 broke the gate on its own.** Clippy 1.98 added `chunks_exact_to_as_chunks`, and
+`-D warnings` makes any new lint an error, so `dtolnay/rust-toolchain@stable` turned main red on a
+docs-only commit on both runners. The repo pins no toolchain and that stays a deliberate choice
+(2026-09-09): the fixes are cheap and tend to be real simplifications. Expect this again on the next
+stable.
 
 Notes that cost time once:
 - A project referenced by another `tsconfig` may not set `noEmit` (TS6310). Referenced projects are

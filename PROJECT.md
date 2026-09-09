@@ -12,7 +12,7 @@
 - **Blockers:** none. No Docker anywhere, so CI uses a service container rather than a local one.
 - **Default character:** Alice (name chosen 2026-09-07). Placeholder VRM until P7-T02.
 - **Dev database (2026-09-09):** MariaDB **11.8.8** at `192.168.40.101` on the LAN, `DATABASE_URL` in `.env`, `ALL PRIVILEGES ON latentpresence.*`. `VECTOR(768)` with `VECTOR INDEX … DISTANCE=cosine` creates, inserts and answers top-k, and **`EXPLAIN` confirms the index is used rather than scanned**. RTT **p50 0.43 ms**. The earlier host `10.0.0.1` is 10.11.18 (no vectors) but gave the figure that matters: **p50 39.8 ms over the tunnel**, so retrieval must be one statement for any remote deployment. `docs/SURFACE.md`.
-- **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22, rustc 1.97, axum 0.8. Verified facts in `docs/SURFACE.md`.
+- **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22, **pnpm 12.3.4** (was 11.24.0; pnpm 12 rewrites its own pin, so the bump was taken rather than fought — the Windows box needs pnpm 12 before its next install), axum 0.8. **rustc 1.98** on the Linux box, 1.97 on Windows. Verified facts in `docs/SURFACE.md`.
 - **Test counts (2026-09-09):** 173 TypeScript, 17 Rust. `pnpm gate` green; CI green on ubuntu and windows.
 - **Voice pipeline (Spike A, 2026-09-08):** 947 ms end of speech to first audio on WebGPU/fp32; 435 ms excluding the VAD hangover, against ADR-20's 500 ms pipeline budget. WebGPU is required — wasm synthesis is 3779 ms. q8 recognition is broken on WebGPU. Details in `docs/spikes/A-voice-loop.md`.
 - **Turn detection (Spike D, 2026-09-08):** **Go.** Smart Turn v3 on fp32/WebGPU with a 100 ms candidate and a 0.7 threshold answers in **168 ms** against the 512 ms hangover it replaces, and interrupted 0 of 51 held pauses across the five runs after the first. int8 will not load on WebGPU at all (loudly) and is a no-GPU fallback. First audio becomes ~593 ms sequential, ~553 ms once recognition overlaps turn detection - which ADR-21 makes P1's job, against an unchanged 500 ms budget. `docs/spikes/D-smart-turn.md`.
@@ -53,7 +53,9 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 - [ ✅ ] **Raise the MariaDB vector settings.** Done 2026-09-09 — `mhnsw_max_cache_size` 2 GiB, `innodb_buffer_pool_size` 4 GiB on the 16 GB box, and the update agent that polluted the first benchmark moved off it. That change is the whole finding of Spike C.
 
-- [ ] **Before the Linux session:** install the Tauri prerequisites for that distro (`docs/SURFACE.md`, "Tauri 2"; the webview package is **4.1**, not 4.0), plus rustup and Node 22 LTS if the box lacks them. `.env` is optional — Spike E does not touch the database.
+- [ ✅ ] **Before the Linux session:** the Tauri prerequisites. Done — verified 2026-09-09 on Fedora 44: `webkit2gtk4.1-devel` **2.52.5**, plus gtk3, libappindicator-gtk3, librsvg2, openssl and libxdo devel packages all present. `wget` is absent and stays absent; Tauri lists it only to fetch things and `curl` is there. Rust is Fedora's system **1.98.0** with no rustup, Node **22.23.2** via nvm.
+
+- [ ] **On the Windows box, before its next `pnpm install`:** `npm i -g pnpm@12` (or enable corepack). The repo pin moved to **pnpm 12.3.4** on 2026-09-09 and a global pnpm 11 will fight it. CI needs nothing — `pnpm/action-setup@v6` reads the pin.
 
 - [ ] Character pipeline (P7): wait for `docs/pipeline/character.md`; the architect writes exact instructions first.
 
