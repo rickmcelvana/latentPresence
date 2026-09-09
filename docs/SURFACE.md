@@ -328,40 +328,68 @@ and enough emotion presets for the P3 affect work.
 proves the VRMA loading path and nothing about how an idle looks. A real idle clip is an asset
 decision for P2/P7; there is no CC0 VRMA in that repository to take.
 
-## MariaDB vector, and the dev server — 2026-09-09, verified by live call and against the docs
+## MariaDB vector, and the dev servers — 2026-09-09, verified by live call and against the docs
 
-### The dev server cannot do this yet
+**The dev database moved to `192.168.40.101` the same day, and that one works.** Both are
+recorded: the first host is where the round-trip figure that stresses the budget came from.
 
-Probed over the tunnel with the credentials now in `.env`:
+### `192.168.40.101` — MariaDB 11.8.8, and everything P0-T06 needs
+
+Probed with the credentials in `.env`, running the shape the task actually calls for
+rather than reading the version and inferring:
+
+| | |
+|---|---|
+| `SELECT VERSION()` | **`11.8.8-MariaDB`** |
+| `VEC_DISTANCE_COSINE`, `VEC_FromText`, `VEC_ToText` | all present and correct |
+| `CREATE TABLE … VECTOR(768) NOT NULL, VECTOR INDEX (embedding) M=8 DISTANCE=cosine` | **accepted** |
+| Insert via `VEC_FromText`, top-k by `VEC_DISTANCE_COSINE … ORDER BY … LIMIT` | correct ordering, distance 0 for the identical vector |
+| `EXPLAIN` on that query | **`key: embedding`, `key_len: 3074`, `type: index`** — the vector index is used, not scanned |
+| Grants | `ALL PRIVILEGES ON latentpresence.*` |
+| RTT, thirty `SELECT 1`s | **min 0.27, p50 0.43, p95 0.80, max 1.02 ms** |
+
+`SHOW CREATE TABLE` echoes the index back as
+``VECTOR KEY `embedding` (`embedding`) `M`=8 `DISTANCE`=cosine``, on `ENGINE=InnoDB`,
+`utf8mb4_uca1400_ai_ci`.
+
+Server defaults worth knowing before the benchmark:
+
+```
+mhnsw_default_distance = euclidean      mhnsw_default_m = 6
+mhnsw_ef_search        = 20             mhnsw_max_cache_size = 16777216   (16 MB)
+```
+
+`key_len` 3074 confirms the storage: **768 float32 is 3072 bytes a row**, so 100k rows is
+about **307 MB of raw vectors against a 16 MB index cache**. That ratio is the thing the
+100k case is really testing, and `mhnsw_max_cache_size` is the knob to report against.
+`mhnsw_ef_search` (20) trades recall for speed at query time and belongs in the write-up
+beside any latency figure, because a fast number at a low `ef_search` is a fast number for
+a worse answer.
+
+### `10.0.0.1` over the tunnel — too old, but it gave the number that matters
 
 | | |
 |---|---|
 | `SELECT VERSION()` | **`10.11.18-MariaDB-0+deb12u1`** (Debian 12) |
-| `VEC_DISTANCE_COSINE` | `ER_SP_DOES_NOT_EXIST` |
-| `VEC_DISTANCE_EUCLIDEAN` | `ER_SP_DOES_NOT_EXIST` |
-| `VEC_FromText` / `VEC_ToText` | `ER_SP_DOES_NOT_EXIST` |
-| Grants | `ALL PRIVILEGES ON latentpresence.*`, so schema work is permitted |
-| Tables | none yet |
+| `VEC_DISTANCE_COSINE`, `VEC_DISTANCE_EUCLIDEAN`, `VEC_FromText`, `VEC_ToText` | `ER_SP_DOES_NOT_EXIST` |
+| RTT, thirty `SELECT 1`s | **min 37.76, p50 39.78, p95 40.49, max 41.63 ms** |
 
-**The `VECTOR` type and vector indexes arrived in MariaDB 11.7.1.** 10.11 is the previous
-LTS and has none of it — not the type, not the index, not the functions. The backlog item
-asking for 11.8+ was ticked, but the server answering on the tunnel today is 10.11.18, so
-P0-T06 cannot be measured against it. Recorded here rather than discovered again.
+**The `VECTOR` type arrived in MariaDB 11.7.1**, so 10.11 has none of it — not the type,
+not the index, not the functions.
 
-### Round-trip latency over the tunnel is the other finding
+### Two networks, two answers, and the second one is the design constraint
 
-Thirty `SELECT 1` round trips, which is protocol overhead and network and nothing else:
+- **LAN (`192.168.40.101`): 0.43 ms.** The 100 ms per-turn retrieval budget is not
+  meaningfully spent on the network at all.
+- **Tunnel (`10.0.0.1`): 39.8 ms.** One statement fits inside 100 ms with room; two do
+  not, and a lookup followed by a follow-up read has spent 80 ms before the server has
+  done any work.
 
-```
-min 37.76   p50 39.78   p95 40.49   max 41.63 ms
-```
-
-**Roughly 40 ms per round trip**, and the per-turn retrieval budget in `docs/LLM-PLAN.md`
-is 100 ms. One query fits with room to spare; two do not leave much, and a pattern that
-does a lookup and then a follow-up read has spent 80 ms before the server has done any
-work. That is a design constraint for P4 whatever the server version turns out to be:
-retrieval wants to be one statement, and the companion wants to be near the database
-rather than near the browser.
+So the budget holds locally and is tight remotely, and that is a P4 design constraint
+independent of which host the spike finally runs on: **retrieval wants to be one
+statement**, and a remote deployment wants the companion near the database rather than
+near the browser. Measure and report both; a LAN figure alone would say the network is
+free, which is true in exactly one deployment.
 
 ### The syntax, from the MariaDB docs
 
