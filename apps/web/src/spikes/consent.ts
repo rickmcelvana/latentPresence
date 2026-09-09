@@ -92,6 +92,31 @@ export function modelsFor(dtype: SpikeDtype): readonly ModelDownload[] {
   ];
 }
 
+/**
+ * What Spike D (P0-T07) would download. Separate from `modelsFor`: it is a different
+ * page with a different consent screen, and bundling both lists would ask for permission
+ * to fetch 400 MB of speech models in order to run an 8 MB endpointer.
+ *
+ * Sizes are the exact bytes of the files, read on 2026-09-08 (`docs/SURFACE.md`). The
+ * builds are the same model at two precisions — cpu is int8, gpu is fp32 — and the spike
+ * runs both, because Spike A found int8 silently broken on WebGPU.
+ */
+export function smartTurnModel(build: 'cpu' | 'gpu'): ModelDownload {
+  return {
+    label: `Smart Turn v3.2 (turn detection, ${build === 'cpu' ? 'int8' : 'fp32'})`,
+    repo: 'pipecat-ai/smart-turn-v3',
+    licence: 'BSD-2-Clause',
+    bytes: build === 'cpu' ? 8_679_182 : 32_411_198,
+    sourceUrl: 'https://huggingface.co/pipecat-ai/smart-turn-v3',
+    stage: 'vad',
+  };
+}
+
+/** Spike D needs Silero to find the pauses, and Smart Turn to judge them. */
+export function turnModelsFor(build: 'cpu' | 'gpu'): readonly ModelDownload[] {
+  return [SILERO, smartTurnModel(build)];
+}
+
 export function totalBytes(models: readonly ModelDownload[]): number {
   return models.reduce((sum, model) => sum + model.bytes, 0);
 }

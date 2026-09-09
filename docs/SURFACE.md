@@ -186,6 +186,29 @@ The clamp in step 3 gives a free runtime check: for any input that is not perfec
 `max - min` over the feature block is **exactly 2.0**. A mel that is wrong in shape or
 scale generally will not satisfy that.
 
+### Under onnxruntime-web, 2026-09-08, verified by running all four combinations
+
+The open question above — whether either build runs — is answered. Six deterministic
+synthetic clips, medians of a warm pass, Chromium 152, NVIDIA Blackwell. Detail and
+caveats in `docs/spikes/D-smart-turn.md`.
+
+| Build | Backend | Load (warm) | Log-mel | Inference |
+|---|---|---|---|---|
+| cpu (int8) | wasm | 528 ms | 31 ms | 153 ms |
+| cpu (int8) | webgpu | — | — | **will not load** |
+| gpu (fp32) | wasm | 744 ms | 32 ms | 222 ms |
+| gpu (fp32) | webgpu | 996 ms | 38 ms | **8 ms** |
+
+- int8 on WebGPU fails at load with `[DequantizeLinear] ... In the case of dequantizing
+  int32 there is no zero point` — loudly, unlike Moonshine q8, which returned nonsense.
+- fp32 gives **identical probabilities on wasm and WebGPU**, so the GPU path is correct
+  and not just fast.
+- int8 and fp32 **disagree on the same audio**, by enough to cross the 0.5 threshold in
+  both directions. The builds are not interchangeable and a threshold does not carry
+  between them.
+- The 800-frame Whisper log-mel costs 31–38 ms in JavaScript. Not the bottleneck, and no
+  reason to move it to the companion.
+
 
 ## Feedback API — 2026-09-08, verified by reading the running service's source
 

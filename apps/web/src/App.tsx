@@ -10,6 +10,9 @@ export const GALLERY_PATH = '/gallery';
 /** The dev-only voice-loop measurement page (P0-T04). */
 export const SPIKE_VOICE_PATH = '/spike/voice';
 
+/** The dev-only turn-detection measurement page (P0-T07). */
+export const SPIKE_TURN_PATH = '/spike/turn';
+
 /**
  * The spike pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
@@ -28,6 +31,13 @@ const VoiceLoop = lazy(async () => {
   return { default: module.VoiceLoop };
 });
 
+/** Spike D, guarded the same way and for the same reason (P0-T07). */
+const TurnDetect = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./spikes/TurnDetect');
+  return { default: module.TurnDetect };
+});
+
 /**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
@@ -42,6 +52,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
         <VoiceLoop />
+      </Suspense>
+    );
+  }
+
+  if (import.meta.env.DEV && path === SPIKE_TURN_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
+        <TurnDetect />
       </Suspense>
     );
   }

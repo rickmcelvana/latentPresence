@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import * as ort from 'onnxruntime-web';
 import { FRAME_SAMPLES, SAMPLE_RATE } from './frames';
+import { TURN_WINDOW_SAMPLES } from './turn-audio';
 
 /**
  * Silero VAD, run directly on onnxruntime-web.
@@ -26,7 +27,15 @@ const SPEECH_OFF = 0.35;
  * Silence tolerated before an utterance is closed. Reported separately from latency:
  * it is a tuning choice, not a cost of the pipeline (P0-T07 exists to shrink it).
  */
-const HANGOVER_MS = 500;
+const DEFAULT_HANGOVER_MS = 500;
+
+/**
+ * How long the hangover actually waits, and whether a short silence should be offered to
+ * a semantic endpointer on the way. Both are set at load time and both default to Spike
+ * A's behaviour, so its measurements stay reproducible while Spike D reuses the worker.
+ */
+let hangoverMs = DEFAULT_HANGOVER_MS;
+let candidateMs: number | null = null;
 
 /**
  * Audio kept from before speech was detected. Silero needs a frame or two to be sure,
@@ -35,14 +44,40 @@ const HANGOVER_MS = 500;
 const PREROLL_MS = 300;
 
 type InboundMessage =
-  | { readonly type: 'load' }
+  | {
+      readonly type: 'load';
+      /** Defaults to 500 ms — Spike A's value. */
+      readonly hangoverMs?: number;
+      /**
+       * Silence after which the utterance so far is offered as a `candidate`, without
+       * closing it. Omitted means no candidates at all, which is Spike A exactly.
+       */
+      readonly candidateMs?: number;
+    }
   | { readonly type: 'frame'; readonly samples: Float32Array; readonly at: number }
+  /**
+   * Something downstream decided this turn is over before the hangover expired — Smart
+   * Turn v3 firing on a candidate. The utterance is dropped without a `settled`, so the
+   * next word starts a new turn rather than joining the one just answered.
+   */
+  | { readonly type: 'end-turn'; readonly turnId: number }
   | { readonly type: 'reset' };
 
 type OutboundMessage =
   | { readonly type: 'ready'; readonly stateDims: readonly number[] }
   | { readonly type: 'speech-start'; readonly at: number; readonly turnId: number }
   | { readonly type: 'speech-end'; readonly at: number; readonly turnId: number }
+  /**
+   * A short silence, offered for a second opinion. The turn is still open: if nothing
+   * acts on this, speech may resume or the hangover will close it as usual.
+   */
+  | {
+      readonly type: 'candidate';
+      readonly at: number;
+      readonly turnId: number;
+      readonly samples: Float32Array;
+      readonly speechEndAt: number;
+    }
   | {
       readonly type: 'settled';
       readonly at: number;
@@ -79,6 +114,12 @@ let preroll: Float32Array[] = [];
 const prerollFrames = Math.ceil((PREROLL_MS / 1000) * (SAMPLE_RATE / FRAME_SAMPLES));
 
 let speaking = false;
+/**
+ * Whether the current run of silence has already been offered as a candidate. One per
+ * pause, not one per frame: without it a 400 ms gap at 32 ms frames would ask the model
+ * a dozen times and the timings would measure a queue.
+ */
+let candidateOffered = false;
 let speechStartAt = 0;
 /** When speech last stopped — the honest end of the utterance, before the hangover. */
 let lastSpeechAt = 0;
@@ -102,11 +143,33 @@ function resetUtterance(): void {
   utterance = [];
   preroll = [];
   speaking = false;
+  candidateOffered = false;
   maxProbability = 0;
   state = freshState();
 }
 
-async function load(): Promise<void> {
+/**
+ * The utterance so far as one buffer, optionally only its last `limit` samples.
+ *
+ * Candidates are capped at the model's 8 s window: someone talking for a minute would
+ * otherwise post a megabyte down the port several times a turn, to be thrown away by the
+ * truncation on the other side.
+ */
+function collectUtterance(limit?: number): Float32Array {
+  const total = utterance.reduce((sum, frame) => sum + frame.length, 0);
+  const joined = new Float32Array(total);
+  let offset = 0;
+  for (const frame of utterance) {
+    joined.set(frame, offset);
+    offset += frame.length;
+  }
+  if (limit !== undefined && joined.length > limit) return joined.slice(joined.length - limit);
+  return joined;
+}
+
+async function load(options: { hangoverMs?: number; candidateMs?: number }): Promise<void> {
+  hangoverMs = options.hangoverMs ?? DEFAULT_HANGOVER_MS;
+  candidateMs = options.candidateMs ?? null;
   ort.env.wasm.numThreads = 1;
   session = await ort.InferenceSession.create(MODEL_URL, {
     executionProviders: ['wasm'],
@@ -150,19 +213,27 @@ async function onFrame(samples: Float32Array, at: number): Promise<void> {
   if (speaking) {
     if (probability >= SPEECH_OFF) {
       lastSpeechAt = at;
+      // Speech came back, so the next pause deserves its own candidate.
+      candidateOffered = false;
       return;
     }
-    if (at - lastSpeechAt < HANGOVER_MS) return;
+
+    const silenceMs = at - lastSpeechAt;
+
+    if (candidateMs !== null && !candidateOffered && silenceMs >= candidateMs) {
+      candidateOffered = true;
+      const window = collectUtterance(TURN_WINDOW_SAMPLES);
+      post(
+        { type: 'candidate', at, turnId, samples: window, speechEndAt: lastSpeechAt },
+        [window.buffer],
+      );
+    }
+
+    if (silenceMs < hangoverMs) return;
 
     // The hangover expired. `speechEndAt` is when speech actually stopped, not now:
     // conflating the two would charge the pipeline for a tuning constant.
-    const total = utterance.reduce((sum, frame) => sum + frame.length, 0);
-    const joined = new Float32Array(total);
-    let offset = 0;
-    for (const frame of utterance) {
-      joined.set(frame, offset);
-      offset += frame.length;
-    }
+    const joined = collectUtterance();
 
     let sumSquares = 0;
     let peak = 0;
@@ -199,9 +270,13 @@ self.addEventListener('message', (event: MessageEvent<InboundMessage>) => {
   const message = event.data;
   void (async () => {
     try {
-      if (message.type === 'load') await load();
+      if (message.type === 'load') await load(message);
       else if (message.type === 'frame') await onFrame(message.samples, message.at);
-      else resetUtterance();
+      else if (message.type === 'end-turn') {
+        // Only if it is still the turn in flight. A late arrival for a turn the hangover
+        // already closed must not wipe the one that started since.
+        if (speaking && message.turnId === turnId) resetUtterance();
+      } else resetUtterance();
     } catch (error) {
       post({ type: 'error', message: error instanceof Error ? error.message : String(error) });
     }

@@ -15,7 +15,13 @@ import { defineConfig, type Plugin } from 'vitest/config';
  * this plugin is the thing to delete, deliberately, rather than a surprise 21 MB.
  */
 function assertSpikeExcludedFromBuild(): Plugin {
-  const forbidden = ['onnxruntime', '@huggingface/transformers', 'kokoro-js', 'spike-capture'];
+  const forbidden = [
+    'onnxruntime',
+    '@huggingface/transformers',
+    'kokoro-js',
+    'spike-capture',
+    'smart-turn',
+  ];
 
   return {
     name: 'assert-spike-excluded-from-build',
@@ -24,15 +30,16 @@ function assertSpikeExcludedFromBuild(): Plugin {
       for (const [fileName, output] of Object.entries(bundle)) {
         if (fileName.endsWith('.wasm')) {
           this.error(
-            `${fileName} is in the production bundle. The Spike A models are dev-only (P0-T04).`,
+            `${fileName} is in the production bundle. The spike models are dev-only ` +
+              '(P0-T04, P0-T07).',
           );
         }
         if (output.type !== 'chunk') continue;
         for (const needle of forbidden) {
           if (output.code.includes(needle)) {
             this.error(
-              `${fileName} references "${needle}". The Spike A route has reached the ` +
-                'production bundle; it is meant to be dropped as dead code (P0-T04).',
+              `${fileName} references "${needle}". A spike route has reached the ` +
+                'production bundle; it is meant to be dropped as dead code (P0-T04, P0-T07).',
             );
           }
         }

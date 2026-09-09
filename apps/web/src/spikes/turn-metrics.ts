@@ -46,9 +46,14 @@ export interface CandidateTiming {
    * replaces the 512 ms hangover, so it belongs inside the headline rather than beside it.
    */
   readonly silenceMs: number;
-  /** Whisper log-mel in JS. If this dominates, the answer is a different feature path. */
+  /**
+   * Getting the window to the worker and the Whisper log-mel computed. It includes the
+   * port hop on purpose — that is latency someone waits through — so it reads slightly
+   * higher than the worker's own figure for the extraction alone. If this dominates, the
+   * answer is a different feature path rather than a different model.
+   */
   readonly featuresMs: number;
-  /** onnxruntime-web, one 8 s window. */
+  /** onnxruntime-web on one 8 s window, as timed inside the worker. */
   readonly inferenceMs: number;
   /** The headline: end of speech to an answer. Compare against Spike A's 512 ms. */
   readonly detectionMs: number;
