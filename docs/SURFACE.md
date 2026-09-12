@@ -643,3 +643,23 @@ Dependencies in `packages/providers`: `ai@7.0.97`, `@ai-sdk/openai-compatible@3.
 | Message roles | `SystemModelMessage`(`content:string`), `UserModelMessage`(`content:string`), `AssistantModelMessage`(`content:string \| parts`), `ToolModelMessage`(`content:part[]`); a tool-result output is a typed `{type:'json'\|'text', value}` part | installed types |
 
 **LLM preset base URLs (documented defaults, 2026-09-11).** Ollama `http://127.0.0.1:11434/v1` (live-verified via latentCreate surface); LM Studio `http://127.0.0.1:1234/v1` (ai-sdk.dev LM Studio page); vLLM `http://localhost:8000/v1` and llama.cpp `http://localhost:8080/v1` (standard server defaults, not yet live-tested here); OpenRouter `https://openrouter.ai/api/v1` (openrouter.ai docs/quickstart); NVIDIA NIM `https://integrate.api.nvidia.com/v1` (given in the P1-T02 plan; NIM docs); DeepSeek `https://api.deepseek.com/v1` (deepseek API docs); Kimi/Moonshot `https://api.moonshot.cn/v1` (platform.kimi.com docs).
+
+## Native Anthropic and Google LLM providers (P1-T03) — 2026-09-11, verified by reading the installed `dist/index.d.ts` and each package's bundled provider docs
+
+Dependencies in `packages/providers`: `@ai-sdk/anthropic@4.0.52`, `@ai-sdk/google@4.0.67`, on the same `ai@7.0.97` core as P1-T02. Neither package is generic the way `createOpenAICompatible` is, so neither needs a `ReturnType<...>` cast.
+
+| Fact | `@ai-sdk/anthropic@4.0.52` | `@ai-sdk/google@4.0.67` |
+|---|---|---|
+| Factory | `createAnthropic(options?: AnthropicProviderSettings): AnthropicProvider` | `createGoogle`, also exported as `createGoogleGenerativeAI`, `(options?: GoogleProviderSettings): GoogleProvider` |
+| Settings type | `AnthropicProviderSettings` | `GoogleProviderSettings` (alias `GoogleGenerativeAIProviderSettings`) |
+| Settings fields used | `baseURL?`, `apiKey?` (sent as `x-api-key`), `headers?: Record<string, string>`, `fetch?: FetchFunction` | `baseURL?`, `apiKey?` (sent as `x-goog-api-key`), **`headers?: Record<string, string \| undefined>`**, `fetch?: FetchFunction` |
+| Default base URL | `https://api.anthropic.com/v1` | `https://generativelanguage.googleapis.com/v1beta` |
+| Model handle | provider is callable: `provider(modelId)` returns a `LanguageModelV4` | same |
+| Model id type | `AnthropicModelId`, a union ending in `(string & {})`, so any string compiles | `GoogleModelId`, same shape |
+| `FetchFunction` | **not exported** by either package; assign through `NonNullable<XProviderSettings['fetch']>` | same |
+| Prompt caching | documented — `providerOptions.anthropic.cacheControl` breakpoints | documented — implicit caching, and explicit via `cachedContent` |
+| Context window | **stated nowhere in the installed types or bundled docs** | **stated nowhere in the installed types or bundled docs** |
+
+**Model ids in the curated catalogs, checked against the installed unions 2026-09-11.** Anthropic: `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`. Google: `gemini-3.8-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`. The `claude-sonnet-4-5` / `claude-opus-4-1` and `gemini-2.5-*` families still compile but are previous generations and are deliberately not offered.
+
+**Context length is where the two providers are recorded differently, on purpose.** Neither installed surface states a context window. Anthropic's `1000000` / `1000000` / `200000` come from Anthropic's published model table (cached 2026-06-24) and are **doc-sourced, not live-verified** — the confirming read is `GET /v1/models` → `max_input_tokens`, which needs a key and is producer-owned. Google's is `null` on every entry, because no source for it exists in the installed package at all and SURFACE 11 forbids presenting a guess as a fact. A `null` there is the honest answer, not a gap to fill in later from memory.
