@@ -6,9 +6,9 @@
 
 - **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
 - **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
-- **Phase:** **0 — Foundations and spikes.** P0-T01, P0-T02, P0-T02b, P0-T03, P0-T04 and P0-T07 landed 2026-09-08; **P0-T05 and P0-T06 landed 2026-09-09**. ADR-16 amended, ADR-20 accepted, **ADR-21 accepted 2026-09-09** (turn detection counts inside the pipeline budget). 21 ADRs accepted.
-- **Current task:** **P0-T08 Spike E — done 2026-09-11.** Linux **no-go for Tauri** (ships companion + Chrome), Windows **go**. Every row in the table is filled. **Next up is P0-T09.**
-- **Next task:** P0-T09, the Phase 0 retrospective. Every other Phase 0 task has landed.
+- **Phase:** **1 — Conversation core.** Phase 0 closed 2026-09-11 by P0-T09: every ADR checked against every measured result, every spike write-up linked from `docs/DECISIONS.md`. 21 ADRs accepted; ADR-01, 03, 05, 06, 07, 11, 17 and 20 carry measurement amendments.
+- **Current task:** **P1-T01 conversation state machine** — `packages/core/conversation`, explicit states and a typed event bus, no DOM and no audio APIs. Nothing blocks it.
+- **Next task:** P1-T02, the OpenAI-compatible LLM provider and model discovery, porting the verified shapes from latentCreate `crates/llm-bridge` rather than re-deriving them.
 - **Blockers:** none. No Docker anywhere, so CI uses a service container rather than a local one.
 - **Default character:** Alice (name chosen 2026-09-07). Placeholder VRM until P7-T02.
 - **Dev database (2026-09-09):** MariaDB **11.8.8** at `192.168.40.101` on the LAN, `DATABASE_URL` in `.env`, `ALL PRIVILEGES ON latentpresence.*`. `VECTOR(768)` with `VECTOR INDEX … DISTANCE=cosine` creates, inserts and answers top-k, and **`EXPLAIN` confirms the index is used rather than scanned**. RTT **p50 0.43 ms**. The earlier host `10.0.0.1` is 10.11.18 (no vectors) but gave the figure that matters: **p50 39.8 ms over the tunnel**, so retrieval must be one statement for any remote deployment. `docs/SURFACE.md`.
@@ -74,8 +74,8 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 ## Phase checklist
 
-- [ ] P0 Foundations and spikes — T01–T08 all done (**Spike E closed 2026-09-11**); **only the retrospective (T09) to go**
-- [ ] P1 Conversation core
+- [x] **P0 Foundations and spikes — complete 2026-09-11.** All five spikes measured, all four go/no-go calls made, ADRs reconciled with the evidence in P0-T09
+- [ ] **P1 Conversation core — current**
 - [ ] P2 Avatar and stage v1
 - [ ] P3 Affect engine and emotion sensing
 - [ ] P4 Memory and MariaDB
@@ -87,14 +87,15 @@ Accepted 2026-09-09. Followed through in DECISIONS, PLAN, RESEARCH, LLM-PLAN and
 
 ## Last three sessions
 
-- 2026-09-09 claude — **P0-T06 Spike C closed. Go**: top-8 at 100k rows in **4.90 ms median / 8.47 ms p95** on the LAN, `EXPLAIN` naming the index, storage bit-exact, CI running the schema against a real MariaDB. The finding was a default: a **16 MB** `mhnsw_max_cache_size` against 307 MB of vectors cost 5x on queries and made 100k unreachable. Two of my own measurement failures — a periodic fixture that let a probe collide with a stored row at distance 0.000000, and a whole run taken while the server installed a kernel — were caught and every number re-taken on an idle box.
-- 2026-09-09 claude — P0-T05 Spike B closed on Rick's run: **570 frames, no misses at 120 Hz**, lip sync passes. Read as frame times it is a pass with unknown headroom, and it was taken at a quarter of the budgeted pixels, so a render-scale control was added and one 1080p reading is outstanding. Spike C unblocked by `.env`.
+- 2026-09-11 claude — **P0-T09, the Phase 0 retrospective. Phase 0 is closed.** Read all 21 ADRs against all five spike write-ups. **One outright contradiction** (ADR-07 still said Windows was unmeasured and the spike open) and five ADRs that said less than the evidence supported. The two that matter beyond bookkeeping: ADR-05 now carries the `mhnsw_max_cache_size` shipping requirement, which was a real constraint with no decision record; and ADR-20 records that its 3779 ms wasm figure was taken **single-threaded**, which went from a footnote to a live question the moment ADR-07's Linux clause made Chrome a shipping path. Every spike doc is now linked from `docs/DECISIONS.md`. No ADR was reversed and no new decision was needed.
+
 - 2026-09-11 claude — **P0-T08 Spike E, Windows leg. Go on WebView2**, and the spike is effectively closed. Started on a stale clone and built a whole parallel implementation of the same task before discovering `origin/main` was four commits ahead; reset to the published history, kept the duplicate on `spike-e-windows-leg`, and ported only the additive parts — a tray and the Rust notification path into the existing shell, and the surface corrections. Two facts survived from the discarded branch: `tauri` 2.11.5 resolves **wry 0.55.1**, not crates.io's 0.57.0 (confirmed against both lockfiles, so it is Tauri's pin), and `tauri-plugin-notification` polyfills `window.Notification`, so a page with no Tauri code in it is refused by the ACL — latent in the probe, but P8-T05 would have hit it.
 
+- 2026-09-09 claude — **P0-T06 Spike C closed. Go**: top-8 at 100k rows in **4.90 ms median / 8.47 ms p95** on the LAN, `EXPLAIN` naming the index, storage bit-exact, CI running the schema against a real MariaDB. The finding was a default: a **16 MB** `mhnsw_max_cache_size` against 307 MB of vectors cost 5x on queries and made 100k unreachable. Two of my own measurement failures — a periodic fixture that let a probe collide with a stored row at distance 0.000000, and a whole run taken while the server installed a kernel — were caught and every number re-taken on an idle box.
 
 ## Spike harness
 
-Four dev-only routes in `apps/web`, all dropped from production builds by the guard in `vite.config.ts` (it fails the build if any reaches a chunk). `/spike/voice` is Spike A: consent, Silero + Moonshine + Kokoro, per-turn timing. `/spike/turn` is Spike D: the same capture and VAD with a short candidate silence, plus Smart Turn v3 and a labelled confusion matrix. `/spike/avatar` is Spike B: a VRM in react-three-fiber with lip sync and a frame-rate model. `/spike/shell` is Spike E: the webview capability probe, which prints a copyable markdown table and hands it to the Tauri host if there is one. Delete A and D at P0-T09 if Phase 1 has replaced them; **B's guard entries come out at P2-T01 deliberately**, because the avatar stops being dev-only there. E goes when P0-T08 closes.
+Four dev-only routes in `apps/web`, all dropped from production builds by the guard in `vite.config.ts` (it fails the build if any reaches a chunk). `/spike/voice` is Spike A: consent, Silero + Moonshine + Kokoro, per-turn timing. `/spike/turn` is Spike D: the same capture and VAD with a short candidate silence, plus Smart Turn v3 and a labelled confusion matrix. `/spike/avatar` is Spike B: a VRM in react-three-fiber with lip sync and a frame-rate model. `/spike/shell` is Spike E: the webview capability probe, which prints a copyable markdown table and hands it to the Tauri host if there is one. **Reviewed at P0-T09 (2026-09-11) and all four kept, each with a named trigger for deletion.** A and D were to go at P0-T09 "if Phase 1 has replaced them" — Phase 1 has not started, and they are the reference measurements P1-T06 and P1-T07 will be checked against, so they go when those land. B's guard entries come out at **P2-T01**, deliberately, because the avatar stops being dev-only there. **E was to go when P0-T08 closed, and is kept instead**: Phase 8 inherits two claims this spike deliberately left unverified — that an installed Windows build actually draws a toast, and what Chrome on Linux does for WebGPU without `--disable-gpu-sandbox` — and the probe is the instrument for both. It is dev-only, guarded and tested, so it costs a build assertion and nothing else. **It goes when P8-T01 closes.**
 
 The boot screen carries a **dev-only index of those routes**. It is not decoration: a Tauri window has no address bar, so without it the shell opens on `/` and no spike route is reachable from inside it at all.
 
