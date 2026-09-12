@@ -25,6 +25,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
 | ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted (amended) | 2026-09-11 |
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | proposed | 2026-09-11 |
+| ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | proposed | 2026-09-12 |
 
 ---
 
@@ -400,3 +401,30 @@ must not hide the model as embedding-only, and must not present it as a local or
 can-chat model — SURFACE 11.2 forbids presenting unknown as either. The Ollama discovery
 path (native `/api/tags`) never returns `null`, so nothing is lost on the primary local
 case.
+
+## ADR-23 Inline tag types stay in core until the tag protocol exists (proposed 2026-09-12)
+
+**Decision:** the sentence chunker's `InlineTag` and `SpeechChunk` are plain TypeScript
+types in `packages/core/chunker`, not zod schemas in `packages/protocol`, and
+`ConversationEventSchema` gains no variant for an emote or a gesture in P1-T04.
+
+**Why.** `docs/LLM-PLAN.md` describes P1-T04 as stripping tags "into events with character
+offsets", and no such event exists: the union carries `assistant.sentence` and nothing for
+a tag. Adding one now would fix the wire shape of a protocol **P1-T12 has not designed**.
+P1-T12 owns the persona text that asks a model for tags and the vocabulary it may use; it
+may well conclude that a gesture needs a duration, or a target, or a strength, none of
+which P1-T04 can know. A protocol variant guessed here would be an interface change to
+un-guess later, and `packages/protocol` changes are the one thing this repo makes
+expensive on purpose.
+
+The seam is left deliberately cheap to close: `SpeechChunk.index` is the same 0-based
+monotonic number `assistant.sentence.index` already carries, so promoting the tag shape is
+a field copy rather than a redesign.
+
+**What this costs.** Nothing consumes tags until P2-T01, so nothing is blocked. The risk
+is that the core-local type quietly becomes the de facto protocol by being convenient.
+**P1-T12 must decide explicitly** whether to promote it, amend it, or replace it — and
+say so in its session note rather than inheriting this by default.
+
+**Reconsider when:** P1-T12 lands. This ADR is `proposed` and should be accepted or
+reversed there, not left open into Phase 2.
