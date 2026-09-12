@@ -67,10 +67,18 @@ export type LlmStreamChunk = z.infer<typeof LlmStreamChunkSchema>;
 export const LlmModelSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  capabilities: LlmCapabilitiesSchema,
+  /**
+   * null only when the endpoint did not enrich: the OpenAI-compatible `/v1/models` list
+   * carries no capability data at all, and a client that presents a guess as a fact would
+   * label an unknown embedding model "can chat" or a privacy-sensitive remote model
+   * "local" (latentCreate LLM-SURFACE 11). Ollama's native `/api/tags` makes these known.
+   */
+  capabilities: LlmCapabilitiesSchema.nullable(),
   /**
    * Ollama and LM Studio list embedding models on the same endpoint as chat models.
-   * The chat picker hides these instead of letting a user pick one and get nothing.
+   * The chat picker hides these instead of letting a user pick one and get nothing. On
+   * the un-enriched path capabilities is null and this is a harmless default, never a
+   * claim one way or the other.
    */
   embeddingOnly: z.boolean(),
 });

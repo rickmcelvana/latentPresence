@@ -5,3 +5,5 @@ export const packageInfo = {
   name: '@latentpresence/providers',
   protocolVersion: PROTOCOL_VERSION,
 } as const;
+
+export * from './llm';

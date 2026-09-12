@@ -24,6 +24,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
 | ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted (amended) | 2026-09-11 |
+| ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | proposed | 2026-09-11 |
 
 ---
 
@@ -378,3 +379,24 @@ offer int8 on WebGPU — the same rule ADR-20 set for recognition, for the same 
 ## ADR-19 Name
 
 latentPresence. Domain `latentpresence.com` owned. Package scope `@latentpresence/*`, companion binary `latentpresence-companion`.
+
+## ADR-22 LLM discovery capabilities can be unknown (proposed 2026-09-11)
+
+**Decision:** `LlmModel.capabilities` becomes nullable (`capabilities: null` = the endpoint
+did not enrich, so nothing is known).
+
+**Why.** latentCreate's `LLM-SURFACE.md` §11 documents that the OpenAI-compatible
+`/v1/models` list carries no capability data at all: embedding models are listed
+indistinguishably from chat models, remote/cloud models are invisible, and thinking is
+unknowable before a call. Only Ollama's native `/api/tags` enrichment (P1-T02) makes these
+facts available. The previous contract forced a concrete `LlmCapabilities`, so discovery
+had to guess — an unenriched embedding model would be presented as "can chat", a remote
+model as "local". `null` is the only truthful answer for an endpoint that did not enrich,
+and it is the contract's existing pattern (`contextLength` was already nullable for the
+same reason).
+
+**Consequences.** The chat picker (P1-T10) must treat `null` capabilities as *unknown*: it
+must not hide the model as embedding-only, and must not present it as a local or
+can-chat model — SURFACE 11.2 forbids presenting unknown as either. The Ollama discovery
+path (native `/api/tags`) never returns `null`, so nothing is lost on the primary local
+case.

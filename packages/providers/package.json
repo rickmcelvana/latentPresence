@@ -9,6 +9,8 @@
   },
   "types": "./src/index.ts",
   "dependencies": {
-    "@latentpresence/protocol": "workspace:*"
+    "@ai-sdk/openai-compatible": "^3.0.47",
+    "@latentpresence/protocol": "workspace:*",
+    "ai": "^7.0.97"
   }
 }

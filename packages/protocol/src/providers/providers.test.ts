@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ExpressionWeightsSchema } from '../affect';
 import { CharacterSourceSchema, ClipOptionsSchema, VisemeSchema } from '../avatar';
-import { LlmMessageSchema, LlmRequestSchema, LlmStreamChunkSchema } from './llm';
+import { LlmMessageSchema, LlmModelSchema, LlmRequestSchema, LlmStreamChunkSchema } from './llm';
 import { SttResultSchema } from './stt';
 import { TtsRequestSchema, TtsVoiceSchema } from './tts';
 import { EmbeddingVectorSchema } from './embedding';
@@ -46,6 +46,37 @@ describe('LlmRequestSchema', () => {
       temperature: 0,
       maxOutputTokens: null,
     }).temperature).toBe(0);
+  });
+});
+
+describe('LlmModelSchema', () => {
+  it('permits null capabilities for a discovery that could not enrich', () => {
+    // The OpenAI-compatible /v1/models list carries no capability data (latentCreate
+    // LLM-SURFACE 11). null is the only truthful answer; a guessed boolean would label
+    // an unknown embedding model "can chat".
+    const unenriched = {
+      id: 'some-model:latest',
+      label: 'some-model',
+      capabilities: null,
+      embeddingOnly: false,
+    };
+    expect(LlmModelSchema.parse(unenriched)).toEqual(unenriched);
+
+    const enriched = {
+      id: 'gemma4:12b',
+      label: 'gemma4:12b',
+      capabilities: {
+        streaming: true,
+        toolCalls: true,
+        structuredOutput: false,
+        thinking: true,
+        promptCaching: false,
+        vision: true,
+        contextLength: 262144,
+      },
+      embeddingOnly: false,
+    };
+    expect(LlmModelSchema.parse(enriched).capabilities?.thinking).toBe(true);
   });
 });
 

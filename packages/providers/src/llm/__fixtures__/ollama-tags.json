@@ -1,0 +1,79 @@
+{
+  "models": [
+    {
+      "name": "gemma4:12b-it-qat",
+      "model": "gemma4:12b-it-qat",
+      "modified_at": "2026-06-07T11:35:45.5616355-05:00",
+      "size": 7151003754,
+      "digest": "38044be4f923e5a55264ed7df4eaac2676651a905f735197c504045140c02bd3",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "gemma4",
+        "families": ["gemma4"],
+        "parameter_size": "11.9B",
+        "quantization_level": "Q4_0",
+        "context_length": 262144,
+        "embedding_length": 3840
+      },
+      "capabilities": ["completion", "tools", "thinking", "vision"]
+    },
+    {
+      "name": "nomic-embed-text:latest",
+      "model": "nomic-embed-text:latest",
+      "modified_at": "2026-06-21T04:33:11.7572232-05:00",
+      "size": 274302450,
+      "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "nomic-bert",
+        "families": ["nomic-bert"],
+        "parameter_size": "137M",
+        "quantization_level": "F16",
+        "context_length": 2048,
+        "embedding_length": 768
+      },
+      "capabilities": ["embedding"]
+    },
+    {
+      "name": "kimi-k3:cloud",
+      "model": "kimi-k3:cloud",
+      "remote_model": "kimi-k3",
+      "remote_host": "https://ollama.com",
+      "modified_at": "2026-08-24T18:18:15.0053195-05:00",
+      "size": 308,
+      "digest": "630e737485bd19f7244fa91f135be116780a25e942ceed0d2aceabaccbd5bf99",
+      "details": {
+        "parent_model": "",
+        "format": "",
+        "family": "",
+        "families": null,
+        "parameter_size": "2.81T",
+        "quantization_level": "MXFP4",
+        "context_length": 1048576,
+        "embedding_length": 7168
+      },
+      "capabilities": ["vision", "thinking", "completion", "tools"]
+    },
+    {
+      "name": "deepseek-v4-pro:cloud",
+      "model": "deepseek-v4-pro:cloud",
+      "remote_model": "deepseek-v4-pro",
+      "remote_host": "https://ollama.com:443",
+      "modified_at": "2026-07-22T22:12:05.4850076-05:00",
+      "size": 344,
+      "digest": "22bfd5026abd64524341f1f90c4885c91a879767c39e3e39a4a3f000b3d0815f",
+      "details": {
+        "parent_model": "",
+        "format": "",
+        "family": "",
+        "families": null,
+        "parameter_size": "",
+        "quantization_level": "",
+        "context_length": 1048576
+      },
+      "capabilities": ["completion", "tools", "thinking"]
+    }
+  ]
+}

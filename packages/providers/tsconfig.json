@@ -3,8 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": ".tsbuild",
-    "tsBuildInfoFile": ".tsbuild/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": ".tsbuild/tsconfig.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
-  "include": ["src"],
+  "include": ["src", "src/**/*.json"],
   "references": [{ "path": "../protocol" }]
 }

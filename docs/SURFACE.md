@@ -626,3 +626,20 @@ Check it **inside the Tauri webview**, never in a browser on the same machine �
 that box proves nothing about WebKitGTK. Record the WebKitGTK version beside the answer
 (`pkg-config --modversion webkit2gtk-4.1`), because this is a moving target and a bare yes
 or no with no version against it will be worthless in six months.
+
+## AI SDK v7 + OpenAI-compatible LLM (P1-T02) — 2026-09-11, verified against installed types and vendor docs
+
+Dependencies in `packages/providers`: `ai@7.0.97`, `@ai-sdk/openai-compatible@3.0.47` (both MIT/Apache, recorded by `pnpm`). The streaming wire format (`reasoning`/`reasoning_content`, the `choices: []` usage frame, plain-text 404s, SSE framing) is verified **live against Ollama 0.32.15** by latentCreate's `crates/llm-bridge` (2026-08-24, `docs/LLM-SURFACE.md`); the AI SDK owns that parsing and this entry records what we depend on from it.
+
+| Fact | Result | Source |
+|---|---|---|
+| Provider factory | `createOpenAICompatible({ name, baseURL, apiKey?, headers?, fetch?, includeUsage })` → `provider('model-id')`; a `fetch` option substitutes the transport for tests | ai-sdk.dev OpenAI-Compatible Providers |
+| Streaming | `streamText({ model, messages, tools, abortSignal, temperature?, maxOutputTokens?, ... })` → `result.fullStream` of typed parts; `abortSignal` is the cancel seam (barge-in) | ai-sdk.dev streamText reference |
+| Stream parts we map | `text-delta`(text), `reasoning-delta`(text), `tool-call`(toolCallId+toolName+input), `finish`(finishReason,totalUsage), `error`, `abort` | installed `ai` dist types |
+| Reasoning | Reasoning streams arrive as a `reasoning-delta` part (text kept **out** of `text-delta`); `FinishReason` is `stop`\|`length`\|`content-filter`\|`tool-calls`\|`error`\|`other` (no `aborted` — an abort is a separate part) | ai-sdk.dev Reasoning, installed types |
+| Usage | `LanguageModelUsage`: `inputTokens`/`outputTokens` are `number\|undefined`; cache tokens live under `inputTokenDetails.cacheReadTokens`/`cacheWriteTokens`, not top-level | installed types |
+| Tool set | `tool({ description, inputSchema: jsonSchema(schema) })`; the schema field is **`inputSchema`**, not `parameters`, in v7 | installed types |
+| Tool messages | A tool-result content part requires `toolName`; our protocol message carries only `callId`, so the provider resolves the name from the preceding assistant turn | installed types, our mapping |
+| Message roles | `SystemModelMessage`(`content:string`), `UserModelMessage`(`content:string`), `AssistantModelMessage`(`content:string \| parts`), `ToolModelMessage`(`content:part[]`); a tool-result output is a typed `{type:'json'\|'text', value}` part | installed types |
+
+**LLM preset base URLs (documented defaults, 2026-09-11).** Ollama `http://127.0.0.1:11434/v1` (live-verified via latentCreate surface); LM Studio `http://127.0.0.1:1234/v1` (ai-sdk.dev LM Studio page); vLLM `http://localhost:8000/v1` and llama.cpp `http://localhost:8080/v1` (standard server defaults, not yet live-tested here); OpenRouter `https://openrouter.ai/api/v1` (openrouter.ai docs/quickstart); NVIDIA NIM `https://integrate.api.nvidia.com/v1` (given in the P1-T02 plan; NIM docs); DeepSeek `https://api.deepseek.com/v1` (deepseek API docs); Kimi/Moonshot `https://api.moonshot.cn/v1` (platform.kimi.com docs).
