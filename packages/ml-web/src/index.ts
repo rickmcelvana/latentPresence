@@ -5,3 +5,5 @@ export const packageInfo = {
   name: '@latentpresence/ml-web',
   protocolVersion: PROTOCOL_VERSION,
 } as const;
+
+export * from './kokoro';

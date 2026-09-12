@@ -215,6 +215,9 @@ importers:
       '@latentpresence/protocol':
         specifier: workspace:*
         version: link:../protocol
+      kokoro-js:
+        specifier: 1.2.1
+        version: 1.2.1
 
   packages/protocol:
     dependencies:
@@ -233,6 +236,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.47
         version: 3.0.47(zod@4.5.4)
+      '@latentpresence/ml-web':
+        specifier: workspace:*
+        version: link:../ml-web
       '@latentpresence/protocol':
         specifier: workspace:*
         version: link:../protocol

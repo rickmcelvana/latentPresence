@@ -9,6 +9,7 @@
   },
   "types": "./src/index.ts",
   "dependencies": {
-    "@latentpresence/protocol": "workspace:*"
+    "@latentpresence/protocol": "workspace:*",
+    "kokoro-js": "1.2.1"
   }
 }
