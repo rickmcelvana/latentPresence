@@ -26,6 +26,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted (amended) | 2026-09-11 |
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | proposed | 2026-09-11 |
 | ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | proposed | 2026-09-12 |
+| ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | proposed | 2026-09-12 |
 
 ---
 
@@ -428,3 +429,40 @@ say so in its session note rather than inheriting this by default.
 
 **Reconsider when:** P1-T12 lands. This ADR is `proposed` and should be accepted or
 reversed there, not left open into Phase 2.
+
+## ADR-24 TTS audio crosses as Float32 PCM, decoded by the adapter (proposed 2026-09-12)
+
+**Decision:** every `TTSProvider` yields `SpokenAudioChunk` — mono `Float32Array` samples
+with the rate they were made at. The OpenAI-compatible adapter therefore asks for
+`response_format: 'wav'` and parses the RIFF container itself
+(`packages/providers/src/tts/wav.ts`) rather than handing bytes to
+`AudioContext.decodeAudioData`. Compressed formats — mp3, opus, aac, flac — are not
+offered.
+
+**Why.** Three reasons, in the order they decided it.
+
+1. **`decodeAudioData` is a DOM API.** Using it would make every test of the TTS adapter a
+   browser test, for a package whose whole point is that a provider is testable without
+   one. The LLM adapters set that precedent with an injected `fetch`; this is the same
+   move for audio.
+2. **`wav` states its own sample rate and `pcm` does not.** Headerless PCM would need the
+   rate from configuration, which for an endpoint the user pasted a URL for is a guess —
+   and SURFACE 11 forbids presenting a guess as a fact. `pcm` remains available for a user
+   who states the rate, and a WAV header always wins over the configured value.
+3. **The compression buys nothing here.** One sentence of 24 kHz mono is tens of kilobytes
+   over a LAN or a TLS connection the user already pays for, and every codec would need a
+   decoder in the bundle for audio that is about to be played once.
+
+**What this costs.** A server that cannot emit `wav` cannot be used through this adapter.
+Every implementation checked offers it — OpenAI's schema lists it, Kokoro-FastAPI's lists
+it (`docs/SURFACE.md`, 2026-09-12) — but this is the constraint to remember when a user
+reports a server that will not work. The fix, if one ever appears, is a decoder behind the
+same `DecodedAudio` shape, not a change to what providers yield.
+
+It also means **the adapter does not stream**. `stream_format: 'sse'` exists on OpenAI and
+would deliver base64 deltas of a partial container; it is not used, because P1-T04 already
+split the answer into sentences and the latency that matters is per sentence, not within
+one. `capabilities().streaming` is `false` so nothing downstream is misled about it.
+
+**Reconsider when:** a real endpoint appears that only speaks a compressed format, or when
+a measurement shows intra-sentence streaming is worth the framing. Neither has happened.

@@ -663,3 +663,49 @@ Dependencies in `packages/providers`: `@ai-sdk/anthropic@4.0.52`, `@ai-sdk/googl
 **Model ids in the curated catalogs, checked against the installed unions 2026-09-11.** Anthropic: `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`. Google: `gemini-3.8-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite`. The `claude-sonnet-4-5` / `claude-opus-4-1` and `gemini-2.5-*` families still compile but are previous generations and are deliberately not offered.
 
 **Context length is where the two providers are recorded differently, on purpose.** Neither installed surface states a context window. Anthropic's `1000000` / `1000000` / `200000` come from Anthropic's published model table (cached 2026-06-24) and are **doc-sourced, not live-verified** — the confirming read is `GET /v1/models` → `max_input_tokens`, which needs a key and is producer-owned. Google's is `null` on every entry, because no source for it exists in the installed package at all and SURFACE 11 forbids presenting a guess as a fact. A `null` there is the honest answer, not a gap to fill in later from memory.
+
+## TTS providers (P1-T05) — 2026-09-12, verified by reading the installed `kokoro-js@1.2.1`, OpenAI's published OpenAPI schema, and Kokoro-FastAPI's source
+
+Three surfaces, three different kinds of evidence. None of it is from memory.
+
+### kokoro-js 1.2.1 — read from `types/kokoro.d.ts` and `dist/kokoro.js` in `node_modules`
+
+| Fact | Value |
+|---|---|
+| Load | `KokoroTTS.from_pretrained(model_id, { dtype, device, progress_callback })` |
+| `dtype` | `"fp32" \| "fp16" \| "q8" \| "q4" \| "q4f16"` — note **`q8f16` is a file in the HF repo but not a value here** |
+| `device` | `"wasm" \| "webgpu" \| "cpu" \| null`; `cpu` is the node backend and is unreachable from a browser worker |
+| Stream | `stream(text: string \| TextSplitterStream, { voice, speed, split_pattern })` → `AsyncGenerator<{ text, phonemes, audio: RawAudio }>` |
+| `RawAudio` | `{ audio: Float32Array, sampling_rate: number }` (from `@huggingface/transformers` `types/utils/audio.d.ts`) |
+| Output rate | **24000 Hz, hard-coded** — `new RawAudio(waveform.data, 24e3)` in `dist/kokoro.js` |
+| `speed` | supported on both `generate` and `stream`; there is **no emotion or style parameter at all** |
+| Word timings | none. Nothing on this surface returns them |
+| Package root exports | **only `KokoroTTS`, `TextSplitterStream`, `env`** — `VOICES` is *not* exported |
+| Voices | 28, reachable only through a *loaded* model's `.voices` getter; each `{ name, language: "en-us" \| "en-gb", gender: "Female" \| "Male", traits?, targetQuality, overallGrade }` |
+| `list_voices()` | **returns `void`** — it prints a table. A `listVoices()` built on it would return nothing |
+
+The unexported `VOICES` is why `packages/ml-web/src/kokoro/voices.ts` carries a copy of the table: the settings UI has to list voices *before* the consent screen, and reading them from an instance would mean downloading 325 MB first. `voices.test.ts` parses the installed bundle and fails if the copy drifts.
+
+### OpenAI `POST /v1/audio/speech` — read from `openai/openai-openapi` `openapi.yaml` (`CreateSpeechRequest`)
+
+| Field | Type | Notes |
+|---|---|---|
+| `model` | string, **required** | `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, `gpt-4o-mini-tts-2025-12-15` |
+| `input` | string, **required** | max 4096 characters |
+| `voice` | string or `{ id }`, **required** | built-ins: `alloy ash ballad coral echo fable onyx nova sage shimmer verse marin cedar` |
+| `instructions` | string, max 4096 | **does not work with `tts-1` or `tts-1-hd`** |
+| `response_format` | `mp3 opus aac flac wav pcm` | default `mp3` |
+| `speed` | number | **0.25 – 4.0**, default 1 |
+| `stream_format` | `sse \| audio` | default `audio`; `sse` is not supported for `tts-1`/`tts-1-hd` |
+
+Response is `application/octet-stream` (the audio file) or `text/event-stream`. The SSE events are `speech.audio.delta` `{ type, audio }` where `audio` is base64, and `speech.audio.done` `{ type, usage }`.
+
+**There is no listing endpoint for voices.** The spec's only `/audio/voices` is a `POST` that *creates* a custom voice. A voice list on this surface is configuration, not discovery.
+
+### Kokoro-FastAPI — read from `api/src/routers/openai_compatible.py` and `api/src/structures/schemas.py` on `master`
+
+- `POST /v1/audio/speech` takes the same `model` / `input` / `voice` / `response_format` / `speed`, plus `stream` (**default `true`**), `download_format`, `lang_code`, `volume_multiplier`, `normalization_options`.
+- `response_format` is `mp3 opus aac flac wav pcm`; the schema's own words for `pcm` are "raw 16-bit samples without headers".
+- Audio is written at **24000 Hz** (`StreamingAudioWriter(request.response_format, sample_rate=24000)`).
+- `GET /v1/audio/voices` **exists here and not on OpenAI**. It returns `{"voices": [{"id", "name", …}], "default_voice": …}`, and `?legacy=true` returns the pre-0.3.x `{"voices": ["af_heart", …]}` plain-string shape. The adapter reads both.
+- Its `wav` is written through PyAV in streaming mode, so **the `data` chunk size in the header cannot be final**. The parser in `packages/providers/src/tts/wav.ts` treats a declared size of `0` or `0xffffffff` as "read to the end" and every other value as an upper bound.
