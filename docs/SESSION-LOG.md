@@ -99,3 +99,11 @@ Left: nothing in Phase 0. **ADR-04, 08, 12 and 14 have no Phase 0 evidence at al
 Next: P1-T01, the conversation state machine in `packages/core/conversation`.
 Decisions: no ADR reversed and no new ADR needed — ADR-07's Linux clause was the only one that fired and it fired as written. All four spike routes kept with named deletion triggers: A and D when P1-T06/T07 land, B at P2-T01, and **E at P8-T01 rather than now**, because Phase 8 inherits two claims Spike E deliberately left unverified and the probe is the instrument for both.
 Click-through: n/a — docs-only.
+
+## 2026-09-11 deepseek — P1-T01 conversation state machine
+Did: `packages/core/conversation` — an explicit `transitionTable`, a typed `ConversationBus`, a `ConversationMachine` (state + injected-scheduler timers: idle auto-end and the barge-in teardown) and the `AudioIn/AudioOut/LLM/STT/TTS` port seams. Reuses protocol's five `ConversationState`s and `ConversationEvent` union untouched. Design calls: barge-in during `thinking` → `listening` (nothing audible to cut), during `speaking` → `interrupted` → `listening` via the teardown timer (P1-T08's fade seam) or → `thinking` directly if the interjection is a complete turn. 27 new tests; `pnpm gate` green; committed as `P1-T01`.
+Left: ports are declared seams, not yet consumed — the machine holds them read-only; P1-T02/T05/T06/T07/T08 wire them. `interrupted → listening` is timer-driven until P1-T08 replaces it with the real 100 ms fade.
+Next: P1-T02, OpenAI-compatible LLM provider and model discovery.
+Decisions: none new — no ADR, no protocol change.
+Click-through: n/a — headless core, no UI.
+
