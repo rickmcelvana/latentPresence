@@ -107,3 +107,11 @@ Next: P1-T02, OpenAI-compatible LLM provider and model discovery.
 Decisions: none new — no ADR, no protocol change.
 Click-through: n/a — headless core, no UI.
 
+## 2026-09-11 deepseek — P1-T02 OpenAI-compatible LLM provider and discovery
+Did: `packages/providers/llm` — `openai-compatible.ts` (LLMProvider over the AI SDK, `ai@7` + `@ai-sdk/openai-compatible` per ADR-04; maps `fullStream` parts→chunks: text/reasoning/tool-call/finish, abort→finish 'aborted'), `discovery.ts` (Ollama `/api/tags` enrichment + `/v1/models` fallback, ported from latentCreate `llm-bridge`), eight presets, `FakeLLMProvider`, and a ported `ollama-tags.json` fixture. All shapes verified against the installed AI SDK 7 types and vendor docs, recorded in `docs/SURFACE.md`. 24 new tests; `pnpm gate` green.
+Left: live streaming + tool calls vs Ollama and NVIDIA, and a live Ollama stream fixture, are producer-owned (no live endpoint in this harness). The picker (P1-T10) must consume `capabilities: null` as "unknown", never as can-chat/local (SURFACE 11).
+Next: P1-T03 (owner: aider), Anthropic and Google native providers.
+Decisions: **ADR-22 proposed — `LlmModel.capabilities` nullable** (unknown), the only truthful answer for an un-enriched `/v1/models` endpoint; recommended option taken. Added `ai`/`@ai-sdk/openai-compatible` to providers; its tsconfig gained the DOM lib for the AI SDK's types.
+Click-through: pending — Rick's manual Ollama/NVIDIA test (streaming + a tool call), and the live Ollama stream fixture.
+
+
