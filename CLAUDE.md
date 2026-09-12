@@ -6,10 +6,11 @@ Conversational AI with a realistic-styled full-body avatar in a video-call frami
 
 ## Start every session
 
-1. Read `PROJECT.md` (Snapshot, then the last session note).
-2. `git log --oneline -15` and `git status`. Git wins over docs when they disagree; fix the doc first.
-3. Read only the current task in `docs/LLM-PLAN.md` and its brief in `docs/briefs/` if one exists.
-4. State in one line what you are about to do.
+1. **`git fetch && git status -sb` before anything else.** If the branch is behind, pull and re-read; this repo is worked from more than one machine and the other one may have finished the task you are about to start. On 2026-09-11 a session skipped this, read a four-commit-stale `PROJECT.md`, and rebuilt P0-T08 from scratch in parallel with a finished implementation.
+2. Read `PROJECT.md` (Snapshot, then the last session note).
+3. `git log --oneline -15`. Git wins over docs when they disagree; fix the doc first.
+4. Read only the current task in `docs/LLM-PLAN.md` and its brief in `docs/briefs/` if one exists.
+5. State in one line what you are about to do.
 
 ## End every session
 

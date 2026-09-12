@@ -19,7 +19,7 @@
 # `binary` unsets diff, merge and text together: never run eol conversion on a PNG.
 site/img/*.png -filter binary
 
-# Tauri's scaffold icons (P0-T08), for the same reason and one more. Small; needed at
+# The shell's icons (P0-T08), for the same reason and one more. Small; needed at
 # build time on every machine that compiles the shell; and PROJECT.md records that a plain
 # `git pull && pnpm install` is enough to work here — putting the first real LFS payload in
 # the repo to carry twelve 32 KB PNGs would quietly make that false, on the Windows box

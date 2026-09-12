@@ -5,7 +5,10 @@
 existing fallback clause fires and Linux ships as "companion + Chrome".
 **Windows — go.** WebView2 152.0.4191.66 provides a real WebGPU adapter, a live microphone,
 AudioWorklet, WebGL 2 and a tray, so ADR-07's Windows-first path is confirmed as written.
-One row is outstanding (a native notification raised from Rust), and it gates nothing.
+The one row that is not a plain yes — a native notification raised from Rust — has a
+structural answer rather than a missing measurement: it returns `Ok` and draws nothing,
+because an unpackaged dev binary has no AppUserModelID. P8-T01's installer is what supplies
+one. **Nothing here is outstanding.**
 Task P0-T08. Brief: `docs/briefs/P0-T08.md`. Verified surface facts: `docs/SURFACE.md`.
 
 ## The question
@@ -83,7 +86,7 @@ which is what makes the two columns comparable.
 | SharedArrayBuffer | NO — `crossOriginIsolated = false` | NO — same |
 | Notification API | yes — `permission = denied`, but see below | yes — `permission = default` |
 | Tray | **yes** — `tray: built`, icon in the notification area | not measured |
-| Native notification (from Rust) | *outstanding — one tray click* | not measured |
+| Native notification (from Rust) | call returns `Ok`, **no toast is drawn** — see below | not measured |
 
 **The adapter row is a real hardware pass, not a namespace.** `capabilities.ts` learned on
 the Linux leg to call a software rasteriser a failure, so `nvidia / blackwell` here means
@@ -103,6 +106,45 @@ onnxruntime-web's *threaded* wasm build needs it, so **Spike A's 3779 ms wasm fi
 taken single-threaded** and the wasm fallback has never been measured with threads. On
 Linux that fallback is now the shipping path, which makes it a Phase 1 question rather than
 a curiosity.
+
+### The native notification returns `Ok` and draws nothing, and the reason is structural
+
+The tray's "Send a test notification" logs `notification: call returned Ok` and **no toast
+appears**. This is not a failure to diagnose later — it is the documented behaviour of an
+unpackaged Win32 binary, and it is the single most useful thing the Windows leg found for
+Phase 8.
+
+Windows routes toasts by **AppUserModelID**. An app gets one by having a Start Menu shortcut
+that carries it; Microsoft's own guidance for unpackaged apps is that the shortcut must also
+carry a CLSID for Action Center to persist the notification at all. A binary run straight
+out of `target/debug/` has no shortcut and therefore no registration, so the WinRT call
+succeeds — the API is satisfied — and the shell then drops it.
+
+Measured on the box rather than assumed, from the registry on 2026-09-11:
+
+| Reading | Value |
+|---|---|
+| `PushNotifications\ToastEnabled` | not set, i.e. the default — toasts are **not** disabled |
+| Focus-assist global toast override | absent |
+| Apps registered under `Notifications\Settings` | **82** |
+| Entries matching `latentpresence` | **zero** |
+
+Eighty-two applications raise toasts on this machine, so the subsystem works. Ours has never
+registered. That is the whole explanation, and it rules out the two things it would
+otherwise be confused with — notifications switched off, or Focus Assist swallowing them.
+
+**What this means for P8.** `P8-T01` ships an NSIS installer, which creates the Start Menu
+shortcut, which supplies the AUMID. So **notifications are expected to work in the installed
+app and cannot work in a dev build**, and `P8-T05`'s tray mode must not be tested from
+`cargo run` or it will look broken for a reason that has nothing to do with its code. If a
+dev-time toast is ever wanted before then, `tauri-winrt-notification` exposes
+`Toast::POWERSHELL_APP_ID` as a borrowed registration — it draws, but attributes the
+notification to PowerShell, so it is a debugging aid and not a test of the real path.
+
+**What is still unverified:** that an installed build does show the toast. There is no
+installer yet, so nobody has seen it work end to end. `P8-T01` should treat that as an
+acceptance criterion rather than an assumption — this document has already had one
+inference-from-documentation disproved by a single click.
 
 ### The Notification row carries a variable I introduced, and it is not clean
 
@@ -129,6 +171,14 @@ latent in the probe rather than active — but **P8-T05's tray mode would have w
 into it**, and from inside the page an ACL refusal is indistinguishable from a webview that
 lacks the API. The narrow lesson for P8-T01: write a capability file against the plugins
 registered, not against the code the page appears to contain. Recorded in `docs/SURFACE.md`.
+
+**So read the `permission = denied` cell as "nobody asked", not as "refused".** It is the
+plugin's pre-request default, surfaced through the polyfill, on a probe with no request in
+it. Asking flips it: on 2026-09-11, with `notification:default` granted, a
+`requestPermission()` on this same webview returned `granted` and constructed a
+`Notification` without error. The cell is a property of the probe, not a limit of WebView2 —
+and it is a different question again from whether a toast is *drawn*, which the section above
+answers and which no permission value would have predicted.
 
 ### The control, and why it is weaker than the Linux one
 
@@ -316,8 +366,8 @@ has a command, a comment and a paragraph.
   Windows: WebView2 is the container ADR-07 ships *first*, and ADR-14's schedules and
   P8-T05's tray mode are the two features that depend on these rows. The shell grew a tray
   and the notification plugin for that sitting only; the probe page was left alone, so the
-  webview readings above are uncontaminated by it. The native notification row is the last
-  one outstanding and needs one tray click.
+  webview readings above are uncontaminated by it. The native notification was then measured
+  too: it returns `Ok` and draws no toast, for a structural reason Phase 8 needs to know.
 - **The tray was never measured on Linux**, and now never will be by this spike. That is the
   right outcome rather than a gap: Linux does not ship a Tauri app, so a Linux tray icon is
   not a thing the product has.
@@ -341,10 +391,14 @@ has a command, a comment and a paragraph.
 | `package.json` | `gate:desktop` |
 | `.gitattributes` | The icons are excluded from LFS and from eol conversion, deliberately — see below |
 
-**The icons in `apps/desktop/src-tauri/icons/` are Tauri's scaffold logo, not ours.** They
-are committed because the shell has to build on the Windows box next and an empty icon set
-is a trap, not because they are a design decision. P7/P8 replaces them with Alice's, and
-`NOTICE` gets a line if any of them survive to a release. They are also pinned out of Git
+**The icons in `apps/desktop/src-tauri/icons/` were Tauri's scaffold logo until 2026-09-11;
+they are now generated from `site/img/presence_512x512.png`,** the mark the site already
+ships, with `pnpm exec tauri icon`. Same sixteen files, same reason for committing them —
+the shell has to build on every machine and an empty icon set is a trap — but **the `NOTICE`
+obligation is gone rather than deferred**: nothing third-party is vendored here any more.
+The `tauri icon` command also emits Android and iOS sets; those are deleted, because no
+mobile target exists on any roadmap. P7 still replaces these with Alice's, and that is now a
+design change rather than a licensing one. They are also pinned out of Git
 LFS in `.gitattributes`: `*.png` is an LFS filter in this repo, and PROJECT.md records that
 a plain `git pull && pnpm install` is enough to work here — twelve 32 KB PNGs are not worth
 making that false.
