@@ -5,3 +5,5 @@ export const packageInfo = {
   name: '@latentpresence/core',
   protocolVersion: PROTOCOL_VERSION,
 } as const;
+
+export * from './conversation';
