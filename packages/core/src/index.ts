@@ -7,3 +7,4 @@ export const packageInfo = {
 } as const;
 
 export * from './conversation';
+export * from './chunker';
