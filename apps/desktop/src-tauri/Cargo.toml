@@ -21,6 +21,9 @@ tauri-build = "2.6.3"
 
 [dependencies]
 # Versions verified against crates.io on 2026-09-09, docs/SURFACE.md.
-tauri = "2.11.5"
+# `tray-icon` is not a default feature, and the tray is one of the rows the brief asks for.
+tauri = { version = "2.11.5", features = ["tray-icon"] }
 tauri-plugin-log = "2"
+# Added for the Windows sitting (2026-09-11). Version verified against crates.io that day.
+tauri-plugin-notification = "2.4.0"
 log = "0.4"

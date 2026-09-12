@@ -505,6 +505,49 @@ used with `EXPLAIN`** rather than inferring it from the timing.
 | `tauri` (crate) | **2.11.5** | crates.io API, live call |
 | `wry` (the webview binding) | **0.57.0** | crates.io API, live call |
 
+### Correction to the `wry` row, and two crates it missed — 2026-09-11
+
+**`wry` 0.57.0 is what crates.io publishes. It is not what you get.** `tauri` 2.11.5
+resolves **`wry` 0.55.1**, two minor versions back, by way of `tauri-runtime-wry` 2.11.4 and
+`tauri-runtime` 2.11.3. Read from both lockfiles — the Linux one committed in 3988587 and a
+Windows build on 2026-09-11 — so this is Tauri's pin, not a platform difference. The webview
+binding is chosen by Tauri rather than by us, which makes "latest on crates.io" the wrong
+question to have asked of that row.
+
+The rest of the tree, same two sources: `tao` 0.35.3, `tray-icon` 0.24.2, `muda` 0.19.3,
+`tauri-plugin-log` 2.9.1, `tauri-plugin-notification` **2.4.0**, and on Windows
+`webview2-com` 0.38.2 and `tauri-winrt-notification` 0.7.3, against `notify-rust` 4.18.0 on
+Linux.
+
+### `tauri-plugin-notification` polyfills `window.Notification`, and the ACL still applies — 2026-09-11
+
+With the plugin registered, a page containing **no Tauri code at all** that calls plain
+`Notification.requestPermission()` is routed to the plugin's IPC command. Against a
+capability file granting only `core:default`, it comes back as a rejected promise reading:
+
+```
+notification.request_permission not allowed. Permissions associated with this command:
+notification:allow-request-permission, notification:default
+```
+
+That is Tauri's ACL, not a webview limitation — the web API **is** wired up, and the error
+names the permission that fixes it. `notification:default` grants the whole set
+(`allow-request-permission`, `allow-notify`, `allow-is-permission-granted` and thirteen
+more; read from `gen/schemas/acl-manifests.json` on 2026-09-11).
+
+**The trap is the diagnosis, not the fix.** From inside the page this is indistinguishable
+from a webview that lacks the Notification API, and it was briefly written up here as
+exactly that — inferred from Microsoft documenting that WebView2 raises notifications to the
+host, and from `https://v2.tauri.app/plugin/notification/` documenting only the plugin and
+never mentioning `window.Notification`. Both readings were accurate; the conclusion drawn
+from their silence was not, and one click disproved it. A surface is verified against docs
+**or a live call**, and where they disagree the live call wins. An inference from an absence
+was never either — which is the same trap this file already warns about for WebGPU on
+WebKitGTK, two sections down.
+
+For P8-T01, narrowly: **write a capability file against the plugins registered, not against
+the code the page appears to contain.**
+
 ### Linux system prerequisites, quoted from the Tauri docs
 
 `https://tauri.app/start/prerequisites/`, read 2026-09-09. The webview package is

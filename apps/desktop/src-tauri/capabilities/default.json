@@ -1,11 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
+  "description": "Core defaults plus the notification set. The notification line is not optional once tauri-plugin-notification is registered: the plugin polyfills window.Notification onto its own IPC command, so the probe page calls through the ACL without containing a line of Tauri code. Granting core:default alone made Notification.requestPermission() reject with 'notification.request_permission not allowed' on Windows 2026-09-11, which looked from the outside like a webview that lacked the API. Write a capability file against the plugins registered, not against the code the page appears to contain.",
   "windows": [
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "notification:default"
   ]
 }
