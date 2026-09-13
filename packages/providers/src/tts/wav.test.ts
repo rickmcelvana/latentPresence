@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodePcm16, decodeWav, WavParseError } from './wav';
+import { decodePcm16, decodeWav, encodeWav, WavParseError } from './wav';
 
 /**
  * The fixtures are built here byte by byte rather than read from a file, because the
@@ -237,5 +237,48 @@ describe('decodePcm16', () => {
 
   it('drops a trailing odd byte rather than reading past the end', () => {
     expect(decodePcm16(new Uint8Array([0, 0, 0]), 24_000).samples).toHaveLength(1);
+  });
+});
+
+describe('encodeWav', () => {
+  it('round-trips through the decoder at the same rate and length', () => {
+    const samples = new Float32Array(256);
+    for (let i = 0; i < samples.length; i += 1) samples[i] = Math.sin(i / 6) * 0.8;
+    const decoded = decodeWav(encodeWav(samples, 16_000));
+    expect(decoded.sampleRate).toBe(16_000);
+    expect(decoded.samples).toHaveLength(256);
+    for (let i = 0; i < samples.length; i += 1) {
+      // 16-bit quantisation, so within one step of full scale rather than exact.
+      expect(decoded.samples[i]).toBeCloseTo(samples[i] ?? 0, 3);
+    }
+  });
+
+  it('clamps rather than wrapping a sample above full scale', () => {
+    // Kokoro's own output peaks at 1.043 (measured 2026-09-12). Wrapping that into an
+    // Int16 flips the polarity and becomes a loud click.
+    const decoded = decodeWav(encodeWav(new Float32Array([1.043, -1.2, 0]), 24_000));
+    expect(decoded.samples[0]).toBeCloseTo(1, 3);
+    expect(decoded.samples[1]).toBeCloseTo(-1, 3);
+    expect(decoded.samples[2]).toBe(0);
+  });
+
+  it('writes a header a parser can find the rate in', () => {
+    const bytes = encodeWav(new Float32Array(8), 48_000);
+    expect(String.fromCharCode(...bytes.slice(0, 4))).toBe('RIFF');
+    expect(String.fromCharCode(...bytes.slice(8, 12))).toBe('WAVE');
+    expect(bytes).toHaveLength(44 + 16);
+    const view = new DataView(bytes.buffer);
+    expect(view.getUint32(24, true)).toBe(48_000);
+    expect(view.getUint16(22, true)).toBe(1);
+    expect(view.getUint32(40, true)).toBe(16);
+  });
+
+  it('encodes an empty clip as a valid header with no data', () => {
+    expect(decodeWav(encodeWav(new Float32Array(0), 16_000)).samples).toHaveLength(0);
+  });
+
+  it('rejects a rate that is not a rate', () => {
+    expect(() => encodeWav(new Float32Array(4), 0)).toThrow(RangeError);
+    expect(() => encodeWav(new Float32Array(4), Number.NaN)).toThrow(RangeError);
   });
 });

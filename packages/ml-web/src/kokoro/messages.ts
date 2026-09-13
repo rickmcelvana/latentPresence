@@ -32,15 +32,6 @@ export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const KOKORO_SAMPLE_RATE = 24_000;
 
 /**
- * Bytes on the wire for the Kokoro graph at each precision, from the Hugging Face API on
- * 2026-09-08 (`docs/SURFACE.md`). ADR-09 means the consent screen shows this number
- * before a byte moves, so it is a recorded fact and not an estimate.
- *
- * fp16 and fp32 are the only entries Spike A measured. q4/q4f16 exist in kokoro-js's
- * dtype union and have no recorded size, so they are absent here and
- * `kokoroModel` refuses them rather than inventing one.
- */
-/**
  * Exact `.onnx` sizes from the Hugging Face blob listing, 2026-09-12 (`docs/SURFACE.md`).
  *
  * The filename is the trap, so it is written down: transformers.js maps a dtype to a

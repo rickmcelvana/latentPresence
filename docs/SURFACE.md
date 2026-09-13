@@ -1019,3 +1019,91 @@ to settle, once it can run Kokoro in a browser: synthesise two different sentenc
 `dtype: 'q8'` on WebGPU and confirm they differ from each other and match the node q8
 durations. If they do, `q8` becomes the browser default and first-run drops from 325.5 MB
 to 92.4 MB.
+
+## Speech recognition through transformers.js 3.8.1 — verified 2026-09-12 (P1-T06)
+
+Read out of the installed `@huggingface/transformers` source, then confirmed by running it
+(`packages/ml-web/live/stt.ts`). Every item here would have been wrong from a reasonable
+assumption.
+
+**The ASR pipeline does not resample.** `prepareAudios` (`src/pipelines.js`) passes a
+`Float32Array` straight through; its `sampling_rate` argument is used only for input it has
+to decode itself. Handing it the wrong rate is not an error. Measured on one sentence:
+
+| source rate, read as 16 kHz | Moonshine tiny | Whisper base |
+|---|---|---|
+| 24 kHz (1.5x) | perfect | perfect |
+| 48 kHz (3.0x) | **empty result** | **"I'll spawn on your top of your ears for cash."** |
+
+48 kHz is what a browser microphone gives by default. Neither case reported anything.
+
+**A Seq2Seq model downloads exactly two graphs.** `constructSessions` (`src/models.js`)
+asks for `encoder_model` and `decoder_model_merged`, and nothing else. The non-graph files
+fetched are exactly `config.json`, `generation_config.json`, `preprocessor_config.json`,
+`tokenizer.json` and `tokenizer_config.json` — **not** `vocab.json`, `merges.txt`,
+`normalizer.json`, `added_tokens.json` or `special_tokens_map.json`, all of which sit in the
+repos. Summing the listing's JSON overstates `whisper-base` by **1.63 MB**. Confirmed by
+downloading into an empty cache: `moonshine-tiny` q8 is **32,079,632** bytes and
+`whisper-base` q8 is **79,664,191**.
+
+**`onnx-community/whisper-*` cannot produce word timings.** Any request for them throws:
+
+> Model outputs must contain cross attentions to extract timestamps. This is most likely
+> because the model was not exported with `output_attentions=True`.
+
+The `_timestamped` variants of the same repos do work, and are within 23 KB of the same
+size (`whisper-base_timestamped` q8 is 79,641,437 against 79,664,191). **A provider
+advertising `wordTimestamps: true` against the plain export fails on every utterance**, so
+the catalog names the `_timestamped` repos.
+
+**Moonshine reports text and nothing else.** `_call_moonshine` returns `{ text }` — no
+chunks, no timestamps, no language — whatever options it is given.
+
+**Moonshine's token budget does not need rescuing.** `_call_moonshine` computes
+`max_new_tokens` as `Math.floor(seconds) * 6`, which really is **0** for anything under a
+second. It does not follow that short utterances are lost: a 0.48 s "Yes." transcribes
+correctly at that budget, and **forcing a floor of 24 tokens made Moonshine answer "Yes,
+yes, yes."** — the repeated output the Moonshine paper's heuristic exists to prevent. The
+override was removed.
+
+**Whisper does not surface its detected language.** `WhisperForConditionalGeneration`
+consumes the detection internally and 3.8.1 exports no `detect_language`, so a browser
+Whisper provider can honestly report `languageDetection: false` only.
+
+**Cancellation mid-generation works.** `InterruptableStoppingCriteria` is exported from
+`generation/stopping_criteria.js`, and both `_call_whisper` and `_call_moonshine` spread
+their kwargs into `model.generate`, so `stopping_criteria` reaches it. An interrupted
+generation **returns normally with a truncated result rather than throwing**, so the caller
+has to check the flag or it will deliver a partial transcript as if it were complete.
+
+### Recognition accuracy, measured end to end
+
+Kokoro synthesises a known sentence, the recogniser transcribes it, word error rate is
+computed against the text that was spoken. `q8` on onnxruntime-node:
+
+| model | WER | time | RTF | word times |
+|---|---|---|---|---|
+| moonshine-tiny | 0% on both sentences | 118–139 ms | 0.03 | none, by design |
+| whisper-base (timestamped) | 0% on both sentences | 754–817 ms | 0.19–0.22 | 9 and 16 |
+
+Moonshine is **six times faster** for the same transcript on this path. Neither number says
+anything about WebGPU, which is where the pipeline actually runs.
+
+## OpenAI `/audio/transcriptions` — verified 2026-09-12 against `openai` 2.53.0
+
+From the official client's source (`resources/audio/transcriptions.py`,
+`types/audio/*.py`, `_base_client.py`), not from documentation prose.
+
+- **multipart/form-data**, `file` a real file part. Content-Type must be left to the HTTP
+  client so the boundary is generated.
+- Fields: `file`, `model` (both required), then `language`, `prompt`, `response_format`,
+  `temperature`, `timestamp_granularities`, plus newer `chunking_strategy`, `include`,
+  `keywords`, `languages`, `stream`.
+- `response_format` is one of `json`, `verbose_json`, `text`, `srt`, `vtt`.
+- **Arrays are serialised with brackets** — `_serialize_multipartform` uses
+  `array_format="brackets"`, so the field is `timestamp_granularities[]`, repeated once per
+  value.
+- `json` returns `{ text, languages?, logprobs?, usage? }`. **Word timings only exist in
+  `verbose_json`**, which returns `{ duration, language, text, segments?, words?, usage? }`.
+- `TranscriptionWord` is `{ word, start, end }` with **start and end in seconds**.
+- Neither response format carries a confidence.

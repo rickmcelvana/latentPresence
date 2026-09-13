@@ -6,4 +6,5 @@ export const packageInfo = {
   protocolVersion: PROTOCOL_VERSION,
 } as const;
 
+export * from './asr';
 export * from './kokoro';

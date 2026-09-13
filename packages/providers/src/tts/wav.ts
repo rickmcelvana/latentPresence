@@ -159,3 +159,53 @@ export function decodePcm16(bytes: Uint8Array, sampleRate: number): DecodedAudio
   for (let i = 0; i < count; i += 1) samples[i] = view.getInt16(i * 2, true) / 32_768;
   return { samples, sampleRate, channels: 1 };
 }
+
+/**
+ * Mono 16-bit PCM WAV from Float32 samples, for handing audio *to* a server.
+ *
+ * It lives beside the decoder because it is the same surface read backwards, and because
+ * P1-T06's `/audio/transcriptions` adapter has to upload a file: a microphone produces
+ * Float32 and every transcription endpoint wants a container. 16-bit is the format every
+ * one of them accepts, and halves the upload against float32 with no loss recognition can
+ * hear — the models resample to 16 kHz and feature-extract before anything else happens.
+ *
+ * **Samples are clamped, not wrapped.** Kokoro's own output peaks above full scale
+ * (1.043, measured 2026-09-12), and a value above 1 that is allowed to overflow an
+ * `Int16` becomes a loud click at the opposite polarity.
+ */
+export function encodeWav(samples: Float32Array, sampleRate: number): Uint8Array {
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+    throw new RangeError(`sample rate ${sampleRate} is not a rate`);
+  }
+  const dataBytes = samples.length * 2;
+  const bytes = new Uint8Array(44 + dataBytes);
+  const view = new DataView(bytes.buffer);
+
+  const tag = (offset: number, text: string): void => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+
+  tag(0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  tag(8, 'WAVE');
+  tag(12, 'fmt ');
+  view.setUint32(16, 16, true); // PCM header length
+  view.setUint16(20, FORMAT_PCM, true);
+  view.setUint16(22, 1, true); // channels
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // bytes per second
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  tag(36, 'data');
+  view.setUint32(40, dataBytes, true);
+
+  for (let i = 0; i < samples.length; i += 1) {
+    const value = samples[i] ?? 0;
+    const clamped = value > 1 ? 1 : value < -1 ? -1 : value;
+    // 32767 rather than 32768 so +1.0 maps to the largest representable value instead of
+    // overflowing to the most negative one.
+    view.setInt16(44 + i * 2, Math.round(clamped * 32767), true);
+  }
+
+  return bytes;
+}

@@ -27,6 +27,14 @@ pnpm live:llm
 pnpm live:tts
 ```
 
+```bash
+pnpm live:stt
+```
+
+`live:stt` needs no key and no server: Kokoro speaks a known sentence and both recognisers
+write it down, so word error rate is computed rather than judged. It downloads ~112 MB of
+recognition models the first time.
+
 `live:tts` also writes playable WAVs to `packages/providers/live/out/` (gitignored),
 re-encoded from what our own decoder produced — so if they sound right, the adapter is
 right.

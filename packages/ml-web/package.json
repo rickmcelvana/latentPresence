@@ -9,6 +9,7 @@
   },
   "types": "./src/index.ts",
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@latentpresence/protocol": "workspace:*",
     "kokoro-js": "1.2.1"
   }

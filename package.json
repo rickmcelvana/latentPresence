@@ -24,6 +24,7 @@
     "live:llm": "pnpm --filter @latentpresence/providers exec vite-node live/llm.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",
     "live:kokoro": "pnpm --filter @latentpresence/ml-web exec vite-node live/kokoro-dtype.ts",
+    "live:stt": "pnpm --filter @latentpresence/ml-web exec vite-node live/stt.ts",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {

@@ -7,4 +7,5 @@ export const packageInfo = {
 } as const;
 
 export * from './llm';
+export * from './stt';
 export * from './tts';
