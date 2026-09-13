@@ -29,8 +29,9 @@ export interface ConversationMachineOptions {
   now?: () => string;
   /** Auto-end an idle `listening` session after this many ms; 0 disables (default 0). */
   idleTimeoutMs?: number;
-  /** Barge-in teardown duration after which `interrupted` returns to `listening`.
-   * P1-T08 replaces this default timer with the real 100ms AudioWorklet fade. */
+  /** Barge-in fade duration. With an `audioOut` port the machine asks it for this fade and
+   * returns to `listening` when it resolves (P1-T08); without one, a timer of this length
+   * stands in for it. */
   fadeOutMs?: number;
   /** The ports the machine reaches; all optional for headless operation. */
   ports?: Ports;
@@ -58,6 +59,8 @@ export class ConversationMachine {
   private current: ConversationState = 'idle';
   private idleHandle: unknown | undefined;
   private teardownHandle: unknown | undefined;
+  /** Bumped on every state entry, so a fade that resolves late cannot move a machine that has moved on. */
+  private entry = 0;
 
   constructor(options: ConversationMachineOptions) {
     this.sessionId = options.sessionId;
@@ -141,6 +144,7 @@ export class ConversationMachine {
   }
 
   private onEnter(state: ConversationState): void {
+    this.entry += 1;
     this.clearTimers();
     if (state === 'listening') {
       this.resetIdleTimer();
@@ -168,6 +172,17 @@ export class ConversationMachine {
   }
 
   private startTeardownTimer(): void {
+    const fading = this.ports.audioOut?.fadeOut(this.fadeOutMs);
+    if (fading !== undefined) {
+      const entry = this.entry;
+      const back = (): void => {
+        // The fade is over. Go back to hearing the user unless the machine has moved on —
+        // the interjection resolved into its own turn, or the session ended.
+        if (this.entry === entry && this.current === 'interrupted') this.setState('listening');
+      };
+      void fading.then(back, back);
+      return;
+    }
     if (this.scheduler === undefined || this.fadeOutMs <= 0) {
       return;
     }

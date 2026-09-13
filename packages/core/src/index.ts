@@ -9,3 +9,7 @@ export const packageInfo = {
 export * from './conversation';
 export * from './chunker';
 export * from './turn';
+export * from './playback';
+export * from './reply';
+export * from './voice';
+export { Cancellation } from './cancellation';

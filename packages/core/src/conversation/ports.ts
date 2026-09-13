@@ -6,8 +6,8 @@
  *
  * Wiring timeline:
  * - `AudioInPort`   — P1-T07 (VAD + turn detection) feeds speech events into the machine.
- * - `AudioOutPort`  — P1-T08 wires the real AudioWorklet playback queue and 100 ms fade
- *   in here; P1-T01's machine already uses `fadeOutMs` as its teardown duration.
+ * - `AudioOutPort`  — P1-T08: the AudioWorklet playback queue. The machine asks it for the
+ *   fade on entering `interrupted` and leaves when the fade is done.
  * - `LLMPort`       — P1-T02 provides the OpenAI-compatible LLM.
  * - `STTPort`/`TTSPort` — P1-T06 / P1-T05 provide recognition and synthesis.
  */
@@ -22,8 +22,12 @@ export interface AudioInPort {
 
 /** Assistant-side output: plays synthesized audio and exposes the barge-in fade. */
 export interface AudioOutPort {
-  /** Stop audio promptly (P1-T08 implements the real worklet fade with this budget). */
-  fadeOut(ms: number): void;
+  /**
+   * Fade to silence over `ms` and drop what is queued. A promise that resolves when silent
+   * lets the machine leave `interrupted` at the real end of the fade (P1-T08); a port that
+   * returns nothing leaves it on the teardown timer instead. `PlaybackSink` satisfies this.
+   */
+  fadeOut(ms: number): Promise<void> | void;
 }
 
 /** LLM request seam; the OpenAI-compatible provider lands in P1-T02. */

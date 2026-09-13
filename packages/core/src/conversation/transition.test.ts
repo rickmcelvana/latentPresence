@@ -46,15 +46,30 @@ describe('transition table', () => {
     expect(transition('thinking', 'user.speech.started')).toBe('listening');
   });
 
-  it('barges in during speaking through the interrupted state', () => {
-    // Audio is playing, so the cut-off is explicit; the machine passes through
-    // `interrupted` (the teardown seam) before returning to listening.
-    expect(transition('speaking', 'user.speech.started')).toBe('interrupted');
+  it('barges in during speaking only when the gate commits, through interrupted', () => {
+    // P1-T08: speech while the character talks ducks the voice and nothing more — the
+    // microphone hears the character too. The commit is `assistant.interrupted`.
+    expect(transition('speaking', 'user.speech.started')).toBe('speaking');
     expect(transition('speaking', 'assistant.interrupted')).toBe('interrupted');
   });
 
-  it('returns to listening when a turn ends naturally (speaking → listening)', () => {
-    expect(transition('speaking', 'assistant.audio.ended')).toBe('listening');
+  it('returns to listening when the whole answer has settled, not after its first sentence', () => {
+    expect(transition('speaking', 'assistant.audio.ended')).toBe('speaking');
+    expect(transition('speaking', 'assistant.message')).toBe('listening');
+  });
+
+  it('abandons a provisional turn when the user carries on (ADR-25)', () => {
+    expect(transition('thinking', 'user.turn.resumed')).toBe('listening');
+  });
+
+  it('goes back to listening when an answer settles or fails without being heard', () => {
+    expect(transition('thinking', 'assistant.message')).toBe('listening');
+    expect(transition('thinking', 'error')).toBe('listening');
+  });
+
+  it('leaves interrupted only through the fade, never on an event from the answer', () => {
+    expect(transition('interrupted', 'assistant.message')).toBe('interrupted');
+    expect(transition('interrupted', 'assistant.audio.ended')).toBe('interrupted');
   });
 
   it('treats a complete interjection as its own turn (interrupted → thinking)', () => {

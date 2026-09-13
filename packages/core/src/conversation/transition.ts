@@ -13,17 +13,25 @@ export type ConversationTrigger = ConversationEvent['type'];
  *   can begin by waking the mic, being spoken at, or by a typed message.
  * - `listening → thinking` on `user.turn.ended`/`user.message`: an utterance is complete
  *   and is handed to the model.
+ * - `thinking → listening` on `user.turn.resumed`: the turn end was provisional and the
+ *   user carried on (ADR-25); the reply started for it is abandoned.
  * - `thinking → speaking` on `assistant.audio.started`: output becomes audible.
- * - Barge-in: when the user starts talking while the model is still `thinking`, nothing
- *   is being spoken, so we simply cancel the pending reply and go straight back to
- *   `listening`. When the user barges in while the assistant is `speaking`, audio is
- *   playing and must be torn down, so we pass through the explicit `interrupted` state
- *   (the machine's fade-out seam, driven by a teardown timer) before returning to
- *   `listening`.
- * - `speaking → listening` on `assistant.audio.ended` is the natural end of a turn:
- *   back to hearing the user.
+ * - Barge-in during `thinking`: nothing is audible, so `user.speech.started` cancels the
+ *   pending reply and goes straight back to `listening`.
+ * - Barge-in during `speaking` (P1-T08): **speech alone does not interrupt.** The voice
+ *   ducks on speech start and the barge-in gate commits only once the user has kept
+ *   talking, because the microphone also hears the character's own voice and a cough
+ *   (`packages/core/src/reply/barge-in.ts`). The commit is `assistant.interrupted`,
+ *   which carries what was heard, and passes through `interrupted` — the fade.
+ * - `speaking → listening` on `assistant.message`: the answer has settled, every sentence
+ *   played. Not `assistant.audio.ended`, which is per sentence: P1-T01 had the first
+ *   sentence's end return to listening while the second was still playing.
+ * - `thinking → listening` on `assistant.message` or `error`: an answer that settled
+ *   without ever becoming audible — nothing recognised, no text, a failed model.
  * - `interrupted → thinking` on `user.turn.ended`: the barge-in itself was a complete
- *   short utterance, so it becomes the next input without waiting for the teardown.
+ *   short utterance, so it becomes the next input without waiting for the fade.
+ * - `interrupted → listening` is not in the table: the machine leaves it when the
+ *   `AudioOutPort` fade completes, or on its teardown timer when there is no port.
  * - `session.ended` returns to `idle` from any active state; the caller chooses the
  *   reason (`user` | `idle` | `error`).
  *
@@ -48,12 +56,17 @@ export const transitionTable: Readonly<
     'assistant.audio.started': 'speaking',
     // Barge-in before any audio exists: nothing audible to tear down.
     'user.speech.started': 'listening',
+    // ADR-25: the turn end was provisional and the user kept talking.
+    'user.turn.resumed': 'listening',
+    // Settled without ever being audible.
+    'assistant.message': 'listening',
+    error: 'listening',
     'session.ended': 'idle',
   },
   speaking: {
-    'assistant.audio.ended': 'listening',
-    // Barge-in while audio is playing goes through the explicit interrupted state.
-    'user.speech.started': 'interrupted',
+    // The whole answer has played. Not `assistant.audio.ended`, which is per sentence.
+    'assistant.message': 'listening',
+    // The barge-in gate committed (P1-T08); speech alone only ducks.
     'assistant.interrupted': 'interrupted',
     'session.ended': 'idle',
   },

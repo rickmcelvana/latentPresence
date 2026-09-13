@@ -93,6 +93,8 @@ describe('ConversationEventSchema', () => {
       { ...base, type: 'session.started', characterId: 'alice' },
       { ...base, type: 'state.changed', from: 'listening', to: 'thinking' },
       { ...base, type: 'user.turn.ended', probability: 0.91 },
+      { ...base, type: 'user.turn.ended', probability: null },
+      { ...base, type: 'user.turn.resumed', pauseMs: 220 },
       { ...base, type: 'user.transcript', text: 'hello', isFinal: false, confidence: null },
       { ...base, type: 'assistant.sentence', text: 'Hello.', index: 0 },
       { ...base, type: 'assistant.interrupted', spokenPrefix: 'Hel' },

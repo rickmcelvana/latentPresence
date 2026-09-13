@@ -19,6 +19,13 @@ const userTranscript = { sessionId, at: AT, type: 'user.transcript', text: 'hi',
 const audioStarted = { sessionId, at: AT, type: 'assistant.audio.started', sentenceIndex: 0 } as const;
 const audioEnded = { sessionId, at: AT, type: 'assistant.audio.ended', sentenceIndex: 0 } as const;
 const token = { sessionId, at: AT, type: 'assistant.token', text: 'He' } as const;
+const interrupted = { sessionId, at: AT, type: 'assistant.interrupted', spokenPrefix: 'Hel' } as const;
+const settled = {
+  sessionId,
+  at: AT,
+  type: 'assistant.message',
+  entry: { id: 'reply-1', role: 'assistant', text: 'Hello.', at: AT, spokenPrefix: null },
+} as const;
 
 /** A controllable scheduler: timers only fire when `runAll` is called. */
 function fakeScheduler() {
@@ -96,12 +103,14 @@ describe('ConversationMachine happy path', () => {
     expect(transitions).toEqual(['idle>listening', 'listening>thinking', 'thinking>speaking']);
   });
 
-  it('returns to listening when the turn ends naturally', () => {
+  it('returns to listening when the whole answer has settled, not when a sentence ends', () => {
     const { machine, transitions } = makeMachine();
     machine.start();
     machine.dispatch(turnEnded);
     machine.dispatch(audioStarted);
     machine.dispatch(audioEnded);
+    expect(machine.getState()).toBe('speaking');
+    machine.dispatch(settled);
     expect(machine.getState()).toBe('listening');
     expect(transitions).toContain('speaking>listening');
   });
@@ -124,13 +133,22 @@ describe('ConversationMachine barge-in (P1-T01)', () => {
     expect(transitions).toContain('thinking>listening');
   });
 
+  it('only ducks on speech during speaking: the gate commits with assistant.interrupted', () => {
+    const { machine } = makeMachine();
+    machine.start();
+    machine.dispatch(turnEnded);
+    machine.dispatch(audioStarted);
+    machine.dispatch(speechStarted);
+    expect(machine.getState()).toBe('speaking');
+  });
+
   it('barges in during speaking into interrupted, then teardown returns to listening', () => {
     const fake = fakeScheduler();
     const { machine, transitions } = makeMachine({ scheduler: fake.scheduler });
     machine.start();
     machine.dispatch(turnEnded); // -> thinking
     machine.dispatch(audioStarted); // -> speaking
-    machine.dispatch(speechStarted); // -> interrupted
+    machine.dispatch(interrupted); // -> interrupted
     expect(machine.getState()).toBe('interrupted');
     expect(transitions).toContain('speaking>interrupted');
 
@@ -145,7 +163,7 @@ describe('ConversationMachine barge-in (P1-T01)', () => {
     machine.start();
     machine.dispatch(turnEnded);
     machine.dispatch(audioStarted);
-    machine.dispatch(speechStarted); // -> interrupted
+    machine.dispatch(interrupted); // -> interrupted
     // The user's interjection is already a complete short turn.
     machine.dispatch(turnEnded);
     expect(machine.getState()).toBe('thinking');
@@ -154,6 +172,76 @@ describe('ConversationMachine barge-in (P1-T01)', () => {
     // The stale teardown timer must not yank the machine back once it has moved on.
     fake.runAll();
     expect(machine.getState()).toBe('thinking');
+  });
+});
+
+/** An output whose fade finishes when the test says so. */
+function fadePort() {
+  const calls: number[] = [];
+  let finish!: () => void;
+  const port = {
+    fadeOut(ms: number): Promise<void> {
+      calls.push(ms);
+      return new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    },
+  };
+  return { port, calls, finish: () => finish() };
+}
+
+describe('ConversationMachine fade (P1-T08)', () => {
+  it('asks the output for the fade and returns to listening only when it completes', async () => {
+    const fade = fadePort();
+    const fake = fakeScheduler();
+    const { machine } = makeMachine({ scheduler: fake.scheduler, fadeOutMs: 100, ports: { audioOut: fade.port } });
+    machine.start();
+    machine.dispatch(turnEnded);
+    machine.dispatch(audioStarted);
+    machine.dispatch(interrupted);
+    expect(fade.calls).toEqual([100]);
+    // No timer stands in for a real fade.
+    fake.runAll();
+    expect(machine.getState()).toBe('interrupted');
+
+    fade.finish();
+    await Promise.resolve();
+    expect(machine.getState()).toBe('listening');
+  });
+
+  it('does not let a late fade pull a machine back that has already moved on', async () => {
+    const fade = fadePort();
+    const { machine } = makeMachine({ ports: { audioOut: fade.port } });
+    machine.start();
+    machine.dispatch(turnEnded);
+    machine.dispatch(audioStarted);
+    machine.dispatch(interrupted);
+    machine.dispatch(turnEnded); // the interjection was a whole turn: -> thinking
+    fade.finish();
+    await Promise.resolve();
+    expect(machine.getState()).toBe('thinking');
+  });
+
+  it('leaves interrupted even if the fade rejects, rather than sticking there', async () => {
+    const { machine } = makeMachine({ ports: { audioOut: { fadeOut: () => Promise.reject(new Error('context closed')) } } });
+    machine.start();
+    machine.dispatch(turnEnded);
+    machine.dispatch(audioStarted);
+    machine.dispatch(interrupted);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(machine.getState()).toBe('listening');
+  });
+
+  it('falls back to the timer for a port that returns no promise', () => {
+    const fake = fakeScheduler();
+    const { machine } = makeMachine({ scheduler: fake.scheduler, ports: { audioOut: { fadeOut() {} } } });
+    machine.start();
+    machine.dispatch(turnEnded);
+    machine.dispatch(audioStarted);
+    machine.dispatch(interrupted);
+    fake.runAll();
+    expect(machine.getState()).toBe('listening');
   });
 });
 
@@ -182,7 +270,7 @@ describe('ConversationMachine timers', () => {
     machine.start();
     machine.dispatch(turnEnded);
     machine.dispatch(audioStarted);
-    machine.dispatch(speechStarted); // -> interrupted, schedules teardown
+    machine.dispatch(interrupted); // -> interrupted, schedules teardown
     expect(fake.scheduledCount()).toBe(1);
   });
 });

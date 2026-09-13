@@ -1,4 +1,4 @@
-import type { LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
+import type { LLMProvider, LlmModel, LlmRequest, LlmStreamChunk, ProviderCallOptions } from '@latentpresence/protocol';
 
 /** A scripted stream for tests: one chunk per script entry, in order. */
 export type StreamScript = readonly LlmStreamChunk[];
@@ -8,6 +8,11 @@ export interface FakeLLMProviderOptions {
   readonly models?: readonly LlmModel[];
   /** The stream each `stream()` call replays. */
   readonly script?: StreamScript;
+  /**
+   * Wait this long before each chunk, like a model generating. Needs a host `setTimeout`;
+   * 0 (the default) replays with no timer at all.
+   */
+  readonly delayMs?: number;
 }
 
 /**
@@ -20,19 +25,28 @@ export class FakeLLMProvider implements LLMProvider {
   readonly id: string;
   private readonly models: readonly LlmModel[];
   private readonly script: StreamScript;
+  private readonly delayMs: number;
+  /** How many chunks each `stream()` call yielded before it finished or was cancelled. */
+  readonly yielded: number[] = [];
 
   constructor(id: string, options: FakeLLMProviderOptions = {}) {
     this.id = id;
     this.models = options.models ?? [];
     this.script = options.script ?? [];
+    this.delayMs = options.delayMs ?? 0;
   }
 
   async listModels(): Promise<LlmModel[]> {
     return [...this.models];
   }
 
-  async *stream(_request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+  /** Replays the script, and stops as soon as the call is cancelled — barge-in (P1-T08). */
+  async *stream(_request: LlmRequest, options?: ProviderCallOptions): AsyncIterable<LlmStreamChunk> {
+    const call = this.yielded.push(0) - 1;
     for (const chunk of this.script) {
+      if (this.delayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+      if (options?.signal?.aborted === true) return;
+      this.yielded[call] = (this.yielded[call] ?? 0) + 1;
       yield chunk;
     }
   }

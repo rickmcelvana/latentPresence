@@ -1,4 +1,5 @@
 import type { AudioChunk, CancellationSignal } from '@latentpresence/protocol';
+import { Cancellation } from '../cancellation';
 
 /**
  * Turn detection (P1-T07): speech probabilities in, turn boundaries out.
@@ -196,36 +197,6 @@ export interface TurnDetectorOptions<R> {
   readonly hangoverMs?: number;
   readonly threshold?: number;
   readonly prerollMs?: number;
-}
-
-/**
- * A cancellation signal with no DOM behind it. `packages/core` compiles against ES2023
- * alone, where `AbortController` does not exist; a real `AbortSignal` satisfies the same
- * protocol interface, so providers cannot tell the difference.
- */
-class Cancellation implements CancellationSignal {
-  private isAborted = false;
-  private readonly listeners = new Set<() => void>();
-
-  get aborted(): boolean {
-    return this.isAborted;
-  }
-
-  addEventListener(_type: 'abort', listener: () => void): void {
-    if (!this.isAborted) this.listeners.add(listener);
-  }
-
-  removeEventListener(_type: 'abort', listener: () => void): void {
-    this.listeners.delete(listener);
-  }
-
-  abort(): void {
-    if (this.isAborted) return;
-    this.isAborted = true;
-    const listeners = [...this.listeners];
-    this.listeners.clear();
-    for (const listener of listeners) listener();
-  }
 }
 
 /**

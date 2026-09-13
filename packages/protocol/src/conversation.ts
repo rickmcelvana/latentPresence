@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AffectStateSchema, UserAffectSchema } from './affect';
-import { IdSchema, JsonObjectSchema, JsonValueSchema, TimestampSchema, UnitIntervalSchema } from './common';
+import { DurationMsSchema, IdSchema, JsonObjectSchema, JsonValueSchema, TimestampSchema, UnitIntervalSchema } from './common';
 
 /** The states of the conversation machine (P1-T01). Exactly these, no sub-states. */
 export const ConversationStateSchema = z.enum([
@@ -75,8 +75,21 @@ export const ConversationEventSchema = z.discriminatedUnion('type', [
 
   z.object({ ...eventBase, type: z.literal('user.speech.started') }),
   z.object({ ...eventBase, type: z.literal('user.speech.ended') }),
-  /** Turn-end probability from Smart Turn v3, or the adaptive-silence fallback (P1-T07). */
-  z.object({ ...eventBase, type: z.literal('user.turn.ended'), probability: UnitIntervalSchema }),
+  /**
+   * The user's turn is over (P1-T07). `probability` is Smart Turn v3's answer when the model
+   * ended it, and null when the hangover did and no answer was in time — a backstop end has
+   * no probability, and a made-up one would read as the model's.
+   *
+   * A model end is **provisional** until the hangover would have fired (ADR-25): it may be
+   * followed by `user.turn.resumed` for the same turn.
+   */
+  z.object({ ...eventBase, type: z.literal('user.turn.ended'), probability: UnitIntervalSchema.nullable() }),
+  /**
+   * A provisional turn end taken back: the user carried on talking inside the retraction
+   * window, so the turn continues and the work started for it is abandoned (ADR-25, P1-T08).
+   * `pauseMs` is how long they paused.
+   */
+  z.object({ ...eventBase, type: z.literal('user.turn.resumed'), pauseMs: DurationMsSchema }),
   z.object({
     ...eventBase,
     type: z.literal('user.transcript'),
