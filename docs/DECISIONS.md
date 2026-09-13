@@ -23,11 +23,13 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-17 | Development database is a MariaDB 11.8 on the LAN; one batched retrieval call per turn | accepted (amended) | 2026-09-09 |
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
-| ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted (amended) | 2026-09-11 |
+| ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one; **Kokoro fp32 only on WebGPU** | accepted (amended) | 2026-09-13 |
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | accepted | 2026-09-12 |
 | ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | accepted | 2026-09-12 |
 | ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | accepted | 2026-09-12 |
-| ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted | 2026-09-13 |
+| ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted (amended) | 2026-09-13 |
+| ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | proposed | 2026-09-13 |
+| ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | proposed | 2026-09-13 |
 
 ---
 
@@ -260,7 +262,7 @@ Rules: one `theme.css` per app is the single source of styling truth; every clas
   day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
   2026-09-08.
 
-## ADR-20 Voice pipeline performance (accepted 2026-09-08, amended 2026-09-09, 2026-09-11)
+## ADR-20 Voice pipeline performance (accepted 2026-09-08, amended 2026-09-09, 2026-09-11, 2026-09-13)
 
 From Spike A (`docs/spikes/A-voice-loop.md`), measured on Rick's machine over twenty
 clean turns.
@@ -314,6 +316,24 @@ So: "WebGPU is required for synthesis, not preferred" stands, and the steer to a
 endpoint stands. What changes is that **P1 owes a threaded-wasm measurement with the
 isolation headers set**, rather than treating 3779 ms as the last word on the fallback.
 `docs/spikes/E-tauri.md`.
+
+
+**Amended 2026-09-13 (P1-T08) — synthesis precision is fp32, and the pipeline reads ~765 ms
+in a browser.** Three measurements in the Browser pane, all in `docs/SURFACE.md`:
+
+- **Kokoro `q8` on WebGPU is the recognition failure again.** Speech-shaped audio that
+  Moonshine could not read a word of in three sentences, where fp32 through the same worker
+  matched node to the frame and read back exactly. "Precision is chosen per stage and never
+  inherited" now covers synthesis: every quantised Kokoro precision is refused on WebGPU, in
+  the provider and in the worker.
+- **Spike A's "first audio" was ~310 ms optimistic.** Kokoro pads each sentence with ~310 ms
+  of silence in front, and the spike timed the first frame, not the first voice. ADR-27
+  trims it.
+- **Counted end to end in the browser, the pipeline is ~765 ms** (718–811 over ten warm
+  turns, scripted model, output latency included), against the 500 ms this ADR owns. The
+  first sentence's synthesis is ~380 ms of it, at ~4.6 ms/char. The budget stands, as ADR-21
+  said it should until the levers are exercised: a first-chunk cap on the browser path is
+  the unexercised one, and P1-T14 is where the figure is judged.
 
 
 ## ADR-17 Development database (amended 2026-09-09)
@@ -481,7 +501,7 @@ one. `capabilities().streaming` is `false` so nothing downstream is misled about
 **Reconsider when:** a real endpoint appears that only speaks a compressed format, or when
 a measurement shows intra-sentence streaming is worth the framing. Neither has happened.
 
-## ADR-25 A model-ended turn is provisional until the backstop would have fired (accepted 2026-09-13)
+## ADR-25 A model-ended turn is provisional until the backstop would have fired (accepted 2026-09-13, amended by P1-T08 the same day)
 
 **Decision:** when Smart Turn ends a turn, `TurnDetector` emits `turn-end` at once — the
 latency ADR-21 bought is untouched — but the end can still be **retracted** until
@@ -531,3 +551,78 @@ microphone in the app.
 
 **Reconsider when:** a human measurement shows retraction firing often enough that the
 abandoned work matters, or P1-T08's barge-in changes what the hangover means.
+
+**Amended 2026-09-13 (P1-T08).** Three things this ADR left to later are done. The protocol
+has its retraction event: `user.turn.resumed { pauseMs }`, with `thinking → listening` in
+the transition table — needed because `TurnDetector` emits `turn-resumed` *instead of* a
+second `speech-start`, so without it a machine in `thinking` never learns the user carried
+on. `user.turn.ended.probability` became nullable at the same time: a hangover end with no
+answer in time has no probability, and a made-up one would read as the model's. **"Never
+audible" is now a guarantee rather than arithmetic**: `Reply` starts the model and the
+synthesis at once but queues no audio before the turn's `confirmedAt`, and `VoiceSession`
+releases the hold on the first frame past it. And the reconsider clause about barge-in
+closes with nothing changed: barge-in acts on speech while the character is audible, which
+is after `confirmedAt` by construction, so it never meets a retractable end and the
+hangover means what it meant.
+
+## ADR-26 Barge-in ducks first and commits on sustained speech (proposed 2026-09-13)
+
+**Decision.** While the character is audible, the first speech frame (`speechOn`) **ducks**
+the voice to −12 dB over 30 ms. The barge-in **commits** once `bargeInMs` of speech has been
+heard — 200 ms, counting frames at or above `speechOff` — and then the reply is cancelled as
+one (model, synthesis in flight, queued audio), the voice fades to zero over 100 ms, and
+`assistant.interrupted` carries what was heard. Speech that stops for 100 ms before
+committing **unducks** over 80 ms and the answer carries on. A turn that ends while the
+character is still audible and nothing committed is ignored. `bargeInMs: 0` is the plan's
+original rule — fade on the first speech frame — and stays one setting away.
+
+**What "heard" means.** Every frame the worklet rendered up to the fade's **midpoint**. The
+output latency delays those frames reaching the ear; it does not stop them arriving, so it
+is not subtracted (P1-T08's brief said to subtract it, and was wrong). Without word
+timings, a word counts once its character-proportional end, spread over the sentence's
+voiced range, has rendered. `pnpm live:bargein` measured that against Moonshine on 52
+cut-and-faded utterances: exact 18, one word behind 30, one word ahead 4 (two of them real,
+both right after a comma pause), never two or more either way.
+
+**Transitions that changed.** `speaking` no longer leaves on `user.speech.started` (speech
+only ducks); it leaves on `assistant.interrupted`. It no longer returns to `listening` on
+`assistant.audio.ended`, which is per sentence — P1-T01's table went back to listening while
+the second sentence was still playing — but on `assistant.message`, the settled answer.
+`interrupted → listening` follows the real fade: the machine asks `AudioOutPort.fadeOut` and
+moves when its promise resolves.
+
+**Why two stages.** Spike A's transcripts had the character's previous reply in them — the
+microphone heard the speakers with echo cancellation on — and a cough or a "mm-hm" is
+speech to Silero too. A fade on the first frame throws an answer away for any of those. A
+duck is heard at once and costs nothing when it was wrong. In the browser harness 14
+consecutive committed barge-ins and 13 ducks rendered no step larger than 1.12× the voice's
+own in the 50 ms before, and every fade reached exact zero at 100 ms.
+
+**What it costs.** Up to `bargeInMs` of the character talking over the user at −12 dB before
+it stops, and a real interjection shorter than 200 ms of speech ("wait—") only ducks.
+
+**Not measured, and the reason this is proposed.** Whether Chrome's echo cancellation removes
+this page's own voice from a microphone next to speakers, which decides whether `bargeInMs`
+can shrink or has to grow; and whether 200 ms feels right to a person. Both are
+`docs/TASKS.md` R-2, with a command.
+
+## ADR-27 Synthesised sentences are trimmed to their voice before they are queued (proposed 2026-09-13)
+
+**Decision.** `Reply` trims every synthesised sentence to its voiced range — the first and
+last samples at or above 0.02 — plus **50 ms in front and 250 ms behind**, before it reaches
+the output queue. `padding: null` plays synthesis as delivered.
+
+**Why.** Kokoro pads each sentence with ~310 ms of silence in front and ~490 ms behind, in
+the browser and in node alike (`docs/SURFACE.md`). Untrimmed, the first word of every answer
+reaches the listener a third of a second after the pipeline's "first audio" — latency the
+user hears against a 500 ms budget (ADR-20) — and consecutive sentences sit ~0.8 s apart,
+which reads as hesitation. Trimmed, they meet with ~300 ms between them.
+
+**Why these numbers.** 50 ms in front because a soft onset ("f", "h") starts below the
+voiced threshold and must not be clipped; 250 ms behind so the gap between two sentences
+stays inside the range of a spoken pause. Both are starting values chosen by reasoning, not
+by ear, which is why this is proposed: R-2 asks Rick to listen.
+
+**Alternatives rejected.** Trimming to the threshold exactly (clips onsets); trimming only
+the first sentence of an answer (wins the latency, keeps the 0.8 s gaps); asking kokoro-js
+not to pad (1.2.1 has no such option).

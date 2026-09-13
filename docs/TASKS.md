@@ -45,6 +45,14 @@ utterances and the shipped Silero and Smart Turn code endpoint them through the 
 `packages/ml-web/live/out/models/` the first time, checks each against the catalog size, and
 writes the full report to `live/out/turn.md`. A few minutes on CPU.
 
+`live:bargein` needs nothing either: Kokoro speaks, each sentence is cut at a seeded frame and
+faded as the worklet does, and Moonshine writes down what was left — against the spoken-prefix
+estimate `assistant.interrupted` carries. Writes `live/out/bargein.md`.
+
+```bash
+pnpm live:bargein
+```
+
 `live:tts` also writes playable WAVs to `packages/providers/live/out/` (gitignored),
 re-encoded from what our own decoder produced — so if they sound right, the adapter is
 right.
@@ -65,12 +73,41 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-2 · Hear the character speak, in the app
-**Why:** the plan's done-when for P1-T05. **Blocked until P1-T08** builds the AudioWorklet
-output queue — there is nowhere to play audio today. The server adapter is already verified
-against real bytes (see D-4), so what is left is genuinely the play-out path.
+### R-2 · Listen to the character, and talk over it
+**Why:** P1-T08's done-when is a *manual* test — no clicks, and the transcript keeps only what
+was heard. Both are measured (0 clicks in 204 s of recorded output, every fade silent at
+100 ms), but a measurement cannot say whether it *sounds* right, and three things only a
+person with speakers can answer: whether Chrome's echo cancellation stops the character
+interrupting itself (ADR-26), whether 200 ms before a barge-in commits feels right
+(ADR-26), and whether the 50 ms / 250 ms trim sounds natural between sentences (ADR-27). It
+also gives the first human reading of ADR-25's retraction. It closes P1-T05's done-when too.
+Needs Chrome or Edge with WebGPU, and ~473 MB of models on first run. **The microphone path has
+never run**: the Browser pane has no microphone, so everything I measured used the simulated
+speaker. If step 2 fails, that is a finding, not a mistake on your side.
 
-**Nothing to run yet.** This unblocks when P1-T08 lands; the command will be added here then.
+```bash
+pnpm dev
+```
+Open `http://localhost:5173/dev/voice`, press **Agree and start** (the models load; the page
+says *Ready*), then:
+
+1. **Speakers, simulated speaker.** Press **Simulated speaker**, then **Ask**. Listen to the
+   whole answer. Press **Ask** again and, a few seconds in, **Interrupt**. Listen for any
+   click, pop or cut at the start of a sentence, between sentences, at the dip when the
+   interruption starts, and at the fade.
+2. **Headphones, microphone.** Press **Microphone**, allow it. Ask it anything — the answer
+   is always the same scripted paragraph. Talk over it: once with a real "wait, stop", once
+   with a short cough or "mm-hm".
+3. **Speakers, microphone.** Same as 2 with headphones off and the volume where you would
+   normally have it. Do not speak; let the answer play to the end.
+4. Press **Check output for clicks**, then **Copy results as Markdown**.
+
+**Expect:** no clicks you can hear; (2) "wait, stop" cuts the voice within about a quarter
+of a second and the cough only dips it; (3) the character finishes without interrupting
+itself — if it cuts itself off, that is the echo finding and the most important thing to
+report; the *Heard* column ends at the last word you actually heard.
+**Report:** paste the Markdown, and one line each on: clicks heard (where), whether (3)
+interrupted itself, how the dip and the gaps between sentences sounded.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
@@ -78,25 +115,31 @@ Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold l
 
 ## Open — claude (say go, or add the key)
 
-*Nothing runnable yet, but no longer blocked on a human.* The Browser pane in the Claude
-desktop app has a real WebGPU adapter (`docs/SURFACE.md`, 2026-09-13), so the first two
-below are **P1-T08's to run** once its harness plays audio (`docs/briefs/P1-T08.md`). The
-third still needs a person. The three questions:
+P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
+(D-15, D-16). The third — how often a person triggers ADR-25's retraction — needs a person,
+and is part of R-2.
 
-- whether Kokoro `q8` is safe on **WebGPU**, worth 233 MB of every first run — a done-when on
-  **P1-T08**, recorded in `docs/SURFACE.md` and on `dtype` in `kokoro-browser.ts`;
-- **turn detection's latency on WebGPU on this onnxruntime version.** `live:turn` reproduces
-  Spike D's 168 ms with Spike D's 40 ms answer latency applied; it did not measure that 40 ms
-  again, because node has no WebGPU and `/spike/turn` is gone;
-- **how often a human triggers ADR-25's retraction.** Kokoro pauses ~220 ms mid-sentence
-  and a person may pause less, or more. Both of these belong to whichever task first opens
-  the microphone in the app, and become an `R-` item with a command then.
+### C-7 · An aborted answer stops the model, not just the stream · **needs** a local Ollama running
+**Why:** barge-in aborts `LLMProvider.stream()`. P1-T08 proved the signal reaches the fake;
+not that the OpenAI-compatible adapter cancels the HTTP request, so a local model could keep
+generating on the GPU that synthesis and Smart Turn need. **No script yet** — say go with
+Ollama up and I will write it: start a long answer, abort after the first tokens, and read
+Ollama's own log for the request ending rather than trusting the client going quiet.
 
 ## Done
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-16 · Turn detection latency on WebGPU, this onnxruntime version** — done 2026-09-13 by
+  P1-T08 in the Browser pane. Smart Turn fp32 answers in **8–57 ms** warm; the **first
+  inference of a session took 392–479 ms** and landed as `late`, so the worker now warms up
+  during load (first real answer after that: 28 ms). Turn ends 187–279 ms after speech.
+- **D-15 · Kokoro `q8` on WebGPU** — done 2026-09-13 by P1-T08. **Broken, silently**: speech-
+  shaped audio Moonshine could not read a word of, while fp32 through the same worker matched
+  node to the frame. Every quantised Kokoro precision is now refused on WebGPU; fp32 stays.
+  Found alongside: Kokoro pads each sentence with ~310 ms / ~490 ms of silence (ADR-27), and
+  Chrome renders a silent AudioContext at 0.64× after ~30 s in a hidden page.
 - **D-14 · Turn detection on real speech, no microphone** — done 2026-09-13, the done-when
   for P1-T07. Complete sentences end 168 ms median, 220 ms worst after the labelled end;
   found Smart Turn cutting sentences at inner pauses (ADR-25) and Moonshine's library token

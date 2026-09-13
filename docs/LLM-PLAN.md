@@ -92,7 +92,7 @@ Done when: live transcription visible in the transcript panel with both a browse
 Depends: P0-T07. Silero VAD worker plus a **Smart Turn v3 worker** — adaptive silence is no longer the fallback, Spike D decided it (ADR-21). fp32 build on WebGPU, 100 ms candidate silence, 0.7 threshold; int8 is the no-GPU fallback and must never be offered on WebGPU, where it does not load. The 500 ms hangover stays as the backstop, and an answer arriving after it is reported as late rather than as a miss. Exposes `speechStart`, `speechEnd`, `turnEnd(probability)`.
 Done when: tests with recorded audio fixtures detect turn ends within 300 ms of the labelled point, and the candidate window is handed to recognition (P1-T06) at the same moment it is handed to the endpointer — ADR-21's overlap, without which the pipeline is 40 ms over budget on its own.
 
-### P1-T08 Audio output queue and barge-in — owner: main
+### P1-T08 Audio output queue and barge-in — owner: main (done 2026-09-13; two-stage barge-in ADR-26, edge trim ADR-27, by-ear check is R-2)
 Depends: P1-T01. AudioWorklet playback queue; on user speech start, fade out in 100 ms, cancel LLM stream, mark transcript with the spoken prefix.
 Done when: manual test shows no audio clicks and the transcript reflects only the words that were heard.
 

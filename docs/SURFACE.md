@@ -1292,3 +1292,43 @@ time and "Sorry, can I stop you there for a second?" at 0.99.
 step within 5 ms of any event, over the largest step of the voice in the 50 ms before it:
 at most **1.12** (a fade), where a hard cut on a voiced sample scores many times over.
 Every fade reached exact digital zero **at 100 ms**. Nothing hit the ±1 clamp in that run.
+
+**The first browser reading of ADR-20's pipeline: ~765 ms, not 500.** Eleven turns on
+`/dev/voice`, simulated speaker saying "Sorry, can I stop you there for a second?", Smart
+Turn warm, a scripted model that costs nothing, from the turn's last speech frame to the
+first answer frame at the ear (output latency included):
+
+| turn | speech end → first audio | first sentence synthesis |
+|---|---|---|
+| 1 (first of the session) | 1096 ms | 544 ms |
+| 2–11 | **718–811 ms**, median ~765 | 369–403 ms |
+
+Turn ends landed 194–279 ms after speech. The largest single cost is synthesising the
+answer's first sentence — 84 characters, ~4.6 ms each on Kokoro fp32/WebGPU — where D-12
+found 1.29 ms/char on the GPU server path. **A first-chunk cap is back on the table for the
+browser path**; P1-T08 records the number and leaves the prosody call to the task that
+judges the budget (P1-T14). ADR-25's 500 ms hold never bound in these turns: synthesis
+finished after it every time. The first frame now carries 50 ms of lead (ADR-27), so the
+first voiced sample is ~50 ms later than the table.
+
+## Spoken-prefix estimate against a listener — measured 2026-09-13 (P1-T08, `pnpm live:bargein`)
+
+Kokoro q8 `af_heart` on onnxruntime-node, eight sentences × eight seeded cuts inside the
+voiced range, each followed by the worklet's 100 ms linear fade, then Moonshine tiny q8
+transcribing what was left (300 ms lead, 500 ms tail). The estimate is asked at the fade's
+midpoint, as `Reply` asks. **12 of 64 cuts came back from Moonshine empty** — one of them
+2.6 s of clear speech — and are scored as unreadable, not as the estimate running ahead;
+the first run scored them the other way.
+
+| estimator, 52 readable cuts | exact | behind 1 | behind 2+ | ahead 1 | ahead 2+ | mean abs diff |
+|---|---|---|---|---|---|---|
+| **voiced range, fade midpoint (ships)** | 18 | 30 | 0 | **4** | 0 | **0.65** |
+| whole padded sentence, fade midpoint | 11 | 17 | 22 | 2 | 0 | 1.27 |
+| voiced range, fade start | 13 | 33 | 3 | 3 | 0 | 0.81 |
+
+Of the four "ahead" rows, two are Moonshine mishearing ("there is none" for "there was",
+"bluefold" for "blue folder") and **two are real**: "because" claimed just after
+"anything," — Kokoro pauses at a comma and a character-proportional estimate does not know
+it. "Behind 1" is mostly Moonshine completing a word the fade cut in half, which the
+estimator deliberately does not count. Spreading words over the padding is clearly worse,
+which is the measured reason for `voicedRange`.
