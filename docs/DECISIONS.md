@@ -27,7 +27,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | accepted | 2026-09-12 |
 | ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | accepted | 2026-09-12 |
 | ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | accepted | 2026-09-12 |
-| ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | proposed | 2026-09-13 |
+| ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted | 2026-09-13 |
 
 ---
 
@@ -481,7 +481,7 @@ one. `capabilities().streaming` is `false` so nothing downstream is misled about
 **Reconsider when:** a real endpoint appears that only speaks a compressed format, or when
 a measurement shows intra-sentence streaming is worth the framing. Neither has happened.
 
-## ADR-25 A model-ended turn is provisional until the backstop would have fired (proposed 2026-09-13)
+## ADR-25 A model-ended turn is provisional until the backstop would have fired (accepted 2026-09-13)
 
 **Decision:** when Smart Turn ends a turn, `TurnDetector` emits `turn-end` at once — the
 latency ADR-21 bought is untouched — but the end can still be **retracted** until
