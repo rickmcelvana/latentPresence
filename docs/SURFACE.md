@@ -831,12 +831,11 @@ not reachable at sentence granularity here** — the opening has to be a clause,
 budget has to be spent elsewhere. That decision belongs with the code that knows a turn has
 started (P1-T08), and wants re-measuring on the browser path first.
 
-**Settled 2026-09-12, later the same day: this is a CPU number.** That instance was
-serving from the CPU — see "Kokoro-FastAPI was not using the GPU" below — so 15.3 ms/char
-is a floor on how slow the path can be, not a reading of the hardware. Every conclusion
-above survives it: they all turn on the *ratio* of synthesis to speech, and a faster device
-only widens it. The first-chunk figures (581 ms, 1525 ms) are the ones to re-measure once
-the server is on CUDA, and again on the browser path.
+**Superseded 2026-09-12, later the same day — this was a CPU number and it was 11.8x too
+slow.** That instance had silently fallen back to CPU torch. Re-measured on the GPU below:
+**1.29 ms/char**, and the first-chunk conclusion reverses. `maxChars = 200` still stands;
+everything said about it above holds, because it all turns on the *ratio* of synthesis to
+speech and the faster device only widens it.
 
 ## Kokoro ONNX graphs — Hugging Face blob listing, 2026-09-12
 
@@ -940,3 +939,83 @@ tree constrains torch beyond `>=2.5`.
 
 The upstream fix is to widen both markers to
 `platform_machine == 'x86_64' or platform_machine == 'AMD64'`.
+
+## The same sweep on the GPU — re-measured 2026-09-12 (`docs/TASKS.md` C-6)
+
+Identical script, identical box, Kokoro-FastAPI now actually on the RTX 5060 Ti (sm_120)
+after the CPU-torch fix below. 19–559 characters, three runs each, median.
+
+| chars | synth ms (CPU) | synth ms (GPU) |
+|---|---|---|
+| 19 | 446 | **85** |
+| 51 | 763 | **97** |
+| 103 | 1525 | **119** |
+| 219 | 3248 | **312** |
+| 559 | 8554 | **757** |
+
+**`synth_ms ≈ 14 + 1.292 × chars`** — a real per-request overhead of 14 ms appears, and the
+per-character cost falls from 15.260 to 1.292 ms, **11.8x faster**. Worst real-time factor
+across the sweep is **0.060**; speech still plays at ~17.4 chars/s, so synthesis now runs
+about **44x faster than speech**.
+
+**This reverses the first-chunk conclusion, which is the part that mattered.**
+
+| budget | chars affordable, CPU | chars affordable, GPU |
+|---|---|---|
+| 245 ms (Spike A's synthesis share) | 17 | **178** |
+| 500 ms (ADR-20) | 32 | **375** |
+
+The full 103-character opening sentence now reaches first audio in **137 ms**, against
+1525 ms before. So **"ADR-20's budget is not reachable at sentence granularity" was false,
+and it was an artifact of a misconfigured server** — a whole sentence fits inside the
+synthesis share with room to spare. **P1-T08 does not need a first-chunk cap on this
+path.** The browser path is still unmeasured and gets its own reading.
+
+One artifact worth noting: synthesis jumps 177 → 312 ms between 180 and 219 characters,
+out of line with the fit. The server appears to split internally somewhere around 200
+characters. It costs nothing at these speeds, but it is a reason not to read the intercept
+as a per-chunk penalty we control.
+
+## Kokoro-FastAPI `speed` — measured 2026-09-12
+
+Rick reported that `speed: 1.5` "skipped words". Same sentence (91 characters) at six
+speeds, on the GPU instance:
+
+| speed | audio s | duration vs requested | chars/s of audio |
+|---|---|---|---|
+| 0.75 | 7.32 | — | 12.4 |
+| 1.00 | 5.33 | 1.000 | 17.1 |
+| 1.25 | 4.51 | 0.945 | 20.2 |
+| 1.50 | 3.38 | **1.050** | **26.9** |
+| 2.00 | 2.85 | 0.934 | 31.9 |
+| 3.00 | 2.36 | **0.752** | 38.5 |
+
+**Duration cannot detect this fault, which is why it needed an ear.** The server hits the
+requested ratio to within ±7% up to 2.0 — at 1.5 it is *shorter* than asked (1.050), so
+nothing is missing from the timeline; the phonemes themselves degrade. At 1.5 the audio
+carries **26.9 characters per second**, past what the voice articulates, and Rick heard
+words drop out. By 3.0 the server can no longer deliver the ratio at all (0.752).
+
+**Usable range is about 0.75–1.25.** `OpenAICompatibleTTSProvider` clamps to the API's own
+0.25–4 and should keep doing so — passing the server's contract through is right — but a
+settings UI that offers the full range is offering something that does not work. Default
+stays 1.
+
+## `q8` against `fp32`, judged by ear — 2026-09-12
+
+Rick could not tell the three pairs apart (`docs/TASKS.md` R-5), which matches the
+measurements. **The default nevertheless stays `fp32`, for a reason the comparison could
+not reach.**
+
+The C-5 run used **onnxruntime-node**. The browser provider runs **WebGPU**, and this
+project has already recorded one silent q8-on-WebGPU failure on this exact stack: ADR-20's
+recognition entry notes that transformers.js's WebGPU q8 path for Moonshine "returns fluent
+nonsense — the same string for every utterance — with no error". Quality equivalence on a
+CPU execution provider is not evidence that the WebGPU one is correct, and the failure mode
+on record is one no listener would hear as a defect until they read the words.
+
+**So the quality question is closed and the deployment question is not.** What P1-T08 has
+to settle, once it can run Kokoro in a browser: synthesise two different sentences at
+`dtype: 'q8'` on WebGPU and confirm they differ from each other and match the node q8
+durations. If they do, `q8` becomes the browser default and first-run drops from 325.5 MB
+to 92.4 MB.

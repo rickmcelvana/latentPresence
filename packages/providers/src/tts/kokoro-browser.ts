@@ -42,7 +42,18 @@ export interface KokoroBrowserConfig {
   readonly createWorker: () => KokoroWorkerPort;
   /** Defaults to `webgpu`. See the class note before changing it. */
   readonly device?: KokoroDevice;
-  /** Defaults to `fp32`, the precision Spike A measured. */
+  /**
+   * Defaults to `fp32`, the precision Spike A measured — 325.5 MB against `q8`'s 92.4 MB.
+   *
+   * **`q8` is quality-equivalent and is still not the default.** Measured 2026-09-12: same
+   * loudness, same noise floor, same high-frequency content between words, and Rick could
+   * not tell the renderings apart. But that ran on onnxruntime-node, and this provider
+   * runs on WebGPU — where ADR-20 already records transformers.js returning *fluent
+   * nonsense with no error* from the q8 Moonshine graph. A silent wrong answer is not
+   * something a listener catches, so the 233 MB stays unclaimed until P1-T08 can
+   * synthesise two different sentences at `q8`/WebGPU and show they differ.
+   * `docs/SURFACE.md`.
+   */
   readonly dtype?: KokoroDtype;
 }
 

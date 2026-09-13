@@ -117,6 +117,43 @@ async function say(
 
 await say('short sentence', 'Hello there, this is a test.', 'af_heart', 1);
 await say('long sentence', 'The quick brown fox jumps over the lazy dog, and then it does so again, rather more slowly this time.', 'af_heart', 1);
-await say('speed 1.5', 'Hello there, this is a test.', 'af_heart', 1.5);
 await say('other voice', 'Hello there, this is a test.', 'bm_fable', 1);
 await say('unknown voice (must 400)', 'This should fail.', 'not_a_voice_at_all', 1, true);
+
+/**
+ * Where does `speed` stop being usable? Rick heard 1.5 "skip words" (2026-09-12), and a
+ * provider that clamps to 0.25-4 implies the whole range works. Duration alone cannot
+ * catch this — the server hits the requested ratio exactly while dropping phonemes — so
+ * this also prints characters per second of *audio*, which rises past what the voice can
+ * articulate, and writes each take out to be judged by ear.
+ */
+console.log('');
+console.log('speed sweep — same sentence, listen for dropped words');
+console.log('');
+const SPEED_TEXT =
+  'The afternoon light came in low across the desk and everything went the colour of weak tea.';
+let baseline = 0;
+for (const speed of [0.75, 1, 1.25, 1.5, 2, 3]) {
+  const chunks: SpokenAudioChunk[] = [];
+  for await (const chunk of provider.synthesize({
+    text: SPEED_TEXT,
+    voiceId: 'af_heart',
+    speed,
+    hint: null,
+  })) {
+    chunks.push(chunk);
+  }
+  const rate = chunks[0]?.sampleRate ?? 24_000;
+  const seconds = chunks.reduce((total, chunk) => total + chunk.samples.length, 0) / rate;
+  if (speed === 1) baseline = seconds;
+  writeFileSync(`live/out/speed-${String(speed).replace('.', '-')}.wav`, toWav(chunks, rate));
+  console.log(
+    [
+      `speed ${speed.toFixed(2)}`.padEnd(12),
+      `${seconds.toFixed(2)}s`.padStart(8),
+      // 1.00 means the server hit the requested ratio exactly.
+      baseline === 0 ? '   -   ' : (baseline / seconds / speed).toFixed(3).padStart(8),
+      `${(SPEED_TEXT.length / seconds).toFixed(1)} chars/s`.padStart(16),
+    ].join('  '),
+  );
+}

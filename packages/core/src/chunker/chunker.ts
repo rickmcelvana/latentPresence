@@ -57,20 +57,22 @@ export interface SentenceChunkerOptions {
    * not buffer a whole turn.
    *
    * **200 was a starting value and has now been measured (2026-09-12), and the
-   * measurement left it alone.** Against a real Kokoro server, synthesis costs
-   * ~15.3 ms per character with no per-request overhead worth the name, and speech plays
-   * at ~17.4 characters per second — so synthesis runs about 3.8x faster than speech.
-   * Two things follow. Every chunk after the first always arrives before the previous one
-   * finishes playing, at any size, so **chunk length cannot starve playback**. And the
-   * cap does not touch the opening at all: the first chunk of ordinary prose ends at a
-   * sentence boundary long before 200 characters, so 120, 200 and 320 all produce the
-   * same first chunk and differ only in how a run-on is broken later.
+   * measurement left it alone.** Against a real Kokoro server on an RTX 5060 Ti,
+   * synthesis costs **~1.3 ms per character** over a 14 ms per-request overhead, while
+   * speech plays at ~17.4 characters per second — so synthesis runs about **44x faster
+   * than speech**. Every chunk after the first therefore always arrives long before the
+   * previous one finishes playing, at any size: **chunk length cannot starve playback**.
+   * And the cap does not touch the opening at all — the first chunk of ordinary prose
+   * ends at a sentence boundary well before 200 characters, so 120, 200 and 320 all
+   * produce the same first chunk and differ only in how a run-on is broken later.
    *
-   * **The lever for time-to-first-audio is therefore a separate, much smaller cap on the
-   * first chunk of a turn, which this option is not.** 31 characters got first audio at
-   * 581 ms where the full 103-character sentence took 1525 ms. That belongs with the code
-   * that knows a turn has started — P1-T08 — and wants re-measuring on the browser path,
-   * which is a different machine doing different work. `docs/SURFACE.md`.
+   * **A first-chunk cap is not needed on this path.** An earlier reading of the same
+   * sweep said it was, and it was measuring a server that had silently fallen back to
+   * CPU torch (`docs/SURFACE.md`): 15.3 ms/char rather than 1.3, which made a full
+   * opening sentence cost 1525 ms and put ADR-20's budget out of reach at sentence
+   * granularity. On the GPU that same sentence is **137 ms**, and a 245 ms budget buys
+   * 178 characters. The browser path is still a different machine doing different work
+   * and wants its own reading in P1-T08 — but it is no longer expected to need rescuing.
    */
   readonly maxChars?: number;
 }

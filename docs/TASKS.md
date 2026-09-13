@@ -58,52 +58,33 @@ against real bytes (see D-4), so what is left is genuinely the play-out path.
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
 
-### R-4 · Restart Kokoro-FastAPI on the GPU
-**Why:** it was serving from the CPU (D-9). `start-gpu.ps1` is fixed and now refuses to
-start on the CPU rather than doing it quietly. First run downloads ~3 GB of CUDA torch.
-
-```powershell
-cd G:\Kokoro-FastAPI; .\start-gpu.ps1
-```
-
-**Expect:** `torch 2.8.0+cu128 OK on NVIDIA GeForce RTX 5060 Ti (sm_120)`, then
-`Loading Kokoro model on cuda` — the *second* device line, not the first; the first is a
-liar (D-9). If it refuses, the message says what to re-run.
-**Report:** those two lines. Your previous script is at `start-gpu.ps1.bak`; the diff is
-commented in place, and `git checkout -- start-gpu.ps1` reverts it.
-
-### R-5 · Listen to `fp32` against `q8`
-**Why:** the numbers say they are indistinguishable (D-10) and numbers cannot hear timbre.
-233 MB of every user's first run rides on this.
-
-Six files in `packages/ml-web/live/out/`, three pairs:
-`plain`, `sibilant`, `tonal` × `-fp32.wav`, `-q8.wav`. Regenerate any time with
-`pnpm live:kokoro`.
-
-**Expect:** if you cannot tell them apart, `q8` becomes the browser default and the
-download drops from 325 MB to 92 MB.
-**Report:** "same" / "q8 is worse, here" / "fp32 is worth 233 MB". One line is enough.
-
----
-
 ## Open — claude (say go, or add the key)
 
-### C-6 · Re-measure the first-chunk budget on a GPU server
-**Why:** D-7's 15.3 ms/char was measured against a CPU instance (D-9), so the two numbers
-that decide P1-T08's first-chunk cap — 581 ms for 31 characters, 1525 ms for 103 — are
-upper bounds on a machine that was not trying. The conclusions hold either way; the cap
-should not be chosen from a pessimistic reading.
-
-**Blocked on R-4.** One command once the server is on CUDA, no key needed:
-`pnpm --filter @latentpresence/providers exec vite-node live/chunk-latency.ts`.
-
----
+*Nothing open.* The next TTS question — whether `q8` is safe on **WebGPU**, which is worth
+233 MB of every first run — cannot be answered from node and is a done-when on **P1-T08**,
+recorded in `docs/SURFACE.md` and on `dtype` in `kokoro-browser.ts`.
 
 ## Done
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-13 · `speed` above 1.25 degrades** — found 2026-09-12 from Rick's ear, then measured.
+  The server hits the requested duration ratio to within 7% up to 2.0, so **duration cannot
+  detect the fault**: at 1.5 the audio carries 26.9 characters per second, past what the
+  voice articulates, and words drop. Usable range ~0.75–1.25. The adapter keeps clamping to
+  the API's own 0.25–4; a settings UI must not offer the full range as if it worked.
+- **D-12 · Re-measure the first-chunk budget on a GPU server** — done 2026-09-12, the old
+  C-6, and it **reversed a published conclusion**. On the GPU synthesis costs 1.29 ms/char,
+  not 15.3 — 11.8x faster — so a 245 ms budget buys 178 characters rather than 17, and the
+  full opening sentence reaches first audio in 137 ms rather than 1525. **ADR-20's budget
+  is reachable at sentence granularity after all, and P1-T08 needs no first-chunk cap on
+  this path.** `maxChars = 200` is untouched by any of it.
+- **D-11 · `fp32` against `q8`, by ear** — done 2026-09-12, the old R-5. Rick could not tell
+  the three pairs apart, matching the measurements. **The default stays `fp32` anyway**:
+  C-5 ran on onnxruntime-node, the browser runs WebGPU, and ADR-20 already records
+  transformers.js returning fluent nonsense with no error from a q8 graph on WebGPU. The
+  quality question is closed; the deployment question moves to P1-T08.
 - **D-10 · Compare Kokoro `fp32` against `q8`** — done 2026-09-12, the old C-5. No
   measurable difference in loudness, noise floor or high-frequency content between words;
   duration drifts up to 50 ms per utterance, which will move visemes. `q8` is 3.4x slower
@@ -112,8 +93,9 @@ Newest first. Each line is the outcome, not the instructions — the detail is i
   where `dtype: 'q8'` actually fetches `model_quantized.onnx`, 92.4 MB — a consent screen
   understated by 6.3 MB, now corrected from the blob listing. Also that Kokoro's output
   exceeds full scale (peak 1.043), so P1-T08 must clamp.
-- **D-9 · Is the TTS server using the GPU?** — no, it was on the CPU; diagnosed and fixed
-  2026-09-12, the old C-4. Every CUDA torch wheel in Kokoro-FastAPI's `pyproject.toml` is
+- **D-9 · Is the TTS server using the GPU?** — no, it was on the CPU; diagnosed, fixed and
+  **verified running on CUDA** 2026-09-12, the old C-4 and R-4. `torch 2.8.0+cu128 OK on
+  NVIDIA GeForce RTX 5060 Ti (sm_120)`, and both device lines now agree on `cuda`. Every CUDA torch wheel in Kokoro-FastAPI's `pyproject.toml` is
   gated on `platform_machine == 'x86_64'`, and Windows reports `AMD64`, so the extra
   resolved to nothing and uv installed PyPI's CPU torch. The startup log cannot catch this:
   its first device line reports the `USE_GPU` env var without asking torch, and only the

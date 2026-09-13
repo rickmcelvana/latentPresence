@@ -31,7 +31,7 @@
 
 ## Tasks needing a human or a live endpoint
 
-**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **5 open for Rick** — a different-GPU avatar reading, hearing the character in the app (blocked on P1-T08), the character pipeline (blocked on a doc I owe), restarting Kokoro-FastAPI now that its CPU-torch trap is fixed, and judging `fp32` against `q8` by ear. **1 open for me**, blocked on that restart: re-measuring the first-chunk budget against a GPU server.
+**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **3 open for Rick** — a different-GPU avatar reading, hearing the character in the app (blocked on P1-T08), and the character pipeline (blocked on a doc I owe). **Nothing open for me.** P1-T08 carries two done-whens earned this session: whether `q8` is safe on WebGPU (233 MB of every first run), and clamping audio that is not bounded to [−1, 1].
 
 ## Backlog (architect)
 
