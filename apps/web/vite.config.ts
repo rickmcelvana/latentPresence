@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 
 /**
- * Fails the build if the Spike A route reaches production.
+ * Fails the build if a dev-only model route reaches production — the voice harness (P1-T08).
  *
  * The route is guarded by `import.meta.env.DEV`, but that alone does not keep it out of
  * the bundle: Rollup emits a chunk for a dynamic import whether or not the branch that
@@ -19,7 +19,10 @@ function assertSpikeExcludedFromBuild(): Plugin {
     'onnxruntime',
     '@huggingface/transformers',
     'kokoro-js',
-    'spike-capture',
+    // The audio worklets' processor names (P1-T08): the harness is dev-only until P1-T10/T13
+    // put the pipeline in the product.
+    'latentpresence-capture',
+    'latentpresence-playback',
     // P0-T05. These two are the entries to delete at P2-T01, deliberately: the avatar
     // stops being dev-only the moment the stage is real, and that is the one line of this
     // guard that is meant to come out rather than stay forever.

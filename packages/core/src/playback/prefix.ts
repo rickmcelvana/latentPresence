@@ -36,6 +36,40 @@ export function voicedRange(
   return { start, end };
 }
 
+/** How much silence to keep either side of the voice when trimming a sentence. */
+export interface EdgePadding {
+  readonly leadMs: number;
+  readonly tailMs: number;
+}
+
+/**
+ * Kokoro pads every sentence with ~310 ms of silence in front and ~490 ms behind, in the
+ * browser and in node alike (P1-T08, `docs/SURFACE.md`). Played as synthesised, the first
+ * audible word of an answer arrives a third of a second after its first frame — latency
+ * the listener hears, against a 500 ms budget (ADR-20) — and sentences sit ~0.8 s apart.
+ *
+ * The lead keeps 50 ms because a soft onset ("f", "h") starts under the voiced threshold;
+ * the tail keeps 250 ms, so two sentences meet with ~300 ms between them, inside the range
+ * of a spoken pause. Both are starting values for an ear to judge (ADR-27).
+ */
+export const DEFAULT_EDGE_PADDING: EdgePadding = { leadMs: 50, tailMs: 250 };
+
+/**
+ * Cut a sentence down to its voice plus `padding`. Returns a copy, and where the voice
+ * sits within it. Never lengthens: padding past the audio's own edges is not invented.
+ */
+export function trimToVoice(
+  samples: Float32Array,
+  sampleRate: number,
+  padding: EdgePadding = DEFAULT_EDGE_PADDING,
+  threshold = DEFAULT_VOICED_THRESHOLD,
+): { readonly samples: Float32Array; readonly voicedStart: number; readonly voicedEnd: number } {
+  const voiced = voicedRange(samples, threshold);
+  const from = Math.max(0, voiced.start - Math.round((padding.leadMs / 1000) * sampleRate));
+  const to = Math.min(samples.length, voiced.end + Math.round((padding.tailMs / 1000) * sampleRate));
+  return { samples: samples.slice(from, to), voicedStart: voiced.start - from, voicedEnd: voiced.end - from };
+}
+
 /** One sentence of an answer, as the estimator needs to know it. */
 export interface SpokenSentence {
   readonly text: string;

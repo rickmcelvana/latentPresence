@@ -7,7 +7,7 @@ import type {
 import { Cancellation } from '../cancellation';
 import { SentenceChunker, type InlineTag, type SentenceChunkerOptions, type SpeechChunk } from '../chunker';
 import type { PlaybackEvent, PlaybackSink } from '../playback/sink';
-import { spokenPrefix, voicedRange, type SpokenSentence } from '../playback/prefix';
+import { DEFAULT_EDGE_PADDING, spokenPrefix, trimToVoice, type EdgePadding, type SpokenSentence } from '../playback/prefix';
 
 /**
  * One spoken answer, from the first token to the last frame (P1-T08).
@@ -33,6 +33,11 @@ export interface ReplyDependencies {
   readonly voiceId: string;
   readonly speed?: number;
   readonly chunker?: SentenceChunkerOptions;
+  /**
+   * Silence kept either side of each sentence's voice; null plays the synthesis untrimmed.
+   * Kokoro's own padding is ~310 ms in front, which a listener hears as latency (ADR-27).
+   */
+  readonly padding?: EdgePadding | null;
 }
 
 export type ReplyEvent =
@@ -240,9 +245,12 @@ export class Reply {
     await Promise.race([this.hold, this.aborted()]);
     if (signal.aborted) return;
 
-    const samples = concat(parts);
+    const padding = this.deps.padding === undefined ? DEFAULT_EDGE_PADDING : this.deps.padding;
     // Measured before the sink can transfer the buffer away.
-    const voiced = voicedRange(samples);
+    const whole = concat(parts);
+    const voiced =
+      padding === null ? { samples: whole, voicedStart: 0, voicedEnd: whole.length } : trimToVoice(whole, sampleRate, padding);
+    const samples = voiced.samples;
     const frames = samples.length;
     const id = this.deps.sink.enqueue({ samples, sampleRate });
     const sentence: Sentence = {
@@ -251,8 +259,8 @@ export class Reply {
       text: chunk.text,
       frames,
       sampleRate,
-      voicedStart: voiced.start,
-      voicedEnd: voiced.end,
+      voicedStart: voiced.voicedStart,
+      voicedEnd: voiced.voicedEnd,
       ...(words === undefined ? {} : { words }),
       started: false,
       ended: false,

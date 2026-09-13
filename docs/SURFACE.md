@@ -1233,3 +1233,62 @@ the architect in the pane against the dev server. It is a real discrete adapter,
 SwiftShader, so a number taken there is a GPU number. What the pane cannot supply is a
 microphone with a person behind it or ears on speakers. Not yet checked: whether it grants
 `getUserMedia`, and what `outputLatency` actually reads once a context is running.
+
+## The voice pipeline in a browser — verified 2026-09-13 (P1-T08)
+
+All in the Claude desktop app's Browser pane (Chrome 152.0.7977.76, `nvidia / blackwell`
+WebGPU adapter, page **hidden** throughout), against the Vite dev server and `/dev/voice`.
+Every model ran through the promoted workers in `packages/ml-web`, not spike code.
+
+**Vite 8.2.2 bundles an AudioWorklet with `?worker&url`, in dev and in a build.** Read out
+of `vite/dist/node/chunks/node.js` (the `vite:worker` plugin), then run: a TypeScript
+processor in `packages/providers` imported as `./x.worklet.ts?worker&url` loaded in
+`AudioWorkletGlobalScope` from the dev server — the `import "/@vite/env"` Vite injects into
+module workers is harmless there — and from `vite build` + `vite preview`, where it is
+emitted as its own IIFE asset. `new URL('./x.ts', import.meta.url)` is only rewritten for
+`new Worker(...)`, so it is not an option for `audioWorklet.addModule`.
+`new AudioContext({ sampleRate: 24000 })` is honoured; `outputLatency` reads 0 until the
+context has rendered, then **40 ms**; `baseLatency` 10 ms.
+
+**Kokoro `q8` on WebGPU is broken, silently.** Three sentences through `kokoro.worker.ts`
+(voice `af_heart`), each transcribed back by Moonshine tiny fp32 on WebGPU:
+
+| | durations (ms) | against node's | Moonshine read | RMS | zero crossings |
+|---|---|---|---|---|---|
+| fp32, WebGPU | 3400, 4525, 3400 | fp32: 3400, 4525, 3400 — identical | all three, word for word | −23.1 dB | 2515 Hz |
+| q8, WebGPU | 3500, 4825, 3950 | q8: 3425, 4575, 3400 — up to +550 | **nothing, in all three** | −25.6 dB | 2069 Hz |
+
+The q8 audio is speech-shaped — Silero calls it speech and 94 of 96 voiced 20 ms frames line
+up with node's — so nothing short of a transcript notices. To rule out the recogniser, the
+same browser Moonshine read node's `plain-q8.wav` exactly. **Every quantised Kokoro
+precision is now refused on WebGPU**, in the provider constructor and in the worker.
+fp32 warm synthesis: 337 ms for 3.4 s of speech, 690 ms for 4.5 s. fp32 peaks at **1.11**.
+
+**Kokoro pads every sentence: ~310 ms of silence in front, ~490 ms behind**, measured in the
+browser (285–316 ms lead) and in node (298–338 ms lead, 433–538 ms tail, eight sentences),
+with the first and last samples at rest (|x| < 1e-6). The first audible word of an answer
+therefore arrives ~310 ms after its first frame, which is what Spike A timed as "first
+audio". `Reply` now trims each sentence to its voice plus 50 ms / 250 ms (ADR-27).
+
+**Chrome slows an AudioContext whose output is digital silence, after ~30 s.** Four 16 kHz
+contexts side by side in the hidden page: all rendered at 1.00× real time for 30 s; then
+the two whose output was exactly zero (one plain, one running the capture worklet) fell to
+**0.64×** between 30 and 35 s and stayed there, while a 200 Hz tone at −60 dB and one at
+**−100 dB** held 1.00× for the full minute. The capture context outputs zero by design, so
+within a minute of listening microphone frames were arriving 10 s late and barge-in with
+them. With a −100 dB keep-alive tone on both contexts (`keepAlive` in `create-audio.ts`),
+120 s and 14 barge-ins held 1.00× and 20–22 ms frame lag throughout. **Not measured with the
+page visible**; the pane was hidden the whole time.
+
+**Smart Turn fp32 on WebGPU: 8–57 ms warm, 392–479 ms for the first inference** of a
+session, which landed after the hangover as `late`. The worker now runs one throwaway
+judgement during load (a quiet chord: all-zero input has no log-mel span and
+`SmartTurnModel` refuses it). Spike D's 40 ms figure is reproduced on this onnxruntime
+version. It scored Kokoro `am_michael`'s "What was the afternoon like?" at 0.02–0.03 every
+time and "Sorry, can I stop you there for a second?" at 0.99.
+
+**Output, recorded from the worklet itself: no clicks.** 204 s of rendered samples across
+17 sentence starts, 56 ends (dropped queue included), 13 ducks and 26 fades. The largest
+step within 5 ms of any event, over the largest step of the voice in the 50 ms before it:
+at most **1.12** (a fade), where a hard cut on a voiced sample scores many times over.
+Every fade reached exact digital zero **at 100 ms**. Nothing hit the ±1 clamp in that run.

@@ -97,6 +97,32 @@ function makeSignal(): { signal: CancellationSignal; abort: () => void } {
   };
 }
 
+describe('KokoroBrowserTTSProvider precision', () => {
+  it('refuses every quantised precision on WebGPU before any worker exists (P1-T08)', () => {
+    for (const dtype of ['q8', 'q4', 'q4f16'] as const) {
+      let spawned = false;
+      expect(
+        () =>
+          new KokoroBrowserTTSProvider({
+            id: 'kokoro',
+            dtype,
+            createWorker: () => {
+              spawned = true;
+              return new FakePort();
+            },
+          }),
+      ).toThrow(/not offered on WebGPU/);
+      expect(spawned).toBe(false);
+    }
+  });
+
+  it('still allows q8 on wasm, where nothing has shown it wrong, and fp16/fp32 on WebGPU', () => {
+    expect(() => new KokoroBrowserTTSProvider({ id: 'k', dtype: 'q8', device: 'wasm', createWorker: () => new FakePort() })).not.toThrow();
+    expect(() => new KokoroBrowserTTSProvider({ id: 'k', dtype: 'fp16', createWorker: () => new FakePort() })).not.toThrow();
+    expect(() => new KokoroBrowserTTSProvider({ id: 'k', createWorker: () => new FakePort() })).not.toThrow();
+  });
+});
+
 describe('KokoroBrowserTTSProvider capabilities', () => {
   it('promises Kokoro’s own 24 kHz', async () => {
     const capabilities = await providerWith(new FakePort()).capabilities();

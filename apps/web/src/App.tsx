@@ -7,8 +7,12 @@ import { Gallery } from './Gallery';
 /** The dev-only design-system page. Never routed in a production build (P0-T02b). */
 export const GALLERY_PATH = '/gallery';
 
-/** The dev-only voice-loop measurement page (P0-T04). */
-export const SPIKE_VOICE_PATH = '/spike/voice';
+/**
+ * The dev-only voice harness (P1-T08): the promoted pipeline — turn detection, recognition,
+ * synthesis, the output queue and barge-in — with a scripted model. It replaced Spike A's
+ * `/spike/voice`, which measured the same loop with throwaway workers.
+ */
+export const DEV_VOICE_PATH = '/dev/voice';
 
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
@@ -17,7 +21,7 @@ export const SPIKE_AVATAR_PATH = '/spike/avatar';
 export const SPIKE_SHELL_PATH = '/spike/shell';
 
 /**
- * The spike pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
+ * The harness pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
  * whether or not the route can be reached, so a production build shipped all of it.
  *
@@ -25,13 +29,13 @@ export const SPIKE_SHELL_PATH = '/spike/shell';
  * replaces `import.meta.env.DEV` with `false`, and the whole subtree is then dropped.
  * The build assertion for this is in `apps/web/vite.config.ts`.
  */
-const VoiceLoop = lazy(async () => {
+const VoiceHarness = lazy(async () => {
   // Never rendered — the route above is unreachable outside dev. It exists so the
-  // import below sits in a branch Rollup can prove dead, and it matches VoiceLoop's
+  // import below sits in a branch Rollup can prove dead, and it matches VoiceHarness's
   // signature so `lazy` infers one component type rather than a union.
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
-  const module = await import('./spikes/VoiceLoop');
-  return { default: module.VoiceLoop };
+  const module = await import('./dev/VoiceHarness');
+  return { default: module.VoiceHarness };
 });
 
 /**
@@ -66,10 +70,10 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     return <Gallery />;
   }
 
-  if (import.meta.env.DEV && path === SPIKE_VOICE_PATH) {
+  if (import.meta.env.DEV && path === DEV_VOICE_PATH) {
     return (
-      <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
-        <VoiceLoop />
+      <Suspense fallback={<p className="boot-status">Loading the harness…</p>}>
+        <VoiceHarness />
       </Suspense>
     );
   }
@@ -104,7 +108,7 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
           {[
             [GALLERY_PATH, 'Design-system gallery'],
             [SPIKE_SHELL_PATH, 'Spike E — webview capabilities'],
-            [SPIKE_VOICE_PATH, 'Spike A — voice loop'],
+            [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
             [SPIKE_AVATAR_PATH, 'Spike B — avatar and lip sync'],
           ].map(([href, label]) => (
             <li key={href}>

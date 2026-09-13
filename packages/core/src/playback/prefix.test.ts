@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { heardText, spokenPrefix, voicedRange, type SpokenSentence } from './prefix';
+import { heardText, spokenPrefix, trimToVoice, voicedRange, type SpokenSentence } from './prefix';
 
 const RATE = 24_000;
 
@@ -14,6 +14,34 @@ describe('voicedRange', () => {
 
   it('treats an all-silent sentence as voiced throughout rather than empty', () => {
     expect(voicedRange(new Float32Array(8))).toEqual({ start: 0, end: 8 });
+  });
+});
+
+describe('trimToVoice', () => {
+  // 1 kHz: a millisecond is a frame. 300 ms of silence, 400 ms of voice, 500 ms of silence.
+  const padded = new Float32Array(1200);
+  padded.fill(0.3, 300, 700);
+
+  it('keeps the voice and the stated padding, and says where the voice now starts', () => {
+    const trimmed = trimToVoice(padded, 1000, { leadMs: 50, tailMs: 250 });
+    expect(trimmed.samples.length).toBe(50 + 400 + 250);
+    expect(trimmed.voicedStart).toBe(50);
+    expect(trimmed.voicedEnd).toBe(450);
+    expect(trimmed.samples[49]).toBe(0);
+    expect(trimmed.samples[50]).toBeCloseTo(0.3);
+  });
+
+  it('never invents padding the audio did not have', () => {
+    const tight = new Float32Array(500);
+    tight.fill(0.3, 10, 480);
+    const trimmed = trimToVoice(tight, 1000, { leadMs: 50, tailMs: 250 });
+    expect(trimmed.samples.length).toBe(500);
+    expect(trimmed.voicedStart).toBe(10);
+  });
+
+  it('returns a copy, so transferring it cannot detach the original', () => {
+    const trimmed = trimToVoice(padded, 1000);
+    expect(trimmed.samples.buffer).not.toBe(padded.buffer);
   });
 });
 

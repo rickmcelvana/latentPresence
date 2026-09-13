@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LLMProvider, LlmRequest } from '@latentpresence/protocol';
+import type { LLMProvider, LlmRequest, TTSProvider } from '@latentpresence/protocol';
 import { deferred, ManualSink, ScriptedLLM, ScriptedTTS, settle, text } from '../testing/scripted';
 import { Reply, type ReplyEvent, type ReplyOutcome } from './reply';
 
@@ -68,6 +68,33 @@ describe('Reply — a complete answer', () => {
     // The backend says "Hello" ends at 10 ms = 240 frames. By characters it would end at 5000.
     sink.current = { id: 100, frame: 300 };
     expect(reply.interrupt(0)).toEqual({ status: 'interrupted', text: 'Hello there.', spokenPrefix: 'Hello' });
+  });
+});
+
+describe('Reply — edges', () => {
+  it('trims each sentence to its voice plus the padding before queueing it', async () => {
+    const padded: TTSProvider = {
+      id: 'padded',
+      capabilities: () => Promise.reject(new Error('unused')),
+      listVoices: () => Promise.resolve([]),
+      async *synthesize() {
+        // 300 ms of silence, 1 s of voice, 500 ms of silence: Kokoro's shape.
+        const samples = new Float32Array(43_200);
+        samples.fill(0.5, 7200, 31_200);
+        yield { samples, sampleRate: 24_000, startMs: 0, isFinal: true };
+      },
+    };
+    const sink = new ManualSink();
+    const trimmed = new Reply(request, { llm: new ScriptedLLM(text('Hello there.')), tts: padded, sink, voiceId: 'v' });
+    await settle();
+    // 50 ms + 1 s + 250 ms at 24 kHz.
+    expect(sink.segments[0]?.samples.length).toBe(1200 + 24_000 + 6000);
+
+    const untrimmed = new ManualSink();
+    const whole = new Reply(request, { llm: new ScriptedLLM(text('Hello there.')), tts: padded, sink: untrimmed, voiceId: 'v', padding: null });
+    await settle();
+    expect(untrimmed.segments[0]?.samples.length).toBe(43_200);
+    expect([trimmed.text, whole.text]).toEqual(['Hello there.', 'Hello there.']);
   });
 });
 

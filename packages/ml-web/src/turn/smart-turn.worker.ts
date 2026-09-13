@@ -53,7 +53,18 @@ async function load(build: SmartTurnBuild, backend: SmartTurnBackend): Promise<v
   }
 
   const started = performance.now();
-  model = new SmartTurnModel(await createSmartTurnSession(modelUrl(SMART_TURN[build]), backend));
+  const loaded = new SmartTurnModel(await createSmartTurnSession(modelUrl(SMART_TURN[build]), backend));
+  // One throwaway judgement before saying ready. On WebGPU the first inference compiles its
+  // shaders: P1-T08 measured it at 392–479 ms in the browser against 8–57 ms for every one
+  // after, which put the first turn of every session past the hangover as `late`. The input
+  // is a second of a quiet chord, not zeros: silence has no log-mel span and the model's own
+  // feature check refuses it. The answer is discarded.
+  const warmUp = new Float32Array(16_000);
+  for (let i = 0; i < warmUp.length; i += 1) {
+    warmUp[i] = 0.1 * (Math.sin((2 * Math.PI * 220 * i) / 16_000) + Math.sin((2 * Math.PI * 1100 * i) / 16_000));
+  }
+  await loaded.judge(warmUp);
+  model = loaded;
   post({ type: 'ready', loadMs: performance.now() - started, build, backend });
 }
 

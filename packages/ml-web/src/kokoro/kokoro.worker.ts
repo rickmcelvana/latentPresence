@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { KokoroTTS, TextSplitterStream } from 'kokoro-js';
-import type { KokoroDevice, KokoroDtype, KokoroRequest, KokoroResponse } from './messages';
+import { kokoroCombinationBlocker, type KokoroDevice, type KokoroDtype, type KokoroRequest, type KokoroResponse } from './messages';
 
 /**
  * Kokoro in a worker (P1-T05).
@@ -50,6 +50,9 @@ function describe(error: unknown): string {
 }
 
 async function load(device: KokoroDevice, dtype: KokoroDtype): Promise<void> {
+  // Refused here as well as in the provider, so no caller reaches it by forgetting.
+  const blocker = kokoroCombinationBlocker(device, dtype);
+  if (blocker !== null) throw new Error(blocker);
   const started = performance.now();
   tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
     dtype,

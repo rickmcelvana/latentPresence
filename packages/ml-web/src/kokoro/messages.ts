@@ -69,6 +69,24 @@ export function kokoroModel(dtype: KokoroSizedDtype): ModelDescriptor {
   };
 }
 
+/**
+ * Precisions refused on WebGPU. **`q8` was measured broken there on 2026-09-13** (P1-T08,
+ * `docs/SURFACE.md`): through this worker, on an RTX 5060 Ti in Chrome 152, it produced
+ * speech-shaped audio — the right envelope, Silero calls it speech — that Moonshine could
+ * not read a single word of in three sentences, 2.5 dB quiet, with durations drifting up to
+ * 550 ms from node's `q8`. The same worker at `fp32` matched node to the frame and read
+ * back word for word. No error, no warning: the failure ADR-20 recorded for recognition,
+ * again. `q4` and `q4f16` are unmeasured and quantised further, so they are refused on
+ * the same evidence rather than offered on none.
+ */
+const UNSAFE_ON_WEBGPU: readonly KokoroDtype[] = ['q8', 'q4', 'q4f16'];
+
+/** Why a precision cannot run on a device, in words a settings screen can show; null when it can. */
+export function kokoroCombinationBlocker(device: KokoroDevice, dtype: KokoroDtype): string | null {
+  if (device !== 'webgpu' || !UNSAFE_ON_WEBGPU.includes(dtype)) return null;
+  return `${dtype} is not offered on WebGPU: the quantised graph speaks audio no recogniser can read, without reporting an error (P1-T08).`;
+}
+
 /** Main thread to worker. */
 export type KokoroRequest =
   | { readonly type: 'load'; readonly device: KokoroDevice; readonly dtype: KokoroDtype }
