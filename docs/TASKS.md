@@ -78,8 +78,10 @@ Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold l
 
 ## Open — claude (say go, or add the key)
 
-*Nothing runnable.* Three questions only a browser can answer, each waiting on the task that
-first puts the pipeline in one:
+*Nothing runnable yet, but no longer blocked on a human.* The Browser pane in the Claude
+desktop app has a real WebGPU adapter (`docs/SURFACE.md`, 2026-09-13), so the first two
+below are **P1-T08's to run** once its harness plays audio (`docs/briefs/P1-T08.md`). The
+third still needs a person. The three questions:
 
 - whether Kokoro `q8` is safe on **WebGPU**, worth 233 MB of every first run — a done-when on
   **P1-T08**, recorded in `docs/SURFACE.md` and on `dtype` in `kokoro-browser.ts`;

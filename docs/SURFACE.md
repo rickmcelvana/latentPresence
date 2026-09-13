@@ -1213,3 +1213,23 @@ window carries:
 to the waveform (0.48 s, budget 3) comes back "Yes, yes"; the same word as `TurnDetector`
 hands it over — 300 ms pre-roll, 128 ms tail, 0.91 s, budget 6 — comes back "Yes.". Only the
 second shape occurs in the product. `live:stt` reports both.
+
+## Claude desktop Browser pane — probed 2026-09-13 (for P1-T08)
+
+One `javascript_exec` in the Code tab's Browser pane on Rick's Windows box, at
+`https://example.com` (a secure context; `navigator.gpu` needs one):
+
+| Probe | Result |
+|---|---|
+| User agent | `Chrome/152.0.7977.76`, `Claude/1.52386.3`, MSIX |
+| `navigator.gpu.requestAdapter()` | `nvidia` / `blackwell`, `isFallbackAdapter` **false** |
+| `AudioWorkletNode` | present |
+| `'outputLatency' in AudioContext.prototype` | true |
+| `SharedArrayBuffer` | **undefined** (no COOP/COEP on that origin — Spike E's finding again) |
+
+**Consequence:** the browser-only questions `docs/TASKS.md` parked — Kokoro `q8` on WebGPU,
+Kokoro's first-sentence time on WebGPU, Smart Turn's WebGPU answer latency — can be run by
+the architect in the pane against the dev server. It is a real discrete adapter, not
+SwiftShader, so a number taken there is a GPU number. What the pane cannot supply is a
+microphone with a person behind it or ears on speakers. Not yet checked: whether it grants
+`getUserMedia`, and what `outputLatency` actually reads once a context is running.
