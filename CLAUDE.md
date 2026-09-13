@@ -23,7 +23,7 @@ Conversational AI with a realistic-styled full-body avatar in a video-call frami
 **Architect edits → `pnpm gate` → commit on green.** The gate mirrors CI (`tsc -b`, oxlint, vitest, vite build, cargo fmt/clippy/test). A green gate is the go-ahead to commit, not a checkpoint to ask at. Never commit red.
 
 - One task at a time from `docs/LLM-PLAN.md`; commit message `P<phase>-T<nn>: <summary>`.
-- Aider is optional and only for broad mechanical work that would burn architect context. Finished, verified code never goes through Aider. Aider launches with `--no-auto-commits --no-dirty-commits`; the architect reviews, gates, commits.
+- **Delegate (`owner: sub`) only what a competent implementer could get right from the brief and the repo alone** — broad mechanical work that would burn architect context. Anything whose correctness depends on a fact you must measure or read out of a dependency stays yours: finding it *is* the task. Finished, verified code is never delegated. The subagent never commits and never touches `packages/protocol`; you review, gate, commit. (The Aider lane is retired — `docs/WORKFLOW.md` says why.)
 - Tests land with the code, not later. Every provider gets a `Fake*` and tests. `theme.test.ts` keeps every className styled.
 
 ## Hard rules

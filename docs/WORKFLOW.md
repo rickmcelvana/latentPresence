@@ -6,9 +6,9 @@ Goal: any agent (Claude Code, DeepSeek, Aider) or human picks the project up in 
 
 | Role | Who | Does | Does not |
 |---|---|---|---|
-| Architect | Claude Code (Fable or Opus for big thinking), sometimes DeepSeek V4 Pro | Research, plan, interfaces, code, tests, briefs, reviews, runs the gate, **commits** | Send finished work through Aider |
-| Executor | Aider, `ollama_chat/kimi-k2.7-code:cloud`, run by Rick | One brief per run, listed files only, working tree only | Commit, touch `packages/protocol`, widen its file list |
-| Producer | Rick | Decides ADRs, runs Aider when a brief exists, click-throughs, art pipeline, accounts, server and Caddy | |
+| Architect | Claude Code (Fable or Opus for big thinking), sometimes DeepSeek V4 Pro | Research, plan, interfaces, code, tests, briefs, reviews, runs the gate, **commits** | Delegate work whose correctness it has not established |
+| Executor | A **subagent the architect runs in-session** (Sonnet), one brief per run, listed files only, working tree only | Commit, touch `packages/protocol`, widen its file list |
+| Producer | Rick | Decides ADRs, click-throughs, art pipeline, accounts, server and Caddy | Have to be in the loop for an executor run |
 
 ## The loop (per task)
 
@@ -17,7 +17,8 @@ pick the next task in docs/LLM-PLAN.md (PROJECT.md says which)
   → architect writes or reads the brief (docs/briefs/P1-T03.md; "done when" is the contract)
   → decide the lane:
       architect-direct (default): write code + tests → pnpm gate → commit on green
-      aider: brief carries reference code + launch command → Rick runs Aider → architect reviews diff → pnpm gate → commit on green
+      sub: brief carries the contract and the invariants → architect runs the subagent
+           → architect reviews diff → pnpm gate → commit on green
   → UI tasks: Rick click-through per the brief's manual-verify list, result noted in the session log
 ```
 
@@ -25,20 +26,47 @@ pick the next task in docs/LLM-PLAN.md (PROJECT.md says which)
 - **Docs-only changes skip the gate** (session notes, briefs, plan edits).
 - Commit format: `P1-T03: sentence chunker` or `docs: session note 2026-09-07`, `fix:`, `chore:`.
 - Keep a task's diff reviewable (roughly under 400 lines). Bigger scope splits the task (`P1-T03b`).
-- Small review defects: the architect fixes them directly and says so in the commit. No Aider round trip for a one-liner.
+- Small review defects: the architect fixes them directly and says so in the commit. No delegation round trip for a one-liner.
 
-## When Aider is worth it
+## Delegation: why Aider was retired, and what replaced it
 
-Aider exists to save architect context so a session runs longer. Nothing else. Ask before writing a brief:
-- **Architect-direct** when the implementation is small, interface-shaped, or already written and verified. Sending it out cannot change the outcome (latentCreate saw two runs return byte-identical to the brief's reference code).
-- **Aider** when the work is broad and mechanical: UI wiring across many files, transcription of a reference implementation into many call sites, bulk tests from a spec, migrations from a schema doc, retarget scripts.
+**The Aider lane worked exactly as designed, and that is why it is gone.** P0-T03, P1-T03
+and P1-T04 went through it, and across this repo and latentCreate the pattern returned
+code **byte-identical to the brief's reference four times out of four**. Byte-identical is
+the whole problem: the lane's justification (ADR-13) is saving architect context, and the
+brief that produces a clean run *contains the full reference implementation*. The context
+was spent building it either way. What the round trip added was a dependency on Rick being
+at the keyboard.
 
-Rules learned in the sibling repos, kept here so they are not relearned:
-- Briefs with **full reference code** and, per test, the **invariant it protects** come back near-clean. Prose specs come back not compiling. Run reference code through the formatter before it goes in the brief.
-- `--read` every module the new code constructs, implements or calls but must not change. If Aider asks for a file mid-run, decline, fix the launch command, re-run.
-- Every launch carries `--no-auto-commits --no-dirty-commits` (defaults in `.aider.conf.yml` too). Aider once auto-committed a red build in a sibling repo.
+**Retired 2026-09-13, replaced by a subagent the architect runs in-session.** Same rules,
+no round trip, and Rick is out of a loop they were only in for mechanical reasons. Aider
+stays available for anything Rick wants to drive themselves.
+
+**The real split is not size, it is where correctness comes from.**
+
+- **Architect-direct (`main`)** when correctness depends on a fact that has to be measured,
+  read out of a dependency's source, or decided. The fact-finding *is* the task. P1-T06 is
+  the case to remember: four facts about transformers.js each changed the code, two of them
+  contradicting what the code already said, and a brief containing them would have been the
+  implementation.
+- **Subagent (`sub`)** when a competent implementer could get it right from the brief and
+  the repo alone: UI wiring across many files, bulk tests from a settled spec, migrations
+  from a schema doc, retarget scripts, doc sweeps.
+
+Rules learned in the sibling repos, kept here so they are not relearned. They applied to
+Aider and they apply unchanged to a subagent:
+- Briefs with **full reference code** and, per test, the **invariant it protects** come back
+  near-clean. Prose specs come back not compiling.
+- A brief that touches a **nullable protocol field must say how the test narrows it**. P1-T03
+  was the only unclean run of the four, and this was why: a prose invariant ("capabilities
+  non-null on every entry") was true of the values and false of the declared type, and six
+  `TS18047` followed.
+- Name every module the new code constructs, implements or calls but must not change, and
+  keep it read-only. If the executor asks for a file mid-run, decline and fix the brief.
+- The executor never commits and never touches `packages/protocol`.
 - `.gitattributes` pins LF so an executor cannot rewrite files as CRLF and bury the diff.
-- If a task class fails three fix-up rounds, stop and switch models; record it in `docs/DECISIONS.md`.
+- If a task class fails three fix-up rounds, stop and switch models; record it in
+  `docs/DECISIONS.md`.
 
 ## Architect's review checklist
 
@@ -97,7 +125,7 @@ Unit tests never need a running LLM, TTS server, MariaDB or ComfyUI. Providers g
 | `docs/LLM-PLAN.md` | Task specs | append tasks, never renumber |
 | `docs/RESEARCH.md` | Landscape and reasoning | updated when research changes |
 | `docs/SURFACE.md` | Verified third-party facts with dates | append; newest dated entry wins |
-| `docs/briefs/` | One brief per task that needs one (all Aider tasks, any task over ~150 lines) | |
-| `docs/aider/` | Brief template and launch notes | |
+| `docs/briefs/` | One brief per task that needs one (every `sub` task, any task over ~150 lines) | |
+| `docs/aider/` | Brief template and launch notes. Kept: the template is the brief format a subagent gets too, and Rick may still drive Aider directly | |
 | `docs/spikes/` | Spike write-ups | one file per spike |
 | `docs/pipeline/` | Character and asset pipeline instructions for Rick | |
