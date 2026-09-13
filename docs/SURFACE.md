@@ -796,3 +796,43 @@ rejected with `invalid_model`). `GET /v1/models` lists `tts-1`, `tts-1-hd`, `kok
 - `speed: 1.5` shortened 1.83 s to 1.21 s — the ratio the parameter promises.
 - An unknown voice returns 400 with the server's own message, which the adapter passes
   through verbatim, including the full list of available voices.
+
+### What `maxChars` should be — measured 2026-09-12 against Kokoro-FastAPI
+
+P1-T04 left the chunker's cap at 200 as a starting value. Sweeping input length from 19 to
+559 characters, three runs each, median:
+
+| chars | synth ms | audio s | RTF |
+|---|---|---|---|
+| 19 | 446 | 1.42 | 0.31 |
+| 51 | 763 | 3.08 | 0.25 |
+| 103 | 1525 | 6.0 | 0.25 |
+| 219 | 3248 | 12.62 | 0.26 |
+| 559 | 8554 | 32.04 | 0.27 |
+
+The fit is close to a straight line through the origin: **`synth_ms ≈ 15.3 × chars`, with
+no per-request overhead worth the name**, and speech comes out at **~17.4 characters per
+second**. So synthesis runs about **3.8× faster than speech**, flat across the whole range.
+
+**Two conclusions, and the second is the useful one.**
+
+1. Because 15.3 ms of work buys 57.5 ms of playback, **every chunk after the first always
+   arrives before the previous one finishes playing, at any chunk size.** Chunk length
+   cannot starve the output queue. There is no latency argument for a smaller `maxChars`.
+2. **`maxChars` does not touch the opening at all.** The first chunk of ordinary prose ends
+   at a sentence boundary long before 200 characters, so 120, 200 and 320 produce an
+   identical first chunk (103 characters here) and differ only in how a run-on sentence is
+   broken later. **The cap is a safety valve, not a latency control — and 200 stays.**
+
+The lever that does move time-to-first-audio is **a separate, smaller cap on the first
+chunk of a turn**: 31 characters gave first audio at 581 ms against 1525 ms for the full
+sentence. Even 500 ms only buys about 32 characters on this path, so **ADR-20's budget is
+not reachable at sentence granularity here** — the opening has to be a clause, or the
+budget has to be spent elsewhere. That decision belongs with the code that knows a turn has
+started (P1-T08), and wants re-measuring on the browser path first.
+
+**Caveat on the number.** This is the server path, on a box whose Kokoro-FastAPI has debug
+endpoints disabled, so **whether it is using the RTX 5060 Ti or the CPU is not established**.
+Spike A measured browser synthesis at 245 ms on WebGPU; if that was for a sentence-length
+utterance then the browser path is several times faster than this and the arithmetic above
+is pessimistic. Worth settling before any cap is chosen.

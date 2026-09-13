@@ -36,6 +36,26 @@ export interface AnthropicConfig {
  */
 export const anthropicCatalog: readonly LlmModel[] = [
   {
+    // Added 2026-09-12 after `GET /v1/models` showed it. Every flag below was confirmed
+    // by a live call rather than inherited from the family: it answered a question about
+    // an image, accepted `cache_control` and reported the ephemeral cache buckets, and
+    // its usage carries `output_tokens_details.thinking_tokens`.
+    // `claude-fable-5` is deliberately absent for the same reason `claude-sonnet-4-5` is —
+    // it is the previous point release, and this catalog is current-generation only.
+    id: 'claude-fable-5-1',
+    label: 'claude-fable-5-1',
+    capabilities: {
+      streaming: true,
+      toolCalls: true,
+      structuredOutput: true,
+      thinking: true,
+      promptCaching: true,
+      vision: true,
+      contextLength: 1000000,
+    },
+    embeddingOnly: false,
+  },
+  {
     id: 'claude-opus-5',
     label: 'claude-opus-5',
     capabilities: {

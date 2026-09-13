@@ -147,6 +147,15 @@ const targets: Target[] = [
     needs: env('QWEN_API_KEY') === undefined ? 'QWEN_API_KEY' : undefined,
   },
   {
+    label: 'anthropic fable (native)',
+    provider: new AnthropicLLMProvider({
+      id: 'anthropic',
+      ...(env('ANTHROPIC_API_KEY') === undefined ? {} : { apiKey: env('ANTHROPIC_API_KEY') ?? '' }),
+    }),
+    modelId: 'claude-fable-5-1',
+    needs: env('ANTHROPIC_API_KEY') === undefined ? 'ANTHROPIC_API_KEY' : undefined,
+  },
+  {
     label: 'anthropic (native)',
     provider: new AnthropicLLMProvider({
       id: 'anthropic',

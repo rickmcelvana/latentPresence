@@ -62,23 +62,27 @@ Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold l
 
 ## Open — claude (say go, or add the key)
 
-### C-1 · Measure `maxChars` against real TTS latency
-**Why:** P1-T04 left `maxChars: 200` as a starting value, not a measurement. The live TTS
-run now gives a real latency curve to fit it to (RTF 0.25–0.41 on the server path), so this
-no longer needs the browser — I can measure sentence length against time-to-first-audio
-against your Kokoro-FastAPI directly. **Needs:** nothing. Say go.
+### C-4 · Is the TTS server actually using the GPU?
+**Why:** the `maxChars` measurement (D-7) says synthesis costs 15.3 ms per character, and
+whether that is a GPU or a CPU number changes what the browser path should be expected to
+do. Kokoro-FastAPI's debug endpoints are disabled here, so it cannot be read from outside.
 
-### C-2 · Compare Kokoro `fp32` against `q8` for synthesis quality
+**Run:** whatever you used to start it — check the startup log for the device it picked, or
+re-run it with debug endpoints enabled.
+
+**Expect:** a line naming `cuda` or `cpu`.
+**Report:** paste it. One word settles whether the 15.3 ms/char figure is pessimistic.
+
+### C-5 · Compare Kokoro `fp32` against `q8` for synthesis quality
 **Why:** `fp32` is the default because Spike A measured it — 325 MB on first run against
-86 MB for `q8`. Spike A's q8 finding was about Moonshine *recognition*, not Kokoro, so
-nobody has compared synthesis. **Needs:** the browser path, so it waits for P1-T08 — unless
-your Kokoro-FastAPI can be pointed at a q8 graph, in which case I can do it now. Tell me
-which, or say go and I will check what the server exposes.
+86 MB for `q8`, and nobody has compared *synthesis* quality (Spike A's q8 finding was about
+Moonshine recognition). Rick's answer to the old C-2: Kokoro-FastAPI cannot be pointed at a
+q8 graph without structural change.
 
-### C-3 · Should the Anthropic catalog offer Fable?
-**Why:** `GET /v1/models` lists `claude-fable-5-1` and `claude-fable-5` at 1M context, and
-our curated catalog offers only opus-5 / sonnet-5 / haiku-4-5. Not a bug — a curation
-choice. **Needs:** your call. Three lines if yes.
+**It does not need a server.** `kokoro-js` runs in node, so both precisions can be loaded
+directly and the same sentence synthesised twice for comparison — no KoboldCpp, no pykokoro,
+no fork. **Needs:** a go, because it downloads ~410 MB from Hugging Face to this box
+(86 MB q8 + 325 MB fp32).
 
 ---
 
@@ -87,6 +91,15 @@ choice. **Needs:** your call. Three lines if yes.
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-8 · Add Fable to the Anthropic catalog** — done 2026-09-12. `claude-fable-5-1` added
+  with every flag live-confirmed rather than inherited: it answered a question about an
+  image, accepted `cache_control`, reports `thinking_tokens`, and streams text and tool
+  calls. `claude-fable-5` deliberately left out as a previous point release.
+- **D-7 · Measure `maxChars`** — done 2026-09-12. **200 stays.** Synthesis is 15.3 ms/char
+  with no per-request overhead and runs 3.8x faster than speech, so chunk length cannot
+  starve playback, and the cap does not touch the opening at all — 120, 200 and 320 give an
+  identical first chunk. The real lever is a separate cap on the *first* chunk of a turn,
+  which belongs to P1-T08.
 - **D-6 · Accept ADR-22, 23, 24** — done 2026-09-12. No `proposed` ADRs remain. ADR-23 still
   obliges P1-T12 to decide explicitly whether to promote the tag shape into the protocol.
 - **D-5 · Gemini context length** — done 2026-09-12. `GET /v1beta/models` reports

@@ -28,7 +28,9 @@ describe('AnthropicLLMProvider', () => {
     }
   });
 
-  it('catalog context lengths are the documented ones', () => {
+  // Live-confirmed 2026-09-12 against `GET /v1/models` -> `max_input_tokens`, which is
+  // what turned these from doc-sourced into facts.
+  it('catalog context lengths are the ones the live API states', () => {
     for (const model of anthropicCatalog) {
       if (model.id === 'claude-haiku-4-5') {
         expect(capabilitiesOf(model).contextLength).toBe(200000);
