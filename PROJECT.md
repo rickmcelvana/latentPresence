@@ -31,7 +31,7 @@
 
 ## Tasks needing a human or a live endpoint
 
-**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **3 open for Rick** — a different-GPU avatar reading, hearing the character in the app (blocked on P1-T08), and the character pipeline (blocked on a doc I owe). **2 open for me**: whether the TTS server is on the GPU, and the Kokoro `fp32`-vs-`q8` comparison, which needs a 410 MB download and a go.
+**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **5 open for Rick** — a different-GPU avatar reading, hearing the character in the app (blocked on P1-T08), the character pipeline (blocked on a doc I owe), restarting Kokoro-FastAPI now that its CPU-torch trap is fixed, and judging `fp32` against `q8` by ear. **1 open for me**, blocked on that restart: re-measuring the first-chunk budget against a GPU server.
 
 ## Backlog (architect)
 

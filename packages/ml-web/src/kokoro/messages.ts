@@ -40,10 +40,19 @@ export const KOKORO_SAMPLE_RATE = 24_000;
  * dtype union and have no recorded size, so they are absent here and
  * `kokoroModel` refuses them rather than inventing one.
  */
+/**
+ * Exact `.onnx` sizes from the Hugging Face blob listing, 2026-09-12 (`docs/SURFACE.md`).
+ *
+ * The filename is the trap, so it is written down: transformers.js maps a dtype to a
+ * filename *suffix*, and `q8` maps to `_quantized`, not to anything containing "q8". The
+ * repo also holds a `model_q8f16.onnx` of 86_033_585 bytes, which is what an earlier
+ * reading of this table quoted — a file `dtype: 'q8'` never downloads. Understating a
+ * consent screen by 6 MB is exactly the misrepresentation ADR-09 exists to prevent.
+ */
 const KOKORO_BYTES = {
-  q8: 86_030_000,
-  fp16: 163_230_000,
-  fp32: 325_530_000,
+  q8: 92_361_116, // onnx/model_quantized.onnx
+  fp16: 163_234_740, // onnx/model_fp16.onnx
+  fp32: 325_532_232, // onnx/model.onnx
 } as const satisfies Partial<Record<KokoroDtype, number>>;
 
 /** The precisions whose download size is a recorded fact. */

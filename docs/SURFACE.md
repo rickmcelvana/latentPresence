@@ -831,8 +831,112 @@ not reachable at sentence granularity here** — the opening has to be a clause,
 budget has to be spent elsewhere. That decision belongs with the code that knows a turn has
 started (P1-T08), and wants re-measuring on the browser path first.
 
-**Caveat on the number.** This is the server path, on a box whose Kokoro-FastAPI has debug
-endpoints disabled, so **whether it is using the RTX 5060 Ti or the CPU is not established**.
-Spike A measured browser synthesis at 245 ms on WebGPU; if that was for a sentence-length
-utterance then the browser path is several times faster than this and the arithmetic above
-is pessimistic. Worth settling before any cap is chosen.
+**Settled 2026-09-12, later the same day: this is a CPU number.** That instance was
+serving from the CPU — see "Kokoro-FastAPI was not using the GPU" below — so 15.3 ms/char
+is a floor on how slow the path can be, not a reading of the hardware. Every conclusion
+above survives it: they all turn on the *ratio* of synthesis to speech, and a faster device
+only widens it. The first-chunk figures (581 ms, 1525 ms) are the ones to re-measure once
+the server is on CUDA, and again on the browser path.
+
+## Kokoro ONNX graphs — Hugging Face blob listing, 2026-09-12
+
+`GET https://huggingface.co/api/models/onnx-community/Kokoro-82M-v1.0-ONNX?blobs=true`,
+exact bytes:
+
+| file | bytes |
+|---|---|
+| `onnx/model.onnx` | 325,532,232 |
+| `onnx/model_fp16.onnx` | 163,234,740 |
+| `onnx/model_quantized.onnx` | 92,361,116 |
+| `onnx/model_q8f16.onnx` | 86,033,585 |
+| `onnx/model_q4.onnx` | 305,215,966 |
+| `onnx/model_q4f16.onnx` | 154,586,422 |
+| `onnx/model_uint8.onnx` | 177,464,632 |
+| `onnx/model_uint8f16.onnx` | 114,209,226 |
+
+**A dtype names a filename suffix, not a filename.** From
+`@huggingface/transformers/src/utils/dtypes.js`, `DEFAULT_DTYPE_SUFFIX_MAPPING`:
+`fp32` → `''`, `fp16` → `'_fp16'`, `q8` → `'_quantized'`, `q4` → `'_q4'`,
+`q4f16` → `'_q4f16'`, `int8` → `'_int8'`, `uint8` → `'_uint8'`.
+
+So **`dtype: 'q8'` fetches `model_quantized.onnx` (92.4 MB), never `model_q8f16.onnx`
+(86.0 MB)** — despite the latter being the one whose name contains "q8". `KOKORO_BYTES` in
+`packages/ml-web/src/kokoro/messages.ts` quoted 86,030,000 until this reading, understating
+the consent screen by 6.3 MB. The number had been taken by matching a name in a file
+listing rather than by resolving what the library actually requests: SURFACE 11's failure
+mode with a plausible-looking source.
+
+## Kokoro `fp32` against `q8` — measured 2026-09-12 (`docs/TASKS.md` C-5)
+
+Both graphs loaded in one node process through `kokoro-js` 1.2.1 on **onnxruntime-node**,
+voice `af_heart`, speed 1, three sentences chosen for where quantisation shows first
+(plain, sibilant, long held vowels). `packages/ml-web/live/kokoro-dtype.ts`.
+
+| measure | fp32 | q8 | delta |
+|---|---|---|---|
+| graph on disk | 325.5 MB | 92.4 MB | **−233 MB** |
+| loudness (RMS) | −23.1 to −23.6 dB | −23.1 to −23.6 dB | ≤0.1 dB |
+| noise floor, quietest 10% of frames | −121 to −168 dB | −122 to −167 dB | ≤1.1 dB |
+| hiss in those frames (zero crossings) | ~12.4 kHz | ~12.4 kHz | ≤9 Hz, one outlier −389 Hz |
+| duration drift | — | — | 0, +25, +50 ms per utterance |
+| synthesis time | RTF 0.22–0.24 | RTF 0.76–0.80 | q8 **3.4× slower** |
+
+**Two methodological notes, because both change what the table means.**
+
+- **The takes are not sample-aligned.** Each graph predicts its own phoneme durations, so
+  the two renderings differ in length by up to 50 ms and drift in phase. A sample-wise SNR
+  or correlation is therefore meaningless however confident it looks — a first pass here
+  reported −2.5 dB SNR, which measured only the misalignment. Every measure above is
+  alignment-free for that reason.
+- **q8 being slower is an onnxruntime-node artifact, not a fact about the browser.** The
+  CPU execution provider dequantises int8 per operator. The browser provider runs on
+  WebGPU, where the trade is different, and this says nothing about it.
+
+**Finding: no measurable degradation where quantisation normally shows.** Same loudness,
+same noise floor, same high-frequency content between words. What the measures cannot see
+is timbre, and the duration drift is real — up to 50 ms per utterance, which will move word
+timestamps and therefore visemes. The remaining question is perceptual and the WAVs in
+`packages/ml-web/live/out/` are the evidence; no dtype default has been changed on the
+strength of the numbers alone.
+
+**Incidental finding for P1-T08: Kokoro's output is not bounded to [−1, 1].** `fp32` peaked
+at **1.043** on one sentence and `q8` at 1.007 on the same one. Anything downstream that
+assumes full scale — a WAV encoder, an AudioWorklet, a meter — has to clamp rather than
+trust the range.
+
+## Kokoro-FastAPI was not using the GPU — diagnosed 2026-09-12 (`docs/TASKS.md` C-4)
+
+Rick's instance at `G:\Kokoro-FastAPI` (upstream `remsky/Kokoro-FastAPI`, `master`) was
+serving from the CPU. `torch.__version__` in its venv: **`2.14.0+cpu`**, `cuda.is_available()`
+false — against a `pyproject.toml` that pins `torch==2.8.0+cu128` for the GPU build.
+
+**Cause.** Every CUDA wheel is gated on `platform_machine == 'x86_64'`, in
+`[project.optional-dependencies]` and again in `[tool.uv.sources]`. On Windows
+`platform.machine()` reports **`AMD64`**, so the marker is false on both, `[gpu-cu128]`
+resolves to nothing, and uv satisfies `kokoro`'s unversioned `torch` dependency from PyPI —
+the CPU build. It installs cleanly and runs; nothing fails. The 2.14.0 in place of the
+pinned 2.8.0 is the tell that the pin never applied. Linux and macOS report `x86_64` and
+are unaffected, which is why upstream has not seen it.
+
+**The startup log cannot be used to check this**, and reading it wrongly is how the
+instance ran on CPU unnoticed:
+
+- `model_manager._determine_device()` is `"cuda" if settings.use_gpu else "cpu"` — it never
+  asks torch. Its `Initializing Kokoro V1 on cuda` line reports the `USE_GPU` environment
+  variable, nothing more.
+- `settings.get_device()` does check `torch.cuda.is_available()`. Its
+  `Loading Kokoro model on cpu` line is the true one.
+
+**The two lines disagreeing is the signature of the bug.** Only the second is evidence.
+
+**Fix applied** to `start-gpu.ps1` (backed up as `start-gpu.ps1.bak`): install
+`torch==2.8.0+cu128` explicitly from `https://download.pytorch.org/whl/cu128` before
+`uv pip install -e .`, which sidesteps the marker without editing an upstream file, then
+fail the launch on a real kernel launch rather than on `is_available()` — a wheel built for
+the wrong architecture imports and reports available, then dies on the first operator. cu128
+is the Blackwell toolkit (sm_120) that the RTX 5060 Ti needs; cu126 carries no kernel for it.
+`torch-2.8.0+cu128-cp312-cp312-win_amd64.whl` is present on that index, and nothing in the
+tree constrains torch beyond `>=2.5`.
+
+The upstream fix is to widen both markers to
+`platform_machine == 'x86_64' or platform_machine == 'AMD64'`.

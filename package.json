@@ -23,6 +23,7 @@
     "gate:desktop": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all --check && cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",
     "live:llm": "pnpm --filter @latentpresence/providers exec vite-node live/llm.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",
+    "live:kokoro": "pnpm --filter @latentpresence/ml-web exec vite-node live/kokoro-dtype.ts",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {
