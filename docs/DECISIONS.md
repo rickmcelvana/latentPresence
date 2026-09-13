@@ -24,9 +24,9 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect | accepted | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
 | ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one | accepted (amended) | 2026-09-11 |
-| ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | proposed | 2026-09-11 |
-| ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | proposed | 2026-09-12 |
-| ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | proposed | 2026-09-12 |
+| ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | accepted | 2026-09-12 |
+| ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | accepted | 2026-09-12 |
+| ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | accepted | 2026-09-12 |
 
 ---
 
@@ -382,7 +382,7 @@ offer int8 on WebGPU — the same rule ADR-20 set for recognition, for the same 
 
 latentPresence. Domain `latentpresence.com` owned. Package scope `@latentpresence/*`, companion binary `latentpresence-companion`.
 
-## ADR-22 LLM discovery capabilities can be unknown (proposed 2026-09-11)
+## ADR-22 LLM discovery capabilities can be unknown (accepted 2026-09-12)
 
 **Decision:** `LlmModel.capabilities` becomes nullable (`capabilities: null` = the endpoint
 did not enrich, so nothing is known).
@@ -403,7 +403,7 @@ can-chat model — SURFACE 11.2 forbids presenting unknown as either. The Ollama
 path (native `/api/tags`) never returns `null`, so nothing is lost on the primary local
 case.
 
-## ADR-23 Inline tag types stay in core until the tag protocol exists (proposed 2026-09-12)
+## ADR-23 Inline tag types stay in core until the tag protocol exists (accepted 2026-09-12)
 
 **Decision:** the sentence chunker's `InlineTag` and `SpeechChunk` are plain TypeScript
 types in `packages/core/chunker`, not zod schemas in `packages/protocol`, and
@@ -427,10 +427,11 @@ is that the core-local type quietly becomes the de facto protocol by being conve
 **P1-T12 must decide explicitly** whether to promote it, amend it, or replace it — and
 say so in its session note rather than inheriting this by default.
 
-**Reconsider when:** P1-T12 lands. This ADR is `proposed` and should be accepted or
-reversed there, not left open into Phase 2.
+**Reconsider when:** P1-T12 lands. Accepted 2026-09-12, which does **not** dissolve the
+obligation: P1-T12 still has to decide explicitly whether to promote this shape into the
+protocol, amend it, or replace it.
 
-## ADR-24 TTS audio crosses as Float32 PCM, decoded by the adapter (proposed 2026-09-12)
+## ADR-24 TTS audio crosses as Float32 PCM, decoded by the adapter (accepted 2026-09-12)
 
 **Decision:** every `TTSProvider` yields `SpokenAudioChunk` — mono `Float32Array` samples
 with the rate they were made at. The OpenAI-compatible adapter therefore asks for

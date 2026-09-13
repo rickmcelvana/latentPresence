@@ -43,3 +43,6 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+
+# Live-check output — real audio, regenerated on demand, never committed
+packages/providers/live/out/

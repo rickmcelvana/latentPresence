@@ -27,10 +27,16 @@ export interface GoogleConfig {
 }
 
 /**
- * The curated Gemini catalog. `contextLength` is `null` on every entry on purpose: the
- * installed `@ai-sdk/google` surface states no context window, and a guessed number
- * presented as a fact is exactly what SURFACE 11 forbids. Everything else here is
- * documented in the provider's own capability table.
+ * The curated Gemini catalog.
+ *
+ * `contextLength` was `null` here until 2026-09-12, because the installed
+ * `@ai-sdk/google` surface states no context window and SURFACE 11 forbids presenting a
+ * guess as a fact. It is now **1048576 on all three, live-verified**: `GET /v1beta/models`
+ * reports `inputTokenLimit` for every one of them (`docs/SURFACE.md`). The value is 2^20,
+ * not the round 1000000 Anthropic reports for its own million-token models — which is
+ * exactly why it was never worth guessing.
+ *
+ * Everything else here is documented in the provider's own capability table.
  */
 export const googleCatalog: readonly LlmModel[] = [
   {
@@ -43,7 +49,7 @@ export const googleCatalog: readonly LlmModel[] = [
       thinking: true,
       promptCaching: true,
       vision: true,
-      contextLength: null,
+      contextLength: 1_048_576,
     },
     embeddingOnly: false,
   },
@@ -57,7 +63,7 @@ export const googleCatalog: readonly LlmModel[] = [
       thinking: true,
       promptCaching: true,
       vision: true,
-      contextLength: null,
+      contextLength: 1_048_576,
     },
     embeddingOnly: false,
   },
@@ -71,7 +77,7 @@ export const googleCatalog: readonly LlmModel[] = [
       thinking: true,
       promptCaching: true,
       vision: true,
-      contextLength: null,
+      contextLength: 1_048_576,
     },
     embeddingOnly: false,
   },

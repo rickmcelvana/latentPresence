@@ -21,9 +21,12 @@ describe('GoogleLLMProvider', () => {
     }
   });
 
-  it('every catalog model reports contextLength null', () => {
+  // Was `toBeNull()` until 2026-09-12. The number is live-verified against
+  // `GET /v1beta/models` -> `inputTokenLimit`, and this guards it against drifting back
+  // to a guess — 2^20, not the round million Anthropic reports.
+  it('every catalog model reports the context length the live API states', () => {
     for (const model of googleCatalog) {
-      expect(capabilitiesOf(model).contextLength).toBeNull();
+      expect(capabilitiesOf(model).contextLength).toBe(1_048_576);
     }
   });
 

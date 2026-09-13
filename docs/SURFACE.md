@@ -709,3 +709,90 @@ Response is `application/octet-stream` (the audio file) or `text/event-stream`. 
 - Audio is written at **24000 Hz** (`StreamingAudioWriter(request.response_format, sample_rate=24000)`).
 - `GET /v1/audio/voices` **exists here and not on OpenAI**. It returns `{"voices": [{"id", "name", …}], "default_voice": …}`, and `?legacy=true` returns the pre-0.3.x `{"voices": ["af_heart", …]}` plain-string shape. The adapter reads both.
 - Its `wav` is written through PyAV in streaming mode, so **the `data` chunk size in the header cannot be final**. The parser in `packages/providers/src/tts/wav.ts` treats a declared size of `0` or `0xffffffff` as "read to the end" and every other value as an upper bound.
+
+## Live provider verification — 2026-09-12, verified by live calls from the dev box
+
+The "streaming works with a BYO key" criterion for P1-T02 and P1-T03, and the server half
+of P1-T05. Run with `packages/providers/live/` (hand-run, never gated). **This is the first
+time these ran: the earlier note that no live endpoint was reachable from this harness was
+simply untested, and three tasks accumulated unevidenced done-whens behind it.**
+
+### Every provider streams text, tool-calls and finishes
+
+`temperature: null`, `maxOutputTokens: 2000`, one prompt for text and one offering a
+`get_weather` tool.
+
+| Target | Adapter | Model | text | tool | finish |
+|---|---|---|---|---|---|
+| Ollama local | OpenAI-compatible | `qwen3.5:9b` | ok | ok | stop / tool-calls |
+| Ollama cloud | OpenAI-compatible | `qwen3.5:397b-cloud` | ok | ok | stop / tool-calls |
+| LM Studio | OpenAI-compatible | `qwen/qwen3.5-9b` | **see below** | ok | length / tool-calls |
+| NVIDIA | OpenAI-compatible | `nvidia/nemotron-3-super-120b-a12b` | ok | ok | stop / tool-calls |
+| DeepSeek | OpenAI-compatible | `deepseek-v4-pro` | ok | ok | stop / tool-calls |
+| QwenCloud | OpenAI-compatible | `qwen3.8-flash` | ok | ok | stop / tool-calls |
+| Anthropic | **native** | `claude-opus-5` | ok | ok | stop / tool-calls |
+| QwenCloud | **native Anthropic + custom `baseUrl`** | `qwen3.8-flash` | ok | ok | stop / tool-calls |
+| Google | **native** | `gemini-3.5-flash` | ok | ok | stop / tool-calls |
+
+In every case the tool call arrived as its own `tool-call` chunk with parsed arguments,
+reasoning never appeared in a `text-delta`, and the run ended with `finish`. **The mapping
+in `mapping.ts` is confirmed against nine live endpoints.**
+
+The `baseUrl` row is the one with no other coverage: `createAnthropic({ baseURL })` had
+never been exercised live. It works, and **the base URL must include the version segment** —
+`https://dashscope-intl.aliyuncs.com/apps/anthropic` 404s, `…/apps/anthropic/v1` succeeds,
+because the AI SDK appends `/messages`.
+
+### A thinking model can spend the whole output budget on reasoning and say nothing
+
+Observed twice, on two runtimes, and it is a product problem rather than an adapter one.
+
+- **Ollama `qwen3.5:9b` with `temperature: 0`** — "Say hello in one short sentence."
+  produced **1690 reasoning deltas, zero `text-delta`, `finish=length`**. Raising the budget
+  from 300 to 2000 tokens did not help; it just thought longer. Dropping `temperature` to
+  null fixed it immediately: 3 text deltas, `finish=stop`.
+- **LM Studio `qwen/qwen3.5-9b`, `temperature: null`** — the same prompt produced **2000
+  reasoning deltas, zero text, `finish=length`, in 89.7 seconds.** Its tool call on the same
+  connection answered normally in 4.2 s.
+
+Against ADR-20's 500 ms pipeline budget, a turn like that is not slow — it is silent. **Two
+consequences for P1-T10:** never send `temperature: 0` to a model whose capabilities report
+`thinking: true`, and treat "finished with `length` and no text" as a failure state the UI
+must show, not an empty answer to speak.
+
+### Anthropic context lengths, live-confirmed
+
+`GET /v1/models` with `anthropic-version: 2023-06-01` reports `max_input_tokens`. The three
+catalog values were doc-sourced (cached 2026-06-24) and a test asserted them; all three are
+**correct**: `claude-opus-5` 1000000, `claude-sonnet-5` 1000000, `claude-haiku-4-5` 200000
+(listed as `claude-haiku-4-5-20251001`; the undated alias resolves and streams).
+
+The list also carries `claude-fable-5-1` and `claude-fable-5` at 1000000, which the curated
+catalog does not offer. Not an error — a curation choice worth revisiting deliberately.
+
+### Gemini context lengths, live-confirmed — and no longer `null`
+
+`GET /v1beta/models` reports `inputTokenLimit`, which the installed `@ai-sdk/google` package
+does not. All three catalog models report **1048576** (and `outputTokenLimit` 65536), so
+`googleCatalog` now carries that number instead of `null`. Note it is 2^20 and **not** the
+round 1000000 Anthropic reports for its own million-token models — the exact reason a guess
+was refused in P1-T03.
+
+### Kokoro-FastAPI, as actually deployed
+
+`http://127.0.0.1:8880/v1`, model id **`kokoro`** (`kokoro_v1` is the engine name and is
+rejected with `invalid_model`). `GET /v1/models` lists `tts-1`, `tts-1-hd`, `kokoro`,
+`gpt-4o-mini-tts`.
+
+- `GET /audio/voices` returned **72 voices** in the object shape, including families
+  kokoro-js has no knowledge of — `ef_ ff_ hf_ if_ jf_ pf_ zf_` (Spanish, French, Hindi,
+  Italian, Japanese, Portuguese, Chinese) and custom `*_inno` / `*_v0*` entries. The browser
+  provider's 28-entry table and the server provider's live listing are **correctly different
+  things**, which is the design.
+- Synthesis returns 24000 Hz mono WAV; `wav.ts` decoded every response, and re-encoding the
+  decoded `Float32Array` produces audio that plays correctly.
+- **Real-time factor 0.25–0.41** on this box: 561 ms for 1.83 s of speech, 1538 ms for
+  6.10 s. A first use of an unloaded voice costs about 2 s more.
+- `speed: 1.5` shortened 1.83 s to 1.21 s — the ratio the parameter promises.
+- An unknown voice returns 400 with the server's own message, which the adapter passes
+  through verbatim, including the full list of available voices.
