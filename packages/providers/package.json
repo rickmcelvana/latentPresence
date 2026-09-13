@@ -12,6 +12,7 @@
     "@ai-sdk/anthropic": "^4.0.52",
     "@ai-sdk/google": "^4.0.67",
     "@ai-sdk/openai-compatible": "^3.0.47",
+    "@latentpresence/core": "workspace:*",
     "@latentpresence/ml-web": "workspace:*",
     "@latentpresence/protocol": "workspace:*",
     "ai": "^7.0.97"

@@ -8,3 +8,4 @@ export const packageInfo = {
 
 export * from './asr';
 export * from './kokoro';
+export * from './turn';

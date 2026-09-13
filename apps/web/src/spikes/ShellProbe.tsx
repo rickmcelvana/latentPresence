@@ -14,7 +14,7 @@ import {
  * companion + Chrome".
  *
  * It is deliberately the thinnest thing that can hold a result: the spike's method is to
- * run *known-good* pages — /spike/voice, /spike/avatar, /spike/turn — in an unknown
+ * run *known-good* pages — /spike/voice, /spike/avatar — in an unknown
  * container, so anything invented here is a variable rather than a measurement. All this
  * page does is ask the container what it has and print the answer somewhere copyable.
  */

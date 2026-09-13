@@ -1,7 +1,7 @@
 import { pipeline } from '@huggingface/transformers';
 import { KokoroTTS } from 'kokoro-js';
 import { KOKORO_MODEL_ID } from '../src/kokoro/messages';
-import { ASR_MODELS, ASR_SAMPLE_RATE, type AsrModelKey } from '../src/asr/messages';
+import { ASR_MODELS, ASR_SAMPLE_RATE, moonshineTokenBudget, type AsrModelKey } from '../src/asr/messages';
 import { resample } from '../src/asr/resample';
 
 /**
@@ -20,8 +20,12 @@ import { resample } from '../src/asr/resample';
  * Both the checks below exist because a comment in `asr.worker.ts` claims something:
  *
  * - that handing a model unresampled audio is silently wrong rather than an error;
- * - that Moonshine's own token budget floors to zero under one second, so "Yes." comes
- *   back empty without the floor the worker adds.
+ * - that Moonshine's library token budget, `Math.floor(seconds) * 6`, truncates a
+ *   one-to-two-second sentence, and the worker's `moonshineTokenBudget` does not — while
+ *   staying small enough that "Yes." is not repeated.
+ *
+ * Both SENTENCES are over two seconds, which is why this check reported 0% on 2026-09-12
+ * and the budget bug went unseen until P1-T07's candidate windows hit it.
  *
  * A claim in a comment that nothing runs is a guess with better formatting.
  */
@@ -31,11 +35,11 @@ const SENTENCES = [
   'She had been talking for a while by then, about the house she grew up in.',
 ] as const;
 
-/** Under a second once trimmed, which is where Moonshine's heuristic budget collapses. */
-const SHORT = 'Yes.';
+/** Trimmed, one is under a second and one between one and two: both of the library budget's traps. */
+const SHORT = ['Yes.', 'Could you turn the music down a little?'] as const;
 
 /**
- * Drop leading and trailing near-silence, the way a VAD hands an utterance over.
+ * Drop leading and trailing near-silence — tighter than any VAD hands an utterance over.
  * Kokoro pads "Yes." out to 1.35 s, which is long enough to hide the very trap this is
  * meant to show — the untrimmed clip clears Moonshine's one-second floor by accident.
  */
@@ -102,8 +106,21 @@ async function speak(text: string): Promise<{ at24k: Float32Array; at16k: Float3
 }
 
 const spoken = await Promise.all(SENTENCES.map(speak));
-const shortSpoken = await speak(SHORT);
-const short = trim(shortSpoken.at16k);
+/**
+ * Two shapes per short utterance. `tight` is trimmed to the waveform. `handed` is what
+ * `TurnDetector` actually passes recognition: its 300 ms pre-roll in front and the 128 ms
+ * a candidate window carries behind. Moonshine emits its end token only when silence
+ * follows the last word, so a tight "Yes." at budget 3 repeats itself where the handed one
+ * does not — and only the handed shape occurs in the product.
+ */
+const shorts = await Promise.all(
+  SHORT.map(async (text) => {
+    const tight = trim((await speak(text)).at16k);
+    const handed = new Float32Array(Math.round(0.3 * ASR_SAMPLE_RATE) + tight.length + Math.round(0.128 * ASR_SAMPLE_RATE));
+    handed.set(tight, Math.round(0.3 * ASR_SAMPLE_RATE));
+    return { text, shapes: [['tight', tight], ['as handed over', handed]] as const };
+  }),
+);
 
 for (const model of MODELS) {
   const spec = ASR_MODELS[model];
@@ -114,9 +131,11 @@ for (const model of MODELS) {
   });
   console.log(`=== ${model}  (loaded in ${Date.now() - started} ms)`);
 
-  /** Exactly the options `asr.worker.ts` builds — no `max_new_tokens`, deliberately. */
-  const options = (): Record<string, unknown> =>
-    spec.wordTimestamps ? { return_timestamps: 'word' } : {};
+  /** Exactly the options `asr.worker.ts` builds, token budget included for Moonshine. */
+  const options = (audio: Float32Array): Record<string, unknown> => ({
+    ...(spec.wordTimestamps ? { return_timestamps: 'word' } : {}),
+    ...(model.startsWith('moonshine') ? { max_new_tokens: moonshineTokenBudget(audio.length, ASR_SAMPLE_RATE) } : {}),
+  });
 
   for (const [index, sentence] of SENTENCES.entries()) {
     const audio = spoken[index];
@@ -124,7 +143,7 @@ for (const model of MODELS) {
     const seconds = audio.at16k.length / ASR_SAMPLE_RATE;
 
     const heardAt = Date.now();
-    const output = await recognise(audio.at16k, options());
+    const output = await recognise(audio.at16k, options(audio.at16k));
     const ms = Date.now() - heardAt;
     const text = (output.text ?? '').trim();
     const wer = wordErrorRate(sentence, text);
@@ -144,7 +163,7 @@ for (const model of MODELS) {
         [48_000, resample(audio.at24k, 24_000, 48_000)],
       ] as const) {
         const heard = (
-          await recognise(unconverted, options())
+          await recognise(unconverted, options(unconverted))
         ).text?.trim();
         console.log(
           `        unconverted ${rate} Hz read as 16 kHz (${(rate / ASR_SAMPLE_RATE).toFixed(1)}x): ` +
@@ -154,17 +173,20 @@ for (const model of MODELS) {
     }
   }
 
-  // The claim that was tested and turned out false: that `_call_moonshine`'s
-  // `Math.floor(seconds) * 6` budget, which really is 0 below a second, loses short
-  // utterances. It does not, and forcing a floor of 24 made Moonshine answer
-  // "Yes, yes, yes." instead. Kept as a regression check on both halves.
-  const shortSeconds = short.length / ASR_SAMPLE_RATE;
-  const withFloor = (await recognise(short, options())).text?.trim();
-  const budget = Math.floor(shortSeconds) * 6;
-  const withoutFloor = (await recognise(short, { max_new_tokens: budget })).text?.trim();
-  console.log(
-    `  "${SHORT}" trimmed to ${shortSeconds.toFixed(2)} s (the model's own budget: ` +
-      `${budget} tokens) -- as the worker sends it: "${withFloor}"  |  forced to that budget: "${withoutFloor}"`,
-  );
+  // Only Moonshine applies a heuristic budget; Whisper's pipeline has none to compare.
+  if (model.startsWith('moonshine')) {
+    for (const { text, shapes } of shorts) {
+      for (const [shape, audio] of shapes) {
+        const seconds = audio.length / ASR_SAMPLE_RATE;
+        const library = Math.floor(seconds) * 6;
+        const ours = moonshineTokenBudget(audio.length, ASR_SAMPLE_RATE);
+        const atLibrary = (await recognise(audio, { max_new_tokens: library })).text?.trim();
+        const atOurs = (await recognise(audio, options(audio))).text?.trim();
+        console.log(
+          `  "${text}" ${shape}, ${seconds.toFixed(2)} s -- library budget ${library}: "${atLibrary}"  |  worker budget ${ours}: "${atOurs}"`,
+        );
+      }
+    }
+  }
   console.log('');
 }

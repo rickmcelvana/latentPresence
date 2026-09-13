@@ -10,9 +10,6 @@ export const GALLERY_PATH = '/gallery';
 /** The dev-only voice-loop measurement page (P0-T04). */
 export const SPIKE_VOICE_PATH = '/spike/voice';
 
-/** The dev-only turn-detection measurement page (P0-T07). */
-export const SPIKE_TURN_PATH = '/spike/turn';
-
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
@@ -35,13 +32,6 @@ const VoiceLoop = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./spikes/VoiceLoop');
   return { default: module.VoiceLoop };
-});
-
-/** Spike D, guarded the same way and for the same reason (P0-T07). */
-const TurnDetect = lazy(async () => {
-  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
-  const module = await import('./spikes/TurnDetect');
-  return { default: module.TurnDetect };
 });
 
 /**
@@ -84,14 +74,6 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
-  if (import.meta.env.DEV && path === SPIKE_TURN_PATH) {
-    return (
-      <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
-        <TurnDetect />
-      </Suspense>
-    );
-  }
-
   if (import.meta.env.DEV && path === SPIKE_AVATAR_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
@@ -123,7 +105,6 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
             [GALLERY_PATH, 'Design-system gallery'],
             [SPIKE_SHELL_PATH, 'Spike E — webview capabilities'],
             [SPIKE_VOICE_PATH, 'Spike A — voice loop'],
-            [SPIKE_TURN_PATH, 'Spike D — turn detection'],
             [SPIKE_AVATAR_PATH, 'Spike B — avatar and lip sync'],
           ].map(([href, label]) => (
             <li key={href}>

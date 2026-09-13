@@ -9,6 +9,7 @@ import {
   type AsrRequest,
   type AsrResponse,
   combinationBlocker,
+  moonshineTokenBudget,
 } from './messages';
 import { resample } from './resample';
 
@@ -28,13 +29,13 @@ import { resample } from './resample';
  * No error either time. 48 kHz is what a browser microphone gives you by default, and
  * that Whisper line is what a user would have seen in the transcript.
  *
- * **What is deliberately *not* here: a `max_new_tokens` override.** An earlier version of
- * this worker floored it at 24, reasoning that `_call_moonshine`'s
- * `Math.floor(seconds) * 6` is 0 for anything under a second and would return nothing.
- * Running it showed both halves of that were wrong: a 0.48 s "Yes." transcribes correctly
- * under the model's own budget, and **the floor made it worse** — "Yes, yes, yes.",
- * which is precisely the repetition the Moonshine paper's heuristic exists to prevent.
- * Each pipeline's own budget is left alone.
+ * **Moonshine's token budget is set here, not left to the pipeline.** `_call_moonshine`
+ * floors the seconds before multiplying by six, so a 1.9 s sentence gets six tokens and
+ * loses its last words. P1-T07's live check found it; `moonshineTokenBudget` records what
+ * was measured. P1-T06 had concluded the library budget was safe from a single 0.48 s
+ * "Yes.", and was right about what it did test: a *generous* floor (24) makes Moonshine
+ * repeat itself — "Yes, yes, yes." The fix is the paper's own rule without the floor,
+ * which is neither.
  */
 
 /** What `pipeline()` returns for this task, narrowed to what this worker uses. */
@@ -154,6 +155,9 @@ async function transcribe(request: Extract<AsrRequest, { type: 'transcribe' }>):
   try {
     const options: Record<string, unknown> = { stopping_criteria: [stop] };
     if (spec.wordTimestamps) options['return_timestamps'] = 'word';
+    if (loaded.model.startsWith('moonshine')) {
+      options['max_new_tokens'] = moonshineTokenBudget(samples.length, ASR_SAMPLE_RATE);
+    }
     if (request.language !== null && spec.languages.length !== 1) {
       options['language'] = request.language;
     }

@@ -181,6 +181,27 @@ export function hasRecordedAsrSize(model: AsrModelKey, dtype: AsrDtype): boolean
  * is that the number shown is the number downloaded, and an approximate one breaks it
  * more quietly than no number at all.
  */
+/**
+ * How many tokens Moonshine may generate for this much audio.
+ *
+ * The Moonshine paper's rule is six output tokens per second of audio, a guard against
+ * repeated output. transformers.js 3.8.1 implements it as `Math.floor(seconds) * 6`
+ * (`_call_moonshine`, `src/pipelines.js`), and **flooring the seconds first truncates the
+ * utterances a conversation is made of**: anything from 1.0 to 1.99 s gets six tokens, and
+ * anything under a second gets none. Measured 2026-09-13 on fifteen Kokoro sentences, each
+ * followed by the 128 ms of silence a candidate window carries (`docs/SURFACE.md`): the
+ * library budget cut nine of fifteen — "Could you turn the music down a little?" came
+ * back as "Could you turn the music down", and "Okay, sure." as "Okay". This rule was exact
+ * on fourteen; the fifteenth misheard one word identically at every budget tried.
+ *
+ * Nothing larger is taken. `ceil(s * 8)` and `ceil(s * 6) + 2` changed no transcript, and
+ * P1-T06 found that a generous floor makes Moonshine repeat itself ("Yes, yes, yes."). At
+ * this budget a 0.61 s "Yes." gets four tokens and comes back as "Yes.".
+ */
+export function moonshineTokenBudget(sampleCount: number, sampleRate: number): number {
+  return Math.ceil((sampleCount / sampleRate) * 6);
+}
+
 export function asrModel(model: AsrModelKey, dtype: AsrDtype): ModelDescriptor {
   const spec = ASR_MODELS[model];
   const sizeBytes = spec.bytes[dtype];

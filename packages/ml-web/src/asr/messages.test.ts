@@ -6,6 +6,7 @@ import {
   combinationBlocker,
   hasRecordedAsrSize,
   isSupportedCombination,
+  moonshineTokenBudget,
   type AsrDevice,
   type AsrDtype,
   type AsrModelKey,
@@ -125,4 +126,22 @@ describe('model capabilities', () => {
 
 it('expects 16 kHz, which is what every model here was trained on', () => {
   expect(ASR_SAMPLE_RATE).toBe(16_000);
+});
+
+describe('moonshineTokenBudget', () => {
+  it('gives six tokens per second without flooring the seconds first', () => {
+    // The two lengths the library got wrong: 0.90 s ("Okay, sure.") had none, and 1.68 s
+    // ("Could you turn the music down a little?") had six.
+    expect(moonshineTokenBudget(14_400, 16_000)).toBe(6);
+    expect(moonshineTokenBudget(26_880, 16_000)).toBe(11);
+    expect(Math.floor(26_880 / 16_000) * 6).toBe(6);
+  });
+
+  it('never gives a non-empty utterance a budget of zero', () => {
+    expect(moonshineTokenBudget(1, 16_000)).toBe(1);
+  });
+
+  it('stays small for a short answer, where a generous budget repeats itself', () => {
+    expect(moonshineTokenBudget(9_760, 16_000)).toBe(4); // 0.61 s "Yes."
+  });
 });

@@ -4,7 +4,10 @@
     "rootDir": "src",
     "outDir": ".tsbuild",
     "tsBuildInfoFile": ".tsbuild/tsconfig.tsbuildinfo",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "paths": {
+      "onnxruntime-web": ["./node_modules/onnxruntime-web/types.d.ts"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "../protocol" }]

@@ -1059,12 +1059,12 @@ the catalog names the `_timestamped` repos.
 **Moonshine reports text and nothing else.** `_call_moonshine` returns `{ text }` — no
 chunks, no timestamps, no language — whatever options it is given.
 
-**Moonshine's token budget does not need rescuing.** `_call_moonshine` computes
-`max_new_tokens` as `Math.floor(seconds) * 6`, which really is **0** for anything under a
-second. It does not follow that short utterances are lost: a 0.48 s "Yes." transcribes
-correctly at that budget, and **forcing a floor of 24 tokens made Moonshine answer "Yes,
-yes, yes."** — the repeated output the Moonshine paper's heuristic exists to prevent. The
-override was removed.
+~~**Moonshine's token budget does not need rescuing.**~~ **Wrong, corrected 2026-09-13 —
+see "Turn detection" below.** `_call_moonshine` computes `max_new_tokens` as
+`Math.floor(seconds) * 6`. This entry tested one 0.48 s "Yes." (budget 0, which came back
+as "Yes") and concluded the budget was safe. It is not: **one to two seconds gets six
+tokens**, and a normal sentence loses its last words. What *was* right: **forcing a floor
+of 24 tokens made Moonshine answer "Yes, yes, yes."**, so the fix is not a generous floor.
 
 **Whisper does not surface its detected language.** `WhisperForConditionalGeneration`
 consumes the detection internally and 3.8.1 exports no `detect_language`, so a browser
@@ -1107,3 +1107,109 @@ From the official client's source (`resources/audio/transcriptions.py`,
   `verbose_json`**, which returns `{ duration, language, text, segments?, words?, usage? }`.
 - `TranscriptionWord` is `{ word, start, end }` with **start and end in seconds**.
 - Neither response format carries a confidence.
+
+## Turn detection promoted — verified 2026-09-13 (P1-T07)
+
+`pnpm live:turn` (`packages/ml-web/live/turn.ts`) runs the shipped `SileroVad` and
+`SmartTurnModel` modules — the ones the workers load — into the real `TurnDetector`, on
+twelve Kokoro utterances over digital silence and over a −46 dBFS noise floor. Full report
+in the gitignored `live/out/turn.md`.
+
+### Models, pinned
+
+| Model | Revision | File | Bytes | Licence |
+|---|---|---|---|---|
+| `onnx-community/silero-vad` | `e71cae96…` | `onnx/model.onnx` | **2,243,022** | MIT |
+| `pipecat-ai/smart-turn-v3` | `f766f81d…` | `smart-turn-v3.2-gpu.onnx` (fp32) | **32,411,198** | BSD-2-Clause |
+| `pipecat-ai/smart-turn-v3` | `f766f81d…` | `smart-turn-v3.2-cpu.onnx` (int8) | **8,679,182** | BSD-2-Clause |
+
+From the HF tree API at those revisions, Silero also by `X-Linked-Size`, and **all three
+confirmed by downloading** (the live check refuses a file whose length differs). URLs are
+pinned to the commit, not `main`, so the consent size cannot drift under a user.
+
+### `onnxruntime-web` runs in node
+
+`onnxruntime-web@1.22.0-dev.20250409-89f8206ba4` has a `node` export condition
+(`dist/ort.node.min.mjs`) and runs both graphs on the wasm backend under vite-node. That is
+what lets the live check run the shipped model code instead of a copy. Its types do not
+resolve through the `exports` map under `moduleResolution: bundler`, so
+`packages/ml-web/tsconfig.json` carries the same `paths` entry `apps/web` already did.
+
+### Silero's reference input is 576 samples, not 512
+
+`snakers4/silero-vad`, `src/silero_vad/utils_vad.py`, `OnnxWrapper.__call__`: at 16 kHz it
+requires 512-sample chunks and **prepends the previous call's last 64 samples** before
+running the graph (`context_size = 64`), starting from zeros. Spikes A and D fed the bare
+512. Both run on the same audio:
+
+- mean per-frame |Δp| **0.02–0.09**; peak p unchanged (≥0.98 either way);
+- with context, **speech onset is detected up to 64 ms earlier** (+8/+40 ms against
+  +40/+72/+104 ms);
+- over the noise floor the bare frame calls speech-end **up to 107 ms early**, clipping
+  final syllables and cutting candidates early; with context the worst is −62 ms.
+
+`SileroVad` follows the reference. `{ context: false }` exists only to reproduce the spikes.
+
+### Silero fires on synthesised speech
+
+The brief's caveat — no room tone, no breath — did not bite. Every utterance was detected in
+both conditions, onset within +8 to +40 ms of the label (one −24 ms, noise-triggered) and
+end within ±62 ms. **No microphone fallback was needed for the VAD.**
+
+### Smart Turn in node, and the endpoint
+
+| | silence | noise |
+|---|---|---|
+| complete sentences ended at their end by the model | 6 of 6 | 6 of 6 |
+| interrupted | 0 | 0 |
+| retractions (ADR-25) | 4 | 3 |
+| end of turn after labelled end, WebGPU latency (median / worst) | **168 / 188 ms** | **172 / 220 ms** |
+| same at measured node-wasm latency | 417 / 459 ms | 411 / 455 ms |
+| late answers at node-wasm latency | 0 | 0 |
+| WER of the audio kept for recognition (Moonshine tiny q8, worker budget) | **0.0%** | **0.0%** |
+
+"WebGPU latency" is Spike D's 40 ms from cut to answer, applied on the audio clock — **not
+a browser measurement**. fp32 on node wasm, one thread: log-mel + graph **median 279 ms,
+worst 356 ms**; Silero **0.26 ms** per frame.
+
+### Kokoro pauses mid-sentence, and Smart Turn believes the prefix
+
+"The afternoon light came in low across the desk." contains **~220 ms of digital zero**
+(rms 0.000) after "light". Smart Turn scored "The afternoon light" 0.96; similarly "Can you
+remind me" 0.98, "That was the best meal" 0.95, "I think we should paint the" 0.79. At a
+40 ms answer the turn ended inside the pause and the transcript was the prefix; at 280 ms
+the answer arrived after speech resumed and was ignored. **Before ADR-25, 4 of 6 complete
+sentences were cut off at WebGPU speed** and none at node speed.
+
+### Synthetic "incomplete" utterances are not held pauses
+
+Kokoro speaks a fragment with finished-sentence prosody — Moonshine even punctuates "The
+thing about the old house is that." So 3 of 12 fragments fired (0.94/0.98, and 0.78 in
+noise); the rest scored 0.006–0.30. Spike D's 0 of 51 was a human trailing off and
+holding. **This check cannot measure false fires on held pauses**; it measures endpoint
+timing on finished speech and the mechanics around it.
+
+### fp32 and int8 disagree, as recorded
+
+Same audio: "I think we should paint the kitchen" 0.360 against 0.653; "That was the best
+meal" 0.727 against 0.559; "I was thinking that maybe we could" 0.095 against 0.393. The
+builds do not share a threshold, confirming the 2026-09-08 entry.
+
+### Moonshine's library token budget truncates one-to-two-second speech
+
+transformers.js 3.8.1 `src/pipelines.js:1932`:
+`const max_new_tokens = Math.floor(aud.length / sampling_rate) * 6;`, overridable by the
+caller's kwargs. Fifteen Kokoro sentences, each with the 128 ms of silence a candidate
+window carries:
+
+| budget | exact transcripts | e.g. |
+|---|---|---|
+| library `floor(s) * 6` | 6 of 15 — all eight from 0.9 to 2 s truncated, and one at 2.75 s | "Could you turn the music down" (1.68 s, 6 tokens); "Okay" for "Okay, sure." (0.90 s, 0 tokens) |
+| `ceil(s * 6)` | 14 of 15 | the miss is "station, that", identical at every budget |
+| `ceil(s * 6) + 2`, `ceil(s * 8)` | 14 of 15 | no transcript changed |
+
+`asr.worker.ts` now sends `moonshineTokenBudget` = `ceil(seconds * 6)` for Moonshine.
+**Moonshine emits its end token only when silence follows the last word**: a "Yes." trimmed
+to the waveform (0.48 s, budget 3) comes back "Yes, yes"; the same word as `TurnDetector`
+hands it over — 300 ms pre-roll, 128 ms tail, 0.91 s, budget 6 — comes back "Yes.". Only the
+second shape occurs in the product. `live:stt` reports both.

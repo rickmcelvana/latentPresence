@@ -1,4 +1,4 @@
-import { SAMPLE_RATE } from './frames';
+import { TURN_MODEL_SAMPLE_RATE } from './messages';
 
 /**
  * The waveform preparation Smart Turn v3 expects, before the log-mel.
@@ -20,7 +20,7 @@ import { SAMPLE_RATE } from './frames';
 export const TURN_WINDOW_SECONDS = 8;
 
 /** 128 000 samples. The extractor is handed exactly this many, never fewer. */
-export const TURN_WINDOW_SAMPLES = TURN_WINDOW_SECONDS * SAMPLE_RATE;
+export const TURN_WINDOW_SAMPLES = TURN_WINDOW_SECONDS * TURN_MODEL_SAMPLE_RATE;
 
 /**
  * Cut the model's window out of an utterance: the last 8 s, padded at the front.

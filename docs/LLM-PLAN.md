@@ -88,7 +88,7 @@ Done when: both real providers play audio in the app; capability flags correct.
 `moonshine-browser` (worker), `whisper-browser`, `openai-compatible-stt` (`/audio/transcriptions`), `FakeSTTProvider`. `dtype` is set explicitly and q8 is never offered on WebGPU: it returns the same fluent nonsense for every utterance, with no error (Spike A, ADR-20). Recognition starts on the candidate window, in parallel with turn detection, and is discarded if the turn turns out not to be over (ADR-21) — so a provider must tolerate being cancelled mid-transcription.
 Done when: live transcription visible in the transcript panel with both a browser model and a server, and a cancelled recognition leaves no partial text in the transcript.
 
-### P1-T07 VAD and turn detection — owner: main
+### P1-T07 VAD and turn detection — owner: main (done 2026-09-13; recorded audio replaced by `pnpm live:turn`, and ADR-25 added)
 Depends: P0-T07. Silero VAD worker plus a **Smart Turn v3 worker** — adaptive silence is no longer the fallback, Spike D decided it (ADR-21). fp32 build on WebGPU, 100 ms candidate silence, 0.7 threshold; int8 is the no-GPU fallback and must never be offered on WebGPU, where it does not load. The 500 ms hangover stays as the backstop, and an answer arriving after it is reported as late rather than as a miss. Exposes `speechStart`, `speechEnd`, `turnEnd(probability)`.
 Done when: tests with recorded audio fixtures detect turn ends within 300 ms of the labelled point, and the candidate window is handed to recognition (P1-T06) at the same moment it is handed to the endpointer — ADR-21's overlap, without which the pipeline is 40 ms over budget on its own.
 

@@ -20,7 +20,6 @@ function assertSpikeExcludedFromBuild(): Plugin {
     '@huggingface/transformers',
     'kokoro-js',
     'spike-capture',
-    'smart-turn',
     // P0-T05. These two are the entries to delete at P2-T01, deliberately: the avatar
     // stops being dev-only the moment the stage is real, and that is the one line of this
     // guard that is meant to come out rather than stay forever.

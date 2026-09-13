@@ -224,6 +224,13 @@ importers:
       kokoro-js:
         specifier: 1.2.1
         version: 1.2.1
+      onnxruntime-web:
+        specifier: 1.22.0-dev.20250409-89f8206ba4
+        version: 1.22.0-dev.20250409-89f8206ba4
+    devDependencies:
+      '@latentpresence/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/protocol:
     dependencies:
@@ -242,6 +249,9 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: ^3.0.47
         version: 3.0.47(zod@4.5.4)
+      '@latentpresence/core':
+        specifier: workspace:*
+        version: link:../core
       '@latentpresence/ml-web':
         specifier: workspace:*
         version: link:../ml-web

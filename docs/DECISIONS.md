@@ -27,6 +27,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | accepted | 2026-09-12 |
 | ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | accepted | 2026-09-12 |
 | ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | accepted | 2026-09-12 |
+| ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | proposed | 2026-09-13 |
 
 ---
 
@@ -378,6 +379,18 @@ hangover stays as a backstop; whether it survives P1-T08's barge-in work is a se
 question. The browser turn detector must set its build and backend explicitly and must not
 offer int8 on WebGPU — the same rule ADR-20 set for recognition, for the same reason.
 
+**P1-T07, 2026-09-13 — the overlap is built, and the 168 ms reproduces.** Recognition and
+the judge receive the same candidate buffer in one synchronous step, and a test drives the
+real drivers over fake workers to show both workers hold the window before either answers.
+On Kokoro speech through the shipped Silero and Smart Turn code, with Spike D's WebGPU
+answer latency applied on the audio clock, complete sentences end **median 168 ms, worst
+220 ms** after the labelled end. That reproduces Spike D's figure on new audio; it is
+**not a new browser measurement** — node has no WebGPU, so the browser number on this
+onnxruntime version is still unmeasured. Two things changed around this ADR rather than in
+it: recognition is cancelled only when speech resumes, never on a low probability, because
+the hangover then closes the turn on the same audio; and ADR-25 makes a model end
+retractable, after the live check found it cutting sentences at inner pauses.
+
 ## ADR-19 Name
 
 latentPresence. Domain `latentpresence.com` owned. Package scope `@latentpresence/*`, companion binary `latentpresence-companion`.
@@ -467,3 +480,54 @@ one. `capabilities().streaming` is `false` so nothing downstream is misled about
 
 **Reconsider when:** a real endpoint appears that only speaks a compressed format, or when
 a measurement shows intra-sentence streaming is worth the framing. Neither has happened.
+
+## ADR-25 A model-ended turn is provisional until the backstop would have fired (proposed 2026-09-13)
+
+**Decision:** when Smart Turn ends a turn, `TurnDetector` emits `turn-end` at once — the
+latency ADR-21 bought is untouched — but the end can still be **retracted** until
+`hangoverMs` after speech stopped. Speech resuming inside that window (a frame at
+`speechOn`) emits `turn-resumed`, cancels the recognition started on the ended candidate,
+and continues the *same* turn with every frame heard so far. `turn-end` carries
+`confirmedAt`, the moment the end becomes final: `speechEndAt + hangoverMs` for a model
+end, and the end itself for a hangover end, which is never retracted.
+
+**Why.** P1-T07's live check (`pnpm live:turn`, `docs/SURFACE.md`) had Kokoro speak
+complete sentences with ~220 ms of real silence at phrase boundaries — "The afternoon light
+│ came in low across the desk." Smart Turn scored the prefixes 0.79–0.96, because they
+*are* finished-sounding utterances, and at Spike D's WebGPU latency the answer lands inside
+the pause. **Four of six complete sentences were cut off**, and their transcripts were the
+prefix. At node-wasm latency (~280 ms) the same answers arrived after speech had resumed
+and were discarded, so **the faster the judge, the more it interrupts** — which is backwards
+for a system whose whole point is speed.
+
+Nothing in ADR-21 could take a premature end back. With this rule, the same run gives
+**12 of 12 complete sentences ended at their end, 0 interrupted, 7 retractions, median
+168 ms and worst 220 ms** to the end of the turn, and 0% word error on every kept window.
+
+**Why this window and not a new constant.** `hangoverMs` is already the pipeline's
+definition of "the person has stopped": a pause that ends before it would never have ended
+the turn under the backstop alone. So retraction only ever undoes an end the old detector
+would not have made, and adds no tuning dial. It also closes **500 ms after speech ends,
+before ADR-21's ~553 ms first-audio path could play anything** — so a retracted turn costs
+aborted work (a recognition pass, an LLM request, some synthesis), never audio the user
+hears and the character has to take back.
+
+**What it costs.** Consumers must treat a `model` end as provisional: start the work, but
+be ready to abandon it on `turn-resumed`, and not write the turn to memory or the transcript
+as final before `confirmedAt`. P1-T10's wiring and P1-T11's transcript inherit that. The
+conversation machine's `user.turn.ended` has no retraction counterpart in `packages/protocol`
+yet; adding one is an architect-owned protocol change for whichever task first wires the
+detector into the machine.
+
+**Alternatives rejected.** Raising the candidate silence past typical phrase pauses
+(~250 ms) would stop most mid-sentence fires by giving back most of what ADR-21 won, and
+still fail on a longer pause. Raising the threshold does nothing: the prefixes scored 0.96.
+
+**Evidence limit.** Kokoro's pauses are synthetic. Spike D, on a human speaker, recorded at
+most one extra turn in ~160 utterances, so how often a person triggers retraction is
+unmeasured. The rule is right either way — it only acts when speech resumes inside the
+backstop — but the first human measurement belongs to the first task that puts the
+microphone in the app.
+
+**Reconsider when:** a human measurement shows retraction firing often enough that the
+abandoned work matters, or P1-T08's barge-in changes what the hangover means.

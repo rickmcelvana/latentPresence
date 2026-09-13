@@ -8,3 +8,4 @@ export const packageInfo = {
 
 export * from './conversation';
 export * from './chunker';
+export * from './turn';

@@ -35,6 +35,16 @@ pnpm live:stt
 write it down, so word error rate is computed rather than judged. It downloads ~112 MB of
 recognition models the first time.
 
+```bash
+pnpm live:turn
+```
+
+`live:turn` needs no key, server or microphone either: Kokoro speaks twelve labelled
+utterances and the shipped Silero and Smart Turn code endpoint them through the real
+`TurnDetector`, over silence and over a noise floor. It fetches ~43 MB of turn models into
+`packages/ml-web/live/out/models/` the first time, checks each against the catalog size, and
+writes the full report to `live/out/turn.md`. A few minutes on CPU.
+
 `live:tts` also writes playable WAVs to `packages/providers/live/out/` (gitignored),
 re-encoded from what our own decoder produced — so if they sound right, the adapter is
 right.
@@ -68,15 +78,27 @@ Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold l
 
 ## Open — claude (say go, or add the key)
 
-*Nothing open.* The next TTS question — whether `q8` is safe on **WebGPU**, which is worth
-233 MB of every first run — cannot be answered from node and is a done-when on **P1-T08**,
-recorded in `docs/SURFACE.md` and on `dtype` in `kokoro-browser.ts`.
+*Nothing runnable.* Three questions only a browser can answer, each waiting on the task that
+first puts the pipeline in one:
+
+- whether Kokoro `q8` is safe on **WebGPU**, worth 233 MB of every first run — a done-when on
+  **P1-T08**, recorded in `docs/SURFACE.md` and on `dtype` in `kokoro-browser.ts`;
+- **turn detection's latency on WebGPU on this onnxruntime version.** `live:turn` reproduces
+  Spike D's 168 ms with Spike D's 40 ms answer latency applied; it did not measure that 40 ms
+  again, because node has no WebGPU and `/spike/turn` is gone;
+- **how often a human triggers ADR-25's retraction.** Kokoro pauses ~220 ms mid-sentence
+  and a person may pause less, or more. Both of these belong to whichever task first opens
+  the microphone in the app, and become an `R-` item with a command then.
 
 ## Done
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-14 · Turn detection on real speech, no microphone** — done 2026-09-13, the done-when
+  for P1-T07. Complete sentences end 168 ms median, 220 ms worst after the labelled end;
+  found Smart Turn cutting sentences at inner pauses (ADR-25) and Moonshine's library token
+  budget truncating one-to-two-second speech (fixed in `asr.worker.ts`).
 - **D-13 · `speed` above 1.25 degrades** — found 2026-09-12 from Rick's ear, then measured.
   The server hits the requested duration ratio to within 7% up to 2.0, so **duration cannot
   detect the fault**: at 1.5 the audio carries 26.9 characters per second, past what the
