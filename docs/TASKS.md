@@ -74,6 +74,8 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
 ### R-2 · Listen to the character, and talk over it
+**Run by Rick 2026-09-13, after P1-T08 landed.** The copied Markdown is in `docs/results-R-2.md` (7 turns, simulated speaker and the Realtek microphone, click report, log); Rick's by-ear notes are to be given in the next session. **Not yet analysed** — that discussion opens the next session and decides ADR-26/27. Until then the block below stays as it was run.
+
 **Why:** P1-T08's done-when is a *manual* test — no clicks, and the transcript keeps only what
 was heard. Both are measured (0 clicks in 204 s of recorded output, every fade silent at
 100 ms), but a measurement cannot say whether it *sounds* right, and three things only a

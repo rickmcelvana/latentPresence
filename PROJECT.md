@@ -7,6 +7,7 @@
 - **Project:** latentPresence, formerly latentAura (renamed 2026-09-07; aura.ai exists). Open-source (Apache-2.0) conversational AI with a full-body semi-realistic avatar in a video-call framing. Browser-first; optional Rust companion; MariaDB Vector memory; ships no models.
 - **Domains:** `latentpresence.com` (site, docs, feedback) and `app.latentpresence.com` (the app), self-hosted behind Caddy. Rick sets up Caddy later.
 - **Phase:** **1 — Conversation core.** Phase 0 closed 2026-09-11 by P0-T09: every ADR checked against every measured result, every spike write-up linked from `docs/DECISIONS.md`. **ADR-26 and ADR-27 are `proposed` and need Rick's call** (two-stage barge-in; trimming Kokoro's silence) — both wait on R-2's listening test for their numbers. ADR-01, 03, 05, 06, 07, 11, 17, 20, 21 and 25 carry measurement amendments.
+- **Start here next session: R-2 results.** Rick ran the `/dev/voice` click-through on 2026-09-13; the raw Markdown is `docs/results-R-2.md` and Rick brings the by-ear notes. Discuss before P1-T09 — it is the evidence ADR-26 (barge-in timing) and ADR-27 (silence trim) are waiting on, and it is the first run of the microphone path.
 - **Current task:** **P1-T09**, backchannel scheduler (owner: main). No brief yet. It builds on what P1-T08 left for it: `TurnDetector`'s `judged` events mark a pause below the threshold — exactly where a backchannel goes — and the output queue needs a way to play a clip outside a reply and to refuse one while the user speaks (`PlaybackSink` has neither yet).
 - **Next task:** P1-T10, settings UI (owner: sub). It inherits: never `temperature: 0` for a thinking model, a `speed` range of ~0.75–1.25, and no quantised Kokoro on WebGPU.
 - **Blockers:** none. No Docker anywhere, so CI uses a service container rather than a local one.
@@ -36,7 +37,7 @@
 
 ## Tasks needing a human or a live endpoint
 
-**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **3 open for Rick** — a different-GPU avatar reading, **R-2: listen to the character and talk over it at `/dev/voice`** (clicks by ear, echo on speakers, the never-run microphone path, ADR-26/27's numbers), and the character pipeline (blocked on a doc I owe). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
+**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **3 open for Rick** — a different-GPU avatar reading, **R-2: listen to the character and talk over it at `/dev/voice`** — **run 2026-09-13, results in `docs/results-R-2.md`, discussion pending**, and the character pipeline (blocked on a doc I owe). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
 
 ## Backlog (architect)
 
