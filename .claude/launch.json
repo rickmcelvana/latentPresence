@@ -4,8 +4,21 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@latentpresence/web", "run", "dev"],
+      "runtimeArgs": [
+        "--filter",
+        "@latentpresence/web",
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "companion",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "companion"
+      ],
+      "port": 8787
     }
   ]
 }
