@@ -31,7 +31,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | accepted | 2026-09-13 |
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
 | ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
-| ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | proposed | 2026-09-14 |
+| ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | accepted | 2026-09-14 |
 
 ---
 
@@ -706,7 +706,7 @@ not touch. A clip before the answer happened in 3 of the duck session's 7 clips 
 as "short words, then the full answer" — kept as a cost, not a fault. Nothing in R-4 argues for moving 3 s or 8 s,
 and the microphone picked up nothing from the speakers. One person, one machine.
 
-## ADR-29 Endpoints that refuse browser origins go through the companion's relay (proposed 2026-09-14)
+## ADR-29 Endpoints that refuse browser origins go through the companion's relay (accepted 2026-09-14)
 
 **Decision (P1-T10).** Each endpoint carries a measured *browser access*: `direct` (it
 answers CORS for the page), `local-cors` (a local server whose CORS the user turns on — the
@@ -745,7 +745,16 @@ arrives with Tauri (P8-T01).
 and a Rust HTTP client in the companion (`reqwest` 0.13, rustls). A new endpoint that refuses
 browsers is a code change plus a SURFACE measurement, on purpose.
 
-**Not measured, and the reason this is proposed.** Chrome's Local Network Access prompt from
+**Not measured when proposed.** Chrome's Local Network Access prompt from
 the hosted app to the companion (the relay answers `Access-Control-Allow-Private-Network`;
 P8-T03 verifies); Firefox and Safari; whether NVIDIA stops generating when the relay drops the
 connection; and a person configuring Ollama and NVIDIA from the page without docs — R-5.
+
+**Accepted 2026-09-14 on R-5**, unchanged. Rick configured both from `/settings` with no
+docs: Ollama listed its models and replied (`nemotron-3-nano:30b-cloud` 0.4 s,
+`qwen3.5:9b` 5.3 s); NVIDIA saved a key, connected through the companion (81 models) and
+`meta/llama-3.2-11b-vision-instruct` replied in 0.2 s — so the relay carries a real key and a
+real completion. **One gap, fixed (4777a54):** nothing on screen said how to start the
+companion until a test had failed; the relay note now names `pnpm companion`. Still
+unmeasured: Local Network Access from the hosted app (P8-T03), Firefox and Safari, and whether
+NVIDIA stops generating when the relay drops a connection.

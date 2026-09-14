@@ -73,25 +73,7 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-5 · Configure Ollama and NVIDIA from the settings page, without docs
-**Why:** P1-T10's done-when is "a new user can configure Ollama and NVIDIA without reading
-docs". I checked every screen state in the Browser pane, but typing a real API key into a
-page is yours, and so is judging whether the words on screen are enough. Try not to read
-this block past step 2.
-
-```bash
-pnpm dev
-```
-1. Open `http://localhost:5173/settings`.
-2. **Ollama:** pick it, get to a model that answers **Send a test message**.
-3. **NVIDIA:** pick it, save your key, and get to a reply. The page will tell you about the
-   companion; follow what it says.
-4. Reload the page and check both choices and the saved key are still there (the key shows
-   as "Key saved", never its text).
-
-**Report:** where you hesitated or had to guess, any message that was wrong or unclear, and
-how long each took. If the NVIDIA test message failed, paste the message the page showed.
-
+### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
 
@@ -113,6 +95,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-19 · R-5: configure Ollama and NVIDIA from the settings page, without docs** — run by
+  Rick 2026-09-14. Ollama: models listed, replies from `nemotron-3-nano:30b-cloud` (0.4 s) and
+  `qwen3.5:9b` (5.3 s). NVIDIA: key saved, 81 models through the companion, a reply from
+  `meta/llama-3.2-11b-vision-instruct` in 0.2 s; step 4 (reload) not reported. **Gap found:** no mention of `pnpm companion`
+  until a test failed — fixed in 4777a54. **Meets P1-T10's done-when; ADR-29 accepted on it.**
 - **D-18 · R-4: hear the backchannels, and talk into them** — run by Rick 2026-09-13 on the
   Windows box, analysed the same day; `docs/runs/R-4-backchannels-2026-09-13.md`. The words
   sound right and **duck beat cut** by ear; the rules held with a person's pauses (4 clips in
