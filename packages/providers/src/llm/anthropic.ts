@@ -14,6 +14,9 @@ import type {
 import type { HttpFetch } from './discovery';
 import { mapStreamPart, toAiMessages, toAiTools } from './mapping';
 
+/** The header Anthropic requires before it answers CORS for a page's origin. */
+export const ANTHROPIC_BROWSER_HEADER = 'anthropic-dangerous-direct-browser-access';
+
 /** How a user configures the native Anthropic endpoint (P1-T03). `apiKey` is a BYO key
  * from the settings key store, never from this object's own rendering; `baseUrl` is only
  * for a proxy, since the provider already knows the real one. */
@@ -151,10 +154,14 @@ export class AnthropicLLMProvider implements LLMProvider {
   }
 
   private buildProvider(): AnthropicProvider {
-    const settings: AnthropicProviderSettings = {};
+    const settings: AnthropicProviderSettings = {
+      // Without it Anthropic answers a browser's preflight 400 with no Allow-Origin, and the
+      // page sees only "Failed to fetch" (2026-09-14, docs/SURFACE.md). `@ai-sdk/anthropic`
+      // 4.0.52 does not send it. Harmless outside a browser. A caller's own headers win.
+      headers: { [ANTHROPIC_BROWSER_HEADER]: 'true', ...this.config.headers },
+    };
     if (this.config.baseUrl !== undefined) settings.baseURL = this.config.baseUrl;
     if (this.config.apiKey !== undefined) settings.apiKey = this.config.apiKey;
-    if (this.config.headers !== undefined) settings.headers = this.config.headers;
     if (this.config.fetch !== undefined) {
       settings.fetch = this.config.fetch as NonNullable<AnthropicProviderSettings['fetch']>;
     }

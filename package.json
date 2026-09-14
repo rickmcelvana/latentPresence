@@ -17,6 +17,7 @@
     "test": "vitest run",
     "build": "pnpm --filter @latentpresence/web run build",
     "dev": "pnpm --filter @latentpresence/web run dev",
+    "companion": "cargo run --manifest-path companion/Cargo.toml",
     "rust:fmt": "cargo fmt --manifest-path companion/Cargo.toml --all --check",
     "rust:clippy": "cargo clippy --manifest-path companion/Cargo.toml --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path companion/Cargo.toml --workspace",

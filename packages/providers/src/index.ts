@@ -6,6 +6,7 @@ export const packageInfo = {
   protocolVersion: PROTOCOL_VERSION,
 } as const;
 
+export * from './access';
 export * from './llm';
 export * from './stt';
 export * from './tts';
