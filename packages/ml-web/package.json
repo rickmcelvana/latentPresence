@@ -5,7 +5,8 @@
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./voices": "./src/kokoro/voices.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {
