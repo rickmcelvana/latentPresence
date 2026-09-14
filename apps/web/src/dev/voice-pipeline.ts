@@ -440,9 +440,20 @@ export class VoicePipeline {
       }
     });
 
+    // Only the answer's own segments: a backchannel queued after a superseded answer was once
+    // counted as that answer's first audio (R-4 rows 7 and 16, 6132 and 4311 ms).
+    const answerIds = new Set<number>();
+    const answerSink: PlaybackSink = {
+      ...sink,
+      enqueue: (segment) => {
+        const id = sink.enqueue(segment);
+        answerIds.add(id);
+        return id;
+      },
+    };
     output.subscribe((event) => {
       const row = this.rows.at(-1);
-      if (event.type === 'started' && row !== undefined && row.speechEndToAudioMs === null && row.status === 'answering' && row.speechEndAt !== null) {
+      if (event.type === 'started' && answerIds.has(event.id) && row !== undefined && row.speechEndToAudioMs === null && row.status === 'answering' && row.speechEndAt !== null) {
         const ctxToPerf = performance.now() - context.currentTime * 1000;
         row.speechEndToAudioMs = event.at + ctxToPerf - row.speechEndAt;
       }
@@ -466,7 +477,7 @@ export class VoicePipeline {
             temperature: null,
             maxOutputTokens: null,
           },
-          { llm, tts: timedTts, sink, voiceId: CHARACTER_VOICE },
+          { llm, tts: timedTts, sink: answerSink, voiceId: CHARACTER_VOICE },
           replyOptions,
         ),
     });
