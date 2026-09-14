@@ -303,3 +303,11 @@ Next: P1-T11 transcript (sub; `docs/ui/transcript.md` then a brief). Open for Ri
 **The done-when was unreachable until measured.** NVIDIA sends no CORS headers, so no page can use it; node's live checks had hidden that. Also found: LM Studio needs "Enable CORS", Ollama refuses non-local origins, Anthropic needs its browser header, a CORS refusal and a dead server are both "Failed to fetch" (a `no-cors` retry separates them), and importing the providers root drags onnxruntime into production. The relay is allow-listed both ways and holds no key.
 
 **Delegation worked, review still mattered.** The subagent built the page from the brief with no questions (a usage limit interrupted it once; resumed with context). Review caught a vault that deleted a good key on a transient IndexedDB error, racing first saves that could orphan a key, and Play sample posting to the page's own origin for browser Kokoro. Two process slips of mine: 439c9f7 went in on typecheck, lint and build without the test run, and 48fe941 on the Rust half of the gate only; later full gates covered both.
+
+## 2026-09-14 claude — R-5, ADR-29 accepted; P1-T11 note, brief and core
+Did: R-5 recorded (D-19), ADR-29 accepted; `pnpm companion` named on the settings page (4777a54); `Reply` token events, `VoiceSession` holds a provisional turn's words until confirmed, `ChatSession` (bd0a213); `docs/ui/transcript.md` and `docs/briefs/P1-T11.md` (30e5a49). Gate green, 754 TS / 25 Rust.
+Next: P1-T11's sub half (reducer, panel, `/chat`, harness mount) — on Rick's go. Open for Rick: R-1, R-3.
+
+**The bus was not ready for a transcript.** Nothing emitted `assistant.token`, so nothing could stream or time a first word; and `user.transcript` went out at a model end before `confirmedAt`, which ADR-25 already said a transcript must not treat as final. `VoiceSession` now holds transcript, tokens and sentences per pending turn and flushes them on confirmation with their original timestamps, so first-token latency measures the model, not the hold. A mutation showed my "confirm hangover ends at once" line was redundant — `push` already confirms on the ending frame — so it went and the test stayed.
+
+**Slips:** a scripted docs edit in f546105 dropped the TASKS R-3 heading, found and restored while recording R-5; and a `;` let a commit run after its script failed (amended before push).
