@@ -73,6 +73,27 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
+### R-6 · Read a conversation back: `/chat` and the voice harness transcript
+**Why:** P1-T11. I checked `/chat` in the Browser pane against your Ollama, but the pane
+refuses the clipboard, and the voice harness's models are not cached there. Both need your
+browser. About ten minutes.
+
+```bash
+pnpm dev
+```
+1. Open `http://localhost:5173/chat`. Have a short conversation; ask for something long and
+   press **Stop** partway; send a second message while an answer is still streaming.
+2. **Copy transcript**, paste it into a text editor.
+3. Open `http://localhost:5173/dev/voice`, **Agree and start**, **Simulated speaker**, **Tell a
+   story**. Then **Microphone** and talk over the character once it answers.
+
+**Expect:** a stopped or talked-over answer shows the words you saw or heard, the rest struck
+through, and an **interrupted** pill; latency badges under each answer; no "Yeah." lines in the
+voice transcript; the pasted text is one line per entry, `You:` / `Alice:`, interrupted lines
+ending `[interrupted]`.
+**Report:** the pasted transcript, anything that looked wrong, and whether the badges'
+numbers seemed believable.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

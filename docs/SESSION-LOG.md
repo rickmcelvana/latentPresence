@@ -311,3 +311,11 @@ Next: P1-T11's sub half (reducer, panel, `/chat`, harness mount) — on Rick's g
 **The bus was not ready for a transcript.** Nothing emitted `assistant.token`, so nothing could stream or time a first word; and `user.transcript` went out at a model end before `confirmedAt`, which ADR-25 already said a transcript must not treat as final. `VoiceSession` now holds transcript, tokens and sentences per pending turn and flushes them on confirmation with their original timestamps, so first-token latency measures the model, not the hold. A mutation showed my "confirm hangover ends at once" line was redundant — `push` already confirms on the ending frame — so it went and the test stayed.
 
 **Slips:** a scripted docs edit in f546105 dropped the TASKS R-3 heading, found and restored while recording R-5; and a `;` let a commit run after its script failed (amended before push).
+
+## 2026-09-14 claude — P1-T11 transcript panel and /chat
+Did: a Sonnet subagent built `packages/core/src/transcript`, `TranscriptPanel`, `/chat` and the `/dev/voice` mount from `docs/ui/transcript.md` + the brief; reviewed, fixed four defects, added a VoiceSession-through-reducer test; checked `/chat` against Ollama in Chrome 152. Gate green, 800 TS / 25 Rust. Commit 838068f.
+Next: P1-T12 persona v1 and tag protocol (main). Open for Rick: R-6 (`/chat` copy and the voice harness transcript), R-1, R-3.
+
+**Green and wrong in development.** `useEffect(() => () => chat.dispose())` passed every test and would have made `/chat` refuse every message under `pnpm dev`: StrictMode runs that cleanup once on mount and `dispose` is permanent. Found by reading, confirmed by mutation once a StrictMode render test existed. Also: Stop only appeared at the first token, the companion notice lacked the command (R-5's lesson, one page later), and an empty "(not said)" for screen readers.
+
+**What the pane could and could not show.** Live: streaming (first word 4.6 s cold / 93 ms warm on `nemotron-mini:4b`), Stop, a second message interrupting the first, Clear leaving the model's history intact ("the colour I mentioned was purple"). Not: a real clipboard write (permission denied), and the voice harness — its models were not cached in the pane and I did not start a 473 MB download unasked. The subagent's four judgement calls are accepted and recorded in the brief.

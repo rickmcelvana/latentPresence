@@ -104,7 +104,7 @@ Done when: plays at most once per 8 s and never over user speech.
 Provider pickers with presets, key storage (WebCrypto-encrypted in localStorage; OS keychain later via Tauri), CORS help text per backend, test-connection buttons.
 Done when: a new user can configure Ollama and NVIDIA without reading docs.
 
-### P1-T11 Transcript panel and text chat — owner: sub
+### P1-T11 Transcript panel and text chat — owner: sub (done 2026-09-14; main added token events, confirmed-only words and ChatSession; a subagent built the reducer, panel and /chat; by-hand checks are R-6)
 Depends: P1-T01. Chat panel with streaming, interruption markers, latency badges (turn end to first token, to first audio), copy and clear.
 Done when: matches the design notes in `docs/ui/transcript.md` (main writes this note first).
 
