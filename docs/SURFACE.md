@@ -1405,3 +1405,19 @@ the first with clips cut on speech and pauses of 450/300/450/450 ms, then duck a
 - **Rate limit held**: clips 9.5–9.7 s apart; every sub-threshold answer inside 8 s skipped.
 - **0 clicks**: 18 events with two ducks and two unducks (unduck 8–10 ms after its clip's last
   frame, worst step 0.27× speech), 16 events with two 50 ms cuts (worst 0.72×).
+
+## Backchannels with a person — heard 2026-09-13 (R-4, Rick's Windows box)
+
+Chromium, Realtek(R) Audio microphone, `/dev/voice`; a duck session (the simulated story,
+then ~65 s of Rick talking on headphones) and a cut session (~68 s on the microphone).
+`docs/runs/R-4-backchannels-2026-09-13.md`.
+
+- **A person's mid-turn pauses are as short as Kokoro's**: both microphone clips started
+  inside a turn were talked into, 21 and 181 ms after being queued, and the cut session's
+  one clip at 73 ms. With the story and P1-T09's runs: 10 of 10.
+- **Rate**: 4 clips in ~65 s with a person (14.2–21.6 s apart), 1 in ~68 s when the turns
+  were short — `minSpeechMs` and answering, not the 8 s limit, set the rate there.
+- **A clip before the answer**: 3 of the duck session's 7, each on a Smart Turn score of
+  0.01–0.39 followed by the hangover 310 ms later; the answer's audio came ~190–300 ms after
+  the clip ended. Heard as natural.
+- **By ear**: no word sounded wrong; duck preferred to cut; no speaker pickup.

@@ -73,36 +73,6 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-4 · Hear the backchannels, and talk into them
-**Why:** P1-T09 (ADR-28, proposed). The character now says "Yeah." / "Right." / "Yes." /
-"Oh." in pauses where you sound unfinished. The browser run showed that in a pause you
-actually continue from, you almost always start talking again before the word is over, so
-the clip **ducks and finishes** under you rather than being cut to "Ye—". Whether that
-sounds like listening or like interrupting is an ear question, and nobody has asked it with
-a real person's pauses. Same setup as R-2: Chrome or Edge, WebGPU, models already cached.
-
-```bash
-pnpm dev
-```
-Open `http://localhost:5173/dev/voice`. Leave **Backchannel talked over** on *duck and
-finish*, press **Agree and start**, then:
-
-1. **Simulated speaker, speakers.** Press **Simulated speaker**, then **Tell a story**
-   (~25 s). Listen for the character's short words in the pauses, and for the answer at the
-   end.
-2. **Microphone, headphones.** Press **Microphone**. Tell it something long — a few
-   sentences about your day, with the pauses you would naturally take ("and then… so we…").
-   Keep going past a backchannel. Do this for about a minute.
-3. Reload the page, set **Backchannel talked over** to *cut*, and repeat step 2.
-4. **Speakers, microphone** (duck), one more long story, to hear whether a backchannel
-   through the speakers ever cuts your own turn short.
-5. **Copy results as Markdown** after each of 2–4 and save them together.
-
-**Expect:** at most one backchannel every 8 s, none in the first 3 s of a turn, none while
-the character is answering. **Report:** the Markdown, and one line each on: duck or cut —
-which sounded better; were there too many, too few, or badly placed ones (especially one
-right before the character answers); did any word sound wrong; did (4) do anything odd.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -125,6 +95,14 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-18 · R-4: hear the backchannels, and talk into them** — run by Rick 2026-09-13 on the
+  Windows box, analysed the same day; `docs/runs/R-4-backchannels-2026-09-13.md`. The words
+  sound right and **duck beat cut** by ear; the rules held with a person's pauses (4 clips in
+  ~65 s, 14–22 s apart) and **every clip started inside a turn was talked into** (10 of 10
+  with P1-T09's runs). The cut session played one clip, cut at 73 ms; its "talking longer"
+  was the character's answers. A clip before the answer (3 of 7) sounded fine. Found and
+  fixed a harness bug: the latency column timed superseded answers from a backchannel.
+  **ADR-28 accepted on it.**
 - **D-17 · R-2: listen to the character, and talk over it** — run by Rick 2026-09-13 on the
   Windows box, analysed the same day; `docs/runs/R-2-voice-2026-09-13.md`. **No clicks** by
   ear or by the output check (0 of 58 events); the barge-in cut is "very fast" and the

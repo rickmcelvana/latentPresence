@@ -287,3 +287,11 @@ Next: P1-T10, settings UI (sub; brief first). **ADR-28 is proposed and needs Ric
 **The phrase set was measured, not chosen.** Kokoro's phonemizer reads "Mm-hmm." as /ˌɛmˈɛmhəm/ and "Mhm." as "em-aitch-em"; six nonverbal spellings all failed, raw phonemes work but `TTSProvider` has no phoneme input and nobody has listened. Words phonemize as themselves, so the defaults are the four shortest that read as listening. On the way, **kokoro-js 1.2.1 `stream(string)` never closes its own splitter** — the first probe printed nothing and exited 0, which reads like success until you notice the empty output.
 
 **Recorded, not fixed.** Smart Turn scored the story's final sentence 0.05–0.06 in two of three runs, so a "Yeah." played just before the answer; `minSpeechMs` (3 s, chosen against R-2's missed questions) guards short turns only. And the story's written pauses read longer to the VAD than written — 450 ms and 300 ms of silence each reached the 512 ms hangover — which ended the harness's story mid-turn until the pauses were shortened. Also caught by running rather than reasoning: a session-test expectation for the cut frame I had written from a formula rather than the detector's clock.
+
+## 2026-09-13 claude — R-4 analysed, ADR-28 accepted
+Did: Rick's R-4 notes and two pastes read row by row; results moved to `docs/runs/R-4-backchannels-2026-09-13.md`; ADR-28 accepted (Rick approved), D-18, SURFACE section. Harness fix 8902c06 (gate green, 653 TS / 17 Rust): "speech end → audio" now counts only the reply's own segments — rows 7 and 16 had timed superseded answers from a backchannel.
+Next: P1-T10, settings UI (sub; brief first). Open for Rick: R-1, R-3.
+
+**By ear it works; the log says why duck won.** Words sound right, duck preferred, no speaker pickup. Every clip started inside a turn was talked into (10 of 10 with P1-T09's runs), so a cut leaves a blip. The cut session played one clip (73 ms): Rick's "cut talks longer" was the character's answers — 10 reached audio, 9 were barged into, 6 got no further than "The" — after mid-story turn ends by the model ("There," 0.74/0.97) or the hangover. The setting does not touch those; P1-T14 should.
+
+**Kept as a cost:** a clip before the answer in 3 of the duck session's 7, answer ~190–300 ms after the clip ended; heard as natural. One person, one machine.

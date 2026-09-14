@@ -30,7 +30,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted (amended) | 2026-09-13 |
 | ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | accepted | 2026-09-13 |
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
-| ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | proposed | 2026-09-13 |
+| ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
 
 ---
 
@@ -640,7 +640,7 @@ not to pad (1.2.1 has no such option).
 the gaps between sentences "sound good", with no clipped onsets and no clicks at a sentence
 start, and the output check found 0 clicks of 58 events over 176 s.
 
-## ADR-28 Backchannels: words, in pauses judged unfinished, and a clip talked into ducks and finishes (proposed 2026-09-13)
+## ADR-28 Backchannels: words, in pauses judged unfinished, and a clip talked into ducks and finishes (accepted 2026-09-13)
 
 **Decision (P1-T09).** `VoiceSession` takes an optional clip bank and a `BackchannelScheduler`
 (`packages/core/src/backchannel`). A clip plays on Smart Turn's `judged` answer when the answer
@@ -689,7 +689,18 @@ backchannel would land between the question and its answer. 8 s is the plan's nu
 - A clip queued when the hangover ends the turn sits ahead of the answer's first sentence.
   In the runs the answer started 790–1770 ms after the clip ended, so it cost nothing there.
 
-**Not measured, and the reason this is proposed.** How any of it sounds: whether duck beats
+**Not measured when proposed.** How any of it sounds: whether duck beats
 cut to a person, whether 3 s and 8 s feel right, whether the words sound like listening or
 like interruptions, and a real microphone with a person's own pauses, which are not Kokoro's.
 `docs/TASKS.md` R-4, with a command.
+
+**Accepted 2026-09-13 on R-4** (`docs/runs/R-4-backchannels-2026-09-13.md`), unchanged. With
+Rick's own pauses on the microphone the rules held — 4 clips in ~65 s, 14–22 s apart, none
+while the character answered — and by ear the words sounded right, "nothing sounded wrong",
+and duck's "short cut-ins" beat cut. **Every clip started inside a turn was talked into**, as
+the arithmetic said: 10 of 10 across P1-T09 and R-4, 11–255 ms after being queued. The cut
+session played one clip, cut at 73 ms, so the comparison rests on duck's run and that blip;
+what sounded like cut "talking longer" was the character's answers, which the setting does
+not touch. A clip before the answer happened in 3 of the duck session's 7 clips and was heard
+as "short words, then the full answer" — kept as a cost, not a fault. Nothing in R-4 argues for moving 3 s or 8 s,
+and the microphone picked up nothing from the speakers. One person, one machine.
