@@ -765,3 +765,117 @@ kbd {
   font-size: 12px;
   white-space: pre-wrap;
 }
+
+/* --- Settings (P1-T10) -----------------------------------------------------
+   Ships in production, unlike everything above. Three sections — Language model,
+   Voice, Hearing — each a `.panel`, laid out one under another like the gallery and
+   the spikes, at a width narrow enough to read as a form rather than a dashboard. */
+
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xl);
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.settings-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.settings-page-note {
+  color: var(--text-muted);
+}
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+.settings-section {
+  align-items: stretch;
+}
+
+.settings-vault-note {
+  border-left: 2px solid var(--border-bright);
+  padding-left: var(--gap-md);
+}
+
+/* A saved-key row: the "Key saved" pill plus Replace/Forget, or the password input
+   plus Save — never both, and never the key's own text either way. */
+.settings-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.settings-test-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.settings-temperature-row,
+.settings-speed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-md);
+}
+
+.settings-elapsed {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* The aria-live region a "Test connection" or "Send a test message" button fills in.
+   Always present so a screen reader announces the change in place, never the mount. */
+.settings-status-region {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-width: 0;
+}
+
+.settings-status {
+  font-size: 13px;
+}
+
+.settings-status-ok {
+  color: var(--success);
+}
+
+.settings-status-warn {
+  color: var(--warning);
+}
+
+.settings-status-danger {
+  color: var(--danger);
+}
+
+.settings-help-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  margin: 0;
+  padding-left: var(--gap-lg);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.settings-message-output {
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  white-space: pre-wrap;
+}

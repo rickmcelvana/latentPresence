@@ -1,7 +1,7 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION } from '@latentpresence/protocol';
-import { App } from './App';
+import { App, SETTINGS_PATH } from './App';
 
 afterEach(cleanup);
 
@@ -13,5 +13,19 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('latentPresence');
     expect(container.textContent).toContain(`protocol v${PROTOCOL_VERSION}`);
     expect(container.textContent).toContain('@latentpresence/core');
+  });
+
+  it('links to /settings from the boot screen', () => {
+    render(<App />);
+    const link = screen.getByRole('link', { name: 'Settings' }) as HTMLAnchorElement;
+    expect(new URL(link.href).pathname).toBe(SETTINGS_PATH);
+  });
+
+  it('renders the settings panel at /settings — it is lazy, so this awaits the import', async () => {
+    render(<App path={SETTINGS_PATH} />);
+    // The fallback renders first; `findBy` waits for the lazy import to resolve.
+    const heading = await screen.findByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Settings');
+    await act(async () => {});
   });
 });

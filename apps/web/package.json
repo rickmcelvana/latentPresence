@@ -16,7 +16,8 @@
     "@latentpresence/protocol": "workspace:*",
     "@latentpresence/providers": "workspace:*",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@huggingface/transformers": "3.8.1",

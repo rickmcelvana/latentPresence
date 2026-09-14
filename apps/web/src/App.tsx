@@ -20,6 +20,10 @@ export const SPIKE_AVATAR_PATH = '/spike/avatar';
 /** The dev-only webview capability probe (P0-T08). */
 export const SPIKE_SHELL_PATH = '/spike/shell';
 
+/** The settings page (P1-T10). Ships in production — providers, voice and hearing are
+ * configured here — unlike every other route in this file. */
+export const SETTINGS_PATH = '/settings';
+
 /**
  * The harness pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
@@ -61,6 +65,17 @@ const ShellProbe = lazy(async () => {
 });
 
 /**
+ * The settings page (P1-T10). `lazy()` alone here is the point, not a build-exclusion
+ * guard like the three above: the AI SDK the page pulls in is most of an 830 kB chunk,
+ * and the boot screen should render before that finishes loading rather than wait on it.
+ * Unlike the dev routes, this one is real in every build.
+ */
+const SettingsPage = lazy(async () => {
+  const module = await import('./settings/SettingsPage');
+  return { default: module.SettingsPage };
+});
+
+/**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
  * The stage and the call framing arrive in Phase 2.
@@ -94,11 +109,24 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
+  if (path === SETTINGS_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading settings…</p>}>
+        <SettingsPage />
+      </Suspense>
+    );
+  }
+
   return (
     <main className="boot-screen">
       <h1 className="boot-title">latentPresence</h1>
       <p className="boot-status">
         Scaffold online — protocol v{PROTOCOL_VERSION}, {core.name} linked.
+      </p>
+      {/* Ships for everyone, unlike the dev-only list below — a new user needs a way to
+          configure a provider before there is anything else on this screen to click. */}
+      <p className="boot-status">
+        <a href={SETTINGS_PATH}>Settings</a>
       </p>
       {/* P0-T08. A Tauri window has no address bar, so without this list the shell opens
           on `/` and no spike route is reachable from inside it at all. Dev-only, like
