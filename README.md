@@ -4,11 +4,11 @@ A conversational AI you talk to face to face. A realistic-styled, full-body char
 
 Site: https://latentpresence.com · App: https://app.latentpresence.com
 
-**Status: Phase 0, scaffold up.** See `PROJECT.md` for the current task.
+**Status: Phase 1, conversation core.** A typed chat and a settings page work today; the voice pipeline runs on a dev page; the avatar arrives in Phase 2. See `PROJECT.md` for the current task.
 
 ## Quick start
 
-Requires Node 22+, pnpm 11+ and a stable Rust toolchain (`rustfmt` and `clippy` components).
+Requires Node 22+, pnpm 12+ and a stable Rust toolchain (`rustfmt` and `clippy` components).
 
 ```bash
 pnpm install
@@ -18,6 +18,8 @@ pnpm gate
 `pnpm gate` is the whole check, in the order CI runs it: `tsc -b`, oxlint, vitest, `vite build`,
 `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`. `pnpm gate:app` and `pnpm gate:rust`
 run half each. `pnpm dev` starts the web app on Vite's dev server.
+
+With `pnpm dev` running: `/settings` picks a language model (Ollama, LM Studio, cloud keys) and tests the connection; `/chat` talks to it. NVIDIA's API does not answer web pages, so it goes through the companion — start it with `pnpm companion` (ADR-29).
 
 ```
 apps/web/            Vite + React 19 app, deployed to app.latentpresence.com
