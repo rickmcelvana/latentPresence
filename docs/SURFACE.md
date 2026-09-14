@@ -1352,3 +1352,56 @@ mapped through a `performance.now()` offset taken once at start) read a constant
 behind, returning to 154 — not 0 — after a 688 ms stall, which a backlog that could catch up
 would not do. Anything that compares capture-frame time with another clock must re-derive the
 offset; `VoiceSession` compares frame time only with frame time and is unaffected.
+
+## Kokoro and backchannels — measured 2026-09-13 (P1-T09, `pnpm live:backchannel`)
+
+kokoro-js 1.2.1, `onnx-community/Kokoro-82M-v1.0-ONNX` q8 on onnxruntime-node, `af_heart` and
+`am_michael`; Whisper base q8 as a cross-check. Clips written to `live/out/backchannel/`.
+
+**Nonverbal spellings are read as letters.** The phonemes kokoro-js produced:
+
+| text | phonemes | Whisper (af_heart) |
+|---|---|---|
+| Mm-hmm. | /ˌɛmˈɛmhəm/ | "M.M.Hum" |
+| Mhm. | /ˌɛmˌeɪtʃˈɛm/ | "M H M" |
+| Mm. | /ˌɛmˈɛm/ | "M-M." |
+| Hmm. | /hˈəm/ | "PAMS!" |
+| Uh-huh. | /ˈʌhˈʌ/ | "As high." |
+| Mmhmm. / Hm. / Mmm. (one run) | /ˌɛmˌɛmˈeɪtʃˌɛmˈɛm/, /ˌeɪtʃˈɛm/, /ˌɛmˌɛmˈɛm/ | letters |
+
+**Words phonemize as themselves**, voiced length af_heart / am_michael: Yeah. /jˈɛə/ 395 / 414
+ms, Right. /ɹˈaɪt/ 473 / 503, Yes. /jˈɛs/ 462 / 498, Oh. /ˈoʊ/ 351 / 408, Sure. 415 / 445,
+Okay. 524 / 624, I see. 563 / 618 — every one transcribed back correctly. Each rendering
+carries ~360–410 ms of silence in front and ~410–570 ms behind, as sentences do (ADR-27).
+**Raw phonemes bypass the phonemizer** — `tts.tokenizer(phonemes)` then
+`generate_from_ids` — and /mˈhm/ renders 417 ms of voice; whether it sounds like "mm-hm" is
+for an ear, and `TTSProvider` has no phoneme input, so it is not used.
+
+**`tts.stream(text)` with a string never finishes in kokoro-js 1.2.1.** It wraps the string
+in a `TextSplitterStream`, pushes it and never calls `close()`, so `for await` waits forever
+and node exits with code 0 and no output once the event loop drains. Pass a closed
+`TextSplitterStream`, which `kokoro.worker.ts` already does.
+
+**Browser synthesis of the clips matches node**: "Yeah." 483 ms, "Right." 571, "Yes." 563,
+"Oh." 449 after trimming to 50 ms either side (node: 495, 573, 562, 451).
+
+## Backchannels in a browser — measured 2026-09-13 (P1-T09, `/dev/voice`)
+
+Claude desktop Browser pane, WebGPU, page hidden; the harness's simulated speaker (Kokoro
+`am_michael`) telling a five-phrase story with silences written between phrases. Three runs:
+the first with clips cut on speech and pauses of 450/300/450/450 ms, then duck and cut with
+350/300/250/350 ms.
+
+- **A clip starts 194–227 ms into a pause** (candidate at 128 ms, Smart Turn 7–48 ms).
+- **Written pauses read longer to the detector**: 450 ms of written silence after a phrase
+  ending "…and" twice ran into the 512 ms hangover, and 300 ms once did. The VAD's speech end
+  sits before the word's quiet tail, so the detected pause is the written one plus that tail.
+- **All 5 clips started in a mid-turn pause were talked into before they finished**, 9–298 ms
+  after being queued. Cut: "Yes." at 231 ms, "Oh." at 253 ms (about two thirds of the word),
+  "Right." at 9 ms (none of it). Ducked: "Yes." and "Oh." played their full 563 / 449 ms.
+- **Smart Turn scores**: pauses between phrases 0.01–0.64, all under the threshold; commas
+  inside a phrase 0.74–0.97, ended and retracted (ADR-25) every time; the story's last
+  sentence 0.97 once and 0.05–0.06 twice, where a backchannel played just before the answer.
+- **Rate limit held**: clips 9.5–9.7 s apart; every sub-threshold answer inside 8 s skipped.
+- **0 clicks**: 18 events with two ducks and two unducks (unduck 8–10 ms after its clip's last
+  frame, worst step 0.27× speech), 16 events with two 50 ms cuts (worst 0.72×).

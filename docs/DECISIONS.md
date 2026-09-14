@@ -30,6 +30,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted (amended) | 2026-09-13 |
 | ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | accepted | 2026-09-13 |
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
+| ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | proposed | 2026-09-13 |
 
 ---
 
@@ -638,3 +639,57 @@ not to pad (1.2.1 has no such option).
 **Accepted 2026-09-13 on R-2** (`docs/runs/R-2-voice-2026-09-13.md`), unchanged: by ear
 the gaps between sentences "sound good", with no clipped onsets and no clicks at a sentence
 start, and the output check found 0 clicks of 58 events over 176 s.
+
+## ADR-28 Backchannels: words, in pauses judged unfinished, and a clip talked into ducks and finishes (proposed 2026-09-13)
+
+**Decision (P1-T09).** `VoiceSession` takes an optional clip bank and a `BackchannelScheduler`
+(`packages/core/src/backchannel`). A clip plays on Smart Turn's `judged` answer when the answer
+is **under the turn threshold**, the conversation is `listening`, nothing is playing, the last
+clip started **8 s** or more ago, and the turn has carried **3 s** of speech before the pause.
+Clips are pre-synthesised once per voice, trimmed to their voice plus **50 ms either side**,
+and the default set is **"Yeah." "Right." "Yes." "Oh."**, never the same one twice running.
+A clip never *starts* over speech (`judged` exists only for a pause that is still silent). If
+the user speaks while it plays — `speechOff` inside the turn, `speechOn` after it — the clip
+is **ducked** to −12 dB and finishes, and the gain is restored when it ends. `overlap: 'cut'`
+fades it out over 50 ms instead, which is the plan's literal "never over user speech".
+
+**Protocol.** `assistant.backchannel { text }`, emitted when a clip is queued. It moves no
+state, is no transcript line and is not memory; it exists so P2 can nod and P3 can count.
+Additive: no `PROTOCOL_VERSION` bump.
+
+**Why words.** Kokoro's phonemizer reads nonverbal spellings as letters: "Mm-hmm." is
+/ˌɛmˈɛmhəm/, "Mhm." is /ˌɛmˌeɪtʃˈɛm/, and "Mm.", "Hmm.", "Uh-huh." fared no better
+(`pnpm live:backchannel`, `docs/SURFACE.md`). Words phonemize as themselves, reach a TTS server
+as plain text too, and the four chosen are the shortest that read as listening (351–503 ms
+of voice on `af_heart`); "I see." and "Okay." run 524–624 ms.
+
+**Why duck, not cut — the arithmetic, then the browser.** A clip starts ~210 ms into a pause
+(100 ms candidate window, one 32 ms frame, a ~10 ms judge). A pause the turn survives is under
+the 512 ms hangover, so a mid-turn clip has under ~300 ms before the user resumes, and every
+word is longer. In the Browser pane (three runs of the harness's story, `docs/SURFACE.md`)
+**every one of 5 clips started in a mid-turn pause was talked into before it finished**:
+cut, "Oh." lost its last third and "Right." was faded 9 ms in — nothing of it heard. Ducked,
+both played whole under the resumed speech. A word chopped in half sounds like a fault; a
+quiet word finishing under the speaker is what listeners do. 0 clicks in either mode
+(16 and 18 events, ducks and unducks included).
+
+**Why these gates.** `judged` below threshold is the plan's rule and the only signal that the
+floor is still the user's. **3 s of speech** because R-2 saw Smart Turn score a short,
+complete question 0.01–0.02 three times of four: the hangover then ends the turn, and a
+backchannel would land between the question and its answer. 8 s is the plan's number.
+
+**What it costs, recorded rather than hidden.**
+- **Smart Turn misses finished sentences, and a backchannel then precedes the answer.** The
+  story's final sentence scored 0.05–0.06 in two of the three browser runs: "Yeah." played, the
+  hangover ended the turn ~300 ms later, and the answer followed. `minSpeechMs` only guards
+  short turns. The scheduler can be no better than the turn model it listens to.
+- Ducked clips overlap the user's speech by up to ~350 ms at −12 dB — the reason this is not
+  the plan's literal rule. If AEC is imperfect, that tail reaches the microphone while the
+  user is talking.
+- A clip queued when the hangover ends the turn sits ahead of the answer's first sentence.
+  In the runs the answer started 790–1770 ms after the clip ended, so it cost nothing there.
+
+**Not measured, and the reason this is proposed.** How any of it sounds: whether duck beats
+cut to a person, whether 3 s and 8 s feel right, whether the words sound like listening or
+like interruptions, and a real microphone with a person's own pauses, which are not Kokoro's.
+`docs/TASKS.md` R-4, with a command.

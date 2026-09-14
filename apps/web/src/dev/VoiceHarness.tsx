@@ -37,6 +37,7 @@ function asMarkdown(snapshot: Snapshot | null, output: OutputReport | null, voic
 
 export function VoiceHarness(): ReactElement {
   const [bargeInMs, setBargeInMs] = useState(200);
+  const [overlap, setOverlap] = useState<'duck' | 'cut'>('duck');
   const [phase, setPhase] = useState<'consent' | 'loading' | 'ready'>('consent');
   const [status, setStatus] = useState('Nothing downloaded yet.');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -59,7 +60,7 @@ export function VoiceHarness(): ReactElement {
   async function start(): Promise<void> {
     setPhase('loading');
     try {
-      const built = await VoicePipeline.start({ bargeInMs, log: setStatus });
+      const built = await VoicePipeline.start({ bargeInMs, overlap, log: setStatus });
       pipeline.current = built;
       // For poking at from the console; dev-only, like the page.
       Object.assign(globalThis, { voiceHarness: built });
@@ -86,7 +87,7 @@ export function VoiceHarness(): ReactElement {
       <header className="spike-header">
         <h1>Voice harness</h1>
         <p className="panel-note">
-          P1-T08. Silero, Smart Turn, Moonshine and Kokoro through the real queue and barge-in, with a scripted
+          P1-T08 and P1-T09. Silero, Smart Turn, Moonshine and Kokoro through the real queue, barge-in and backchannels, with a scripted
           model. The simulated speaker needs no microphone.
         </p>
       </header>
@@ -119,6 +120,13 @@ export function VoiceHarness(): ReactElement {
                 <option value={300}>300 ms</option>
               </select>
             </label>
+            <label className="field">
+              <span className="field-label">Backchannel talked over</span>
+              <select className="select" onChange={(event) => setOverlap(event.target.value === 'cut' ? 'cut' : 'duck')} value={overlap}>
+                <option value="duck">duck and finish (ADR-28)</option>
+                <option value="cut">cut</option>
+              </select>
+            </label>
             <button className="btn btn-primary" disabled={phase === 'loading'} onClick={() => void start()} type="button">
               Agree and start
             </button>
@@ -144,6 +152,9 @@ export function VoiceHarness(): ReactElement {
             </button>
             <button className="btn btn-ghost" onClick={() => pipeline.current?.ask()} type="button">
               Ask
+            </button>
+            <button className="btn btn-ghost" onClick={() => pipeline.current?.tell()} type="button">
+              Tell a story
             </button>
             <button className="btn btn-ghost" onClick={() => pipeline.current?.interrupt()} type="button">
               Interrupt

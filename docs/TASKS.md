@@ -73,6 +73,36 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
+### R-4 · Hear the backchannels, and talk into them
+**Why:** P1-T09 (ADR-28, proposed). The character now says "Yeah." / "Right." / "Yes." /
+"Oh." in pauses where you sound unfinished. The browser run showed that in a pause you
+actually continue from, you almost always start talking again before the word is over, so
+the clip **ducks and finishes** under you rather than being cut to "Ye—". Whether that
+sounds like listening or like interrupting is an ear question, and nobody has asked it with
+a real person's pauses. Same setup as R-2: Chrome or Edge, WebGPU, models already cached.
+
+```bash
+pnpm dev
+```
+Open `http://localhost:5173/dev/voice`. Leave **Backchannel talked over** on *duck and
+finish*, press **Agree and start**, then:
+
+1. **Simulated speaker, speakers.** Press **Simulated speaker**, then **Tell a story**
+   (~25 s). Listen for the character's short words in the pauses, and for the answer at the
+   end.
+2. **Microphone, headphones.** Press **Microphone**. Tell it something long — a few
+   sentences about your day, with the pauses you would naturally take ("and then… so we…").
+   Keep going past a backchannel. Do this for about a minute.
+3. Reload the page, set **Backchannel talked over** to *cut*, and repeat step 2.
+4. **Speakers, microphone** (duck), one more long story, to hear whether a backchannel
+   through the speakers ever cuts your own turn short.
+5. **Copy results as Markdown** after each of 2–4 and save them together.
+
+**Expect:** at most one backchannel every 8 s, none in the first 3 s of a turn, none while
+the character is answering. **Report:** the Markdown, and one line each on: duck or cut —
+which sounded better; were there too many, too few, or badly placed ones (especially one
+right before the character answers); did any word sound wrong; did (4) do anything odd.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

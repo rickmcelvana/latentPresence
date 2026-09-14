@@ -1,4 +1,6 @@
 import type { ConversationEvent } from '@latentpresence/protocol';
+import type { BackchannelClip } from '../backchannel/clips';
+import { BackchannelScheduler, type BackchannelEvent, type BackchannelOptions } from '../backchannel/scheduler';
 import type { ConversationMachine } from '../conversation/machine';
 import type { PlaybackSink } from '../playback/sink';
 import { BargeInGate, type BargeInOptions } from '../reply/barge-in';
@@ -20,6 +22,8 @@ import { TURN_SAMPLE_RATE, type TurnDetector, type TurnEvent, type VadFrame } fr
  *   the frames pass `confirmedAt`; `turn-resumed` abandons it and says so on the bus.
  * - **A committed barge-in** interrupts the reply, which knows what was heard, and puts
  *   that on `assistant.interrupted`; the machine asks the sink for the fade.
+ * - **A pause that sounds unfinished** may get a backchannel (P1-T09, ADR-28), played into
+ *   the same sink outside any reply and faded the moment the user speaks again.
  *
  * No timers and no DOM. Time is the frames' clock, as it is for the detector.
  */
@@ -35,6 +39,12 @@ export interface VoiceSessionOptions<R> {
   /** Start answering. Pass `options` through to the `Reply`: they carry the hold and the events. */
   readonly respond: (text: string, options: ReplyOptions) => Reply;
   readonly bargeIn?: BargeInOptions;
+  /** Clips to say in the user's pauses, and when. Omitted or empty: the character never backchannels. */
+  readonly backchannel?: BackchannelOptions & {
+    readonly clips: readonly BackchannelClip[];
+    /** Every clip played or cut, for a harness to show. The bus only carries the first. */
+    readonly onEvent?: (event: BackchannelEvent) => void;
+  };
   /** Barge-in fade. Should match the machine's `fadeOutMs`; 100 by default, as the plan says. */
   readonly fadeMs?: number;
   /** The detector's sample rate, to turn a frame into milliseconds. */
@@ -55,6 +65,7 @@ interface PendingTurn {
 
 export class VoiceSession<R> {
   readonly gate: BargeInGate;
+  readonly backchannels: BackchannelScheduler | null;
   private readonly options: VoiceSessionOptions<R>;
   private readonly fadeMs: number;
   private readonly sampleRate: number;
@@ -71,6 +82,11 @@ export class VoiceSession<R> {
     this.sampleRate = options.sampleRate ?? TURN_SAMPLE_RATE;
     this.now = options.now ?? (() => new Date().toISOString());
     this.gate = new BargeInGate(options.bargeIn);
+    const backchannel = options.backchannel;
+    this.backchannels =
+      backchannel === undefined || backchannel.clips.length === 0
+        ? null
+        : new BackchannelScheduler(options.sink, backchannel.clips, backchannel);
     this.detach.push(options.detector.subscribe((event) => this.onTurn(event)));
     this.detach.push(
       options.machine.subscribe((event) => {
@@ -95,11 +111,15 @@ export class VoiceSession<R> {
     if (action === 'duck') this.options.sink.duck();
     else if (action === 'unduck') this.options.sink.unduck();
     else if (action === 'commit') this.commit();
+
+    const cut = this.backchannels?.push(frame);
+    if (cut) this.options.backchannel?.onEvent?.(cut);
   }
 
   /** Stop listening to the pieces and abandon anything in flight. */
   dispose(): void {
     for (const detach of this.detach.splice(0)) detach();
+    this.backchannels?.dispose();
     this.reply?.interrupt(this.fadeMs);
     this.pending = null;
     this.reply = null;
@@ -107,6 +127,11 @@ export class VoiceSession<R> {
 
   private onTurn(event: TurnEvent<R>): void {
     const { machine } = this.options;
+    const said = this.backchannels?.onTurn(event, machine.getState());
+    if (said) {
+      this.dispatch({ type: 'assistant.backchannel', text: said.text });
+      this.options.backchannel?.onEvent?.(said);
+    }
     switch (event.type) {
       case 'speech-start':
         if (machine.getState() === 'thinking') this.abandon();

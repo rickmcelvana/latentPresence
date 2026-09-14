@@ -110,6 +110,13 @@ export const ConversationEventSchema = z.discriminatedUnion('type', [
    * transcript and memory must keep: the rest of the sentence was never said.
    */
   z.object({ ...eventBase, type: z.literal('assistant.interrupted'), spokenPrefix: z.string() }),
+  /**
+   * The character said a backchannel — "yeah", "right" — in a pause inside the user's turn
+   * (P1-T09, ADR-28). Not part of any answer: it does not move the machine, it is not a
+   * transcript line, and memory does not keep it. Emitted when the clip is queued, which on
+   * an idle output is when it starts. It may be faded out early if the user speaks again.
+   */
+  z.object({ ...eventBase, type: z.literal('assistant.backchannel'), text: z.string().min(1) }),
 
   z.object({ ...eventBase, type: z.literal('tool.call'), call: ToolCallSchema }),
   z.object({ ...eventBase, type: z.literal('tool.result'), result: ToolResultSchema }),

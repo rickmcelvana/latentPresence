@@ -3,6 +3,10 @@ import {
   Reply,
   TurnDetector,
   VoiceSession,
+  prepareBackchannels,
+  trimToVoice,
+  type BackchannelClip,
+  type BackchannelEvent,
   type PlaybackEvent,
   type PlaybackSink,
 } from '@latentpresence/core';
@@ -36,6 +40,7 @@ import { analyseOutput, joinBlocks, type Mark, type OutputReport } from './outpu
 
 /**
  * The P1-T08 harness: the promoted pipeline end to end in a browser, with a scripted model.
+ * P1-T09 added backchannels, and a simulated speaker who tells a story with pauses in it.
  *
  * Microphone (or a simulated speaker) → Silero → `TurnDetector` + Smart Turn → Moonshine →
  * `FakeLLMProvider` → Kokoro → the AudioWorklet queue, with `VoiceSession` deciding what
@@ -62,6 +67,18 @@ export const ANSWER = [
 ].join(' ');
 const QUESTION = 'What was the afternoon like?';
 const INTERRUPTION = 'Sorry, can I stop you there for a second?';
+/**
+ * A long turn with pauses inside it, for backchannels (P1-T09). Each phrase is trimmed to
+ * its voice and followed by exactly this much silence, so the pauses are the ones written
+ * here rather than Kokoro's own ~800 ms between sentences — which would end the turn.
+ */
+const STORY: readonly { readonly text: string; readonly pauseMs: number }[] = [
+  { text: 'So yesterday I finally walked down to the old harbour, the one past the station, and', pauseMs: 350 },
+  { text: 'the tide was so far out that you could see all the boats just sitting on the mud, and', pauseMs: 300 },
+  { text: 'there was this man with a dog who kept trying to walk out to one of them.', pauseMs: 250 },
+  { text: 'Anyway, after about ten minutes he gave up and went to get a coffee, and', pauseMs: 350 },
+  { text: 'I ended up talking to him for nearly an hour about the town and how it used to be.', pauseMs: 0 },
+];
 
 /**
  * The three sentences `live/kokoro-dtype.ts` rendered on onnxruntime-node, with its fp32
@@ -181,7 +198,10 @@ export class VoicePipeline {
   private readonly marks: Mark[] = [];
   private readonly blocks: Float32Array[] = [];
   private recordStart: number | null = null;
-  private userSpeech: { question: Float32Array; interruption: Float32Array } | null = null;
+  private userSpeech: { question: Float32Array; interruption: Float32Array; story: Float32Array } | null = null;
+  private clips: readonly BackchannelClip[] = [];
+  private lastCandidateSpeechEnd: number | null = null;
+  private lastBackchannelAt: number | null = null;
   private capture: CaptureHandle | null = null;
   private simulated: { context: AudioContext; input: AudioNode } | null = null;
   private lastJudgeMs: number | null = null;
@@ -212,7 +232,7 @@ export class VoicePipeline {
   }
 
   /** Build everything and load every model. Call from a click: the audio context needs a gesture. */
-  static async start(options: { bargeInMs: number; log: (line: string) => void }): Promise<VoicePipeline> {
+  static async start(options: { bargeInMs: number; overlap?: 'duck' | 'cut'; log: (line: string) => void }): Promise<VoicePipeline> {
     const t0 = performance.now();
     const audio = await createAudioOutput();
     const tts = new KokoroBrowserTTSProvider({ id: 'kokoro', createWorker: createKokoroWorker });
@@ -234,7 +254,12 @@ export class VoicePipeline {
     const warmStt = performance.now();
     await transcribe(stt, new Float32Array(8000));
     pipeline.log(`Moonshine warm in ${Math.round(performance.now() - warmStt)} ms`);
-    pipeline.wire(options.bargeInMs);
+    const clipsAt = performance.now();
+    pipeline.clips = await prepareBackchannels(tts, { voiceId: CHARACTER_VOICE });
+    pipeline.log(
+      `backchannels ready in ${Math.round(performance.now() - clipsAt)} ms: ${pipeline.clips.map((clip) => `"${clip.text}" ${Math.round((clip.samples.length / clip.sampleRate) * 1000)} ms`).join(', ')}`,
+    );
+    pipeline.wire(options.bargeInMs, options.overlap ?? 'duck');
     return pipeline;
   }
 
@@ -264,7 +289,12 @@ export class VoicePipeline {
       this.log('synthesising the simulated speaker');
       const speak = async (text: string) =>
         resample(await collect(this.tts.synthesize({ text, voiceId: USER_VOICE, speed: 1, hint: null })), 24_000, 16_000);
-      this.userSpeech = { question: await speak(QUESTION), interruption: await speak(INTERRUPTION) };
+      const story: Float32Array[] = [];
+      for (const { text, pauseMs } of STORY) {
+        const voiced = trimToVoice(await collect(this.tts.synthesize({ text, voiceId: USER_VOICE, speed: 1, hint: null })), 24_000, { leadMs: 0, tailMs: 0 });
+        story.push(resample(voiced.samples, 24_000, 16_000), new Float32Array(Math.round((pauseMs / 1000) * 16_000)));
+      }
+      this.userSpeech = { question: await speak(QUESTION), interruption: await speak(INTERRUPTION), story: joinBlocks(story) };
     }
     this.capture = await startCapture(source, (samples, at) => {
       this.noteLag('capture', at);
@@ -278,6 +308,11 @@ export class VoicePipeline {
   /** The simulated speaker asks the question. */
   ask(): void {
     this.say('question', 0);
+  }
+
+  /** The simulated speaker tells a long story with pauses in it, for backchannels. */
+  tell(): void {
+    this.say('story', 0);
   }
 
   /** The simulated speaker talks over the answer. */
@@ -333,7 +368,7 @@ export class VoicePipeline {
     await this.audio.close();
   }
 
-  private wire(bargeInMs: number): void {
+  private wire(bargeInMs: number, overlap: 'duck' | 'cut'): void {
     const output = this.audio.output;
     const context = this.audio.context;
     const latency = (): number => context.outputLatency || 0;
@@ -398,6 +433,8 @@ export class VoicePipeline {
         this.log(`turn end (${event.reason}${event.probability === null ? '' : ` ${event.probability.toFixed(2)}`}) ${Math.round(event.at - event.speechEndAt)} ms after speech`);
       } else if (event.type === 'turn-resumed') {
         this.log(`turn resumed after a ${Math.round(event.pauseMs)} ms pause (ADR-25)`);
+      } else if (event.type === 'candidate') {
+        this.lastCandidateSpeechEnd = event.speechEndAt;
       } else if (event.type === 'late') {
         this.log(`late judge answer ${event.probability.toFixed(2)}`);
       }
@@ -418,6 +455,7 @@ export class VoicePipeline {
       detector,
       sink,
       bargeIn: { bargeInMs },
+      backchannel: { clips: this.clips, overlap, onEvent: (event) => this.onBackchannel(event) },
       transcribe: async (recognition) => (await recognition)?.text ?? null,
       respond: (text, replyOptions) =>
         new Reply(
@@ -503,6 +541,18 @@ export class VoicePipeline {
     }
   }
 
+  private onBackchannel(event: BackchannelEvent): void {
+    if (event.type === 'played') {
+      this.lastBackchannelAt = event.at;
+      const pause =
+        this.lastCandidateSpeechEnd === null ? '' : ` ${Math.round(event.at - this.lastCandidateSpeechEnd)} ms into the pause`;
+      this.log(`backchannel "${event.text}"${pause}`);
+    } else {
+      const after = this.lastBackchannelAt === null ? '' : ` ${Math.round(event.at - this.lastBackchannelAt)} ms after it was queued`;
+      this.log(`backchannel "${event.text}" ${event.action === 'duck' ? 'ducked' : 'cut'}: speech resumed${after}`);
+    }
+  }
+
   private onJudge(inferenceMs: number, probability: number): void {
     this.lastJudgeMs = inferenceMs;
     this.log(`Smart Turn ${probability.toFixed(2)} in ${Math.round(inferenceMs)} ms`);
@@ -522,7 +572,7 @@ export class VoicePipeline {
     };
   }
 
-  private say(which: 'question' | 'interruption', delaySeconds: number): void {
+  private say(which: 'question' | 'interruption' | 'story', delaySeconds: number): void {
     const speech = this.userSpeech?.[which];
     const simulated = this.simulated;
     if (speech === undefined || simulated === null) {
@@ -535,7 +585,7 @@ export class VoicePipeline {
     source.buffer = buffer;
     source.connect(simulated.input);
     source.start(simulated.context.currentTime + delaySeconds);
-    this.log(`simulated speaker: "${which === 'question' ? QUESTION : INTERRUPTION}"${delaySeconds > 0 ? ` in ${Math.round(delaySeconds * 1000)} ms` : ''}`);
+    this.log(`simulated speaker: "${which === 'question' ? QUESTION : which === 'interruption' ? INTERRUPTION : `${STORY[0]?.text ?? ''} …`}"${delaySeconds > 0 ? ` in ${Math.round(delaySeconds * 1000)} ms` : ''}`);
   }
 
   private log(line: string): void {

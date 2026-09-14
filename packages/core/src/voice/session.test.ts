@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CancellationSignal, ConversationEvent, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import { ConversationMachine } from '../conversation/machine';
+import type { BackchannelEvent, BackchannelOptions } from '../backchannel/scheduler';
 import type { BargeInOptions } from '../reply/barge-in';
 import { Reply, type ReplyOutcome } from '../reply/reply';
 import { deferred, ManualSink, ScriptedLLM, ScriptedTTS, settle, text } from '../testing/scripted';
@@ -42,6 +43,7 @@ function rig(
     transcribe?: () => Promise<string | null>;
     script?: readonly LlmStreamChunk[];
     bargeIn?: BargeInOptions;
+    backchannel?: BackchannelOptions;
   } = {},
 ) {
   let clock = 0;
@@ -56,6 +58,8 @@ function rig(
   const events: ConversationEvent[] = [];
   machine.subscribe((event) => events.push(event));
   const replies: Reply[] = [];
+  const backchannels: (BackchannelEvent & { lastProbability: number })[] = [];
+  let lastProbability = 0;
   const outcomes: ReplyOutcome[] = [];
   const session = new VoiceSession<string>({
     sessionId: 's',
@@ -75,6 +79,16 @@ function rig(
       return reply;
     },
     ...(options.bargeIn === undefined ? {} : { bargeIn: options.bargeIn }),
+    ...(options.backchannel === undefined
+      ? {}
+      : {
+          backchannel: {
+            clips: [{ text: 'Yeah.', samples: new Float32Array(2400).fill(0.3), sampleRate: 24_000 }],
+            random: () => 0,
+            ...options.backchannel,
+            onEvent: (event: BackchannelEvent) => backchannels.push({ ...event, lastProbability }),
+          },
+        }),
   });
   machine.start();
 
@@ -84,6 +98,8 @@ function rig(
     sink,
     replies,
     outcomes,
+    /** Every clip played or talked into, with the probability of the frame pushed before it. */
+    backchannels,
     /** `count` 32 ms frames at `probability`. */
     frames(count: number, probability: number): void {
       for (let i = 0; i < count; i += 1) {
@@ -91,6 +107,7 @@ function rig(
         clock = at;
         index += 1;
         session.push({ samples: new Float32Array(FRAME), probability, at });
+        lastProbability = probability;
       }
     },
     types: (): string[] => events.map((event) => event.type).filter((type) => type !== 'state.changed'),
@@ -299,5 +316,106 @@ describe('VoiceSession — barge-in', () => {
     r.frames(8, 0.9);
     expect(r.sink.gain).toEqual([]);
     expect(r.of('assistant.interrupted')).toHaveLength(0);
+  });
+});
+
+describe('VoiceSession — backchannels (P1-T09)', () => {
+  it('says one in a pause that sounds unfinished, without leaving listening or ending the turn', async () => {
+    const judge = new Judge();
+    const r = rig({ judge, backchannel: {} });
+    r.frames(100, 0.9); // 3.2 s of speech
+    r.frames(4, 0.05); // the candidate
+    judge.answer(0.1);
+    await settle();
+
+    expect(r.of('assistant.backchannel').map((event) => event.text)).toEqual(['Yeah.']);
+    expect(r.sink.segments).toHaveLength(1);
+    expect(r.state()).toBe('listening');
+    expect(r.types()).toEqual(['session.started', 'user.speech.started', 'assistant.backchannel']);
+
+    // The user carries on: the clip yields on that frame, and the turn is still theirs.
+    r.frames(1, 0.9);
+    expect(r.sink.gain).toEqual(['duck']);
+    expect(r.backchannels.map((event) => event.type)).toEqual(['played', 'overlapped']);
+    expect(r.of('user.turn.ended')).toHaveLength(0);
+
+    // The word finishes, and the voice is back at full level for whatever comes next.
+    r.sink.end(100);
+    expect(r.sink.gain).toEqual(['duck', 'unduck']);
+  });
+
+  it('plays at most once per 8 s and never starts over user speech, through a long turn', async () => {
+    const judge = new Judge();
+    const r = rig({ judge, backchannel: {} });
+    // Forty seconds of talk in 1.1 s phrases, each followed by a pause judged unfinished.
+    for (let phrase = 0; phrase < 36; phrase += 1) {
+      r.frames(1, 0.9);
+      // A clip lasts about as long as the next phrase's first half second.
+      if (r.session.backchannels?.active === true) {
+        r.frames(14, 0.9);
+        r.sink.end(99 + r.sink.segments.length);
+        r.frames(15, 0.9);
+      } else {
+        r.frames(29, 0.9);
+      }
+      r.frames(4, 0.05);
+      judge.answer(0.1);
+      await settle();
+    }
+    r.frames(1, 0.9);
+
+    const played = r.backchannels.filter((event) => event.type === 'played');
+    const overlapped = r.backchannels.filter((event) => event.type === 'overlapped');
+    expect(played.length).toBe(5);
+    for (const [i, event] of played.entries()) {
+      // Started in silence, and yielded on the very next frame of speech.
+      expect(event.lastProbability).toBeLessThan(0.35);
+      expect(overlapped[i]?.at).toBe(event.at + FRAME_MS);
+      if (i > 0) expect(event.at - (played[i - 1]?.at ?? 0)).toBeGreaterThanOrEqual(8000);
+    }
+    // Every duck given back once its word finished.
+    expect(r.sink.gain).toEqual(Array.from({ length: 5 }, () => ['duck', 'unduck']).flat());
+    expect(r.of('assistant.backchannel')).toHaveLength(5);
+    expect(r.of('user.turn.ended')).toHaveLength(0);
+  });
+
+  it("with overlap 'cut' fades the clip on the first frame of speech", async () => {
+    const judge = new Judge();
+    const r = rig({ judge, backchannel: { overlap: 'cut' } });
+    r.frames(100, 0.9);
+    r.frames(4, 0.05);
+    judge.answer(0.1);
+    await settle();
+    r.frames(1, 0.9);
+    expect(r.sink.fades).toEqual([50]);
+    expect(r.sink.gain).toEqual([]);
+  });
+
+  it('never says one while the character is audible', async () => {
+    const judge = new Judge();
+    const r = rig({ judge, backchannel: { minSpeechMs: 0 } });
+    await turn(r);
+    judge.answer(0.1);
+    await settle();
+    r.sink.start(100);
+    expect(r.state()).toBe('speaking');
+
+    r.frames(3, 0.9); // a cough: ducks, never commits
+    r.frames(4, 0.05);
+    judge.answer(0.1);
+    await settle();
+    expect(r.of('assistant.backchannel')).toHaveLength(0);
+    expect(r.sink.segments).toHaveLength(1);
+  });
+
+  it('never says one without clips', async () => {
+    const judge = new Judge();
+    const r = rig({ judge });
+    r.frames(100, 0.9);
+    r.frames(4, 0.05);
+    judge.answer(0.1);
+    await settle();
+    expect(r.session.backchannels).toBeNull();
+    expect(r.of('assistant.backchannel')).toHaveLength(0);
   });
 });

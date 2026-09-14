@@ -98,6 +98,7 @@ describe('ConversationEventSchema', () => {
       { ...base, type: 'user.transcript', text: 'hello', isFinal: false, confidence: null },
       { ...base, type: 'assistant.sentence', text: 'Hello.', index: 0 },
       { ...base, type: 'assistant.interrupted', spokenPrefix: 'Hel' },
+      { ...base, type: 'assistant.backchannel', text: 'Yeah.' },
       {
         ...base,
         type: 'error',
@@ -132,6 +133,7 @@ describe('ConversationEventSchema', () => {
     // skip a kind of event.
     expect(new Set(conversationEventTypes).size).toBe(conversationEventTypes.length);
     expect(conversationEventTypes).toContain('assistant.interrupted');
+    expect(conversationEventTypes).toContain('assistant.backchannel');
     expect(conversationEventTypes).toContain('affect.character.updated');
     expect(conversationEventTypes.length).toBe(ConversationEventSchema.options.length);
   });
