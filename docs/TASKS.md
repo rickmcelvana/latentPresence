@@ -73,44 +73,6 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-2 · Listen to the character, and talk over it
-**Run by Rick 2026-09-13, after P1-T08 landed.** The copied Markdown is in `docs/results-R-2.md` (7 turns, simulated speaker and the Realtek microphone, click report, log); Rick's by-ear notes are to be given in the next session. **Not yet analysed** — that discussion opens the next session and decides ADR-26/27. Until then the block below stays as it was run.
-
-**Why:** P1-T08's done-when is a *manual* test — no clicks, and the transcript keeps only what
-was heard. Both are measured (0 clicks in 204 s of recorded output, every fade silent at
-100 ms), but a measurement cannot say whether it *sounds* right, and three things only a
-person with speakers can answer: whether Chrome's echo cancellation stops the character
-interrupting itself (ADR-26), whether 200 ms before a barge-in commits feels right
-(ADR-26), and whether the 50 ms / 250 ms trim sounds natural between sentences (ADR-27). It
-also gives the first human reading of ADR-25's retraction. It closes P1-T05's done-when too.
-Needs Chrome or Edge with WebGPU, and ~473 MB of models on first run. **The microphone path has
-never run**: the Browser pane has no microphone, so everything I measured used the simulated
-speaker. If step 2 fails, that is a finding, not a mistake on your side.
-
-```bash
-pnpm dev
-```
-Open `http://localhost:5173/dev/voice`, press **Agree and start** (the models load; the page
-says *Ready*), then:
-
-1. **Speakers, simulated speaker.** Press **Simulated speaker**, then **Ask**. Listen to the
-   whole answer. Press **Ask** again and, a few seconds in, **Interrupt**. Listen for any
-   click, pop or cut at the start of a sentence, between sentences, at the dip when the
-   interruption starts, and at the fade.
-2. **Headphones, microphone.** Press **Microphone**, allow it. Ask it anything — the answer
-   is always the same scripted paragraph. Talk over it: once with a real "wait, stop", once
-   with a short cough or "mm-hm".
-3. **Speakers, microphone.** Same as 2 with headphones off and the volume where you would
-   normally have it. Do not speak; let the answer play to the end.
-4. Press **Check output for clicks**, then **Copy results as Markdown**.
-
-**Expect:** no clicks you can hear; (2) "wait, stop" cuts the voice within about a quarter
-of a second and the cough only dips it; (3) the character finishes without interrupting
-itself — if it cuts itself off, that is the echo finding and the most important thing to
-report; the *Heard* column ends at the last word you actually heard.
-**Report:** paste the Markdown, and one line each on: clicks heard (where), whether (3)
-interrupted itself, how the dip and the gaps between sentences sounded.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -118,8 +80,8 @@ Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold l
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
-(D-15, D-16). The third — how often a person triggers ADR-25's retraction — needs a person,
-and is part of R-2.
+(D-15, D-16). The third — how often a person triggers ADR-25's retraction — needs a person, and
+was part of R-2: **no retraction in four microphone turns** (D-17), too few to call a rate.
 
 ### C-7 · An aborted answer stops the model, not just the stream · **needs** a local Ollama running
 **Why:** barge-in aborts `LLMProvider.stream()`. P1-T08 proved the signal reaches the fake;
@@ -133,6 +95,14 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-17 · R-2: listen to the character, and talk over it** — run by Rick 2026-09-13 on the
+  Windows box, analysed the same day; `docs/runs/R-2-voice-2026-09-13.md`. **No clicks** by
+  ear or by the output check (0 of 58 events); the barge-in cut is "very fast" and the
+  *Heard* column ended on the word Rick last heard; gaps and dips sound good. **Echo never
+  reached the gate** — a 16 s answer through speakers with the microphone live, not one duck —
+  and a cough did nothing either. The microphone path worked first time (model turn ends
+  228–253 ms after speech). **ADR-26 and ADR-27 accepted on it.** Closes P1-T05's and
+  P1-T08's manual done-whens.
 - **D-16 · Turn detection latency on WebGPU, this onnxruntime version** — done 2026-09-13 by
   P1-T08 in the Browser pane. Smart Turn fp32 answers in **8–57 ms** warm; the **first
   inference of a session took 392–479 ms** and landed as `late`, so the worker now warms up

@@ -28,8 +28,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-23 | Inline tag types stay in `packages/core` until the tag protocol exists | accepted | 2026-09-12 |
 | ADR-24 | TTS audio crosses as Float32 PCM; the server adapter asks for `wav` and parses it itself | accepted | 2026-09-12 |
 | ADR-25 | A model-ended turn is provisional until the hangover would have fired; speech resuming inside it retracts the end | accepted (amended) | 2026-09-13 |
-| ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | proposed | 2026-09-13 |
-| ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | proposed | 2026-09-13 |
+| ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | accepted | 2026-09-13 |
+| ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
 
 ---
 
@@ -565,7 +565,7 @@ closes with nothing changed: barge-in acts on speech while the character is audi
 is after `confirmedAt` by construction, so it never meets a retractable end and the
 hangover means what it meant.
 
-## ADR-26 Barge-in ducks first and commits on sustained speech (proposed 2026-09-13)
+## ADR-26 Barge-in ducks first and commits on sustained speech (accepted 2026-09-13)
 
 **Decision.** While the character is audible, the first speech frame (`speechOn`) **ducks**
 the voice to −12 dB over 30 ms. The barge-in **commits** once `bargeInMs` of speech has been
@@ -601,12 +601,20 @@ own in the 50 ms before, and every fade reached exact zero at 100 ms.
 **What it costs.** Up to `bargeInMs` of the character talking over the user at −12 dB before
 it stops, and a real interjection shorter than 200 ms of speech ("wait—") only ducks.
 
-**Not measured, and the reason this is proposed.** Whether Chrome's echo cancellation removes
-this page's own voice from a microphone next to speakers, which decides whether `bargeInMs`
-can shrink or has to grow; and whether 200 ms feels right to a person. Both are
-`docs/TASKS.md` R-2, with a command.
+**Not measured when proposed.** Whether Chrome's echo cancellation removes this page's own
+voice from a microphone next to speakers, which decides whether `bargeInMs` can shrink or
+has to grow; and whether 200 ms feels right to a person. Both were `docs/TASKS.md` R-2.
 
-## ADR-27 Synthesised sentences are trimmed to their voice before they are queued (proposed 2026-09-13)
+**Accepted 2026-09-13 on R-2** (`docs/runs/R-2-voice-2026-09-13.md`), unchanged. By ear the
+cut is "very fast" with no clicks, and the *Heard* column ended on the word Rick last heard.
+**Echo did not reach the gate at all**: a 16 s answer through speakers with the microphone
+live produced no duck, so on that machine AEC is complete and 200 ms is not holding back
+echo — it stays for coughs and short noises, not for the speakers. A cough produced nothing
+either (no duck), so **the duck-and-recover stage has never been heard by a person**; it is
+built and tested, and the first real false start will be its evidence. `bargeInMs` stays
+200; nothing in R-2 argues for moving it. One machine, one volume.
+
+## ADR-27 Synthesised sentences are trimmed to their voice before they are queued (accepted 2026-09-13)
 
 **Decision.** `Reply` trims every synthesised sentence to its voiced range — the first and
 last samples at or above 0.02 — plus **50 ms in front and 250 ms behind**, before it reaches
@@ -621,8 +629,12 @@ which reads as hesitation. Trimmed, they meet with ~300 ms between them.
 **Why these numbers.** 50 ms in front because a soft onset ("f", "h") starts below the
 voiced threshold and must not be clipped; 250 ms behind so the gap between two sentences
 stays inside the range of a spoken pause. Both are starting values chosen by reasoning, not
-by ear, which is why this is proposed: R-2 asks Rick to listen.
+by ear, which is why this was proposed until R-2 (below).
 
 **Alternatives rejected.** Trimming to the threshold exactly (clips onsets); trimming only
 the first sentence of an answer (wins the latency, keeps the 0.8 s gaps); asking kokoro-js
 not to pad (1.2.1 has no such option).
+
+**Accepted 2026-09-13 on R-2** (`docs/runs/R-2-voice-2026-09-13.md`), unchanged: by ear
+the gaps between sentences "sound good", with no clipped onsets and no clicks at a sentence
+start, and the output check found 0 clicks of 58 events over 176 s.

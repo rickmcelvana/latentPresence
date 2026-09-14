@@ -1332,3 +1332,23 @@ Of the four "ahead" rows, two are Moonshine mishearing ("there is none" for "the
 it. "Behind 1" is mostly Moonshine completing a word the fade cut in half, which the
 estimator deliberately does not count. Spreading words over the padding is clearly worse,
 which is the measured reason for `voicedRange`.
+
+## Echo cancellation and the microphone path — heard 2026-09-13 (R-2, Rick's Windows box)
+
+Rick at `/dev/voice` in a Chromium browser, Realtek(R) Audio microphone, requested with
+`echoCancellation`, `noiseSuppression` and `autoGainControl` all `true`
+(`packages/providers/src/audio/create-audio.ts`). Raw output and reading:
+`docs/runs/R-2-voice-2026-09-13.md`.
+
+**Chromium's AEC removes this page's own Web Audio output from the `getUserMedia` stream
+completely** on that machine: a 16.2 s answer played through speakers at normal volume with
+the microphone live, and Silero never reached `speechOn` — no duck, let alone a barge-in.
+Web Audio output is inside the cancellation loopback, which was the open question. A cough
+over the voice did not reach `speechOn` either. One machine, one room, one volume.
+
+**The capture context's clock appears to step when the output device changes** (inferred,
+not isolated). After headphones were swapped for speakers, frame time (capture `currentTime`
+mapped through a `performance.now()` offset taken once at start) read a constant 154 ms
+behind, returning to 154 — not 0 — after a 688 ms stall, which a backlog that could catch up
+would not do. Anything that compares capture-frame time with another clock must re-derive the
+offset; `VoiceSession` compares frame time only with frame time and is unaffected.
