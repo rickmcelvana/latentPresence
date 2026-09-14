@@ -20,6 +20,9 @@ import { TURN_SAMPLE_RATE, type TurnDetector, type TurnEvent, type VadFrame } fr
  *   "mm-hm", or the character's own voice in the microphone.
  * - **A provisional turn end** (ADR-25) starts the reply at once and holds its audio until
  *   the frames pass `confirmedAt`; `turn-resumed` abandons it and says so on the bus.
+ *   **Its words are held too** (P1-T11): the transcript, the tokens and the sentences reach
+ *   the bus only once the turn is confirmed, stamped with when they happened, so nothing a
+ *   transcript or memory reads is ever taken back. A retracted turn publishes none of them.
  * - **A committed barge-in** interrupts the reply, which knows what was heard, and puts
  *   that on `assistant.interrupted`; the machine asks the sink for the fade.
  * - **A pause that sounds unfinished** may get a backchannel (P1-T09, ADR-28), played into
@@ -53,11 +56,19 @@ export interface VoiceSessionOptions<R> {
   readonly now?: () => string;
 }
 
+/** An event waiting for its turn to be confirmed, and when it really happened. */
+interface HeldEvent {
+  readonly event: SessionEvent;
+  readonly at: string;
+}
+
 /** A user turn that has ended and is being answered. */
 interface PendingTurn {
   readonly turnId: number;
   readonly confirmedAt: number;
   confirmed: boolean;
+  /** What the turn produced before it was confirmed, in order. Dropped if it is retracted. */
+  readonly held: HeldEvent[];
   readonly release: () => void;
   readonly hold: Promise<void>;
   reply: Reply | null;
@@ -102,10 +113,7 @@ export class VoiceSession<R> {
     this.options.detector.push(frame);
 
     const pending = this.pending;
-    if (pending !== null && !pending.confirmed && frame.at >= pending.confirmedAt) {
-      pending.confirmed = true;
-      pending.release();
-    }
+    if (pending !== null && !pending.confirmed && frame.at >= pending.confirmedAt) this.confirm(pending);
 
     const action = this.gate.push(frame.probability, (frame.samples.length / this.sampleRate) * 1000);
     if (action === 'duck') this.options.sink.duck();
@@ -159,7 +167,7 @@ export class VoiceSession<R> {
     const hold = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const pending: PendingTurn = { turnId, confirmedAt, confirmed: false, release, hold, reply: null };
+    const pending: PendingTurn = { turnId, confirmedAt, confirmed: false, held: [], release, hold, reply: null };
     this.pending = pending;
 
     this.options.transcribe(recognition).then(
@@ -171,7 +179,7 @@ export class VoiceSession<R> {
           this.dispatch({ type: 'error', scope: 'stt', message: 'nothing was recognised' });
           return;
         }
-        this.dispatch({ type: 'user.transcript', text: said, isFinal: true, confidence: null });
+        this.publish(pending, { type: 'user.transcript', text: said, isFinal: true, confidence: null });
         this.startReply(pending, said);
       },
       (error: unknown) => {
@@ -193,9 +201,14 @@ export class VoiceSession<R> {
 
   private onReply(reply: Reply, event: ReplyEvent): void {
     if (this.reply !== reply) return;
+    // The turn this reply answers, while it may still be retracted.
+    const pending = this.pending?.reply === reply ? this.pending : null;
     switch (event.type) {
+      case 'token':
+        this.publish(pending, { type: 'assistant.token', text: event.text });
+        return;
       case 'sentence':
-        this.dispatch({ type: 'assistant.sentence', text: event.text, index: event.index });
+        this.publish(pending, { type: 'assistant.sentence', text: event.text, index: event.index });
         return;
       case 'audio-started':
         this.dispatch({ type: 'assistant.audio.started', sentenceIndex: event.index });
@@ -244,6 +257,19 @@ export class VoiceSession<R> {
     }
   }
 
+  /** The turn can no longer be retracted: publish what it held, then let its audio play. */
+  private confirm(pending: PendingTurn): void {
+    pending.confirmed = true;
+    for (const { event, at } of pending.held.splice(0)) this.dispatch(event, at);
+    pending.release();
+  }
+
+  /** Dispatch now, or hold until `pending` is confirmed. */
+  private publish(pending: PendingTurn | null, event: SessionEvent): void {
+    if (pending === null || pending.confirmed) this.dispatch(event);
+    else pending.held.push({ event, at: this.now() });
+  }
+
   /** Drop the pending turn's answer before anyone heard it. */
   private abandon(): void {
     const pending = this.pending;
@@ -251,13 +277,14 @@ export class VoiceSession<R> {
     pending?.reply?.interrupt(this.fadeMs);
   }
 
-  private dispatch(event: DistributiveOmit<ConversationEvent, 'sessionId' | 'at'>): void {
+  private dispatch(event: SessionEvent, at: string = this.now()): void {
     this.options.machine.dispatch({
       ...event,
       sessionId: this.options.sessionId,
-      at: this.now(),
+      at,
     } as ConversationEvent);
   }
 }
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
+type SessionEvent = DistributiveOmit<ConversationEvent, 'sessionId' | 'at'>;

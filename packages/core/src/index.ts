@@ -12,5 +12,6 @@ export * from './turn';
 export * from './playback';
 export * from './reply';
 export * from './backchannel';
+export * from './chat';
 export * from './voice';
 export { Cancellation } from './cancellation';

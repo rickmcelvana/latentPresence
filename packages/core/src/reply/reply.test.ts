@@ -43,10 +43,26 @@ describe('Reply — a complete answer', () => {
     await settle();
 
     expect(outcome()).toEqual({ status: 'complete', text: 'Hello there. How are you?' });
-    expect(events.map((e) => `${e.type}:${e.index}`)).toEqual([
-      'sentence:0', 'sentence:1', 'audio-started:0', 'audio-ended:0', 'audio-started:1', 'audio-ended:1',
+    expect(events.map((e) => (e.type === 'token' ? `token:${e.text}` : `${e.type}:${e.index}`))).toEqual([
+      'token:Hello there. ', 'sentence:0', 'token:How are you?', 'sentence:1',
+      'audio-started:0', 'audio-ended:0', 'audio-started:1', 'audio-ended:1',
     ]);
     expect(sink.listenerCount).toBe(0);
+  });
+
+  it('streams each text delta as a token before its sentence completes, and never reasoning', async () => {
+    const llm = new ScriptedLLM([
+      { type: 'reasoning-delta', text: 'thinking about it' },
+      { type: 'text-delta', text: 'Hel' },
+      { type: 'text-delta', text: '' },
+      { type: 'text-delta', text: 'lo.' },
+      { type: 'finish', reason: 'stop', usage: null },
+    ]);
+    const { events } = make(llm);
+    await settle();
+    expect(events.filter((e) => e.type === 'token').map((e) => (e.type === 'token' ? e.text : ''))).toEqual(['Hel', 'lo.']);
+    // The first token is out before the chunker has a sentence to give.
+    expect(events[0]?.type).toBe('token');
   });
 
   it('synthesises before the turn is confirmed but queues nothing until it is', async () => {

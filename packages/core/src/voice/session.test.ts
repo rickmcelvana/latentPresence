@@ -44,6 +44,7 @@ function rig(
     script?: readonly LlmStreamChunk[];
     bargeIn?: BargeInOptions;
     backchannel?: BackchannelOptions;
+    now?: () => string;
   } = {},
 ) {
   let clock = 0;
@@ -54,7 +55,8 @@ function rig(
     recognise: (audio) => `recognition of ${audio.samples.length} samples`,
   });
   const sink = new ManualSink();
-  const machine = new ConversationMachine({ sessionId: 's', characterId: 'alice', now: () => AT, ports: { audioOut: sink } });
+  const now = options.now ?? (() => AT);
+  const machine = new ConversationMachine({ sessionId: 's', characterId: 'alice', now, ports: { audioOut: sink } });
   const events: ConversationEvent[] = [];
   machine.subscribe((event) => events.push(event));
   const replies: Reply[] = [];
@@ -66,7 +68,7 @@ function rig(
     machine,
     detector,
     sink,
-    now: () => AT,
+    now,
     transcribe: options.transcribe ?? (async () => 'what time is it'),
     respond: (_said, replyOptions) => {
       const reply = new Reply(
@@ -136,8 +138,10 @@ describe('VoiceSession — a turn and its answer', () => {
       'user.speech.ended',
       'user.turn.ended',
       'user.transcript',
+      'assistant.token',
       'assistant.sentence',
     ]);
+    expect(r.of('assistant.token').map((event) => event.text).join('')).toBe(ANSWER);
     // The hangover ended it: no probability to report, and nothing to wait for.
     expect(r.of('user.turn.ended')[0]?.probability).toBeNull();
     expect(r.of('user.transcript')[0]?.text).toBe('what time is it');
@@ -179,7 +183,7 @@ describe('VoiceSession — provisional turn ends (ADR-25)', () => {
     await settle();
 
     expect(r.of('user.turn.ended')[0]?.probability).toBe(0.95);
-    expect(r.of('assistant.sentence')).toHaveLength(1);
+    expect(r.replies).toHaveLength(1);
     expect(r.sink.segments).toHaveLength(0);
 
     // confirmedAt = 288 + 500 = 788 ms: frame 24 is at 768, frame 25 at 800.
@@ -189,6 +193,64 @@ describe('VoiceSession — provisional turn ends (ADR-25)', () => {
     r.frames(2, 0.05);
     await settle();
     expect(r.sink.segments).toHaveLength(1);
+  });
+
+  it("publishes the turn's words only once it is confirmed, stamped with when they happened", async () => {
+    const judge = new Judge();
+    let wall = 0;
+    const r = rig({ judge, now: () => new Date(Date.UTC(2026, 8, 14, 0, 0, 0, wall)).toISOString() });
+    r.frames(10, 0.9);
+    r.frames(4, 0.05);
+    wall = 100;
+    judge.answer(0.95);
+    await settle();
+    // Recognised and answered, but the turn can still be taken back: nothing of it is out.
+    expect(r.replies).toHaveLength(1);
+    expect(r.of('user.transcript')).toHaveLength(0);
+    expect(r.of('assistant.token')).toHaveLength(0);
+    expect(r.of('assistant.sentence')).toHaveLength(0);
+
+    wall = 600;
+    r.frames(13, 0.05); // past confirmedAt (788 ms)
+    await settle();
+    const order = r.types().filter((type) => type.startsWith('user.transcript') || type.startsWith('assistant.'));
+    expect(order.slice(0, 3)).toEqual(['user.transcript', 'assistant.token', 'assistant.sentence']);
+    // Stamped when produced (100 ms), not when released (600 ms): a latency read off the
+    // bus measures the model, not the retraction window.
+    expect(r.of('user.transcript')[0]?.at).toBe('2026-09-14T00:00:00.100Z');
+    expect(r.of('assistant.token')[0]?.at).toBe('2026-09-14T00:00:00.100Z');
+    expect(r.of('assistant.audio.started')).toHaveLength(0);
+  });
+
+  it('publishes a hangover-ended turn at once, without waiting for another frame', async () => {
+    const r = rig();
+    r.frames(10, 0.9);
+    let frames = 0;
+    while (r.of('user.turn.ended').length === 0 && frames < 40) {
+      r.frames(1, 0.05);
+      frames += 1;
+    }
+    expect(r.of('user.turn.ended')[0]?.probability).toBeNull();
+    // No frame after the turn end: `push` confirms a hangover end on the frame that ends it.
+    await settle();
+    expect(r.of('user.transcript')).toHaveLength(1);
+    expect(r.sink.segments).toHaveLength(1);
+  });
+
+  it('never publishes the words of a turn that was retracted', async () => {
+    const judge = new Judge();
+    const r = rig({ judge, transcribe: async () => 'the afternoon light' });
+    r.frames(10, 0.9);
+    r.frames(4, 0.05);
+    judge.answer(0.95);
+    await settle();
+    r.frames(3, 0.05);
+    r.frames(6, 0.9);
+    await settle();
+    expect(r.of('user.turn.resumed')).toHaveLength(1);
+    expect(r.of('user.transcript')).toHaveLength(0);
+    expect(r.of('assistant.token')).toHaveLength(0);
+    expect(r.of('assistant.sentence')).toHaveLength(0);
   });
 
   it('abandons the answer when the user carries on, and answers the whole turn afterwards', async () => {

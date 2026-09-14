@@ -41,6 +41,12 @@ export interface ReplyDependencies {
 }
 
 export type ReplyEvent =
+  /**
+   * One text delta as the model sent it (P1-T11), for a transcript to stream. Raw: an inline
+   * tag (`[emote:x]`) can arrive split across deltas and is not lifted out until P1-T12; the
+   * settled `assistant.message` carries the tag-free text. Reasoning is never a token.
+   */
+  | { readonly type: 'token'; readonly text: string }
   | { readonly type: 'sentence'; readonly index: number; readonly text: string; readonly tags: readonly InlineTag[] }
   | { readonly type: 'audio-started'; readonly index: number; readonly at: number }
   | { readonly type: 'audio-ended'; readonly index: number; readonly at: number };
@@ -186,6 +192,7 @@ export class Reply {
       for await (const part of this.deps.llm.stream(request, { signal })) {
         if (signal.aborted || failure !== null) break;
         if (part.type === 'text-delta') {
+          if (part.text !== '') this.emit({ type: 'token', text: part.text });
           for (const chunk of chunker.push(part.text)) schedule(chunk);
         } else if (part.type === 'finish' && part.reason === 'error') {
           failure = { scope: 'llm', error: 'the model stream ended with an error' };
