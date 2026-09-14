@@ -1477,3 +1477,8 @@ re-exports the browser STT/TTS/turn providers, which import ml-web. The app impo
 **Not measured:** Firefox and Safari; Chrome Local Network Access prompts from the hosted app
 to the companion or Ollama (P8-T03); vLLM and llama.cpp on running servers; whether NVIDIA
 stops generating when the relay drops the connection.
+
+**Addendum, later the same day (P1-T10's page).** LM Studio on this box then answered
+`Access-Control-Allow-Origin: *` and `Access-Control-Allow-Headers: *` with a 200 preflight —
+its CORS had been switched on. That is what "Enable CORS" produces, and the settings page
+reported it as connected (4 models).

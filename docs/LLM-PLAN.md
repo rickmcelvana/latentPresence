@@ -96,11 +96,11 @@ Done when: tests with recorded audio fixtures detect turn ends within 300 ms of 
 Depends: P1-T01. AudioWorklet playback queue; on user speech start, fade out in 100 ms, cancel LLM stream, mark transcript with the spoken prefix.
 Done when: manual test shows no audio clicks and the transcript reflects only the words that were heard.
 
-### P1-T09 Backchannel scheduler v1 — owner: main
+### P1-T09 Backchannel scheduler v1 — owner: main (done 2026-09-13; words, duck-and-finish ADR-28, by-ear check was R-4)
 Depends: P1-T05. Pre-synthesise a small set of backchannels per voice; play in user pauses that are below turn-end probability; simple rate limit.
 Done when: plays at most once per 8 s and never over user speech.
 
-### P1-T10 Settings UI — owner: sub
+### P1-T10 Settings UI — owner: sub (done 2026-09-14; main measured reachability and built the companion relay, ADR-29; a subagent built the page; the new-user check is R-5)
 Provider pickers with presets, key storage (WebCrypto-encrypted in localStorage; OS keychain later via Tauri), CORS help text per backend, test-connection buttons.
 Done when: a new user can configure Ollama and NVIDIA without reading docs.
 

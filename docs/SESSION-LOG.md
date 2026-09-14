@@ -295,3 +295,11 @@ Next: P1-T10, settings UI (sub; brief first). Open for Rick: R-1, R-3.
 **By ear it works; the log says why duck won.** Words sound right, duck preferred, no speaker pickup. Every clip started inside a turn was talked into (10 of 10 with P1-T09's runs), so a cut leaves a blip. The cut session played one clip (73 ms): Rick's "cut talks longer" was the character's answers — 10 reached audio, 9 were barged into, 6 got no further than "The" — after mid-story turn ends by the model ("There," 0.74/0.97) or the hangover. The setting does not touch those; P1-T14 should.
 
 **Kept as a cost:** a clip before the answer in 3 of the duck session's 7, answer ~190–300 ms after the clip ended; heard as natural. One person, one machine.
+
+## 2026-09-14 claude — P1-T10 settings UI, companion relay
+Did: measured every LLM endpoint from a browser; `providers/src/access` (browserAccess, corsHelp, probeEndpoint, relayFetch), Anthropic browser header, model-free entry points; companion `/relay` (ADR-29, proposed); brief; a Sonnet subagent built `apps/web/src/settings`; reviewed, fixed three defects, checked in Chrome. Gate green, 741 TS / 25 Rust. Commits bdcc3d6, 439c9f7, bf165dc, 48fe941, 82d2cf4, 600440c.
+Next: P1-T11 transcript (sub; `docs/ui/transcript.md` then a brief). Open for Rick: R-5 (Ollama + NVIDIA from the page with a real key), R-1, R-3.
+
+**The done-when was unreachable until measured.** NVIDIA sends no CORS headers, so no page can use it; node's live checks had hidden that. Also found: LM Studio needs "Enable CORS", Ollama refuses non-local origins, Anthropic needs its browser header, a CORS refusal and a dead server are both "Failed to fetch" (a `no-cors` retry separates them), and importing the providers root drags onnxruntime into production. The relay is allow-listed both ways and holds no key.
+
+**Delegation worked, review still mattered.** The subagent built the page from the brief with no questions (a usage limit interrupted it once; resumed with context). Review caught a vault that deleted a good key on a transient IndexedDB error, racing first saves that could orphan a key, and Play sample posting to the page's own origin for browser Kokoro. Two process slips of mine: 439c9f7 went in on typecheck, lint and build without the test run, and 48fe941 on the Rust half of the gate only; later full gates covered both.
