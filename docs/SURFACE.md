@@ -1482,3 +1482,37 @@ stops generating when the relay drops the connection.
 `Access-Control-Allow-Origin: *` and `Access-Control-Allow-Headers: *` with a 200 preflight —
 its CORS had been switched on. That is what "Enable CORS" produces, and the settings page
 reported it as connected (4 models).
+
+## System prompts and inline tags — measured 2026-09-14 (P1-T12 planning pilot)
+
+**AI SDK 7 refuses a `system` message inside `messages`.** `ai` 7.0.97 throws
+`AI_InvalidPromptError: System messages are not allowed in the prompt or messages fields. Use
+the instructions option instead.` before any request is sent (`standardize-prompt.ts`,
+`allowSystemInMessages` defaults to false). Nothing had sent a system prompt until this
+pilot, so every adapter would have failed on the first persona. Fixed in
+`packages/providers/src/llm/mapping.ts` (`toAiPrompt`): system messages are joined into
+`instructions`; the OpenAI-compatible adapter then puts them on the wire as the first message
+(tested against a captured request body).
+
+**Pilot: do models follow a `[emote:x]` / `[gesture:x]` instruction?** A draft system prompt
+(Alice on a video call; short spoken sentences, no markdown, lists, emoji or stage directions;
+one emote near the start from the twelve `CharacterEmotion`s; gestures sparingly from `nod,
+shake-head, shrug, wave, tilt-head, lean-in, open-hands, think`), six varied user turns with
+history, `temperature: null`, `maxOutputTokens: 1500`, output parsed by the shipped
+`SentenceChunker`. Throwaway script, not committed.
+
+| Model | Turns with text | Emote tags | Gesture tags | Off-list | Leaked markup |
+|---|---|---|---|---|---|
+| `nvidia/nemotron-3-super-120b-a12b` (NVIDIA) | 6/6 | 6 (one per reply, at the start) | 1 | 0 | 0 |
+| `qwen3.5:9b` (Ollama, local) | **3/6** | 3 | 0 | 0 | 0 |
+
+- **The failure is output, not tags.** `qwen3.5:9b` returned **no text at all** on 3 of 6 turns
+  after 30–36 s — a thinking model spending its whole 1500-token budget reasoning, as P1-T02
+  saw at temperature 0. When it wrote, it tagged correctly.
+- **Language drift:** one `qwen3.5:9b` reply came back in Chinese to an English message.
+- **Labels are followed, judgement is loose:** Nemotron tagged "locked myself out" as
+  `amusement` and "sick cat" as `concern`; every label was on the list.
+- **Gestures are rare** unless asked for more directly (1 in 12 replies).
+- Tags sat at the start of the reply, not before the words they belong to mid-reply.
+
+Six turns per model — a direction, not the P1-T12 done-when (20 turns, two models).

@@ -11,7 +11,7 @@ import type {
   LlmStreamChunk,
 } from '@latentpresence/protocol';
 import { discoverModels, type HttpFetch } from './discovery';
-import { mapStreamPart, toAiMessages, toAiTools } from './mapping';
+import { mapStreamPart, toAiPrompt, toAiTools } from './mapping';
 
 /** How a user configures one OpenAI-compatible endpoint (P1-T02). The base URL is the
  * `/v1` prefix; `apiKey` is optional for local servers and comes from the key store in
@@ -66,7 +66,7 @@ export class OpenAICompatibleLLMProvider implements LLMProvider {
     try {
       const result = streamText({
         model,
-        messages: toAiMessages(request.messages),
+        ...toAiPrompt(request.messages),
         tools: toAiTools(request.tools),
         abortSignal: controller.signal,
         ...(request.temperature !== null ? { temperature: request.temperature } : {}),

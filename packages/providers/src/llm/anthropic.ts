@@ -12,7 +12,7 @@ import type {
   LlmStreamChunk,
 } from '@latentpresence/protocol';
 import type { HttpFetch } from './discovery';
-import { mapStreamPart, toAiMessages, toAiTools } from './mapping';
+import { mapStreamPart, toAiPrompt, toAiTools } from './mapping';
 
 /** The header Anthropic requires before it answers CORS for a page's origin. */
 export const ANTHROPIC_BROWSER_HEADER = 'anthropic-dangerous-direct-browser-access';
@@ -138,7 +138,7 @@ export class AnthropicLLMProvider implements LLMProvider {
     try {
       const result = streamText({
         model,
-        messages: toAiMessages(request.messages),
+        ...toAiPrompt(request.messages),
         tools: toAiTools(request.tools),
         abortSignal: controller.signal,
         ...(request.temperature !== null ? { temperature: request.temperature } : {}),

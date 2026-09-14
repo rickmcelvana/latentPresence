@@ -37,7 +37,22 @@ export function toAiTools(tools: LlmTool[]): AiToolSet {
 }
 
 /**
- * Convert our protocol messages into the AI SDK's `messages`. The tool-name problem: the
+ * Our messages as the AI SDK's prompt (P1-T12). **AI SDK 7 refuses a `system` message
+ * inside `messages`** — "System messages are not allowed in the prompt or messages fields.
+ * Use the instructions option instead." (`ai` 7.0.97, measured 2026-09-14, the first time
+ * anything sent a system prompt). So every system message is lifted into `instructions`,
+ * joined in order, and the rest stay as they were. A system message mid-conversation moves
+ * to the front, which is where every OpenAI-compatible endpoint puts it anyway.
+ */
+export function toAiPrompt(messages: LlmMessage[]): { instructions?: string; messages: ModelMessage[] } {
+  const system = messages.filter((message) => message.role === 'system').map((message) => message.content);
+  const rest = toAiMessages(messages.filter((message) => message.role !== 'system'));
+  return system.length === 0 ? { messages: rest } : { instructions: system.join('\n\n'), messages: rest };
+}
+
+/**
+ * Convert our protocol messages into the AI SDK's `messages`. Providers call
+ * `toAiPrompt`, which keeps system messages out of here. The tool-name problem: the
  * AI SDK requires each tool result part to carry the tool's name, but our tool message
  * only carries the call id — so the name is looked up from the assistant turn that made
  * the call. A tool result with no preceding call is a history error the request cannot

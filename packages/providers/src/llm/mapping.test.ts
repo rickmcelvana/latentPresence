@@ -6,6 +6,7 @@ import {
   mapStreamPart,
   mapUsage,
   toAiMessages,
+  toAiPrompt,
   toAiTools,
   type AiStreamPart,
 } from './mapping';
@@ -105,6 +106,22 @@ describe('toAiTools', () => {
       { name: 'search', description: 'Search things.', parameters: { type: 'object', properties: {} } },
     ]);
     expect(Object.keys(set)).toEqual(['search']);
+  });
+});
+
+describe('toAiPrompt', () => {
+  it('lifts system messages into instructions, in order, because AI SDK 7 refuses them in messages', () => {
+    const prompt = toAiPrompt([
+      { role: 'system', content: 'You are Alice.' },
+      { role: 'user', content: 'hi' },
+      { role: 'system', content: 'The user sounds tired.' },
+    ]);
+    expect(prompt.instructions).toBe('You are Alice.\n\nThe user sounds tired.');
+    expect(prompt.messages).toEqual([{ role: 'user', content: 'hi' }]);
+  });
+
+  it('sets no instructions when there is no system message', () => {
+    expect(toAiPrompt([{ role: 'user', content: 'hi' }])).toEqual({ messages: [{ role: 'user', content: 'hi' }] });
   });
 });
 
