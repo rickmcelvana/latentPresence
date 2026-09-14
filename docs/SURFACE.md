@@ -1421,3 +1421,59 @@ then ~65 s of Rick talking on headphones) and a cut session (~68 s on the microp
   0.01–0.39 followed by the hangover 310 ms later; the answer's audio came ~190–300 ms after
   the clip ended. Heard as natural.
 - **By ear**: no word sounded wrong; duck preferred to cut; no speaker pickup.
+
+## LLM endpoints from a browser — measured 2026-09-14 (P1-T10)
+
+Every earlier LLM check ran in node, which does not enforce CORS, so none of this was known.
+Two passes: node sending a preflight (`OPTIONS`, `Access-Control-Request-Method: POST`, the
+headers each adapter sends) and a real `GET /models`, each with `Origin:
+http://localhost:5173` and `Origin: https://app.latentpresence.com`; then the same calls from
+the dev server's page in Chrome 152.0.7977.76 (Claude desktop Browser pane).
+
+| Endpoint | Page on localhost | Hosted app | What the response said |
+|---|---|---|---|
+| Ollama 0.34.0 (local) | **allowed** | **403**, no headers | Reflects the origin; default list is `localhost`, `127.0.0.1`, `0.0.0.0` (http/https, any port) plus `app://`, `file://`, `tauri://`, `vscode-webview://`, `vscode-file://` — `envconfig/config.go`. `OLLAMA_ORIGINS` adds to the defaults. `http://tauri.localhost` (WebView2's origin) also got 403 |
+| LM Studio (local, CORS off) | **blocked** | **blocked** | 200 with no `Access-Control-*` at all. Fix: "Enable CORS" in its server settings, or `lms server start --cors` (lmstudio.ai docs) |
+| vLLM | not running | — | `--allowed-origins` default `['*']`, methods and headers `['*']` (docs.vllm.ai `serve`) |
+| llama.cpp `llama-server` | not running | — | `--cors-origins` default `*`, credentials enabled; localhost-only when `--tools`/`--agent` (tools/server README) |
+| OpenRouter | allowed | allowed | `Access-Control-Allow-Origin: *` |
+| **NVIDIA `integrate.api.nvidia.com`** | **blocked** | **blocked** | **No `Access-Control-Allow-Origin` on preflight or response**, for `/v1/models` and `/v1/chat/completions` |
+| DeepSeek | allowed | allowed | Reflects the origin; preflight allow-methods lists only `POST` (GET is safelisted, so it still passes) |
+| Kimi (Moonshot) | allowed | allowed | Reflects the origin, allows `authorization,content-type` |
+| QwenCloud (OpenAI-compatible) | allowed | allowed | `*` |
+| Anthropic | **blocked** without the header | same | Preflight **400**, no allow-origin. With `anthropic-dangerous-direct-browser-access: true`: 200, `*`. `@ai-sdk/anthropic` 4.0.52 does not send it; the adapter now does |
+| Google Gemini | allowed | allowed | Reflects the origin, allows `x-goog-api-key` |
+| Kokoro-FastAPI (TTS) | not running | — | `cors_enabled = True`, `cors_origins = ["*"]` by default (`api/src/core/config.py`) |
+
+**A page cannot tell a CORS refusal from a dead server.** Chrome reports both as
+`TypeError: Failed to fetch`. A second request with `mode: 'no-cors'` separates them: it
+**resolved** (opaque, status 0) for LM Studio with CORS off, NVIDIA and Ollama, and
+**rejected** for a closed port, `localhost:8000` with nothing on it and an unresolvable host.
+An unroutable address (`10.255.255.1`) hangs rather than fails, so every probe needs a
+deadline. `probeEndpoint` in `packages/providers/src/access` is this, run in the page.
+
+**A model list proves nothing about a key on two of them.** `GET /v1/models` answered **200
+with no key and with a bad key** on NVIDIA and OpenRouter. DeepSeek, Kimi and Anthropic: 401
+without a key; Anthropic and DeepSeek 401 with a bad one. Google: **403** without, **400**
+with a bad key.
+
+**Key storage.** In the same page: a non-extractable AES-GCM 256 `CryptoKey` stored in
+IndexedDB survived a reload as a `CryptoKey` (`extractable: false`) and decrypted what it had
+encrypted into `localStorage`; `exportKey` on it threw `InvalidAccessError`.
+
+**The relay (ADR-29), live.** With the companion on 127.0.0.1:8787: the page's
+`probeEndpoint` on `/health` answered 200; NVIDIA direct was `cors-blocked`, through
+`relayFetch` `answered` 200, and `listModels()` returned 82 models (17 Nemotron). A relay
+request naming Ollama came back 403 `target not allowed`. From node through the relay with
+the key, `nvidia/nemotron-3-super-120b-a12b` streamed "ready" (first text 1173 ms), and an
+abort after five deltas ended the stream 4 ms later. That the upstream connection closes on
+abort is proven against a local stream in the companion's tests, not against NVIDIA's side.
+
+**The bundle.** Importing anything from `@latentpresence/providers`'s root put
+`ort-wasm-simd-threaded.jsep.wasm` in the production build and the guard failed — the root
+re-exports the browser STT/TTS/turn providers, which import ml-web. The app imports
+`@latentpresence/providers/web` and `@latentpresence/ml-web/voices`.
+
+**Not measured:** Firefox and Safari; Chrome Local Network Access prompts from the hosted app
+to the companion or Ollama (P8-T03); vLLM and llama.cpp on running servers; whether NVIDIA
+stops generating when the relay drops the connection.

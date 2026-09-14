@@ -31,6 +31,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-26 | Barge-in ducks on speech and commits on sustained speech; "heard" is what rendered before the fade's midpoint | accepted | 2026-09-13 |
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
 | ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
+| ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | proposed | 2026-09-14 |
 
 ---
 
@@ -704,3 +705,47 @@ what sounded like cut "talking longer" was the character's answers, which the se
 not touch. A clip before the answer happened in 3 of the duck session's 7 clips and was heard
 as "short words, then the full answer" — kept as a cost, not a fault. Nothing in R-4 argues for moving 3 s or 8 s,
 and the microphone picked up nothing from the speakers. One person, one machine.
+
+## ADR-29 Endpoints that refuse browser origins go through the companion's relay (proposed 2026-09-14)
+
+**Decision (P1-T10).** Each endpoint carries a measured *browser access*: `direct` (it
+answers CORS for the page), `local-cors` (a local server whose CORS the user turns on — the
+settings page shows how), or `relay`. A `relay` endpoint is called through the companion's
+`GET|POST /relay` on 127.0.0.1, naming the real URL in `x-lp-target`; the provider is given
+`relayFetch` and does not know. Only **NVIDIA** is `relay` today.
+
+**Why.** NVIDIA's `integrate.api.nvidia.com` sends no `Access-Control-Allow-Origin` on any
+response or preflight (`docs/SURFACE.md`, 2026-09-14), so no page can read it — and the plan's
+done-when names NVIDIA. Every earlier check ran in node, where CORS does not exist.
+
+**The relay's limits, which are the point of it.** Targets are a compiled-in allowlist of
+exact origins and a path prefix (`https://integrate.api.nvidia.com` + `/v1/`), so it cannot
+reach the LAN or anything a page names. Pages are an allowlist too: localhost on any port,
+`https://app.latentpresence.com`, the Tauri webview; any other `Origin` is refused before
+anything is forwarded. It forwards `authorization`, `content-type` and `accept` only,
+returns only the content type, follows no redirect (one would carry the key to an unlisted
+host), holds no key, logs nothing. A page that aborts closes the upstream call.
+
+**Keys.** The plan's "WebCrypto-encrypted in localStorage" needs a key somewhere: a
+**non-extractable** AES-GCM key in IndexedDB, ciphertext in localStorage, a fresh IV per
+write. It is stated on screen for what it is — it stops a copied profile or backup from
+yielding keys, not code running in the page or someone using the profile. The OS keychain
+arrives with Tauri (P8-T01).
+
+**Alternatives rejected.**
+- *A proxy on our server* — every NVIDIA key and conversation would pass through
+  infrastructure we run, against "nothing leaves the user's machine unless they pointed it
+  somewhere".
+- *Vite's dev-server proxy* — works only under `pnpm dev`; the product would have no path.
+- *Drop NVIDIA from the browser until the desktop app* — fails the plan's done-when, and the
+  desktop app runs the companion anyway, so the relay is the same code there.
+- *A general proxy the user configures* — an SSRF tool on every user's machine.
+
+**What it costs.** NVIDIA needs the companion running (`pnpm companion` until P8 bundles it),
+and a Rust HTTP client in the companion (`reqwest` 0.13, rustls). A new endpoint that refuses
+browsers is a code change plus a SURFACE measurement, on purpose.
+
+**Not measured, and the reason this is proposed.** Chrome's Local Network Access prompt from
+the hosted app to the companion (the relay answers `Access-Control-Allow-Private-Network`;
+P8-T03 verifies); Firefox and Safari; whether NVIDIA stops generating when the relay drops the
+connection; and a person configuring Ollama and NVIDIA from the page without docs — R-5.
