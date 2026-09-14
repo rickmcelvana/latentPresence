@@ -193,6 +193,11 @@ async function* timedSynthesis(
 
 export class VoicePipeline {
   private readonly listeners = new Set<(snapshot: Snapshot) => void>();
+  /** P1-T11: forwarded straight from the machine `wire()` creates, so a transcript panel
+   * reads the same events the rows above are built from. A plain field rather than
+   * something `wire()` recreates, so a listener registered before a restart keeps working
+   * after one. */
+  private readonly conversationListeners = new Set<(event: ConversationEvent) => void>();
   private readonly rows: TurnRow[] = [];
   private readonly logLines: string[] = [];
   private readonly marks: Mark[] = [];
@@ -267,6 +272,12 @@ export class VoicePipeline {
     this.listeners.add(listener);
     listener(this.snapshot());
     return () => this.listeners.delete(listener);
+  }
+
+  /** Every event the machine `wire()` builds emits, for a transcript panel (P1-T11). */
+  onConversation(listener: (event: ConversationEvent) => void): () => void {
+    this.conversationListeners.add(listener);
+    return () => this.conversationListeners.delete(listener);
   }
 
   /** Feed the pipeline from the microphone, or from the simulated speaker. */
@@ -460,6 +471,9 @@ export class VoicePipeline {
     });
 
     machine.subscribe((event) => this.onEvent(event));
+    machine.subscribe((event) => {
+      for (const listener of this.conversationListeners) listener(event);
+    });
     const session = new VoiceSession({
       sessionId: 'harness',
       machine,

@@ -14,4 +14,5 @@ export * from './reply';
 export * from './backchannel';
 export * from './chat';
 export * from './voice';
+export * from './transcript';
 export { Cancellation } from './cancellation';

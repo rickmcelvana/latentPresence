@@ -24,6 +24,10 @@ export const SPIKE_SHELL_PATH = '/spike/shell';
  * configured here — unlike every other route in this file. */
 export const SETTINGS_PATH = '/settings';
 
+/** `/chat` (P1-T11). Ships in production, like `/settings` — the transcript and a typed
+ * conversation with the model `/settings` configured. */
+export const CHAT_PATH = '/chat';
+
 /**
  * The harness pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
@@ -76,6 +80,16 @@ const SettingsPage = lazy(async () => {
 });
 
 /**
+ * `/chat` (P1-T11). `lazy()` for the same reason as `/settings`: it pulls in the AI SDK
+ * through the LLM provider it builds, so the boot screen should not wait on that chunk.
+ * Real in every build, unlike the dev routes above.
+ */
+const ChatPage = lazy(async () => {
+  const module = await import('./chat/ChatPage');
+  return { default: module.ChatPage };
+});
+
+/**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
  * The stage and the call framing arrive in Phase 2.
@@ -117,6 +131,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
+  if (path === CHAT_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading chat…</p>}>
+        <ChatPage />
+      </Suspense>
+    );
+  }
+
   return (
     <main className="boot-screen">
       <h1 className="boot-title">latentPresence</h1>
@@ -126,7 +148,7 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
       {/* Ships for everyone, unlike the dev-only list below — a new user needs a way to
           configure a provider before there is anything else on this screen to click. */}
       <p className="boot-status">
-        <a href={SETTINGS_PATH}>Settings</a>
+        <a href={SETTINGS_PATH}>Settings</a> · <a href={CHAT_PATH}>Chat</a>
       </p>
       {/* P0-T08. A Tauri window has no address bar, so without this list the shell opens
           on `/` and no spike route is reachable from inside it at all. Dev-only, like

@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION } from '@latentpresence/protocol';
-import { App, SETTINGS_PATH } from './App';
+import { App, CHAT_PATH, SETTINGS_PATH } from './App';
 
 afterEach(cleanup);
 
@@ -26,6 +26,13 @@ describe('App', () => {
     // The fallback renders first; `findBy` waits for the lazy import to resolve.
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(heading.textContent).toBe('Settings');
+    await act(async () => {});
+  });
+
+  it('renders /chat — it is lazy too, so this awaits the import', async () => {
+    render(<App path={CHAT_PATH} />);
+    const heading = await screen.findByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Chat');
     await act(async () => {});
   });
 });

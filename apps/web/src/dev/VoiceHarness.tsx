@@ -1,12 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import type { ConversationEvent } from '@latentpresence/protocol';
+import { TranscriptPanel } from '../transcript/TranscriptPanel';
+import { useTranscript } from '../transcript/useTranscript';
 import type { OutputReport } from './output-check';
 import { VoicePipeline, downloads, type InputChoice, type Snapshot, type VoiceCheckRow } from './voice-pipeline';
 
 /**
  * `/dev/voice` (P1-T08): the promoted voice pipeline in a browser, replacing Spike A's page.
- * The logic lives in `voice-pipeline.ts`; this is a view over it.
+ * The logic lives in `voice-pipeline.ts`; this is a view over it. P1-T11 adds the
+ * transcript panel beside the measurement tables, reading `VoicePipeline.onConversation`.
  */
+
+/** ADR-18: 'Alice' until personas exist (P1-T12) — the same name `/chat` uses. */
+const CHARACTER_NAME = 'Alice';
 
 function mb(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;
@@ -45,6 +52,10 @@ export function VoiceHarness(): ReactElement {
   const [voiceRows, setVoiceRows] = useState<readonly VoiceCheckRow[]>([]);
   const [autoInterrupt, setAutoInterrupt] = useState('off');
   const pipeline = useRef<VoicePipeline | null>(null);
+  // Mirrors `pipeline.current` in state: the transcript's `subscribe` must change identity
+  // once the pipeline exists, so `useTranscript`'s effect re-subscribes to it — a ref alone
+  // never triggers that.
+  const [built, setBuilt] = useState<VoicePipeline | null>(null);
 
   useEffect(
     () => () => {
@@ -53,6 +64,12 @@ export function VoiceHarness(): ReactElement {
     [],
   );
 
+  const subscribeConversation = useCallback(
+    (listener: (event: ConversationEvent) => void) => built?.onConversation(listener) ?? ((): void => {}),
+    [built],
+  );
+  const { lines: transcriptLines, clear: clearTranscript } = useTranscript(subscribeConversation);
+
   const models = downloads();
   const speaking = snapshot?.state === 'speaking';
   const total = models.reduce((sum, model) => sum + model.sizeBytes, 0);
@@ -60,11 +77,12 @@ export function VoiceHarness(): ReactElement {
   async function start(): Promise<void> {
     setPhase('loading');
     try {
-      const built = await VoicePipeline.start({ bargeInMs, overlap, log: setStatus });
-      pipeline.current = built;
+      const startedPipeline = await VoicePipeline.start({ bargeInMs, overlap, log: setStatus });
+      pipeline.current = startedPipeline;
+      setBuilt(startedPipeline);
       // For poking at from the console; dev-only, like the page.
-      Object.assign(globalThis, { voiceHarness: built });
-      built.subscribe(setSnapshot);
+      Object.assign(globalThis, { voiceHarness: startedPipeline });
+      startedPipeline.subscribe(setSnapshot);
       setPhase('ready');
       setStatus('Ready. Choose an input.');
     } catch (error) {
@@ -201,6 +219,10 @@ export function VoiceHarness(): ReactElement {
             </button>
           </div>
         </section>
+      )}
+
+      {phase === 'ready' && (
+        <TranscriptPanel characterName={CHARACTER_NAME} lines={transcriptLines} onClear={clearTranscript} />
       )}
 
       {snapshot !== null && snapshot.rows.length > 0 ? (

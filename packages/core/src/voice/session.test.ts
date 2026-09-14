@@ -6,6 +6,7 @@ import type { BargeInOptions } from '../reply/barge-in';
 import { Reply, type ReplyOutcome } from '../reply/reply';
 import { deferred, ManualSink, ScriptedLLM, ScriptedTTS, settle, text } from '../testing/scripted';
 import { TurnDetector, type TurnJudge } from '../turn/detector';
+import { emptyTranscript, reduceTranscript } from '../transcript/transcript';
 import { VoiceSession } from './session';
 
 /**
@@ -113,6 +114,8 @@ function rig(
       }
     },
     types: (): string[] => events.map((event) => event.type).filter((type) => type !== 'state.changed'),
+    /** Every event on the bus, in order, state changes included. */
+    all: (): readonly ConversationEvent[] => events,
     of<T extends ConversationEvent['type']>(type: T): Extract<ConversationEvent, { type: T }>[] {
       return events.filter((event): event is Extract<ConversationEvent, { type: T }> => event.type === type);
     },
@@ -358,6 +361,27 @@ describe('VoiceSession — barge-in', () => {
     await settle();
     expect(r.of('user.turn.ended')).toHaveLength(2);
     expect(r.replies).toHaveLength(2);
+  });
+
+  it('reads as a transcript: the question, the words heard, the unsaid rest, and the interjection', async () => {
+    // The real session's events through the real reducer (P1-T11), so neither can drift.
+    const r = rig({ transcribe: async () => 'what time is it' });
+    await turn(r);
+    r.sink.start(100);
+    r.sink.current = { id: 100, frame: 3800 };
+    r.frames(7, 0.9);
+    await settle();
+    r.frames(20, 0.05);
+    await settle();
+
+    const lines = r.all().reduce(reduceTranscript, emptyTranscript()).lines;
+    expect(lines.slice(0, 3).map((line) => (line.kind === 'assistant' ? [line.kind, line.status, line.heard, line.unsaid] : [line.kind, line.text]))).toEqual([
+      ['user', 'what time is it'],
+      ['assistant', 'interrupted', 'It is', " nearly three o'clock."],
+      ['user', 'what time is it'],
+    ]);
+    // The interjection's own answer is streaming or settled, never a second copy of the first.
+    expect(lines.filter((line) => line.kind === 'assistant' && line.status === 'interrupted')).toHaveLength(1);
   });
 
   it('with bargeInMs 0 cuts on the first speech frame, as the plan first said', async () => {
