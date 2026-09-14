@@ -201,7 +201,13 @@ export function LanguageModelSection({ llm, companionUrl, onChangeLlm, onChangeC
       )}
       {access === 'relay' && (
         <>
-          <p className="field-hint">Calls go through the companion on this computer.</p>
+          {/* R-5: without the command here, nothing said how to start the companion until a
+              test had already failed. */}
+          <p className="field-hint">
+            {endpointLabel(llm.endpoint ?? '')} does not answer web pages, so calls go through the companion on this
+            computer. Start it from a terminal in the latentPresence folder with <code>pnpm companion</code> and leave it
+            running.
+          </p>
           <div className="field">
             <label className="field-label" htmlFor="settings-companion-url">
               Companion URL
