@@ -1620,3 +1620,29 @@ here. **A person has still never heard the character remember a spoken turn: tha
 `assistant.token` in the session rather than the current turn's, so both models "failed"
 against the check's own earlier output. The third time this session an instrument accused
 the subject of its own mistake.
+
+## The spoken pipeline against a real model — R-8, 2026-09-22
+
+First run of the whole voice loop with a **live** language model (`glm-5.2:cloud` on Ollama)
+rather than the harness's scripted answer, which ignores its request entirely. Rick, Windows
+box, microphone. `docs/runs/R-8-history-2026-09-22.md`.
+
+**Speech end → first audio: 4189, 1805, 4297, 6091 ms**, against ADR-20's 500 ms budget and
+the **~765 ms** P1-T08 measured on the same machine with a scripted model. **The model is
+the whole difference**: first-sentence synthesis in the same rows is 299–818 ms, in line
+with every earlier reading, so nothing in our pipeline moved. It is a network round trip
+plus a thinking cloud model, in a loop ADR-20 sized for something local.
+
+**This is not a regression and not a new decision — it is the first measurement of a case
+the budget never covered.** ADR-20 was set on local inference. What it means in practice is
+that **the 500 ms figure must never be quoted as a property of the product**: it is a
+property of the pipeline with a local model in it. **P1-T14 owes the local-model number in
+this same loop**, which nothing has yet measured with a person at the microphone.
+
+Also seen, both first occurrences with a person:
+- **ADR-25's retraction fired in the wild** — Smart Turn 0.96, speech resumed 320 ms later,
+  inside the hangover. The turn was retracted, published no transcript line, and contributed
+  nothing to the next request (P1-T12b). R-2 saw none of these in four turns (D-17), so the
+  rate is still uncharacterised, but the mechanism is now confirmed end to end.
+- **Smart Turn under 0.7 on a complete question**, twice of four (0.69, 0.56), caught by the
+  hangover — the same weakness R-2 found three times of four. P1-T14's.

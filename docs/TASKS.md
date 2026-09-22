@@ -94,25 +94,6 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-8 · Hear the character remember you · **needs your ears and your browser**
-**Why:** P1-T12b. The logic is unit-tested and `pnpm live:history` proves it against two
-real models, but only through `ChatSession`. Nobody has heard the spoken path do it, and
-the harness's models are not cached in the Claude Browser pane. About ten minutes.
-
-```bash
-pnpm dev
-```
-1. Open `http://localhost:5173/dev/voice`. Set **Model** to **live model from /settings**
-   (configure one in `/settings` first if you have not), then **Agree and start**.
-2. **Microphone.** Tell her something specific — a name, a pet, a place. Let her answer.
-3. Ask about it on the next turn ("what did I say my cat was called?").
-4. Ask for something long, **talk over her part way**, then ask "what did you just say?"
-
-**Expect:** step 3 answers from what you actually said; step 4 repeats only the words you
-heard before you cut in, never the rest of the sentence she had generated.
-**Report:** the transcript (Copy transcript), and whether the remembering felt natural or
-uncanny — she is working from what reached your ears, which is not what a chat app does.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -135,6 +116,17 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-22 · R-8: hear the character remember you** — run by Rick 2026-09-22 on the Windows
+  box against `glm-5.2:cloud`, analysed the same day; `docs/runs/R-8-history-2026-09-22.md`.
+  **"Works as intended."** The first run of the whole spoken pipeline against a **real**
+  model rather than the scripted answer. Recall held across turns ("Jamie. You said your
+  wife's name is Jamie."), and a barge-in cut at `…Pakistan, Nigeria,` was repeated back as
+  **"India, China, the US, Indonesia, Pakistan, and Nigeria. That's the top six."** — it
+  counted the six it had said and knew nothing of the seventh it was generating.
+  **ADR-25's retraction fired in the wild** (0.96, resumed after 320 ms) and left nothing in
+  the next request. **Meets P1-T12b's done-when.** **Found:** speech end → first audio is
+  **1.8–6.1 s** with a cloud model against ADR-20's 500 ms, and synthesis is not the cause
+  (299–818 ms) — P1-T14 should measure a local model in the same loop.
 - **D-21 · R-7: who owns conversation history for the spoken path** — decided by Rick
   2026-09-21, same day it was raised. **Its own P1 task, before P1-T13**: `P1-T12b`, one
   `ConversationHistory` in core that `ChatSession` and `VoiceSession` both write to, carrying
