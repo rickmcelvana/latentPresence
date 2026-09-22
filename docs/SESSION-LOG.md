@@ -382,3 +382,16 @@ Click-through: pending (R-8)
 
 **ADR-25's retraction fired in both legs** (0.96 and 0.94, speech resuming 320 and 256 ms later), each leaving no transcript line and nothing in the next request. Twice in two runs with a person, where R-2 saw none in four turns — the mechanism is confirmed end to end even though the rate is still uncharacterised. And Smart Turn scored a complete question **0.02** on the local leg, the worst instance yet of the weakness R-2 found three times of four.
 
+
+## 2026-09-22 claude — P1-T13 model download consent (main + sub)
+Did: wrote `docs/briefs/P1-T13.md` after reading the installed transformers.js and onnxruntime call sites; a Sonnet subagent built the consent module, the screen, the `/settings` cache section and the wiring; review made three changes and gated it. Gate green, 894 TS / 25 Rust.
+Left: the browser click-through of the gate is owed and belongs to P1-T14's Playwright leg. `DownloadedModelsSection` does not surface a failed `caches.delete()`.
+Next: P1-T14, the Phase 1 end-to-end test (owner: main).
+Decisions: no Playwright in this task and no protocol change, both taken in the brief and both recorded there with reasons.
+Click-through: pending (P1-T14)
+
+**The fact that shaped the whole task had to be read, not guessed.** There are two download paths and only one caches: transformers.js (and kokoro-js through it) uses Cache Storage under `transformers-cache`, while `vad.worker.ts` and `smart-turn.worker.ts` handed a **URL** to `InferenceSession.create` and onnxruntime-web fetched it internally. **So "no fetch before consent" could never have been proven by wrapping `fetch`** — a test stubbing the global would have passed while proving nothing. The gate is structural instead, and the two workers now fetch their own bytes. Recorded in SURFACE with the file and line references before the brief was written.
+
+**The sub's work was sound and review still found the thing that mattered.** It had wired every caller through the gated factories — correct at every call site — but left the ungated `create*Worker` functions exported. That turns `CLAUDE.md`'s "nothing downloads without the consent screen" into a convention the next task could break by accident. They are now withheld from their barrels, so bypassing the gate is a compile error; nothing outside `ml-web` needed them. **Method lesson: when a delegated gate is correct at every call site, ask whether it is still optional.**
+
+**Second review fix, same shape as the first-run bug in `live:persona`.** `model-cache.ts` read the bare `caches` global while building its default deps, which throws `ReferenceError` *before* the careful try/catch beneath it can help. Cache Storage is absent in a non-secure context, and this app is self-hosted — `http://192.168.x.x` is a real way to reach it — so the module's own stated goal ("not no voice in incognito") was defeated by the line above it. Guarded, with a test that exercises the default path.

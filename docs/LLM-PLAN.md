@@ -129,9 +129,9 @@ mid-word and said so. **The `/dev/voice` leg is R-8**: the harness now has a `Li
 switch, but its 473 MB of browser models are not cached in the Claude Browser pane and the
 spoken path has not been heard doing this by a person.
 
-### P1-T13 Model download consent — owner: sub
+### P1-T13 Model download consent — owner: sub (done 2026-09-22; the gate is structural, and the ungated worker factories are withheld from their barrels so bypassing it is a compile error)
 Consent modal listing model, size, licence, source URL before any browser model download; cache in Cache Storage; a settings page to delete caches.
-Done when: no network fetch of weights occurs before consent (verified in Playwright by intercepting requests).
+Done when: no network fetch of weights occurs before consent (verified in Playwright by intercepting requests). **Met, but not in Playwright — deliberately.** The repo has none, and adding it for one assertion was not worth a browser download and CI changes when **P1-T14 is already a Playwright task**. Proven instead by a structural test: for each of the four worker entry points, no consent throws before `create*Worker` or `fetch` is touched. **The browser leg is owed and belongs to P1-T14.** Note that a `fetch` wrapper could never have proven this — onnxruntime-web fetched weights internally from a URL, which is the thing that changed.
 
 ### P1-T14 Phase 1 end-to-end test — owner: main
 Playwright test feeding synthetic audio through a virtual mic, `FakeLLMProvider` and `FakeTTSProvider`, asserting the state machine sequence and a barge-in.
