@@ -112,6 +112,18 @@ Done when: matches the design notes in `docs/ui/transcript.md` (main writes this
 System prompt template (name, voice, style, boundaries, tag protocol description), persona file format (`*.persona.json`), default persona.
 Done when: the LLM reliably emits tags in a 20-turn scripted test with two different models.
 
+### P1-T12b Conversation history, shared by text and voice — owner: main
+Depends: P1-T11. Found by R-6 (2026-09-21) and placed here by Rick: `ChatSession` keeps the
+conversation and, on Stop, remembers the answer as **what the user heard** rather than what the
+model meant to say; the spoken path has no equivalent, because `VoiceSession.respond` is a
+caller-supplied callback. One `ConversationHistory` in core that both write to, owning the
+heard-not-meant rule (an interrupted reply is recorded as its `spokenPrefix`, an abandoned one
+not at all), a turn cap, and the `system` slot `renderSystemPrompt` fills. **Before P1-T13**, so
+voice never ships without it and P4 inherits the rule rather than rediscovering it.
+Done when: a spoken turn answers in the light of the previous one, proven in `/dev/voice` with a
+real model and not the scripted one, and a barge-in followed by "what did you just say?" gets
+back only the words that were heard.
+
 ### P1-T13 Model download consent — owner: sub
 Consent modal listing model, size, licence, source URL before any browser model download; cache in Cache Storage; a settings page to delete caches.
 Done when: no network fetch of weights occurs before consent (verified in Playwright by intercepting requests).

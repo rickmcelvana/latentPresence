@@ -73,21 +73,6 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-7 · Who owns conversation history for the spoken path? · **a decision, not a check**
-**Why:** found by R-6. `/chat` keeps the conversation and, on Stop, remembers the answer as
-**what the user heard** (`ChatSession.stop`). The voice path has no equivalent:
-`VoiceSession.respond` is a callback the caller fills, and the harness sends one user message
-per turn. No task in `docs/LLM-PLAN.md` owns it — P1-T12 is persona, P1-T13 download consent,
-P1-T14 the end-to-end test, and Phase 4 is long-term memory rather than the turn loop. **When
-P1-T13 gives `/chat` a voice, the character answers every spoken turn with no memory of the
-last one.**
-
-**Decide:** a new P1 task (say P1-T12b, a shared `ConversationHistory` both `ChatSession` and
-`VoiceSession` write to, with the barge-in prefix rule), or fold it into P1-T13, or let it
-wait for Phase 4. **My recommendation: its own P1 task before P1-T13**, because the
-heard-not-meant rule is barge-in's, not memory's, and P4 would inherit it already wrong.
-**Report:** which of the three, and I will write the task.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -110,6 +95,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-21 · R-7: who owns conversation history for the spoken path** — decided by Rick
+  2026-09-21, same day it was raised. **Its own P1 task, before P1-T13**: `P1-T12b`, one
+  `ConversationHistory` in core that `ChatSession` and `VoiceSession` both write to, carrying
+  barge-in's heard-not-meant rule. So voice never ships without memory between turns, and P4
+  inherits the rule instead of rediscovering it.
 - **D-20 · R-6: read a conversation back in `/chat` and the voice harness** — run by Rick
   2026-09-21 on the Windows box, analysed the same day; `docs/runs/R-6-transcript-2026-09-21.md`.
   **"The tasks went as expected."** The clipboard copy worked (the one thing the Browser pane
