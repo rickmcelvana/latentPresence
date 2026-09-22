@@ -53,6 +53,17 @@ estimate `assistant.interrupted` carries. Writes `live/out/bargein.md`.
 pnpm live:bargein
 ```
 
+```bash
+pnpm live:persona
+```
+
+`live:persona` is P1-T12's done-when: 20 scripted turns with history against the default
+persona, scoring spoken text, tags, on-list labels, leaked markup and language in both
+directions. Keys from `.env`; a missing one skips that target. `PERSONA_TARGETS=fable,gemma4`
+runs a subset, `PERSONA_OLLAMA_MODEL` picks the local model. Writes `live/out/persona.md`.
+**Each run is a sample** (`temperature: null`), so a single green run is weaker evidence
+than it looks — read several.
+
 `live:tts` also writes playable WAVs to `packages/providers/live/out/` (gitignored),
 re-encoded from what our own decoder produced — so if they sound right, the adapter is
 right.

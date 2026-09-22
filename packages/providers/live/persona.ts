@@ -81,6 +81,12 @@ const ASTERISKS = /\*[^*\n]+\*/u;
 const STAGE = /\((?:laughs|smiles|chuckles|sighs|pauses|grins|nods|winks|giggles)[^)]*\)/iu;
 const MARKDOWN_LIST = /^\s*(?:[-*•]\s|\d+[.)]\s)/mu;
 const HEADING = /^\s*#{1,6}\s/mu;
+/**
+ * The prompt asks for numbers "the way you would say them out loud", and a run scored
+ * "September 22nd, 2026" as clean because nothing looked for digits. A voice reads "22nd"
+ * however the TTS front-end guesses, which is the whole reason the rule exists.
+ */
+const DIGITS = /\d/u;
 
 interface TurnResult {
   readonly index: number;
@@ -111,6 +117,7 @@ function leaksIn(spoken: string, user: string): string[] {
   if (MARKDOWN_LIST.test(spoken)) found.push('list');
   if (HEADING.test(spoken)) found.push('heading');
   if (EMOJI.test(spoken)) found.push('emoji');
+  if (DIGITS.test(spoken)) found.push('digits');
   // The language rule, both ways round: the Japanese turn must be answered in Japanese,
   // and no other turn may drift into CJK.
   const asked = CJK.test(user);

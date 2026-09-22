@@ -108,9 +108,9 @@ Done when: a new user can configure Ollama and NVIDIA without reading docs.
 Depends: P1-T01. Chat panel with streaming, interruption markers, latency badges (turn end to first token, to first audio), copy and clear.
 Done when: matches the design notes in `docs/ui/transcript.md` (main writes this note first).
 
-### P1-T12 Persona v1 and tag protocol — owner: main
+### P1-T12 Persona v1 and tag protocol — owner: main (done 2026-09-21; ADR-23 closed by promotion, ADR-30 added and amended on the run)
 System prompt template (name, voice, style, boundaries, tag protocol description), persona file format (`*.persona.json`), default persona.
-Done when: the LLM reliably emits tags in a 20-turn scripted test with two different models.
+Done when: the LLM reliably emits tags in a 20-turn scripted test with two different models. **Met** by `pnpm live:persona`: `gemma4:12b-it-qat` and `claude-fable-5-1` both 20/20 spoke, 20/20 tagged, ≥ 97% on-list, 0 leaks. NVIDIA's Nemotron — the model the brief named — was 503 throughout and never gave a verdict, so the pair is a substitution. Four runs, because the first met the bar and three later ones each found a defect it had not hit; the variance and the four defects are in `docs/SURFACE.md`.
 
 ### P1-T12b Conversation history, shared by text and voice — owner: main
 Depends: P1-T11. Found by R-6 (2026-09-21) and placed here by Rick: `ChatSession` keeps the

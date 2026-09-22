@@ -1516,3 +1516,64 @@ history, `temperature: null`, `maxOutputTokens: 1500`, output parsed by the ship
 - Tags sat at the start of the reply, not before the words they belong to mid-reply.
 
 Six turns per model — a direction, not the P1-T12 done-when (20 turns, two models).
+
+## Persona and tags, measured — `pnpm live:persona`, 2026-09-21 (P1-T12)
+
+Four runs of 20 scripted turns with history, through the shipped `renderSystemPrompt` and
+`SentenceChunker`. Scored: spoke / tagged / on-list / leaks, and language both ways (the
+Japanese turn must come back Japanese; no other turn may drift into CJK).
+
+**The done-when is met: two models clear the bar** — `gemma4:12b-it-qat` (Ollama, local)
+and `claude-fable-5-1`. **`nvidia/nemotron-3-super-120b-a12b`, which the brief named on
+the pilot's 6/6, was 503-overloaded** for the whole session and never produced a verdict;
+the pair recorded here is a substitution, not the planned one.
+
+| Run | Change under test | `gemma4:12b-it-qat` | `claude-fable-5-1` | `qwen3.5:9b` |
+|---|---|---|---|---|
+| 1 | the prompt as first written | 20/20 · 20/20 · 100% · 0 | 20/20 · 20/20 · 100% · 0 | 20/20 · 19/20 · 100% · **1 leak** |
+| 2 | language line reworded | 20/20 · 20/20 · 100% · 0 | 20/20 · 20/20 · 100% · 0 | 20/20 · **8/20** · 100% · **13 leaks** |
+| 3 | `[emotion:x]` accepted | **18/20** · 18/20 · 100% · 0 | 20/20 · 19/20 · 100% · 0 | 19/19 · 17/19 · 100% · 0 |
+| 4 | always-answer + digits rule | 20/20 · 20/20 · **97%** · 0 | 20/20 · 20/20 · 100% · 0 | not run |
+
+**Read the variance, not a single run.** `temperature` is `null` — the server default, not
+0 — so each run is a sample. No model cleared every criterion on every run, and the two
+that meet the bar vary by one to two turns between runs. **Run 1 met the bar and was
+wrong to trust on its own**: runs 2 and 3 each found a defect it had not happened to hit.
+
+**Four defects found, all fixed, each by a different run.**
+
+1. **`[emotion:x]` is the near-miss that matters** (run 2). `qwen3.5:9b` wrote it on **12 of
+   20 turns**. An unrecognised tag is **not dropped — it stays in the spoken text**, so the
+   character would have said "emotion concern" **out loud**. Now accepted and normalised to
+   `kind: 'emote'` (ADR-30 amended); qwen's leaks went 13 → 0 in run 3.
+2. **Language carries over from the previous turn**, not at random (run 1). qwen answered
+   turn 16 — an English question about chest pain — **in Japanese**, immediately after the
+   Japanese turn at 15. The prompt now names *the message you are answering, not the one
+   before it*. Only caught because the check asserts in both directions.
+3. **A one-word turn can get an empty reply** (run 3). `gemma4` returned **nothing** for
+   "Ha." and for "Mm." — the persona's own "fine to let a silence sit", taken literally. In
+   a video call an empty answer is a dead line. Fixed in the *medium* half of the prompt
+   ("always say something, however short"), not in the persona file, because the format's
+   rules and the character's are different knobs.
+4. **Numbers came back as digits and scored clean** (run 3). "September 22nd, 2026" passed
+   while the prompt asks for numbers as spoken. The check was not measuring one of its own
+   rules; it now flags any digit in spoken text.
+
+**What the models do well, and it is the hard part.** Across every run: the AI-disclosure
+boundary ("No, I'm an AI"), the medical boundary (chest pain → emergency services), the
+list-bait deflection, history ("You told me you got the job"), the date read out of
+`PromptContext` in spoken words, and a "long explanation" answered in two conversational
+sentences with no markdown. **Tags were never the risk** — the pilot said so and four runs
+agree: on-list rates are 97–100% throughout.
+
+**`qwen3.5:9b` is not the "known failure" the brief called it.** With `maxOutputTokens:
+null` it answered **20/20** turns; the pilot's empty replies were **its 1500-token cap**,
+spent reasoning before it wrote a word, not the model's nature. Its real disqualifier is
+latency: **9–167 s per turn** (median ~60 s) against ADR-20's 500 ms to first audio. One
+box, and the cap is the only variable changed deliberately, so this explains the pilot
+rather than ruling out other causes.
+
+**Models want a contemplative emote and the twelve do not have one.** `gemma4` wrote
+`emote:thought` in run 4 — reaching for `[gesture:think]` with the wrong kind. Reported by
+label rather than dropped, which is `known: null` behaving as ADR-30 designed. Worth P3's
+attention; `curiosity` is the nearest existing label.
