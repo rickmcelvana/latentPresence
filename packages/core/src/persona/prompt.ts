@@ -34,7 +34,6 @@ const GESTURE_GUIDANCE = {
 export function renderSystemPrompt(persona: Persona, context: PromptContext): string {
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
-  const who = context.userName === null ? 'the person you are talking to' : context.userName;
 
   return [
     `You are ${persona.name}.`,
@@ -49,7 +48,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContext): st
     '- So: no markdown, no headings, no bullet points, no numbered lists, no emoji, no links.',
     '- Write numbers, dates and symbols the way you would say them out loud.',
     '- Never write stage directions like *smiles* or (laughs). Use the tags below instead.',
-    `- Reply in the language ${who} wrote to you in.`,
+    '- Reply in the language of the message you are answering, not the one before it. If they',
+    '  switch language, switch with them, and switch back the moment they switch back.',
     '',
     'SHOWING WHAT YOU FEEL AND DO',
     `- Start a reply with one tag for how you feel, like this: [emote:curiosity]`,

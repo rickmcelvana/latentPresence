@@ -110,6 +110,20 @@ describe('SentenceChunker tags', () => {
     expect(chunk?.tags.map((tag) => tag.known)).toEqual(['joy', null]);
   });
 
+  it('accepts [emotion:x] as a spelling of [emote:x] and normalises it', () => {
+    // `qwen3.5:9b` wrote this on 12 of 20 turns (live:persona, 2026-09-21). An
+    // unrecognised tag is not dropped — it stays in the spoken text, so the character
+    // would have said "emotion concern" out loud.
+    const [chunk] = chunkText('[emotion:concern] That sounds hard.');
+    expect(chunk?.text).toBe('That sounds hard.');
+    expect(chunk?.tags).toEqual([{ kind: 'emote', value: 'concern', known: 'concern', offset: 0 }]);
+  });
+
+  it('does not invent a third kind out of the spelling', () => {
+    const [chunk] = chunkText('[emotion:joy] Hello. [emote:joy] Hi.');
+    expect(chunk?.tags.map((tag) => tag.kind)).toEqual(['emote']);
+  });
+
   it('marks a gesture against the gesture list, not the emotion one', () => {
     // P1-T12 gave gestures a vocabulary; before it, every gesture was `known: null`.
     const [chunk] = chunkText('Who knows [gesture:shrug] really.');

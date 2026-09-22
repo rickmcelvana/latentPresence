@@ -87,11 +87,14 @@ is real waiting.
 Styled in `theme.css` with the tokens, like everything else.
 
 - **Lines** read as a conversation, oldest at the top: the user's on one side, the
-  character's on the other, each with a name ("You", the character's name — "Alice" until
-  personas exist) and a time (`HH:MM`).
+  character's on the other, each with a name ("You", and the character's name, which comes
+  from the persona file since P1-T12) and a time (`HH:MM`).
 - **Streaming**: the assistant line grows as tokens arrive, with a quiet cursor at its end.
-  Until P1-T12 lifts inline tags out of the stream, a tag like `[emote:smile]` can show
-  briefly while streaming; the settled line never has one.
+  **No tag ever shows, since P1-T12** (ADR-30): `assistant.token` is filtered by `TagFilter`,
+  which holds back trailing text that could still become a tag rather than showing
+  `[emote:joy]` and taking it back. A model emits a tag in pieces — `[emo`, `te:jo`, `y]` —
+  so the held text can span deltas; it is released as soon as it cannot be a tag, and at
+  the end of the stream whatever is left was never one and is shown.
 - **Interrupted**: the heard text is normal; the unsaid remainder follows it, muted and
   struck through, with a small **interrupted** pill after the line. Screen readers get
   "(not said)" before the unsaid part, not a strike-through they cannot see.

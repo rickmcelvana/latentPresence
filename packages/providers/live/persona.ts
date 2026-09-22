@@ -73,7 +73,12 @@ const TURNS: readonly string[] = [
 
 const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/u;
 const EMOJI = /[\u{1f300}-\u{1faff}\u{2600}-\u{27bf}]/u;
-const STAGE = /\*[^*\n]+\*|\((?:laughs|smiles|chuckles|sighs|pauses|grins|nods|winks|giggles)[^)]*\)/iu;
+/**
+ * `*leans in*` and `**bold**` both break the "no markup" rule, but for different reasons,
+ * and a report that calls them one thing cannot say which the model actually did.
+ */
+const ASTERISKS = /\*[^*\n]+\*/u;
+const STAGE = /\((?:laughs|smiles|chuckles|sighs|pauses|grins|nods|winks|giggles)[^)]*\)/iu;
 const MARKDOWN_LIST = /^\s*(?:[-*•]\s|\d+[.)]\s)/mu;
 const HEADING = /^\s*#{1,6}\s/mu;
 
@@ -101,6 +106,7 @@ function readBack(raw: string): { spoken: string; tags: InlineTag[] } {
 function leaksIn(spoken: string, user: string): string[] {
   const found: string[] = [];
   if (spoken.includes('[')) found.push('bracket');
+  if (ASTERISKS.test(spoken)) found.push('asterisks');
   if (STAGE.test(spoken)) found.push('stage-direction');
   if (MARKDOWN_LIST.test(spoken)) found.push('list');
   if (HEADING.test(spoken)) found.push('heading');
@@ -143,6 +149,10 @@ async function turn(
     error = caught instanceof Error ? caught.message : String(caught);
   }
   const { spoken, tags } = readBack(raw);
+  // The adapter turns a transport failure into `finish: 'error'` rather than a throw, so
+  // without this a 503 scores as "the model said nothing" and the model takes the blame
+  // for the network. Found the first time this check met an overloaded NVIDIA.
+  if (error === null && finish === 'error') error = 'the model stream ended with an error';
   return {
     index,
     user,
@@ -179,8 +189,11 @@ const targets: Target[] = [
     modelId: env('PERSONA_OLLAMA_MODEL') ?? 'gemma4:12b-it-qat',
   },
   {
-    // The known failure, kept because the report is worth more with a counter-example in it.
-    label: 'ollama qwen3.5:9b (known failure)',
+    // Carried from the pilot as "the known failure". The first full run of this check
+    // cleared it: with `maxOutputTokens: null` it answered all twenty turns. The pilot's
+    // empty replies were its 1500-token cap, not the model. It stays in the report for a
+    // different reason now — it is the slow one, 9–167 s a turn.
+    label: 'ollama qwen3.5:9b',
     provider: openAiCompatible('ollama', OLLAMA, undefined),
     modelId: 'qwen3.5:9b',
   },
@@ -196,6 +209,8 @@ const targets: Target[] = [
 ];
 
 interface Score {
+  /** Turns the endpoint failed on. Not the model's fault, and not part of the bar. */
+  readonly failed: number;
   readonly spoke: number;
   readonly tagged: number;
   readonly tags: number;
@@ -204,9 +219,11 @@ interface Score {
   readonly leaks: number;
 }
 
-function score(rows: readonly TurnResult[]): Score {
+function score(all: readonly TurnResult[]): Score {
+  const rows = all.filter((row) => row.error === null);
   const tags = rows.flatMap((row) => row.tags);
   return {
+    failed: all.length - rows.length,
     spoke: rows.filter((row) => row.spoken !== '').length,
     tagged: rows.filter((row) => row.tags.length > 0).length,
     tags: tags.length,
@@ -216,12 +233,18 @@ function score(rows: readonly TurnResult[]): Score {
   };
 }
 
-/** The bar from the brief, per model. */
+/**
+ * The bar from the brief, measured over the turns the endpoint answered. A run with any
+ * failed turns is reported but does not meet the bar: twenty turns is the sample size,
+ * and eighteen of them passing is a different claim.
+ */
 function verdict(s: Score, total: number): string[] {
+  const answered = total - s.failed;
   const onListPct = s.tags === 0 ? 0 : (s.onList / s.tags) * 100;
   return [
-    `${s.spoke}/${total} spoke${s.spoke === total ? '' : ' MISS'}`,
-    `${s.tagged}/${total} tagged${s.tagged >= total - 2 ? '' : ' MISS'}`,
+    ...(s.failed === 0 ? [] : [`${s.failed}/${total} ENDPOINT FAILED — run is not a verdict`]),
+    `${s.spoke}/${answered} spoke${s.spoke === answered ? '' : ' MISS'}`,
+    `${s.tagged}/${answered} tagged${s.tagged >= answered - 2 ? '' : ' MISS'}`,
     `${onListPct.toFixed(0)}% on-list${onListPct >= 95 ? '' : ' MISS'}`,
     `${s.leaks} leaks${s.leaks === 0 ? '' : ' MISS'}`,
   ];
@@ -238,7 +261,16 @@ async function main(): Promise<void> {
     '',
   ];
 
+  const only = env('PERSONA_TARGETS');
   for (const target of targets) {
+    // Matches the label or the model id, so `PERSONA_TARGETS=gemma4` works even though
+    // the label says `ollama (local)`.
+    if (
+      only !== undefined &&
+      !only.split(',').some((part) => `${target.label} ${target.modelId}`.includes(part.trim()))
+    ) {
+      continue;
+    }
     if (target.needs !== undefined) {
       console.log(`skip ${target.label}: needs ${target.needs}`);
       out.push(`## ${target.label}`, '', `Skipped: needs \`${target.needs}\`.`, '');
@@ -247,14 +279,22 @@ async function main(): Promise<void> {
     console.log(`\n=== ${target.label} (${target.modelId})`);
     const history: LlmMessage[] = [];
     const rows: TurnResult[] = [];
+    let consecutiveFailures = 0;
     for (const [index, user] of TURNS.entries()) {
       const row = await turn(target.provider, target.modelId, history, user, index + 1);
       rows.push(row);
       if (row.error !== null) {
         console.log(`  ${row.index}. ERROR ${row.error}`);
-        if (rows.length === 1) break; // A dead endpoint is not twenty failures.
+        consecutiveFailures += 1;
+        // A dead or overloaded endpoint is not twenty failures, and waiting for it to be
+        // twenty wastes the run. Three in a row is the endpoint, not the turn.
+        if (consecutiveFailures >= 3) {
+          console.log(`  giving up on ${target.label} after ${consecutiveFailures} failures in a row`);
+          break;
+        }
         continue;
       }
+      consecutiveFailures = 0;
       // History carries the spoken text, tags and all removed — what the user got.
       history.push({ role: 'user', content: user }, { role: 'assistant', content: row.spoken, toolCalls: [] });
       const tags = row.tags.map(label).join(' ');

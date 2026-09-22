@@ -32,7 +32,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
 | ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
 | ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | accepted | 2026-09-14 |
-| ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted | 2026-09-21 |
+| ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted (amended) | 2026-09-21 |
 
 ---
 
@@ -783,6 +783,16 @@ deferred them:
    default of `[]`. **`PROTOCOL_VERSION` stays 1.**
 4. **Tokens never carry a tag.** A `TagFilter` in core holds back any trailing text that
    could still become one, and `Reply` and `ChatSession` both stream through it.
+
+**Amended 2026-09-21, on the first full `live:persona` run: `emotion` is accepted as a
+spelling of `emote`** and normalised to it. `qwen3.5:9b` wrote `[emotion:concern]` on 12
+of 20 turns. The failure mode is the reason this is a grammar change and not a prompt
+change: **an unrecognised tag is not dropped, it stays in the spoken text**, so the
+character would have said "emotion concern" out loud to the user. The parser is now
+deliberately more forgiving than the prompt is instructive — the prompt teaches one
+spelling, and accepting the single most likely near-miss costs one alternation. The tag
+still normalises to `kind: 'emote'`, so nothing downstream sees a third kind. Not a
+`PROTOCOL_VERSION` change: the wire shape is untouched.
 
 **Why the grammar stays.** It is the cheapest thing a model can emit that survives
 streaming. The pilot (`docs/SURFACE.md`) had a strong model follow it six times out of six

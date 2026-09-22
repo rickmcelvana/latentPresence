@@ -123,7 +123,17 @@ export const knownGestures = new Set<string>([
  */
 export const TAG_SCAN_LIMIT = 48;
 
-export const TAG_PATTERN = /^\[(emote|gesture):([a-z][a-z0-9-]*)\]/;
+/**
+ * The tag grammar (ADR-30). **`emotion` is accepted as a spelling of `emote`** and
+ * normalised to it: `pnpm live:persona` caught `qwen3.5:9b` writing `[emotion:concern]`
+ * on 12 turns of 20 (2026-09-21), and an unrecognised tag is not dropped — it stays in
+ * the spoken text, so the character would have said "emotion concern" **out loud**.
+ *
+ * The parser is deliberately more forgiving than the prompt is instructive: the prompt
+ * teaches one spelling, and accepting the obvious near-miss costs one alternation and
+ * removes the ugliest failure a model can hand us.
+ */
+export const TAG_PATTERN = /^\[(emote|emotion|gesture):([a-z][a-z0-9-]*)\]/;
 
 /** The verdict on a raw label: on its own kind's list, or null. */
 function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | null {

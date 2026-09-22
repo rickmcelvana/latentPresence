@@ -55,6 +55,11 @@ describe('TagFilter', () => {
     expect(filter.push('b').length + filter.flush().length).toBeGreaterThan(0);
   });
 
+  it('removes [emotion:x] too, so the near-miss is never spoken', () => {
+    // Shares TAG_PATTERN with the chunker, so the alias lands in both by construction.
+    expect(stream(['[emotion:concern] That sounds hard.'])).toBe('That sounds hard.');
+  });
+
   it('removes an unknown label, because it is still a well-formed tag', () => {
     // `known: null` is the chunker's verdict; the grammar still says "not speech".
     expect(stream(['[gesture:backflip] Watch this.'])).toBe('Watch this.');
