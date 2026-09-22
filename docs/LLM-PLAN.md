@@ -112,7 +112,7 @@ Done when: matches the design notes in `docs/ui/transcript.md` (main writes this
 System prompt template (name, voice, style, boundaries, tag protocol description), persona file format (`*.persona.json`), default persona.
 Done when: the LLM reliably emits tags in a 20-turn scripted test with two different models. **Met** by `pnpm live:persona`: `gemma4:12b-it-qat` and `claude-fable-5-1` both 20/20 spoke, 20/20 tagged, ≥ 97% on-list, 0 leaks. NVIDIA's Nemotron — the model the brief named — was 503 throughout and never gave a verdict, so the pair is a substitution. Four runs, because the first met the bar and three later ones each found a defect it had not hit; the variance and the four defects are in `docs/SURFACE.md`.
 
-### P1-T12b Conversation history, shared by text and voice — owner: main
+### P1-T12b Conversation history, shared by text and voice — owner: main (done 2026-09-22; history is a projection of the transcript, not a second reducer)
 Depends: P1-T11. Found by R-6 (2026-09-21) and placed here by Rick: `ChatSession` keeps the
 conversation and, on Stop, remembers the answer as **what the user heard** rather than what the
 model meant to say; the spoken path has no equivalent, because `VoiceSession.respond` is a
@@ -122,7 +122,12 @@ not at all), a turn cap, and the `system` slot `renderSystemPrompt` fills. **Bef
 voice never ships without it and P4 inherits the rule rather than rediscovering it.
 Done when: a spoken turn answers in the light of the previous one, proven in `/dev/voice` with a
 real model and not the scripted one, and a barge-in followed by "what did you just say?" gets
-back only the words that were heard.
+back only the words that were heard. **Met in substance by `pnpm live:history`**: `glm-5.2:cloud`
+and `claude-fable-5-1` both recall a fact from the previous turn and, asked to repeat a cut-off
+answer word for word, give back exactly the heard prefix — Fable reproduced it truncated
+mid-word and said so. **The `/dev/voice` leg is R-8**: the harness now has a `Live model`
+switch, but its 473 MB of browser models are not cached in the Claude Browser pane and the
+spoken path has not been heard doing this by a person.
 
 ### P1-T13 Model download consent — owner: sub
 Consent modal listing model, size, licence, source URL before any browser model download; cache in Cache Storage; a settings page to delete caches.

@@ -1592,3 +1592,31 @@ something that has appeared once.
 `emote:thought` in run 4 — reaching for `[gesture:think]` with the wrong kind. Reported by
 label rather than dropped, which is `known: null` behaving as ADR-30 designed. Worth P3's
 attention; `curiosity` is the nearest existing label.
+
+## Conversation history against real models — `pnpm live:history`, 2026-09-22 (P1-T12b)
+
+Two claims, both **PASS** on `glm-5.2:cloud` (Ollama cloud) and `claude-fable-5-1`.
+
+- **A turn is answered in the light of the one before it.** Told "my cat is called Biscuit
+  and she is nineteen", then asked what the cat is called, both answered "Biscuit" — and in
+  character: *"Biscuit. And she's nineteen. I was listening."* The request carried 4
+  messages, so the history was really sent rather than the last message alone.
+- **An interrupted answer is remembered as what was heard.** An answer cut after ~60
+  characters, then "repeat it back word for word": the assistant message on the wire is the
+  heard prefix exactly. Fable repeated it **truncated mid-word** — `…a keeper called Tomas
+  who loo` — and remarked that it had cut out. It cannot repeat the rest, because the rest
+  was never sent.
+
+**Anthropic's alternation is exercised here and nothing 400s.** This is the only live check
+that puts a multi-turn prompt on a real wire, which is what the history's same-role merge
+exists for.
+
+**What it does not cover.** It drives `ChatSession`, not `VoiceSession` — the two share one
+`ConversationHistory` and build the same request, and `stop()` is the text analogue of a
+committed barge-in, but the spoken path's own wiring is covered by unit tests rather than
+here. **A person has still never heard the character remember a spoken turn: that is R-8.**
+
+**One instrument bug, found and fixed on the first run.** `heard` was joined from *every*
+`assistant.token` in the session rather than the current turn's, so both models "failed"
+against the check's own earlier output. The third time this session an instrument accused
+the subject of its own mistake.

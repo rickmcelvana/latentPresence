@@ -54,6 +54,16 @@ pnpm live:bargein
 ```
 
 ```bash
+pnpm live:history
+```
+
+`live:history` is P1-T12b's done-when against real models: tell the character a fact, ask
+about it a turn later, then cut an answer part way and ask what was just said. It asserts
+the **heard** prefix is what goes on the wire, and it is the only check that puts a
+multi-turn prompt on a real one — so Anthropic's strict alternation is tested here.
+`HISTORY_TARGETS` and `HISTORY_OLLAMA_MODEL` pick targets. Writes `live/out/history.md`.
+
+```bash
 pnpm live:persona
 ```
 
@@ -83,6 +93,25 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
+
+### R-8 · Hear the character remember you · **needs your ears and your browser**
+**Why:** P1-T12b. The logic is unit-tested and `pnpm live:history` proves it against two
+real models, but only through `ChatSession`. Nobody has heard the spoken path do it, and
+the harness's models are not cached in the Claude Browser pane. About ten minutes.
+
+```bash
+pnpm dev
+```
+1. Open `http://localhost:5173/dev/voice`. Set **Model** to **live model from /settings**
+   (configure one in `/settings` first if you have not), then **Agree and start**.
+2. **Microphone.** Tell her something specific — a name, a pet, a place. Let her answer.
+3. Ask about it on the next turn ("what did I say my cat was called?").
+4. Ask for something long, **talk over her part way**, then ask "what did you just say?"
+
+**Expect:** step 3 answers from what you actually said; step 4 repeats only the words you
+heard before you cut in, never the rest of the sentence she had generated.
+**Report:** the transcript (Copy transcript), and whether the remembering felt natural or
+uncanny — she is working from what reached your ears, which is not what a chat app does.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.

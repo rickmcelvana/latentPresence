@@ -356,3 +356,18 @@ Click-through: n/a
 
 **Rick's two character calls, taken and verified (same day).** Alice now answers a plain request before redirecting — the sleep question gets five tips in spoken prose, then the question about the worry — and the silence override stands, with "let a silence sit" reworded so it reads as pacing rather than muteness. **The verification nearly went wrong:** the first run after the rewording had `gemma4` writing bare `[concern]` on 18 of 20 turns, which looked like the edit's fault. An identical re-run came back 0 leaks. Two runs, same model, same prompt, 18 leaks apart. Bare `[label]` is recorded as a known near-miss and deliberately **not** aliased — unlike `emotion`, a bare bracket is ordinary text, so accepting it would eat real speech to fix something seen once. **Method lesson: reproduce before you attribute, especially when a change you just made is the obvious suspect.**
 
+
+## 2026-09-22 claude — P1-T12b conversation history
+Did: `ConversationHistory` in core, shared by `ChatSession` and `VoiceSession`, built as a projection of the transcript rather than a second reducer; `respond` now receives the messages; `/dev/voice` gained a **Live model** switch; `pnpm live:history` proves both claims against `glm-5.2:cloud` and `claude-fable-5-1`. Gate green, 856 TS / 25 Rust.
+Left: **R-8** — nobody has *heard* the spoken path remember a turn; the harness's 473 MB of models are not cached in the Browser pane.
+Next: P1-T13, model download consent (owner: sub).
+Decisions: none. No protocol change — `LlmMessage` and the bus are untouched.
+Click-through: pending (R-8)
+
+**Derive the second view, never keep it.** The plan line said "one `ConversationHistory` both write to". Writing it that way would have reproduced the barge-in rules beside the transcript's copy of them, and a panel showing one thing while the model believes another is precisely the bug R-6 exposed. So history is `historyFromTranscript(state.lines)` — the retraction rule, the spoken prefix and the "no line for a backchannel" rule are inherited, not restated, and a test asserts the two agree line for line.
+
+**A test caught a double-count I would not have found by reading.** `VoiceSession` publishes `user.transcript` and then calls `respond`; the history watches the bus and delivery is synchronous, so building the request *after* the publish counted a confirmed turn twice — once from the bus, once as the pending turn. Held (unconfirmed) turns were already right, which is why only half the paths were wrong. The request is now built before the publish and both agree.
+
+**The evidence is better than the assertion.** Asked to repeat a cut-off answer word for word, Fable gave back the heard prefix truncated mid-word — "…a keeper called Tomas who loo" — and remarked that it had cut out. It cannot say the rest because the rest was never sent.
+
+**Third instrument bug of the session.** `live:history` joined *every* `assistant.token` rather than the current turn's, so both models "failed" against the check's own earlier output. After the 503-as-silence and the R-4 latency column, the pattern is worth naming: **when a check reports a failure, suspect the check before the subject.**
