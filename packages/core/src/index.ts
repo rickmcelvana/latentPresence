@@ -15,5 +15,6 @@ export * from './backchannel';
 export * from './chat';
 export * from './voice';
 export * from './transcript';
+export * from './history';
 export * from './persona';
 export { Cancellation } from './cancellation';

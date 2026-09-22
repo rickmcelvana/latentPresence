@@ -120,7 +120,7 @@ describe('ChatSession — stopping', () => {
     expect(r.of('assistant.interrupted')).toHaveLength(0);
     expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: '', spokenPrefix: '' });
     expect(r.machine.getState()).toBe('listening');
-    expect(r.chat.history).toEqual([{ role: 'user', content: 'go' }]);
+    expect(r.chat.messages).toEqual([{ role: 'user', content: 'go' }]);
   });
 
   it('a second message while the first streams stops the first, then answers the second', async () => {

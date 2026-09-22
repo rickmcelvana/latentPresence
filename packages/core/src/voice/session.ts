@@ -1,7 +1,8 @@
-import type { ConversationEvent } from '@latentpresence/protocol';
+import type { ConversationEvent, LlmMessage } from '@latentpresence/protocol';
 import type { BackchannelClip } from '../backchannel/clips';
 import { BackchannelScheduler, type BackchannelEvent, type BackchannelOptions } from '../backchannel/scheduler';
 import type { ConversationMachine } from '../conversation/machine';
+import { ConversationHistory } from '../history/history';
 import type { PlaybackSink } from '../playback/sink';
 import { BargeInGate, type BargeInOptions } from '../reply/barge-in';
 import type { Reply, ReplyEvent, ReplyOptions, ReplyOutcome } from '../reply/reply';
@@ -27,6 +28,11 @@ import { TURN_SAMPLE_RATE, type TurnDetector, type TurnEvent, type VadFrame } fr
  *   that on `assistant.interrupted`; the machine asks the sink for the fade.
  * - **A pause that sounds unfinished** may get a backchannel (P1-T09, ADR-28), played into
  *   the same sink outside any reply and faded the moment the user speaks again.
+ * - **The conversation so far goes with every turn** (P1-T12b). `respond` is handed the
+ *   messages rather than only the text, because the history is the session's to know: it
+ *   is the one place that can tell a turn that was answered from one that was retracted.
+ *   The current turn is appended by hand, since ADR-25 deliberately keeps its words off
+ *   the bus until `confirmedAt` and the model must not answer the question before last.
  *
  * No timers and no DOM. Time is the frames' clock, as it is for the detector.
  */
@@ -40,7 +46,14 @@ export interface VoiceSessionOptions<R> {
   /** A finished turn's speech as text; null or blank when nothing was recognised. */
   readonly transcribe: (recognition: R | null) => Promise<string | null>;
   /** Start answering. Pass `options` through to the `Reply`: they carry the hold and the events. */
-  readonly respond: (text: string, options: ReplyOptions) => Reply;
+  readonly respond: (turn: RespondTurn, options: ReplyOptions) => Reply;
+  /**
+   * The conversation this session reads and contributes to (P1-T12b). Share one with a
+   * `ChatSession` so talking and typing are one conversation; **a history passed in is
+   * assumed to be attached already** (`attachHistory`). Omitted: the session makes and
+   * attaches its own.
+   */
+  readonly history?: ConversationHistory;
   readonly bargeIn?: BargeInOptions;
   /** Clips to say in the user's pauses, and when. Omitted or empty: the character never backchannels. */
   readonly backchannel?: BackchannelOptions & {
@@ -54,6 +67,14 @@ export interface VoiceSessionOptions<R> {
   readonly sampleRate?: number;
   /** Wall clock for event stamps. */
   readonly now?: () => string;
+}
+
+/** What `respond` is given: this turn's words, and everything to send with them. */
+export interface RespondTurn {
+  /** What the user said this turn, as recognised. */
+  readonly text: string;
+  /** The whole request: `system` first, the conversation so far, then `text` last. */
+  readonly messages: readonly LlmMessage[];
 }
 
 /** An event waiting for its turn to be confirmed, and when it really happened. */
@@ -82,6 +103,7 @@ export class VoiceSession<R> {
   private readonly sampleRate: number;
   private readonly now: () => string;
   private readonly detach: (() => void)[] = [];
+  private readonly history: ConversationHistory;
   private pending: PendingTurn | null = null;
   /** The reply that is playing or about to, which may outlive its `pending` turn. */
   private reply: Reply | null = null;
@@ -93,6 +115,13 @@ export class VoiceSession<R> {
     this.sampleRate = options.sampleRate ?? TURN_SAMPLE_RATE;
     this.now = options.now ?? (() => new Date().toISOString());
     this.gate = new BargeInGate(options.bargeIn);
+    this.history = options.history ?? new ConversationHistory();
+    // Only a history this session made is this session's to attach: one passed in may
+    // already be watching the bus for a `ChatSession`, and two subscriptions would count
+    // every message twice.
+    if (options.history === undefined) {
+      this.detach.push(options.machine.subscribe((event) => this.history.observe(event)));
+    }
     const backchannel = options.backchannel;
     this.backchannels =
       backchannel === undefined || backchannel.clips.length === 0
@@ -179,8 +208,14 @@ export class VoiceSession<R> {
           this.dispatch({ type: 'error', scope: 'stt', message: 'nothing was recognised' });
           return;
         }
+        // **Built before the transcript is published, not after.** A confirmed turn
+        // publishes immediately, and the history is watching the bus — so asking for the
+        // request afterwards would count this turn twice, once from the bus and once as
+        // the pending turn. Held (unconfirmed) turns were already correct; this makes
+        // both paths agree.
+        const messages = this.history.request(said);
         this.publish(pending, { type: 'user.transcript', text: said, isFinal: true, confidence: null });
-        this.startReply(pending, said);
+        this.startReply(pending, said, messages);
       },
       (error: unknown) => {
         if (this.pending !== pending) return;
@@ -190,9 +225,12 @@ export class VoiceSession<R> {
     );
   }
 
-  private startReply(pending: PendingTurn, text: string): void {
+  private startReply(pending: PendingTurn, text: string, messages: readonly LlmMessage[]): void {
     // A previous answer still fading out has already settled; this one replaces it.
-    const reply = this.options.respond(text, { hold: pending.hold, onEvent: (event) => this.onReply(reply, event) });
+    const reply = this.options.respond(
+      { text, messages },
+      { hold: pending.hold, onEvent: (event) => this.onReply(reply, event) },
+    );
     pending.reply = reply;
     this.reply = reply;
     const id = `${this.options.sessionId}-reply-${(this.replies += 1)}`;

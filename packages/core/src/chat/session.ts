@@ -1,6 +1,7 @@
 import type { ConversationEvent, LLMProvider, LlmFinishReason, LlmMessage } from '@latentpresence/protocol';
 import { Cancellation } from '../cancellation';
 import { TagFilter } from '../chunker';
+import { ConversationHistory } from '../history/history';
 import type { ConversationMachine } from '../conversation/machine';
 
 /**
@@ -17,8 +18,13 @@ import type { ConversationMachine } from '../conversation/machine';
  *   spend its whole output budget reasoning (P1-T02), and `length` says so.
  *
  * It keeps the conversation so far and sends it with every request — what the user saw of
- * each answer, not what the model meant to say. Persona and memory arrive later (P1-T12, P4)
- * through `system` and whatever builds it.
+ * each answer, not what the model meant to say.
+ *
+ * **Since P1-T12b that history is a shared `ConversationHistory`, not a private array**, so
+ * a typed message and a spoken one land in the same place and the model is told exactly
+ * what the transcript shows. Pass one in to share it with a `VoiceSession`; left out, the
+ * session makes its own and behaves as before. The heard-not-meant rule now lives there,
+ * derived from the transcript rather than restated here.
  */
 
 export interface ChatSessionOptions {
@@ -29,8 +35,14 @@ export interface ChatSessionOptions {
   /** null leaves it to the backend. Never 0 for a thinking model (P1-T10 enforces it). */
   readonly temperature?: number | null;
   readonly maxOutputTokens?: number | null;
-  /** Sent first when set. */
+  /** Sent first when set. Ignored when `history` is passed: that carries its own `system`. */
   readonly system?: string;
+  /**
+   * The conversation this session reads and contributes to. Share one with a
+   * `VoiceSession` so typing and talking are one conversation (P1-T12b). Omitted: the
+   * session keeps its own.
+   */
+  readonly history?: ConversationHistory;
   /** Wall clock for event stamps. */
   readonly now?: () => string;
 }
@@ -51,7 +63,7 @@ export const NO_TEXT_LENGTH_MESSAGE = 'the model used its whole output budget wi
 export class ChatSession {
   private readonly options: ChatSessionOptions;
   private readonly now: () => string;
-  private readonly messages: LlmMessage[] = [];
+  private readonly history: ConversationHistory;
   private streaming: Streaming | null = null;
   private replies = 0;
   private disposed = false;
@@ -59,6 +71,13 @@ export class ChatSession {
   constructor(options: ChatSessionOptions) {
     this.options = options;
     this.now = options.now ?? (() => new Date().toISOString());
+    this.history = options.history ?? new ConversationHistory({ system: options.system ?? null });
+    // The history watches the bus rather than being written to, so it can never disagree
+    // with the transcript the user is reading. Delivery is synchronous, so a message
+    // dispatched below is already in `history.messages` on the next line.
+    if (options.history === undefined) {
+      options.machine.subscribe((event) => this.history.observe(event));
+    }
   }
 
   /** An answer is streaming. */
@@ -67,8 +86,8 @@ export class ChatSession {
   }
 
   /** The conversation as it will be sent next, without `system`. */
-  get history(): readonly LlmMessage[] {
-    return this.messages;
+  get messages(): readonly LlmMessage[] {
+    return this.history.messages;
   }
 
   /** Send a typed message. Blank text is ignored and returns false. */
@@ -76,8 +95,8 @@ export class ChatSession {
     const said = text.trim();
     if (said === '' || this.disposed) return false;
     this.stop();
+    // No push: `history` is watching the bus, and this dispatch is delivered synchronously.
     this.dispatch({ type: 'user.message', text: said });
-    this.messages.push({ role: 'user', content: said });
     const streaming: Streaming = {
       id: `${this.options.sessionId}-reply-${(this.replies += 1)}`,
       cancellation: new Cancellation(),
@@ -97,7 +116,6 @@ export class ChatSession {
     streaming.cancellation.abort();
     if (streaming.text !== '') {
       this.dispatch({ type: 'assistant.interrupted', spokenPrefix: streaming.text });
-      this.messages.push({ role: 'assistant', content: streaming.text, toolCalls: [] });
     }
     // Settles the machine back to listening either way; an empty entry is no transcript line.
     this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, streaming.text) });
@@ -110,10 +128,10 @@ export class ChatSession {
   }
 
   private async run(streaming: Streaming): Promise<void> {
-    const { llm, modelId, system } = this.options;
+    const { llm, modelId } = this.options;
     const request = {
       modelId,
-      messages: [...(system === undefined ? [] : [{ role: 'system' as const, content: system }]), ...this.messages],
+      messages: this.history.request(),
       tools: [],
       temperature: this.options.temperature ?? null,
       maxOutputTokens: this.options.maxOutputTokens ?? null,
@@ -153,12 +171,10 @@ export class ChatSession {
       this.dispatch({ type: 'error', scope: 'llm', message: failure });
       if (streaming.text !== '') {
         // Cut short by the failure: keep what was shown, marked as not the whole answer.
-        this.messages.push({ role: 'assistant', content: streaming.text, toolCalls: [] });
         this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, streaming.text) });
       }
       return;
     }
-    this.messages.push({ role: 'assistant', content: streaming.text, toolCalls: [] });
     this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, null) });
   }
 

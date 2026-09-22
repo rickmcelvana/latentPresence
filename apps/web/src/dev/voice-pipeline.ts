@@ -1,6 +1,8 @@
 import {
   ConversationMachine,
   Reply,
+  attachHistory,
+  renderSystemPrompt,
   TurnDetector,
   VoiceSession,
   prepareBackchannels,
@@ -21,7 +23,7 @@ import {
   sileroVadModel,
   smartTurnModel,
 } from '@latentpresence/ml-web';
-import type { ConversationEvent, ModelDescriptor, SpokenAudioChunk, SttResult, TTSProvider, TtsRequest } from '@latentpresence/protocol';
+import type { ConversationEvent, LLMProvider, ModelDescriptor, SpokenAudioChunk, SttResult, TTSProvider, TtsRequest } from '@latentpresence/protocol';
 import {
   BrowserSileroVad,
   FakeLLMProvider,
@@ -37,6 +39,10 @@ import {
   type CaptureSource,
 } from '@latentpresence/providers';
 import { analyseOutput, joinBlocks, type Mark, type OutputReport } from './output-check';
+import { chatLlmProvider } from '../chat/chat-llm';
+import { defaultPersona } from '../persona/default-persona';
+import { defaultSettingsDeps } from '../settings/deps';
+import { loadSettings } from '../settings/settings';
 
 /**
  * The P1-T08 harness: the promoted pipeline end to end in a browser, with a scripted model.
@@ -215,6 +221,8 @@ export class VoicePipeline {
   private autoInterruptMs: number | null = null;
   private machineState = 'idle';
   private inputLabel = 'none';
+  /** 'scripted' or the `/settings` model id. P1-T12b's done-when needs a real one. */
+  private modelId = 'scripted';
 
   private readonly audio: AudioOutputHandle;
   private readonly tts: KokoroBrowserTTSProvider;
@@ -237,7 +245,7 @@ export class VoicePipeline {
   }
 
   /** Build everything and load every model. Call from a click: the audio context needs a gesture. */
-  static async start(options: { bargeInMs: number; overlap?: 'duck' | 'cut'; log: (line: string) => void }): Promise<VoicePipeline> {
+  static async start(options: { bargeInMs: number; overlap?: 'duck' | 'cut'; live?: boolean; log: (line: string) => void }): Promise<VoicePipeline> {
     const t0 = performance.now();
     const audio = await createAudioOutput();
     const tts = new KokoroBrowserTTSProvider({ id: 'kokoro', createWorker: createKokoroWorker });
@@ -264,7 +272,7 @@ export class VoicePipeline {
     pipeline.log(
       `backchannels ready in ${Math.round(performance.now() - clipsAt)} ms: ${pipeline.clips.map((clip) => `"${clip.text}" ${Math.round((clip.samples.length / clip.sampleRate) * 1000)} ms`).join(', ')}`,
     );
-    pipeline.wire(options.bargeInMs, options.overlap ?? 'duck');
+    pipeline.wire(options.bargeInMs, options.overlap ?? 'duck', options.live ?? false);
     return pipeline;
   }
 
@@ -379,7 +387,45 @@ export class VoicePipeline {
     await this.audio.close();
   }
 
-  private wire(bargeInMs: number, overlap: 'duck' | 'cut'): void {
+  /** The fake: one long answer, the same every time, no key (P1-T08). */
+  private scriptedModel(): { llm: LLMProvider; system: string | null } {
+    this.modelId = 'scripted';
+    return {
+      // No per-token delay: a page timer is throttled to once a second in a hidden tab, and
+      // the answer arriving at once changes nothing downstream — synthesis is sequential.
+      llm: new FakeLLMProvider('scripted', {
+        script: [
+          ...ANSWER.split(/(?<= )/u).map((text) => ({ type: 'text-delta', text }) as const),
+          { type: 'finish', reason: 'stop', usage: null },
+        ],
+      }),
+      system: null,
+    };
+  }
+
+  /**
+   * The real endpoint from `/settings`, built exactly as `/chat` builds it, with the
+   * persona as its system prompt. Falls back to the fake — loudly — when nothing is
+   * configured, because a harness that silently answers from a script would look like a
+   * model with no memory, which is the very thing this is here to test.
+   */
+  private liveModel(): { llm: LLMProvider; system: string | null } {
+    const deps = defaultSettingsDeps();
+    const settings = loadSettings(deps.storage);
+    const { llm: config, companionUrl } = settings;
+    if (config.endpoint === null || config.modelId === null) {
+      this.log('no model configured in /settings — falling back to the scripted answer');
+      return this.scriptedModel();
+    }
+    this.modelId = config.modelId;
+    this.log(`live model: ${config.modelId} on ${config.endpoint}`);
+    return {
+      llm: chatLlmProvider({ endpointId: config.endpoint, baseUrl: config.baseUrl, companionUrl, deps }),
+      system: renderSystemPrompt(defaultPersona, { now: new Date(), userName: null }),
+    };
+  }
+
+  private wire(bargeInMs: number, overlap: 'duck' | 'cut', live: boolean): void {
     const output = this.audio.output;
     const context = this.audio.context;
     const latency = (): number => context.outputLatency || 0;
@@ -425,12 +471,15 @@ export class VoicePipeline {
     const timedTts = this.timed(this.tts);
     // No per-token delay: a page timer is throttled to once a second in a hidden tab, and the
     // answer arriving at once changes nothing downstream — synthesis is sequential anyway.
-    const llm = new FakeLLMProvider('scripted', {
-      script: [
-        ...ANSWER.split(/(?<= )/u).map((text) => ({ type: 'text-delta', text }) as const),
-        { type: 'finish', reason: 'stop', usage: null },
-      ],
-    });
+    // Scripted by default — a barge-in or click check wants the same long answer every
+    // time, with no key (P1-T08). **`Live model` swaps in the `/settings` endpoint**, which
+    // is the only way to see P1-T12b's history actually change an answer: the fake ignores
+    // its request entirely, so with it every turn looks like the first.
+    const { llm, system } = live ? this.liveModel() : this.scriptedModel();
+
+    // One history, attached here so it sees every event the session publishes. Its
+    // `system` is the persona when a real model is answering, and null for the fake.
+    const { history } = attachHistory(machine, { system });
 
     const detector = new TurnDetector<Promise<SttResult | null>>({
       now: () => performance.now(),
@@ -481,12 +530,15 @@ export class VoicePipeline {
       sink,
       bargeIn: { bargeInMs },
       backchannel: { clips: this.clips, overlap, onEvent: (event) => this.onBackchannel(event) },
+      history,
       transcribe: async (recognition) => (await recognition)?.text ?? null,
-      respond: (text, replyOptions) =>
+      respond: (turn, replyOptions) =>
         new Reply(
           {
-            modelId: 'scripted',
-            messages: [{ role: 'user', content: text }],
+            modelId: this.modelId,
+            // The conversation so far, `system` first and this turn last (P1-T12b). The
+            // scripted model ignores it; a real one is the point of `Live model`.
+            messages: [...turn.messages],
             tools: [],
             temperature: null,
             maxOutputTokens: null,

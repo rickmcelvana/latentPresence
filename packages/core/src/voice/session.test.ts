@@ -7,7 +7,8 @@ import { Reply, type ReplyOutcome } from '../reply/reply';
 import { deferred, ManualSink, ScriptedLLM, ScriptedTTS, settle, text } from '../testing/scripted';
 import { TurnDetector, type TurnJudge } from '../turn/detector';
 import { emptyTranscript, reduceTranscript } from '../transcript/transcript';
-import { VoiceSession } from './session';
+import { VoiceSession, type RespondTurn } from './session';
+import { ConversationHistory } from '../history/history';
 
 /**
  * The wiring, end to end with nothing real in it but the logic: scripted Silero
@@ -46,6 +47,7 @@ function rig(
     bargeIn?: BargeInOptions;
     backchannel?: BackchannelOptions;
     now?: () => string;
+    history?: ConversationHistory;
   } = {},
 ) {
   let clock = 0;
@@ -64,6 +66,8 @@ function rig(
   const backchannels: (BackchannelEvent & { lastProbability: number })[] = [];
   let lastProbability = 0;
   const outcomes: ReplyOutcome[] = [];
+  /** What `respond` was handed each turn — the history question, in one place (P1-T12b). */
+  const sent: RespondTurn[] = [];
   const session = new VoiceSession<string>({
     sessionId: 's',
     machine,
@@ -71,7 +75,9 @@ function rig(
     sink,
     now,
     transcribe: options.transcribe ?? (async () => 'what time is it'),
-    respond: (_said, replyOptions) => {
+    ...(options.history === undefined ? {} : { history: options.history }),
+    respond: (asked, replyOptions) => {
+      sent.push(asked);
       const reply = new Reply(
         request,
         { llm: new ScriptedLLM(options.script ?? text(ANSWER)), tts: new ScriptedTTS(), sink, voiceId: 'v' },
@@ -101,6 +107,7 @@ function rig(
     sink,
     replies,
     outcomes,
+    sent,
     /** Every clip played or talked into, with the probability of the frame pushed before it. */
     backchannels,
     /** `count` 32 ms frames at `probability`. */
@@ -503,5 +510,104 @@ describe('VoiceSession — backchannels (P1-T09)', () => {
     await settle();
     expect(r.session.backchannels).toBeNull();
     expect(r.of('assistant.backchannel')).toHaveLength(0);
+  });
+});
+
+describe('VoiceSession — conversation history (P1-T12b)', () => {
+  /** Play a whole turn through to its audio finishing, so the answer settles. */
+  async function fullTurn(r: ReturnType<typeof rig>): Promise<void> {
+    await turn(r);
+    r.sink.start(100);
+    r.sink.end(100);
+    await settle();
+  }
+
+  it('sends this turn last, and the one before it before that', async () => {
+    // The gap R-6 found: before this, every spoken turn was a standalone request and the
+    // character answered with no idea what either of them had just said.
+    const r = rig();
+    await fullTurn(r);
+    await fullTurn(r);
+
+    expect(r.sent[0]?.messages).toEqual([{ role: 'user', content: 'what time is it' }]);
+    expect(r.sent[1]?.messages).toEqual([
+      { role: 'user', content: 'what time is it' },
+      { role: 'assistant', content: ANSWER, toolCalls: [] },
+      { role: 'user', content: 'what time is it' },
+    ]);
+  });
+
+  it('sends the persona first when the history has one', async () => {
+    const history = new ConversationHistory({ system: 'You are Alice.' });
+    const r = rig({ history });
+    // A history passed in is the caller's to attach, which is the documented contract.
+    r.machine.subscribe((event) => history.observe(event));
+    await fullTurn(r);
+    expect(r.sent[0]?.messages[0]).toEqual({ role: 'system', content: 'You are Alice.' });
+  });
+
+  it('remembers an interrupted answer as what was heard, not what was generated', () => {
+    // P1-T12b's done-when: a barge-in, then another turn, and the model can only repeat
+    // the words that reached the ear. ADR-26's spoken prefix is what history keeps.
+    const r = rig();
+    return (async () => {
+      await turn(r);
+      r.sink.start(100);
+      r.sink.current = { id: 100, frame: 3800 };
+      r.frames(7, 0.9); // past bargeInMs: commits
+      await settle();
+      expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('It is');
+
+      // The interjection is its own turn, and it carries the history.
+      r.frames(20, 0.05);
+      await settle();
+
+      const second = r.sent[1]?.messages ?? [];
+      expect(second).toEqual([
+        { role: 'user', content: 'what time is it' },
+        { role: 'assistant', content: 'It is', toolCalls: [] },
+        { role: 'user', content: 'what time is it' },
+      ]);
+      // The words the model generated but nobody heard are nowhere in the request.
+      expect(JSON.stringify(second)).not.toContain('nearly');
+    })();
+  });
+
+  it('a retracted turn leaves nothing behind for the next one', async () => {
+    // ADR-25: the words never reached the bus, so they are not in the history either.
+    const judge = new Judge();
+    const r = rig({ judge });
+    r.frames(10, 0.9);
+    r.frames(4, 0.05);
+    judge.answer(0.95);
+    await settle();
+    expect(r.replies).toHaveLength(1);
+
+    // Speech resumes before `confirmedAt`: the turn is retracted and publishes nothing.
+    r.frames(6, 0.9);
+    await settle();
+    expect(r.of('user.turn.resumed')).toHaveLength(1);
+    expect(r.of('user.transcript')).toHaveLength(0);
+
+    // The next turn's request carries only itself — no ghost of the retracted one.
+    r.frames(20, 0.05);
+    judge.answer(0.95);
+    await settle();
+    expect(r.sent.at(-1)?.messages).toEqual([{ role: 'user', content: 'what time is it' }]);
+  });
+
+  it('one history shared with a ChatSession is one conversation', async () => {
+    // Typing and talking are the same conversation, which is the point of sharing one.
+    const history = new ConversationHistory();
+    const r = rig({ history });
+    const detach = r.machine.subscribe((event) => history.observe(event));
+    await fullTurn(r);
+    detach();
+    // A typed message would be appended to exactly what the spoken turn left behind.
+    expect(history.request('and by text?')).toEqual([
+      { role: 'user', content: 'what time is it' },
+      { role: 'assistant', content: ANSWER, toolCalls: [] },
+      { role: 'user', content: 'and by text?' },
+    ]);
   });
 });

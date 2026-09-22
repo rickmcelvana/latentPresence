@@ -47,6 +47,7 @@ function asMarkdown(snapshot: Snapshot | null, output: OutputReport | null, voic
 export function VoiceHarness(): ReactElement {
   const [bargeInMs, setBargeInMs] = useState(200);
   const [overlap, setOverlap] = useState<'duck' | 'cut'>('duck');
+  const [live, setLive] = useState(false);
   const [phase, setPhase] = useState<'consent' | 'loading' | 'ready'>('consent');
   const [status, setStatus] = useState('Nothing downloaded yet.');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -79,7 +80,7 @@ export function VoiceHarness(): ReactElement {
   async function start(): Promise<void> {
     setPhase('loading');
     try {
-      const startedPipeline = await VoicePipeline.start({ bargeInMs, overlap, log: setStatus });
+      const startedPipeline = await VoicePipeline.start({ bargeInMs, overlap, live, log: setStatus });
       pipeline.current = startedPipeline;
       setBuilt(startedPipeline);
       // For poking at from the console; dev-only, like the page.
@@ -145,6 +146,13 @@ export function VoiceHarness(): ReactElement {
               <select className="select" onChange={(event) => setOverlap(event.target.value === 'cut' ? 'cut' : 'duck')} value={overlap}>
                 <option value="duck">duck and finish (ADR-28)</option>
                 <option value="cut">cut</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Model</span>
+              <select className="select" onChange={(event) => setLive(event.target.value === 'live')} value={live ? 'live' : 'scripted'}>
+                <option value="scripted">scripted answer (same every turn)</option>
+                <option value="live">live model from /settings</option>
               </select>
             </label>
             <button className="btn btn-primary" disabled={phase === 'loading'} onClick={() => void start()} type="button">
