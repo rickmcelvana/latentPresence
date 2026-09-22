@@ -23,6 +23,8 @@
     "rust:test": "cargo test --manifest-path companion/Cargo.toml --workspace",
     "gate:desktop": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --all --check && cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings",
     "live:llm": "pnpm --filter @latentpresence/providers exec vite-node live/llm.ts",
+    "e2e": "playwright test",
+    "e2e:fixture": "pnpm --filter @latentpresence/ml-web exec vite-node live/e2e-fixture.ts",
     "live:history": "pnpm --filter @latentpresence/providers exec vite-node live/history.ts",
     "live:persona": "pnpm --filter @latentpresence/providers exec vite-node live/persona.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",
@@ -34,6 +36,7 @@
     "clean": "tsc -b --clean"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "oxlint": "^1.80.0",
     "typescript": "^7.0.2",
     "vite-node": "^6.0.0",

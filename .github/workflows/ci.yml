@@ -89,3 +89,57 @@ jobs:
         run: >-
           cargo run --release --manifest-path companion/Cargo.toml
           --bin latentpresence-companion -- bench 2000
+
+  # P1-T14. The Phase 1 end-to-end test: a real Chromium, a fake microphone, and the voice
+  # pipeline from `getUserMedia` to barge-in.
+  #
+  # **A job of its own rather than part of `pnpm gate`**, for the same reason `vector` is:
+  # the gate runs on two operating systems and on every contributor's machine before every
+  # commit, and this needs a 115 MB browser download that only ever exercises Chromium.
+  # Linux only, for the same reason — the browser is the subject, not the platform.
+  #
+  # It downloads Silero's 2.2 MB from Hugging Face and nothing else: the language model, the
+  # voice and recognition are fakes, so there is no WebGPU requirement and no 325 MB Kokoro.
+  # The run itself is ~9 s against the plan's two-minute budget.
+  e2e:
+    name: end-to-end (chromium)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Keyed on the lockfile: a Playwright bump changes the browser build it wants, and a
+      # stale cache would silently test the wrong Chromium.
+      - name: cache the browser
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: install chromium
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      # The system libraries are not in the cache above, so they are installed either way.
+      - name: install chromium system dependencies
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - run: pnpm e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-trace
+          path: test-results/
+          retention-days: 7

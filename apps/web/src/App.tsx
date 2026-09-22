@@ -14,6 +14,13 @@ export const GALLERY_PATH = '/gallery';
  */
 export const DEV_VOICE_PATH = '/dev/voice';
 
+/**
+ * The dev-only end-to-end page (P1-T14), driven by Playwright rather than by a person:
+ * the same wiring as `/dev/voice` with the model, the voice and recognition faked, so it
+ * needs no WebGPU and downloads only Silero's 2.2 MB.
+ */
+export const DEV_E2E_PATH = '/dev/e2e';
+
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
@@ -44,6 +51,13 @@ const VoiceHarness = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./dev/VoiceHarness');
   return { default: module.VoiceHarness };
+});
+
+/** P1-T14's page, behind the same dead-branch guard as the harness above. */
+const E2EPage = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./dev/E2EPage');
+  return { default: module.E2EPage };
 });
 
 /**
@@ -103,6 +117,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     return (
       <Suspense fallback={<p className="boot-status">Loading the harness…</p>}>
         <VoiceHarness />
+      </Suspense>
+    );
+  }
+
+  if (import.meta.env.DEV && path === DEV_E2E_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the end-to-end harness…</p>}>
+        <E2EPage />
       </Suspense>
     );
   }

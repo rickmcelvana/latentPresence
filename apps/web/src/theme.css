@@ -686,6 +686,27 @@ kbd {
   gap: var(--gap-md);
 }
 
+/* P1-T14's end-to-end page. Nothing but Playwright looks at it, so this is only enough
+   to keep it legible when a person does open it. */
+.e2e-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding: var(--gap-lg);
+  max-width: 44rem;
+}
+
+.e2e-note {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.e2e-status {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
 .spike-status {
   color: var(--text-muted);
   font-family: var(--font-mono);
