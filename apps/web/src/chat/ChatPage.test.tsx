@@ -1,12 +1,13 @@
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { SETTINGS_STORAGE_KEY } from '../settings/settings';
-import { ChatPage } from './ChatPage';
+import { defaultPersona } from '../persona/default-persona';
+import { CHAT_CHARACTER_NAME, ChatPage } from './ChatPage';
 import type { ChatLlmOptions } from './chat-llm';
 
 afterEach(cleanup);
@@ -82,6 +83,41 @@ function scriptedProvider(
     },
   });
 }
+
+describe('ChatPage — the persona', () => {
+  it('sends the persona as a system prompt, with the tag rules in it', async () => {
+    // The whole of P1-T12 reaches a model through this one field. Before 67dd675 a
+    // `system` message threw before the request, so "it is set" is worth asserting on
+    // the request the provider actually receives rather than on the page's props.
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const seen: LlmRequest[] = [];
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        seen.push(request);
+        yield { type: 'text-delta', text: 'Hi.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    render(<ChatPage buildProvider={provider} deps={testDeps({ storage })} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+    await waitFor(() => expect(seen.length).toBe(1));
+
+    const system = seen[0]?.messages.find((message) => message.role === 'system');
+    expect(system?.content).toContain('You are Alice.');
+    expect(system?.content).toContain('[emote:curiosity]');
+    expect(system?.content).toContain('nod, shake-head, shrug');
+  });
+
+  it('names the character from the persona file rather than a constant', () => {
+    expect(CHAT_CHARACTER_NAME).toBe(defaultPersona.name);
+  });
+});
 
 describe('ChatPage — unconfigured', () => {
   it('shows a link to Settings and no text box', () => {

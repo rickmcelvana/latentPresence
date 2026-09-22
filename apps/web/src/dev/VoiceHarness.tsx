@@ -5,6 +5,7 @@ import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import type { OutputReport } from './output-check';
 import { VoicePipeline, downloads, type InputChoice, type Snapshot, type VoiceCheckRow } from './voice-pipeline';
+import { defaultPersona } from '../persona/default-persona';
 
 /**
  * `/dev/voice` (P1-T08): the promoted voice pipeline in a browser, replacing Spike A's page.
@@ -12,8 +13,9 @@ import { VoicePipeline, downloads, type InputChoice, type Snapshot, type VoiceCh
  * transcript panel beside the measurement tables, reading `VoicePipeline.onConversation`.
  */
 
-/** ADR-18: 'Alice' until personas exist (P1-T12) — the same name `/chat` uses. */
-const CHARACTER_NAME = 'Alice';
+/** From the persona file since P1-T12 — the same name `/chat` uses. The harness's model
+ * is still scripted, so the persona's prompt reaches nothing here; only the name does. */
+const CHARACTER_NAME = defaultPersona.name;
 
 function mb(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;

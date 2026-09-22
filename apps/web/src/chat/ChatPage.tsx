@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
-import { ChatSession, ConversationMachine } from '@latentpresence/core';
+import { ChatSession, ConversationMachine, renderSystemPrompt } from '@latentpresence/core';
 import type { ConversationEvent, LLMProvider } from '@latentpresence/protocol';
 import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
+import { defaultPersona } from '../persona/default-persona';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 
-/** ADR-18: 'Alice' until personas exist (P1-T12). */
-export const CHAT_CHARACTER_NAME = 'Alice';
+/** The character's name comes from the persona file now (P1-T12), not a constant. */
+export const CHAT_CHARACTER_NAME = defaultPersona.name;
 const SESSION_ID = 'chat';
 
 export interface ChatPageProps {
@@ -73,13 +74,17 @@ function ConfiguredChatPage({ deps, endpoint, baseUrl, modelId, temperature, com
   // happen exactly once, and a ref's value used later is what oxlint's `react(refs)` rule
   // exists to catch — state is the React-blessed way to hold something built once.
   const [{ machine, chat }] = useState(() => {
-    const builtMachine = new ConversationMachine({ sessionId: SESSION_ID, characterId: 'alice' });
+    const builtMachine = new ConversationMachine({ sessionId: SESSION_ID, characterId: defaultPersona.id });
     const builtChat = new ChatSession({
       sessionId: SESSION_ID,
       machine: builtMachine,
       llm: buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps }),
       modelId,
       temperature,
+      // Rendered once, when the page mounts: `now` is what the model is told the time is,
+      // and re-rendering it per turn would rewrite the prompt under a provider's prompt
+      // cache for the sake of a clock nobody is watching that closely.
+      system: renderSystemPrompt(defaultPersona, { now: new Date(), userName: null }),
     });
     builtMachine.start();
     return { machine: builtMachine, chat: builtChat };
