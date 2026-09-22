@@ -113,6 +113,14 @@ Styled in `theme.css` with the tokens, like everything else.
   `[error] The language model failed: …`. A streaming line copies what has arrived so far.
   Badges are not copied. Confirm with a short "Copied" status; say so if the clipboard
   refuses.
+- **"One line per entry" is one *entry* per line, not one physical line** (R-6, 2026-09-21).
+  Entries are joined with `
+` and each answer's text is copied verbatim, so a model that
+  writes markdown keeps its own newlines, headings and bullets — Rick's `/chat` paste has
+  four-line and eight-line answers. That is what was on screen, and it is the right trade:
+  reflowing an answer to one line would misquote it. The consequence is that a pasted
+  transcript cannot be split back into entries by line, so **nothing should parse it** —
+  anything that needs the structure reads `TranscriptLine[]`, not the clipboard text.
 - **Clear** empties the panel's lines. It does not stop an answer, end the session or touch
   the model's history — this is the panel's view, not the conversation (memory is P4). No
   confirmation dialog: nothing is lost that matters yet.

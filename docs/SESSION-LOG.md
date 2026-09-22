@@ -327,3 +327,14 @@ Next: record Rick's R-6 results (D-20), then P1-T12 from the brief. Rick has sai
 **The pilot's first run tested the plumbing.** Both models "returned nothing" in 0–2 ms: `ai` 7.0.97 throws `AI_InvalidPromptError` for a `system` message in `messages`, before any request. Nothing in the repo had ever sent a system prompt, so every adapter and `ChatSession.system` were broken without a test noticing. Fixed and proven against a captured request body (mutation-checked).
 
 **Then the models.** Nemotron Super: 6/6 replies with one on-list emote at the start, 0 leaks, gestures rare. `qwen3.5:9b`: no text on 3/6 after 30–36 s of reasoning, one reply in Chinese, correct tags otherwise. So the brief's done-when measures text-or-nothing and language as well as tags, and picks the second model for not starving on thinking. **Flag for Rick in P1-T12:** the gesture list is partly an art decision (P2-T03's clips must cover it), and the default persona's wording is theirs to review.
+
+## 2026-09-21 claude — R-6 recorded (D-20)
+Did: filed Rick's two pastes as `docs/runs/R-6-transcript-2026-09-21.md` (renamed from `docs/task-{1,3}-rick.md`); closed R-6 as D-20; chased "it started the story over again" to `FakeLLMProvider`; opened R-7 for the gap behind it; noted the copy format's multi-line property in `docs/ui/transcript.md`. Docs only, no gate.
+Left: latency badges unreported, so P1-T11's done-when is met on format and content but not on the badges. R-7 waiting on Rick.
+Next: P1-T12 from `docs/briefs/P1-T12.md`.
+Decisions: none. R-7 is a plan gap put to Rick rather than an ADR.
+Click-through: passed (2026-09-21) — R-6.
+
+**The restart was the instrument, not the patient.** `/dev/voice` answers every turn from one fixed `ANSWER` through `FakeLLMProvider`, whose `stream()` ignores its request entirely — P1-T08 chose that so a barge-in test gets the same long answer every time with no key. A second turn *must* replay it. Nothing to fix, and worth saying plainly rather than inventing a bug to match the report.
+
+**But the question it raises has no owner.** `ChatSession` keeps the conversation and, on Stop, pushes **the heard prefix** as the assistant message — a cut-off answer is remembered as what the user got, which is why Rick's `/chat` follow-up behaved. The spoken path has none of that: `VoiceSession.respond` is a caller-supplied callback and the harness sends one user message per turn. P1-T12 is persona, P1-T13 consent, P1-T14 the e2e test, P4 long-term memory — so **P1-T13 would give `/chat` a voice with no memory between spoken turns**. Recommended its own P1 task before P1-T13 (the heard-not-meant rule is barge-in's, and P4 would inherit it wrong) and left the call to Rick. **Method lesson: a user's bug report locates a symptom, not a cause — and the cause can be correct behaviour sitting next to a real hole.**

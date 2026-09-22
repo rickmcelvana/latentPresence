@@ -73,26 +73,20 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-6 · Read a conversation back: `/chat` and the voice harness transcript
-**Why:** P1-T11. I checked `/chat` in the Browser pane against your Ollama, but the pane
-refuses the clipboard, and the voice harness's models are not cached there. Both need your
-browser. About ten minutes.
+### R-7 · Who owns conversation history for the spoken path? · **a decision, not a check**
+**Why:** found by R-6. `/chat` keeps the conversation and, on Stop, remembers the answer as
+**what the user heard** (`ChatSession.stop`). The voice path has no equivalent:
+`VoiceSession.respond` is a callback the caller fills, and the harness sends one user message
+per turn. No task in `docs/LLM-PLAN.md` owns it — P1-T12 is persona, P1-T13 download consent,
+P1-T14 the end-to-end test, and Phase 4 is long-term memory rather than the turn loop. **When
+P1-T13 gives `/chat` a voice, the character answers every spoken turn with no memory of the
+last one.**
 
-```bash
-pnpm dev
-```
-1. Open `http://localhost:5173/chat`. Have a short conversation; ask for something long and
-   press **Stop** partway; send a second message while an answer is still streaming.
-2. **Copy transcript**, paste it into a text editor.
-3. Open `http://localhost:5173/dev/voice`, **Agree and start**, **Simulated speaker**, **Tell a
-   story**. Then **Microphone** and talk over the character once it answers.
-
-**Expect:** a stopped or talked-over answer shows the words you saw or heard, the rest struck
-through, and an **interrupted** pill; latency badges under each answer; no "Yeah." lines in the
-voice transcript; the pasted text is one line per entry, `You:` / `Alice:`, interrupted lines
-ending `[interrupted]`.
-**Report:** the pasted transcript, anything that looked wrong, and whether the badges'
-numbers seemed believable.
+**Decide:** a new P1 task (say P1-T12b, a shared `ConversationHistory` both `ChatSession` and
+`VoiceSession` write to, with the barge-in prefix rule), or fold it into P1-T13, or let it
+wait for Phase 4. **My recommendation: its own P1 task before P1-T13**, because the
+heard-not-meant rule is barge-in's, not memory's, and P4 would inherit it already wrong.
+**Report:** which of the three, and I will write the task.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
@@ -116,6 +110,17 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-20 · R-6: read a conversation back in `/chat` and the voice harness** — run by Rick
+  2026-09-21 on the Windows box, analysed the same day; `docs/runs/R-6-transcript-2026-09-21.md`.
+  **"The tasks went as expected."** The clipboard copy worked (the one thing the Browser pane
+  could not test), the format held, an interrupted line carried the heard words and cut at the
+  right word in both modes — `/chat` mid-sentence at Stop, `/dev/voice` mid-sentence at the
+  fade's midpoint — and there were **no backchannel lines** in the voice transcript. Rick's one
+  observation, the story restarting after an interruption, is `FakeLLMProvider` replaying the
+  harness's single script, which P1-T08 chose on purpose; **nothing to fix**. **Gap found, not
+  in the harness:** `/chat` remembers a cut-off answer as the heard prefix, and the spoken path
+  keeps no history at all — no plan task owns it (see R-7). **Latency badges went unreported**,
+  so P1-T11's done-when is met on format and content but not on the badges.
 - **D-19 · R-5: configure Ollama and NVIDIA from the settings page, without docs** — run by
   Rick 2026-09-14. Ollama: models listed, replies from `nemotron-3-nano:30b-cloud` (0.4 s) and
   `qwen3.5:9b` (5.3 s). NVIDIA: key saved, 81 models through the companion, a reply from
