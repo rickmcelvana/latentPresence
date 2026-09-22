@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
+import type { MinimalCacheStorage } from '../consent/deps';
 import type { SettingsDeps } from './deps';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { SettingsPanel } from './SettingsPanel';
@@ -25,6 +27,16 @@ function memoryStorage(): Storage {
   } as Storage;
 }
 
+/** No caches at all — jsdom implements none of Cache Storage, and these tests are not
+ * about the Downloaded-models section, so an empty in-memory stand-in is enough. */
+function emptyCaches(): MinimalCacheStorage {
+  return {
+    keys: async () => [],
+    open: () => Promise.reject(new Error('no cache in these tests')),
+    delete: async () => false,
+  };
+}
+
 /** Deps for a panel test: an in-memory vault and storage, and stubs for fetch/probe that
  * a test overrides as needed. Nothing here reaches the network. */
 function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
@@ -38,6 +50,8 @@ function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
     createAudioContext: () => {
       throw new Error('not used in these tests');
     },
+    consent: new ModelConsent(memoryStorage()),
+    caches: emptyCaches(),
     ...overrides,
   };
 }

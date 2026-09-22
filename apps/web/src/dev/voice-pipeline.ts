@@ -14,15 +14,16 @@ import {
 } from '@latentpresence/core';
 import {
   asrModel,
-  createAsrWorker,
-  createKokoroWorker,
-  createSmartTurnWorker,
-  createVadWorker,
+  createGatedAsrWorker,
+  createGatedKokoroWorker,
+  createGatedSmartTurnWorker,
+  createGatedVadWorker,
   kokoroModel,
   resample,
   sileroVadModel,
   smartTurnModel,
 } from '@latentpresence/ml-web';
+import type { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { ConversationEvent, LLMProvider, ModelDescriptor, SpokenAudioChunk, SttResult, TTSProvider, TtsRequest } from '@latentpresence/protocol';
 import {
   BrowserSileroVad,
@@ -244,18 +245,31 @@ export class VoicePipeline {
     this.vad = vad;
   }
 
-  /** Build everything and load every model. Call from a click: the audio context needs a gesture. */
-  static async start(options: { bargeInMs: number; overlap?: 'duck' | 'cut'; live?: boolean; log: (line: string) => void }): Promise<VoicePipeline> {
+  /**
+   * Build everything and load every model. Call from a click: the audio context needs a
+   * gesture. `consent` must already cover `downloads()` — every worker below is built
+   * through a `createGated*Worker` (P1-T13), which `requireConsent`s before it constructs
+   * anything, so a caller that skipped the consent screen fails here loudly rather than
+   * fetching quietly.
+   */
+  static async start(options: {
+    consent: ModelConsent;
+    bargeInMs: number;
+    overlap?: 'duck' | 'cut';
+    live?: boolean;
+    log: (line: string) => void;
+  }): Promise<VoicePipeline> {
     const t0 = performance.now();
+    const { consent } = options;
     const audio = await createAudioOutput();
-    const tts = new KokoroBrowserTTSProvider({ id: 'kokoro', createWorker: createKokoroWorker });
-    const stt = new MoonshineBrowserSTTProvider({ id: 'moonshine', createWorker: createAsrWorker });
+    const tts = new KokoroBrowserTTSProvider({ id: 'kokoro', createWorker: () => createGatedKokoroWorker(consent, 'fp32') });
+    const stt = new MoonshineBrowserSTTProvider({ id: 'moonshine', createWorker: () => createGatedAsrWorker(consent, 'moonshine-tiny', 'fp32') });
     let pipeline: VoicePipeline | null = null;
     const judge = new SmartTurnJudge({
-      createWorker: createSmartTurnWorker,
+      createWorker: () => createGatedSmartTurnWorker(consent, 'gpu'),
       onMeasured: (m) => pipeline?.onJudge(m.inferenceMs, m.probability),
     });
-    const vad = new BrowserSileroVad({ createWorker: createVadWorker });
+    const vad = new BrowserSileroVad({ createWorker: () => createGatedVadWorker(consent) });
     pipeline = new VoicePipeline(audio, tts, stt, judge, vad);
     pipeline.log(`output context ${audio.context.sampleRate} Hz, outputLatency ${Math.round((audio.context.outputLatency || 0) * 1000)} ms, baseLatency ${Math.round(audio.context.baseLatency * 1000)} ms`);
     options.log('loading Silero and Smart Turn');

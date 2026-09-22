@@ -1,8 +1,10 @@
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
+import type { MinimalCacheStorage } from '../consent/deps';
 import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { SETTINGS_STORAGE_KEY } from '../settings/settings';
@@ -58,6 +60,14 @@ function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
     createAudioContext: () => {
       throw new Error('not used in these tests');
     },
+    // `/chat` has no voice yet (P1-T13's brief), so nothing here reads either — present
+    // only because `SettingsDeps` is one shared bag.
+    consent: new ModelConsent(memoryStorage()),
+    caches: {
+      keys: async () => [],
+      open: () => Promise.reject(new Error('not used in these tests')),
+      delete: async () => false,
+    } satisfies MinimalCacheStorage,
     ...overrides,
   };
 }

@@ -1,8 +1,10 @@
 /// <reference lib="webworker" />
+import { cachedModelFetch } from '../consent/model-cache';
 import {
   SMART_TURN,
   modelUrl,
   smartTurnCombinationBlocker,
+  smartTurnModel,
   type SmartTurnBackend,
   type SmartTurnBuild,
   type SmartTurnRequest,
@@ -16,6 +18,12 @@ import { SmartTurnModel, createSmartTurnSession } from './smart-turn';
  * The model code is `smart-turn.ts`; this file is the message loop around it. Durations
  * only are reported — a dedicated worker has its own `performance.timeOrigin`, so the
  * page stamps arrivals on the one clock that measures the whole pipeline.
+ *
+ * **The weights are fetched here, not handed to ort as a URL (P1-T13).** Same change and
+ * the same reasoning as `vad.worker.ts`: `createSmartTurnSession` used to be given
+ * `modelUrl(SMART_TURN[build])` directly, and ort fetched it where nothing of ours could
+ * see the request. `cachedModelFetch` fetches the bytes ourselves, in a cache of our own,
+ * and checks their length against the catalog before ort ever sees them.
  */
 
 function post(message: SmartTurnResponse): void {
@@ -53,7 +61,8 @@ async function load(build: SmartTurnBuild, backend: SmartTurnBackend): Promise<v
   }
 
   const started = performance.now();
-  const loaded = new SmartTurnModel(await createSmartTurnSession(modelUrl(SMART_TURN[build]), backend));
+  const bytes = await cachedModelFetch(modelUrl(SMART_TURN[build]), smartTurnModel(build));
+  const loaded = new SmartTurnModel(await createSmartTurnSession(bytes, backend));
   // One throwaway judgement before saying ready. On WebGPU the first inference compiles its
   // shaders: P1-T08 measured it at 392–479 ms in the browser against 8–57 ms for every one
   // after, which put the first turn of every session past the hangover as `late`. The input

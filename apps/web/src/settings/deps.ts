@@ -1,4 +1,6 @@
+import type { ModelConsent } from '@latentpresence/ml-web/consent';
 import { probeEndpoint, type HttpFetch } from '@latentpresence/providers/web';
+import { defaultConsentCaches, defaultModelConsent, type MinimalCacheStorage } from '../consent/deps';
 import { vault as realVault, Vault } from './vault';
 
 /**
@@ -25,6 +27,12 @@ export interface SettingsDeps {
   /** Builds a fresh audio context for one playback — "create the context on the click"
    * (P1-T10), never held between clicks. */
   readonly createAudioContext: () => MinimalAudioContext;
+  /** Model download consent (P1-T13), read and revoked by the Downloaded-models section. */
+  readonly consent: ModelConsent;
+  /** Cache Storage, for the same section to list and delete what has actually been
+   * downloaded — `transformers-cache` and `latentpresence-models` — rather than what was
+   * agreed to. */
+  readonly caches: MinimalCacheStorage;
 }
 
 export function defaultSettingsDeps(): SettingsDeps {
@@ -36,5 +44,7 @@ export function defaultSettingsDeps(): SettingsDeps {
     origin: window.location.origin,
     now: () => Date.now(),
     createAudioContext: () => new AudioContext(),
+    consent: defaultModelConsent(),
+    caches: defaultConsentCaches(),
   };
 }

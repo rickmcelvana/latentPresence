@@ -717,6 +717,54 @@ kbd {
   font-family: var(--font-mono);
 }
 
+/* --- Consent screen (P1-T13) ------------------------------------------------
+   Shared by every caller that needs weights before it can run: `/dev/voice` today, and
+   `/settings`'s Voice and Hearing sections once they drive a real browser provider.
+   Visually the same shape as the spike's own list above, which this component replaces
+   there — one row per model, a total, Agree/Cancel. */
+
+.consent-screen {
+  border-color: var(--accent-dim);
+}
+
+.consent-note {
+  color: var(--text-muted);
+}
+
+.consent-models {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.consent-model {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.consent-model-name {
+  font-weight: 600;
+}
+
+.consent-model-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
 /* The avatar stage. A fixed box, because a frame rate without the size it was measured
    at is not a measurement (P0-T05). */
 .spike-stage {
@@ -878,6 +926,57 @@ kbd {
   font-family: var(--font-mono);
   font-size: 13px;
   white-space: pre-wrap;
+}
+
+/* Downloaded models (P1-T13): what is actually on this computer, read from Cache Storage. */
+
+.settings-cache-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.settings-cache-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-cache-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings-cache-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-cache-name {
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.settings-cache-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.settings-cache-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 /* --- Transcript (P1-T11) ---------------------------------------------------

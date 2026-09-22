@@ -6,7 +6,8 @@
   "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
-    "./voices": "./src/kokoro/voices.ts"
+    "./voices": "./src/kokoro/voices.ts",
+    "./consent": "./src/consent/index.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {

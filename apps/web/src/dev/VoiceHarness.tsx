@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationEvent } from '@latentpresence/protocol';
+import { ConsentScreen } from '../consent/ConsentScreen';
+import { defaultModelConsent } from '../consent/deps';
 import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import type { OutputReport } from './output-check';
@@ -11,15 +13,15 @@ import { defaultPersona } from '../persona/default-persona';
  * `/dev/voice` (P1-T08): the promoted voice pipeline in a browser, replacing Spike A's page.
  * The logic lives in `voice-pipeline.ts`; this is a view over it. P1-T11 adds the
  * transcript panel beside the measurement tables, reading `VoicePipeline.onConversation`.
+ *
+ * **P1-T13 replaced this page's own ad-hoc "Agree and start" screen with `ConsentScreen`**,
+ * the one every browser-model caller now shares, rather than leaving two.
  */
 
-/** From the persona file since P1-T12 — the same name `/chat` uses. The harness's model
- * is still scripted, so the persona's prompt reaches nothing here; only the name does. */
+/** From the persona file since P1-T12 — the same name `/chat` uses. With the scripted
+ * model only the name is used; with **Live model** (P1-T12b) the persona's prompt is sent
+ * too, which is what makes history visible here at all. */
 const CHARACTER_NAME = defaultPersona.name;
-
-function mb(bytes: number): string {
-  return `${(bytes / 1_000_000).toFixed(1)} MB`;
-}
 
 function ms(value: number | null): string {
   return value === null ? '—' : String(Math.round(value));
@@ -75,12 +77,17 @@ export function VoiceHarness(): ReactElement {
 
   const models = downloads();
   const speaking = snapshot?.state === 'speaking';
-  const total = models.reduce((sum, model) => sum + model.sizeBytes, 0);
+  // One consent object for the page's life, over this browser's real `localStorage` — a
+  // `useMemo` rather than a top-level instance, so nothing touches `window` before render
+  // (`apps/web/src/consent/deps.ts`).
+  const consent = useMemo(() => defaultModelConsent(), []);
 
   async function start(): Promise<void> {
+    if (phase === 'loading') return;
+    consent.grant(models);
     setPhase('loading');
     try {
-      const startedPipeline = await VoicePipeline.start({ bargeInMs, overlap, live, log: setStatus });
+      const startedPipeline = await VoicePipeline.start({ consent, bargeInMs, overlap, live, log: setStatus });
       pipeline.current = startedPipeline;
       setBuilt(startedPipeline);
       // For poking at from the console; dev-only, like the page.
@@ -114,53 +121,43 @@ export function VoiceHarness(): ReactElement {
       </header>
 
       {phase !== 'ready' ? (
-        <section className="panel spike-consent">
-          <div className="panel-header">
-            <span className="panel-title">This will download models</span>
-            <span className="pill pill-accent">{mb(total)} total</span>
-          </div>
-          <ul className="spike-models">
-            {models.map((model) => (
-              <li className="spike-model" key={model.id}>
-                <span className="spike-model-name">{model.label}</span>
-                <span className="spike-model-meta">
-                  {mb(model.sizeBytes)} · {model.licence} ·{' '}
-                  <a href={model.sourceUrl} rel="noreferrer" target="_blank">
-                    source
-                  </a>
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="spike-controls">
-            <label className="field">
-              <span className="field-label">Barge-in after</span>
-              <select className="select" onChange={(event) => setBargeInMs(Number(event.target.value))} value={bargeInMs}>
-                <option value={0}>0 ms (first speech frame)</option>
-                <option value={200}>200 ms</option>
-                <option value={300}>300 ms</option>
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Backchannel talked over</span>
-              <select className="select" onChange={(event) => setOverlap(event.target.value === 'cut' ? 'cut' : 'duck')} value={overlap}>
-                <option value="duck">duck and finish (ADR-28)</option>
-                <option value="cut">cut</option>
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Model</span>
-              <select className="select" onChange={(event) => setLive(event.target.value === 'live')} value={live ? 'live' : 'scripted'}>
-                <option value="scripted">scripted answer (same every turn)</option>
-                <option value="live">live model from /settings</option>
-              </select>
-            </label>
-            <button className="btn btn-primary" disabled={phase === 'loading'} onClick={() => void start()} type="button">
-              Agree and start
-            </button>
-          </div>
-          <p className="spike-status">{status}</p>
-        </section>
+        <>
+          <section className="panel spike-consent">
+            <div className="panel-header">
+              <span className="panel-title">Harness options</span>
+            </div>
+            <div className="spike-controls">
+              <label className="field">
+                <span className="field-label">Barge-in after</span>
+                <select className="select" onChange={(event) => setBargeInMs(Number(event.target.value))} value={bargeInMs}>
+                  <option value={0}>0 ms (first speech frame)</option>
+                  <option value={200}>200 ms</option>
+                  <option value={300}>300 ms</option>
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Backchannel talked over</span>
+                <select className="select" onChange={(event) => setOverlap(event.target.value === 'cut' ? 'cut' : 'duck')} value={overlap}>
+                  <option value="duck">duck and finish (ADR-28)</option>
+                  <option value="cut">cut</option>
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Model</span>
+                <select className="select" onChange={(event) => setLive(event.target.value === 'live')} value={live ? 'live' : 'scripted'}>
+                  <option value="scripted">scripted answer (same every turn)</option>
+                  <option value="live">live model from /settings</option>
+                </select>
+              </label>
+            </div>
+            <p className="spike-status">{status}</p>
+          </section>
+          <ConsentScreen
+            descriptors={models}
+            onAgree={() => void start()}
+            onCancel={() => setStatus('Cancelled. Nothing was downloaded.')}
+          />
+        </>
       ) : (
         <section className="panel">
           <div className="panel-header">

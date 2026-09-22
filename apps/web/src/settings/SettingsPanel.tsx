@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
+import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { LanguageModelSection } from './LanguageModelSection';
 import { VoiceSection } from './VoiceSection';
@@ -48,6 +49,8 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
       <VoiceSection deps={deps} onChange={(tts: TtsSettings) => setSettings((prev) => ({ ...prev, tts }))} tts={settings.tts} />
 
       <HearingSection deps={deps} onChange={(stt: SttSettings) => setSettings((prev) => ({ ...prev, stt }))} stt={settings.stt} />
+
+      <DownloadedModelsSection caches={deps.caches} consent={deps.consent} />
     </div>
   );
 }

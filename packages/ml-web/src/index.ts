@@ -9,3 +9,10 @@ export const packageInfo = {
 export * from './asr';
 export * from './kokoro';
 export * from './turn';
+export * from './consent';
+export {
+  createGatedAsrWorker,
+  createGatedKokoroWorker,
+  createGatedSmartTurnWorker,
+  createGatedVadWorker,
+} from './consent/gated-workers';

@@ -1664,3 +1664,34 @@ Also seen, in **both** legs and both first occurrences with a person:
 - **Smart Turn under 0.7 on a complete question** — 0.69 and 0.56 on the cloud leg, **0.02**
   on the local one, all caught by the hangover. The same weakness R-2 found three times of
   four. P1-T14's.
+
+## What actually downloads weights, and where it caches — read 2026-09-22 (P1-T13 planning)
+
+Read out of the installed sources, not from memory. **There are two download paths and they
+behave differently**, which is the whole shape of P1-T13.
+
+**1. transformers.js (and kokoro-js through it).** `@huggingface/transformers` 3.8.1 caches
+into **Cache Storage under the name `transformers-cache`**
+(`src/utils/hub.js`: `cache = await caches.open('transformers-cache')`), and browser caching
+is **on by default** — `env.useBrowserCache = IS_WEB_CACHE_AVAILABLE && !IS_DENO_RUNTIME`
+(`src/env.js`). A cache that cannot be opened is **warned about and ignored**, not thrown, so
+a private window silently re-downloads rather than failing. `kokoro-js` 1.2.1 depends on
+`@huggingface/transformers` ^3.5.1, so Kokoro shares the same cache. Covers: Moonshine,
+Whisper, Kokoro, and Smart Turn's `WhisperFeatureExtractor`.
+
+**2. onnxruntime-web, directly, and it is neither gated nor cached.** `vad.worker.ts:30` and
+`smart-turn.worker.ts:56` call `InferenceSession.create(modelUrl(spec), …)` — a **URL**, which
+ort fetches internally. Nothing of ours sees that request, so it cannot be shown to a user
+first and it does not land in `transformers-cache`. **The seam already exists**:
+`createSileroSession(source: string | Uint8Array)` accepts bytes, so fetching the weights
+ourselves and handing over an array puts both consent and caching back in our hands.
+`createSmartTurnSession` needs the same treatment.
+
+**Consequence for P1-T13.** "No fetch before consent" cannot be enforced by wrapping
+`fetch`: for path 1 the gate is *not constructing the pipeline*, and for path 2 it is
+*not creating the session from a URL*. The two turn workers have to stop passing URLs.
+
+**The protocol is already ready for this.** `ModelDescriptor` (id, label, sizeBytes, licence,
+sourceUrl) and `ProviderDescriptor.requiresDownload` exist and are documented as feeding this
+screen, and all four factories ship: `kokoroModel(dtype)`, `asrModel(key, dtype)`,
+`sileroVadModel()`, `smartTurnModel(build)`. No protocol change is needed.
