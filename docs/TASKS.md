@@ -117,16 +117,19 @@ Newest first. Each line is the outcome, not the instructions — the detail is i
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
 - **D-22 · R-8: hear the character remember you** — run by Rick 2026-09-22 on the Windows
-  box against `glm-5.2:cloud`, analysed the same day; `docs/runs/R-8-history-2026-09-22.md`.
+  box against `glm-5.2:cloud` and then a local `gemma4:12b-it-qat`, analysed the same day; `docs/runs/R-8-history-2026-09-22.md`.
   **"Works as intended."** The first run of the whole spoken pipeline against a **real**
   model rather than the scripted answer. Recall held across turns ("Jamie. You said your
   wife's name is Jamie."), and a barge-in cut at `…Pakistan, Nigeria,` was repeated back as
   **"India, China, the US, Indonesia, Pakistan, and Nigeria. That's the top six."** — it
   counted the six it had said and knew nothing of the seventh it was generating.
   **ADR-25's retraction fired in the wild** (0.96, resumed after 320 ms) and left nothing in
-  the next request. **Meets P1-T12b's done-when.** **Found:** speech end → first audio is
-  **1.8–6.1 s** with a cloud model against ADR-20's 500 ms, and synthesis is not the cause
-  (299–818 ms) — P1-T14 should measure a local model in the same loop.
+  the next request. **Meets P1-T12b's done-when.** **Rick then ran a second leg on a local
+  `gemma4:12b-it-qat` unasked, and it settled the latency question:** end-to-end is
+  **1.8–6.1 s cloud and 4.8–9.2 s local** (plus a 17.8 s cold load), while our own share
+  is unchanged — turn ends 218–279 ms after speech, synthesis 299–818 ms. That
+  **confirms** ADR-20, whose budget excludes the model call and predicted exactly this, and
+  corrects the intuition that local means fast. ADR-20 amended.
 - **D-21 · R-7: who owns conversation history for the spoken path** — decided by Rick
   2026-09-21, same day it was raised. **Its own P1 task, before P1-T13**: `P1-T12b`, one
   `ConversationHistory` in core that `ChatSession` and `VoiceSession` both write to, carrying

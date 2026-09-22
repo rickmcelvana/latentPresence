@@ -1623,26 +1623,44 @@ the subject of its own mistake.
 
 ## The spoken pipeline against a real model — R-8, 2026-09-22
 
-First run of the whole voice loop with a **live** language model (`glm-5.2:cloud` on Ollama)
-rather than the harness's scripted answer, which ignores its request entirely. Rick, Windows
-box, microphone. `docs/runs/R-8-history-2026-09-22.md`.
+First runs of the whole voice loop with a **live** language model rather than the harness's
+scripted answer, which ignores its request entirely. Rick, Windows box, microphone, two
+legs of the same script. `docs/runs/R-8-history-2026-09-22.md`.
 
-**Speech end → first audio: 4189, 1805, 4297, 6091 ms**, against ADR-20's 500 ms budget and
-the **~765 ms** P1-T08 measured on the same machine with a scripted model. **The model is
-the whole difference**: first-sentence synthesis in the same rows is 299–818 ms, in line
-with every earlier reading, so nothing in our pipeline moved. It is a network round trip
-plus a thinking cloud model, in a loop ADR-20 sized for something local.
+**Speech end → first audio:**
 
-**This is not a regression and not a new decision — it is the first measurement of a case
-the budget never covered.** ADR-20 was set on local inference. What it means in practice is
-that **the 500 ms figure must never be quoted as a property of the product**: it is a
-property of the pipeline with a local model in it. **P1-T14 owes the local-model number in
-this same loop**, which nothing has yet measured with a person at the microphone.
+| Model | Turn 1 | Turn 2 | Turn 4 | Turn 5 |
+|---|---|---|---|---|
+| `glm-5.2:cloud` (Ollama cloud) | 4189 | 1805 | 4297 | 6091 |
+| `gemma4:12b-it-qat` (local) | **17761** (cold load) | 4800 | 9193 | 7544 |
 
-Also seen, both first occurrences with a person:
-- **ADR-25's retraction fired in the wild** — Smart Turn 0.96, speech resumed 320 ms later,
-  inside the hangover. The turn was retracted, published no transcript line, and contributed
-  nothing to the next request (P1-T12b). R-2 saw none of these in four turns (D-17), so the
-  rate is still uncharacterised, but the mechanism is now confirmed end to end.
-- **Smart Turn under 0.7 on a complete question**, twice of four (0.69, 0.56), caught by the
-  hangover — the same weakness R-2 found three times of four. P1-T14's.
+**Our own pipeline is unchanged and inside its budget; all of the growth is the model.**
+Turn ends land 218–279 ms after speech in both legs, and first-sentence synthesis is
+299–818 ms (cloud) and 355–536 ms (local) — in line with every earlier reading. Subtracting
+those leaves roughly **4.4 s of model time on the local turn 2 against 1.5 s on the cloud
+one**.
+
+**This confirms ADR-20, it does not challenge it.** The ADR budgets "under 500 ms … from end
+of speech to first audio, **excluding the model call**", and says end-to-end is "reported,
+not promised … a local model's first token can exceed the whole remaining allowance". Both
+clauses now have evidence behind them.
+
+**The intuition it corrects is that local means fast.** On this box a 12B local model is two
+to four times *slower* to first audio than a cloud endpoint. That matches `live:persona`,
+where `gemma4:12b-it-qat` took 9–41 s for a full reply while `claude-fable-5-1` took 5–7 s.
+**So "use a local model for latency" is not advice this repo can give**, and the transcript's
+latency badges (P1-T11) are the right answer: report what the user's own endpoint does.
+
+**A cold local model costs 17.8 s on the first turn** — Ollama loading weights into VRAM,
+not a per-turn cost, but the first thing a new user says taking eighteen seconds is a
+product problem. P8 and `/settings` should warm a local model rather than let the first turn
+pay for it.
+
+Also seen, in **both** legs and both first occurrences with a person:
+- **ADR-25's retraction fired in the wild** — 0.96 then 0.94, speech resuming 320 and 256 ms
+  later, inside the hangover. Each turn was retracted, published no transcript line, and
+  contributed nothing to the next request (P1-T12b). R-2 saw none in four turns (D-17), so
+  the rate is still uncharacterised, but the mechanism is confirmed end to end twice.
+- **Smart Turn under 0.7 on a complete question** — 0.69 and 0.56 on the cloud leg, **0.02**
+  on the local one, all caught by the hangover. The same weakness R-2 found three times of
+  four. P1-T14's.

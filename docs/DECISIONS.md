@@ -265,7 +265,7 @@ Rules: one `theme.css` per app is the single source of styling truth; every clas
   day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
   2026-09-08.
 
-## ADR-20 Voice pipeline performance (accepted 2026-09-08, amended 2026-09-09, 2026-09-11, 2026-09-13)
+## ADR-20 Voice pipeline performance (accepted 2026-09-08, amended 2026-09-09, 2026-09-11, 2026-09-13, 2026-09-22)
 
 From Spike A (`docs/spikes/A-voice-loop.md`), measured on Rick's machine over twenty
 clean turns.
@@ -281,6 +281,16 @@ loop.
 - **End to end: reported, not promised.** It depends on which LLM the user points at, and
   a local model's first token can exceed the whole remaining allowance. The transcript
   panel shows both (P1-T11 already specifies latency badges).
+
+  **Confirmed with a person and a real model, 2026-09-22 (R-8).** Both halves held. The
+  pipeline's own share was unchanged — turn ends 218–279 ms after speech, first-sentence
+  synthesis 299–818 ms — while end-to-end ran **1.8–6.1 s on `glm-5.2:cloud` and 4.8–9.2 s
+  on a local `gemma4:12b-it-qat`**, plus a 17.8 s cold load on its first turn. The clause
+  about a local model's first token was written as a caution and is now a measurement.
+  **It also corrects an intuition the ADR did not address: local is not the fast option.**
+  On this hardware the local 12B model was two to four times slower to first audio than the
+  cloud endpoint, so nothing in this project should recommend local inference *for latency*.
+  `docs/SURFACE.md`, `docs/runs/R-8-history-2026-09-22.md`.
 
 **WebGPU is required for synthesis, not preferred.** Kokoro takes 3779 ms on wasm against
 245 ms on WebGPU — fifteen times slower, and not a conversation. ADR-01 stands as
