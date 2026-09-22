@@ -2,32 +2,38 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 
 /**
- * Fails the build if a dev-only model route reaches production — the voice harness (P1-T08).
+ * Fails the build if a dev-only route reaches production — the avatar spike (P0-T05) and
+ * the two harnesses (P1-T08, P1-T14).
  *
- * The route is guarded by `import.meta.env.DEV`, but that alone does not keep it out of
+ * The routes are guarded by `import.meta.env.DEV`, but that alone does not keep them out of
  * the bundle: Rollup emits a chunk for a dynamic import whether or not the branch that
- * reaches it can run. The first build of the spike shipped three worker chunks and a
- * 21 MB ONNX Runtime wasm to a route nobody could open. The guard that works is
- * returning before the import so the branch is provably dead — and this plugin is what
- * says whether that is still true.
+ * reaches it can run. The first build of the spike shipped three worker chunks and a 21 MB
+ * ONNX Runtime wasm to a route nobody could open. The guard that works is returning before
+ * the import so the branch is provably dead — and this plugin is what says whether that is
+ * still true.
  *
- * P1 puts speech recognition and synthesis into the product for real. When that happens
- * this plugin is the thing to delete, deliberately, rather than a surprise 21 MB.
+ * **P1-T15 rewrote the needles rather than deleting the plugin, and it had to.** Until voice
+ * reached a real route this list was ONNX Runtime, transformers.js, kokoro-js and the two
+ * worklet names, and any of them in a chunk meant a dev page had leaked. `/chat` ships the
+ * same pipeline now, so all five are *expected* in a production bundle — a guard that still
+ * named them would fail every build, and one that named nothing would let the next dev page
+ * leak in silence. What replaces them are two names only the dev pages ever write, so the
+ * guard is the same instrument measuring the same thing instead of being retired with its
+ * subject. The `.wasm` assertion went with the rest: the pipeline's own wasm is the point.
+ *
+ * `@pixiv/three-vrm` and `three/examples/jsm` come out at **P2-T01**, deliberately: the
+ * avatar stops being dev-only the moment the stage is real, and that is the one line here
+ * meant to come out rather than stay forever.
  */
 function assertSpikeExcludedFromBuild(): Plugin {
   const forbidden = [
-    'onnxruntime',
-    '@huggingface/transformers',
-    'kokoro-js',
-    // The audio worklets' processor names (P1-T08): the harness is dev-only until P1-T10/T13
-    // put the pipeline in the product.
-    'latentpresence-capture',
-    'latentpresence-playback',
-    // P0-T05. These two are the entries to delete at P2-T01, deliberately: the avatar
-    // stops being dev-only the moment the stage is real, and that is the one line of this
-    // guard that is meant to come out rather than stay forever.
     '@pixiv/three-vrm',
     'three/examples/jsm',
+    // `/dev/voice` (P1-T08) and `/dev/e2e` (P1-T14). Each is a handle those pages hang on
+    // `globalThis` for a person, or for Playwright, to read — nothing else writes either
+    // name, and neither survives minification as a property name.
+    'voiceHarness',
+    'e2eHandle',
   ];
 
   return {
@@ -35,18 +41,12 @@ function assertSpikeExcludedFromBuild(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       for (const [fileName, output] of Object.entries(bundle)) {
-        if (fileName.endsWith('.wasm')) {
-          this.error(
-            `${fileName} is in the production bundle. The spike models are dev-only ` +
-              '(P0-T04, P0-T07).',
-          );
-        }
         if (output.type !== 'chunk') continue;
         for (const needle of forbidden) {
           if (output.code.includes(needle)) {
             this.error(
-              `${fileName} references "${needle}". A spike route has reached the ` +
-                'production bundle; it is meant to be dropped as dead code (P0-T04, P0-T07).',
+              `${fileName} references "${needle}". A dev-only route has reached the ` +
+                'production bundle; it is meant to be dropped as dead code (P0-T04, P1-T15).',
             );
           }
         }

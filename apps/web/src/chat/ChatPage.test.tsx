@@ -60,8 +60,8 @@ function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
     createAudioContext: () => {
       throw new Error('not used in these tests');
     },
-    // `/chat` has no voice yet (P1-T13's brief), so nothing here reads either — present
-    // only because `SettingsDeps` is one shared bag.
+    // Nothing has agreed to any model, which is what makes the voice test below reach the
+    // consent screen rather than a download.
     consent: new ModelConsent(memoryStorage()),
     caches: {
       keys: async () => [],
@@ -191,6 +191,28 @@ describe('ChatPage — the text box', () => {
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
     release();
     await act(() => settle());
+  });
+});
+
+describe('ChatPage — voice (P1-T15)', () => {
+  it('offers voice from a production route, and asks before anything downloads', async () => {
+    // The whole of P1-T15 in one test: `/chat` is not a dev route, the button is there
+    // without one, and the first thing behind it is the consent screen rather than a
+    // download. The panel is a lazy chunk, so this also proves it resolves in a build that
+    // is not the dev harness.
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const deps = testDeps({ storage });
+    render(<ChatPage buildProvider={scriptedProvider([])} deps={deps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    // The panel itself is a lazy chunk: the second button only exists once it has loaded.
+    await waitFor(() => expect(screen.getByText(/A browser voice and hearing/u)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Agree' })).toBeTruthy());
+
+    expect(deps.consent.granted()).toEqual([]);
+    expect(screen.getByText(/Hugging Face/u)).toBeTruthy();
   });
 });
 
