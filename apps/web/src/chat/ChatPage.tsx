@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
 import { ChatSession, ConversationMachine, attachHistory, renderSystemPrompt } from '@latentpresence/core';
 import type { ConversationEvent, LLMProvider } from '@latentpresence/protocol';
@@ -139,6 +139,31 @@ function ConfiguredChatPage({ deps, endpoint, baseUrl, modelId, temperature, com
 
   useEffect(() => machine.subscribe(() => setBusy(chat.busy)), [machine, chat]);
 
+  /**
+   * Stable identities, and that is not tidiness. An inline arrow here was the bug that
+   * reached a person on 2026-09-22: a new function on every render, an effect that stopped
+   * the call when its dependency changed, and a `/chat` that showed a live microphone while
+   * hearing nothing. `VoicePanel` no longer allows that to matter — it keeps the callback in
+   * a ref — and these are `useCallback` anyway so the next prop of this shape cannot either.
+   */
+  const onVoiceActive = useCallback(
+    (active: boolean) => {
+      setCallActive(active);
+      // A typed answer still streaming when the call starts would leave the machine in
+      // `speaking`, and `VoiceSession` deliberately ignores a turn that ends while the
+      // character is audible — so the first thing said into the microphone would be
+      // swallowed. Switching to voice ends the typed answer, which is what Stop does anyway:
+      // the transcript keeps what was shown and strikes the rest.
+      if (active) chat.stop();
+    },
+    [chat],
+  );
+
+  const onVoiceEnd = useCallback(() => {
+    setVoiceOpen(false);
+    setCallActive(false);
+  }, []);
+
   function send(): void {
     if (draft.trim() === '') return;
     if (chat.send(draft)) {
@@ -172,19 +197,8 @@ function ConfiguredChatPage({ deps, endpoint, baseUrl, modelId, temperature, com
             llm={llm}
             machine={machine}
             modelId={modelId}
-            onActive={(active) => {
-              setCallActive(active);
-              // A typed answer still streaming when the call starts would leave the machine
-              // in `speaking`, and `VoiceSession` deliberately ignores a turn that ends while
-              // the character is audible — so the first thing said into the microphone would
-              // be swallowed. Switching to voice ends the typed answer, which is what Stop
-              // does anyway: the transcript keeps what was shown and strikes the rest.
-              if (active) chat.stop();
-            }}
-            onEnd={() => {
-              setVoiceOpen(false);
-              setCallActive(false);
-            }}
+            onActive={onVoiceActive}
+            onEnd={onVoiceEnd}
             settings={settings}
             temperature={temperature}
           />

@@ -204,6 +204,35 @@ describe('VoicePanel — the call', () => {
     expect(onActive).toHaveBeenLastCalledWith(true);
   });
 
+  it('keeps the call running when the parent re-renders with a new callback identity', async () => {
+    // **The bug this test exists for reached Rick on a real machine** (2026-09-22): `/chat`
+    // passed `onActive` as an inline arrow, so every re-render gave it a new identity, the
+    // unmount effect's dependency changed, React ran the cleanup — and the cleanup stops the
+    // call. The panel still said "Listening on <microphone>" with the phase still `active`,
+    // so it looked connected while the VAD, the capture and the audio graph had all been
+    // torn down: the microphone was shown and nothing was ever heard. `/dev/voice` had no
+    // such bug because the harness owns its pipeline outside React's dependency graph.
+    //
+    // A prop changing identity is not a reason to end a call, so the panel must not treat it
+    // as one. Every previous test here passed because `harness()` hands over one stable
+    // `vi.fn()` — the seam hid the defect, which is why this test re-renders with a *new*
+    // function rather than asserting on the one it started with.
+    const { props, deps, stopped } = harness();
+    deps.consent.grant(browserModelsFor(DEFAULT_SETTINGS));
+    const { rerender } = render(<VoicePanel {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await act(() => settle());
+    expect(stopped).toEqual([]);
+
+    rerender(<VoicePanel {...props} onActive={vi.fn()} />);
+    await act(() => settle());
+    rerender(<VoicePanel {...props} onActive={vi.fn()} onEnd={vi.fn()} />);
+    await act(() => settle());
+
+    expect(stopped).toEqual([]);
+    expect(screen.getByRole('button', { name: 'End call' })).toBeTruthy();
+  });
+
   it('ends the call and leaves voice mode', async () => {
     const { props, deps, onActive, onEnd, stopped } = harness();
     deps.consent.grant(browserModelsFor(DEFAULT_SETTINGS));

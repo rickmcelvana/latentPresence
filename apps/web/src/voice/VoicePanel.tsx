@@ -28,6 +28,8 @@ import { buildSpeechProviders } from './providers';
  * **`stop()` is called on unmount as well as on End call.** React 19's StrictMode runs a
  * mount-time cleanup in development, so this must be harmless when nothing started — and
  * it is: `VoiceCall.stop` is idempotent and the cleanup closes over the call that exists.
+ * **It must also not run because a prop changed** — see `activeListener`, which is that
+ * bug's fix and its explanation.
  */
 
 /** What the panel needs from a running call. `VoiceCall` satisfies it; a test hands over an
@@ -73,6 +75,25 @@ export function VoicePanel({
   const [status, setStatus] = useState('Nothing has been downloaded yet.');
   const [state, setState] = useState(machine.getState());
   const call = useRef<ActiveCall | null>(null);
+  /**
+   * `onActive` behind a ref, and the teardown effect below with **no dependencies**.
+   *
+   * **This is a bug that shipped and reached a person** (2026-09-22). `/chat` passed
+   * `onActive` as an inline arrow — the obvious thing to write — so every re-render gave it
+   * a new identity. The teardown effect depended on it, React ran the cleanup when the
+   * identity changed, and the cleanup stops the call. The panel then still said "Listening
+   * on <microphone>" in the `active` phase while the VAD, the capture and the audio graph
+   * had been torn down, so `/chat` looked like a connected microphone that never heard
+   * anything, while `/dev/voice` (which owns its pipeline outside React) was fine.
+   *
+   * A prop changing identity is never a reason to drop a call, so the two are separated: a
+   * prop update writes the ref, and only an actual unmount runs the teardown.
+   */
+  const activeListener = useRef(onActive);
+
+  useEffect(() => {
+    activeListener.current = onActive;
+  }, [onActive]);
   // This browser's consent book, from the shared deps bag — the same object
   // `/settings`'s Downloaded-models section reads and revokes, so agreeing here is visible
   // there and revoking there asks again here. A test hands over a memory-backed one.
@@ -86,13 +107,14 @@ export function VoicePanel({
   useEffect(
     () => () => {
       // A call outliving the panel would leave a microphone open and a 325 MB worker
-      // running. `onActive(false)` too: a panel that vanished without saying so would
-      // leave `/chat` with a permanently disabled text box.
+      // running. `activeListener` too: a panel that vanished without saying so would leave
+      // `/chat` with a permanently disabled text box. Neither is a dependency of this
+      // effect — see `activeListener` above for why that distinction is load-bearing.
       void call.current?.stop();
       call.current = null;
-      onActive(false);
+      activeListener.current(false);
     },
-    [onActive],
+    [],
   );
 
   const begin = useCallback(async () => {
