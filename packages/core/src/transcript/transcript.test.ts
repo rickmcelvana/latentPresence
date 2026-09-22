@@ -202,7 +202,7 @@ describe('reduceTranscript — the event table', () => {
       { ...base(0), type: 'session.started', characterId: 'alice' },
       { ...base(1), type: 'user.speech.started' },
       { ...base(2), type: 'user.speech.ended' },
-      { ...base(3), type: 'assistant.sentence', text: 'Hi.', index: 0 },
+      { ...base(3), type: 'assistant.sentence', text: 'Hi.', index: 0, tags: [] },
       { ...base(4), type: 'assistant.audio.ended', sentenceIndex: 0 },
       { ...base(5), type: 'state.changed', from: 'idle', to: 'listening' },
       { ...base(6), type: 'session.ended', reason: 'user' },

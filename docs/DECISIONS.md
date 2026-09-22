@@ -32,6 +32,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-27 | Synthesised sentences are trimmed to their voice plus 50 ms / 250 ms before they are queued | accepted | 2026-09-13 |
 | ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
 | ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | accepted | 2026-09-14 |
+| ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted | 2026-09-21 |
 
 ---
 
@@ -466,6 +467,15 @@ say so in its session note rather than inheriting this by default.
 obligation: P1-T12 still has to decide explicitly whether to promote this shape into the
 protocol, amend it, or replace it.
 
+**Closed 2026-09-21 by P1-T12: promoted, unchanged in shape.** `InlineTag` and
+`InlineTagKind` are now zod schemas in `packages/protocol/src/conversation.ts` and the
+chunker re-exports them, so the seam closed as a field copy exactly as predicted — the four
+fields are the same four, and `SpeechChunk.index` did line up with
+`assistant.sentence.index`. The one thing the ADR guessed wrong is worth recording: it
+worried a gesture might need "a duration, or a target, or a strength". The pilot found the
+opposite — a model emits one bare label and nothing else — so the shape gained nothing and
+only `known` widened, to cover the new gesture vocabulary. See **ADR-30**.
+
 ## ADR-24 TTS audio crosses as Float32 PCM, decoded by the adapter (accepted 2026-09-12)
 
 **Decision:** every `TTSProvider` yields `SpokenAudioChunk` — mono `Float32Array` samples
@@ -758,3 +768,66 @@ real completion. **One gap, fixed (4777a54):** nothing on screen said how to sta
 companion until a test had failed; the relay note now names `pnpm companion`. Still
 unmeasured: Local Network Access from the hosted app (P8-T03), Firefox and Safari, and whether
 NVIDIA stops generating when the relay drops a connection.
+
+## ADR-30 The tag protocol (accepted 2026-09-21)
+
+**Decision**, in four parts, all of which P1-T12 had to make explicitly because ADR-23
+deferred them:
+
+1. **The grammar stays `[emote:x]` and `[gesture:x]`**, exactly as `SentenceChunker` has
+   parsed it since P1-T04.
+2. **Gestures get a closed vocabulary**, `CharacterGestureSchema`: `nod, shake-head, shrug,
+   wave, tilt-head, lean-in, open-hands, think`. `InlineTag.known` now reports a gesture
+   against that list, where before it was always null for a gesture.
+3. **Tags are carried on `assistant.sentence`**, as `tags: InlineTag[]`, additively, with a
+   default of `[]`. **`PROTOCOL_VERSION` stays 1.**
+4. **Tokens never carry a tag.** A `TagFilter` in core holds back any trailing text that
+   could still become one, and `Reply` and `ChatSession` both stream through it.
+
+**Why the grammar stays.** It is the cheapest thing a model can emit that survives
+streaming. The pilot (`docs/SURFACE.md`) had a strong model follow it six times out of six
+with no leaked markup. The alternatives each buy something we did not need: an XML-ish
+`<emote>` costs more tokens for the same information; a JSON side channel cannot be
+streamed and interleaved with speech at all; and tool calls would make every emotional beat
+a round trip, which is latency in the one place ADR-20 has none to spare.
+
+**Why gestures are closed and short.** Two constraints meet here. The whole list goes into
+every system prompt, so a long one crowds out the persona and costs tokens on every turn.
+And **P2-T03's clip library has to cover exactly these labels** — a label with no clip is a
+gesture the character promises and cannot make. That makes the vocabulary partly an art
+commitment, so it was Rick's call, taken 2026-09-21 on the eight the pilot produced.
+Emotions were already closed for the same reason (`CharacterEmotion`, twelve labels mapped
+to VRM presets by P2-T01), so this is the existing pattern, not a new one.
+
+**Why `assistant.sentence` rather than a new `assistant.tag` event.** The sentence is the
+unit P2-T07 schedules against: it already carries the index and the tag-free text, and a
+tag's offset is an index into *that* text. A separate event would duplicate the sentence
+index, and — worse — could arrive in a different order from the text it belongs to, so a
+consumer would have to buffer and rejoin them. The one real cost is that a tag cannot be
+delivered before its sentence settles, which nothing needs: P2 schedules against TTS word
+timings that do not exist until synthesis has run anyway.
+
+**Why `known` keeps the raw label beside the verdict.** A model invents labels. Dropping an
+invented one silently would lose a gesture the avatar could still have approximated;
+passing it through as valid would ask P2 to map something it has no clip for. So `value` is
+always what the model wrote and `known` is null unless it is on its own kind's list. The
+live check reports off-list labels by name rather than counting them as leaks, which is how
+we will learn what the vocabulary is missing.
+
+**Why tokens are filtered rather than left raw.** `docs/ui/transcript.md` named this as
+P1-T12's to fix: before it, a viewer watched `[emote:joy]` appear in the streaming
+transcript and vanish when the sentence settled. The filter shares the chunker's regex and
+its 48-character scan limit by importing them, because two copies that drifted apart would
+show up as text the transcript hides and the speech says, or the reverse.
+
+**What it costs.** Every producer of `assistant.sentence` must now pass `tags` — the TypeScript
+type requires it even though the wire format does not, which is deliberate: a producer that
+forgets is a silent loss of every tag it had. And a partial tag at the end of a stream is held
+back for one delta, so a transcript can lag the model by that much. Both were measured as
+nothing: the held text is at most 48 characters and is released on the next delta or on flush.
+
+**Not measured when accepted.** Whether models keep to the eight gestures in normal use
+rather than in a scripted check (`pnpm live:persona` measures the scripted case);
+whether `often` expressiveness produces gestures a viewer finds excessive, which needs
+P2-T03's clips and eyes; and whether a second emote mid-reply lands where the feeling
+actually changes, which needs the avatar to be visible.

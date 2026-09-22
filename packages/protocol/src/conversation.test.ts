@@ -96,7 +96,14 @@ describe('ConversationEventSchema', () => {
       { ...base, type: 'user.turn.ended', probability: null },
       { ...base, type: 'user.turn.resumed', pauseMs: 220 },
       { ...base, type: 'user.transcript', text: 'hello', isFinal: false, confidence: null },
-      { ...base, type: 'assistant.sentence', text: 'Hello.', index: 0 },
+      { ...base, type: 'assistant.sentence', text: 'Hello.', index: 0, tags: [] },
+      {
+        ...base,
+        type: 'assistant.sentence',
+        text: 'Hello there.',
+        index: 1,
+        tags: [{ kind: 'emote', value: 'joy', known: 'joy', offset: 0 }],
+      },
       { ...base, type: 'assistant.interrupted', spokenPrefix: 'Hel' },
       { ...base, type: 'assistant.backchannel', text: 'Yeah.' },
       {
@@ -109,6 +116,22 @@ describe('ConversationEventSchema', () => {
     for (const sample of samples) {
       expect(ConversationEventSchema.parse(sample)).toEqual(sample);
     }
+  });
+
+  it('still parses an assistant.sentence written before P1-T12 added tags', () => {
+    // ADR-23 was closed additively: `tags` defaults to `[]`, which is why
+    // `PROTOCOL_VERSION` is still 1. A producer that never heard of tags is not broken.
+    const parsed = ConversationEventSchema.parse({ ...base, type: 'assistant.sentence', text: 'Hi.', index: 0 });
+    expect(parsed).toEqual({ ...base, type: 'assistant.sentence', text: 'Hi.', index: 0, tags: [] });
+  });
+
+  it('rejects a tag whose label is on neither list but keeps one that is on either', () => {
+    const sentence = { ...base, type: 'assistant.sentence' as const, text: 'Hi.', index: 0 };
+    const tag = { kind: 'gesture' as const, value: 'backflip', offset: 0 };
+    // `known` is a verdict, not a free label: an invented one must be null, not itself.
+    expect(ConversationEventSchema.safeParse({ ...sentence, tags: [{ ...tag, known: 'backflip' }] }).success).toBe(false);
+    expect(ConversationEventSchema.safeParse({ ...sentence, tags: [{ ...tag, known: null }] }).success).toBe(true);
+    expect(ConversationEventSchema.safeParse({ ...sentence, tags: [{ ...tag, kind: 'emote', known: 'joy' }] }).success).toBe(true);
   });
 
   it('rejects a state transition to a state the machine does not have', () => {

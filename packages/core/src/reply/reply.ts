@@ -5,7 +5,7 @@ import type {
   WordTiming,
 } from '@latentpresence/protocol';
 import { Cancellation } from '../cancellation';
-import { SentenceChunker, type InlineTag, type SentenceChunkerOptions, type SpeechChunk } from '../chunker';
+import { SentenceChunker, TagFilter, type InlineTag, type SentenceChunkerOptions, type SpeechChunk } from '../chunker';
 import type { PlaybackEvent, PlaybackSink } from '../playback/sink';
 import { DEFAULT_EDGE_PADDING, spokenPrefix, trimToVoice, type EdgePadding, type SpokenSentence } from '../playback/prefix';
 
@@ -42,9 +42,9 @@ export interface ReplyDependencies {
 
 export type ReplyEvent =
   /**
-   * One text delta as the model sent it (P1-T11), for a transcript to stream. Raw: an inline
-   * tag (`[emote:x]`) can arrive split across deltas and is not lifted out until P1-T12; the
-   * settled `assistant.message` carries the tag-free text. Reasoning is never a token.
+   * One text delta, for a transcript to stream (P1-T11), **tag-free since P1-T12**: a
+   * `TagFilter` holds back any trailing text that could still become an inline tag, so a
+   * tag split across deltas is never shown and then taken back. Reasoning is never a token.
    */
   | { readonly type: 'token'; readonly text: string }
   | { readonly type: 'sentence'; readonly index: number; readonly text: string; readonly tags: readonly InlineTag[] }
@@ -171,6 +171,7 @@ export class Reply {
 
   private async run(request: LlmRequest): Promise<void> {
     const chunker = new SentenceChunker(this.deps.chunker);
+    const tagFilter = new TagFilter();
     let synthesis = Promise.resolve();
     let failure: { scope: 'llm' | 'tts'; error: string } | null = null;
     const signal = this.cancellation;
@@ -192,13 +193,16 @@ export class Reply {
       for await (const part of this.deps.llm.stream(request, { signal })) {
         if (signal.aborted || failure !== null) break;
         if (part.type === 'text-delta') {
-          if (part.text !== '') this.emit({ type: 'token', text: part.text });
+          const shown = tagFilter.push(part.text);
+          if (shown !== '') this.emit({ type: 'token', text: shown });
           for (const chunk of chunker.push(part.text)) schedule(chunk);
         } else if (part.type === 'finish' && part.reason === 'error') {
           failure = { scope: 'llm', error: 'the model stream ended with an error' };
         }
       }
       if (!signal.aborted && failure === null) {
+        const tail = tagFilter.flush();
+        if (tail !== '') this.emit({ type: 'token', text: tail });
         for (const chunk of chunker.flush()) schedule(chunk);
       }
     } catch (error) {

@@ -16,6 +16,7 @@ export const PROTOCOL_VERSION = 1;
 export * from './common';
 export * from './media';
 export * from './affect';
+export * from './persona';
 export * from './conversation';
 export * from './schedule';
 export * from './capabilities';

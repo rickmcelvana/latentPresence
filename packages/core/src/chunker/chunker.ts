@@ -1,4 +1,6 @@
-import type { CharacterEmotion } from '@latentpresence/protocol';
+import type { CharacterEmotion, CharacterGesture, InlineTag, InlineTagKind } from '@latentpresence/protocol';
+
+export type { InlineTag, InlineTagKind };
 
 /**
  * The sentence chunker (P1-T04): LLM tokens in, TTS-sized chunks out.
@@ -14,31 +16,18 @@ import type { CharacterEmotion } from '@latentpresence/protocol';
  * in a worker, in the companion, or in a test with no DOM and no clock.
  */
 
-/** Which inline tag this is. P1-T12 writes the persona text that asks for them. */
-export type InlineTagKind = 'emote' | 'gesture';
-
 /**
- * A tag lifted out of the spoken text.
+ * `InlineTag` and `InlineTagKind` now live in `packages/protocol` and are re-exported
+ * above: **ADR-23 is closed by P1-T12**, which designed the tag protocol the ADR was
+ * waiting for and put the shape on `assistant.sentence`. The chunker still produces the
+ * values; it no longer owns the type.
  *
- * `offset` is an index into the **chunk's own `text`**, after tags are removed — the
- * position the tag sat at in what the user will actually hear. That is the only offset
- * P2 can use: it schedules the expression or clip against TTS word timestamps, which
- * are measured over spoken text and know nothing about markup.
+ * The contract the chunker keeps either way: `offset` is an index into the **chunk's own
+ * `text`**, after tags are removed — the position the tag sat at in what the user will
+ * actually hear. That is the only offset P2 can use, because it schedules the expression
+ * or clip against TTS word timestamps, which are measured over spoken text and know
+ * nothing about markup.
  */
-export interface InlineTag {
-  readonly kind: InlineTagKind;
-  /** The raw label, e.g. `joy` or `shrug`. Validity is `known`'s business, not ours. */
-  readonly value: string;
-  /**
-   * For an `emote`, the label when it is one of the twelve `CharacterEmotion`s, else
-   * null. A model will invent labels; dropping those silently would lose a gesture the
-   * avatar could still have played, and passing them on as valid would make P2 map
-   * something it has no preset for.
-   */
-  readonly known: CharacterEmotion | null;
-  /** Index into the chunk's `text` where the tag was removed. */
-  readonly offset: number;
-}
 
 /** One unit of speech, the thing TTS is asked for and `assistant.sentence` carries. */
 export interface SpeechChunk {
@@ -119,13 +108,28 @@ export const knownEmotions = new Set<string>([
 ]);
 
 /**
+ * The same arrangement for gestures (P1-T12). `chunker.test.ts` asserts this set equals
+ * `CharacterGestureSchema.options`, and the stakes are higher here than for emotions: an
+ * unlisted gesture is reported `known: null` and P2-T03 has no clip to play for it.
+ */
+export const knownGestures = new Set<string>([
+  'nod', 'shake-head', 'shrug', 'wave', 'tilt-head', 'lean-in', 'open-hands', 'think',
+]);
+
+/**
  * A `[` that is not closed within this many characters is literal text, not the start of
  * a tag. Without the cap an unmatched bracket would hold the rest of the turn in the
  * buffer waiting for a `]` that never arrives.
  */
-const TAG_SCAN_LIMIT = 48;
+export const TAG_SCAN_LIMIT = 48;
 
-const TAG_PATTERN = /^\[(emote|gesture):([a-z][a-z0-9-]*)\]/;
+export const TAG_PATTERN = /^\[(emote|gesture):([a-z][a-z0-9-]*)\]/;
+
+/** The verdict on a raw label: on its own kind's list, or null. */
+function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | null {
+  if (kind === 'emote') return knownEmotions.has(value) ? (value as CharacterEmotion) : null;
+  return knownGestures.has(value) ? (value as CharacterGesture) : null;
+}
 
 const isWhitespace = (ch: string): boolean => ch.length > 0 && /\s/.test(ch);
 const isDigit = (ch: string): boolean => ch >= '0' && ch <= '9';
@@ -223,7 +227,7 @@ export class SentenceChunker {
           this.tags.push({
             kind,
             value,
-            known: kind === 'emote' && knownEmotions.has(value) ? (value as CharacterEmotion) : null,
+            known: known(kind, value),
             offset: this.spoken.length,
           });
           i += match[0].length;

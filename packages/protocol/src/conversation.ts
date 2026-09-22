@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AffectStateSchema, UserAffectSchema } from './affect';
+import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, UserAffectSchema } from './affect';
 import { DurationMsSchema, IdSchema, JsonObjectSchema, JsonValueSchema, TimestampSchema, UnitIntervalSchema } from './common';
 
 /** The states of the conversation machine (P1-T01). Exactly these, no sub-states. */
@@ -11,6 +11,32 @@ export const ConversationStateSchema = z.enum([
   'interrupted',
 ]);
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
+
+/** Which inline tag this is. The grammar is `[emote:x]` / `[gesture:x]` (P1-T12). */
+export const InlineTagKindSchema = z.enum(['emote', 'gesture']);
+export type InlineTagKind = z.infer<typeof InlineTagKindSchema>;
+
+/**
+ * A tag the model wrote into its answer, lifted out of the spoken text by the sentence
+ * chunker and carried on `assistant.sentence` (P1-T12, closing ADR-23).
+ *
+ * **`offset` indexes the spoken text, after the tag was removed** — the position in what
+ * the user actually hears. That is the only offset P2-T07 can use, because it schedules
+ * expressions and clips against TTS word timestamps, which are measured over speech and
+ * know nothing about markup.
+ *
+ * **`value` is the raw label and `known` is the verdict on it.** A model invents labels;
+ * dropping those silently would lose a gesture the avatar could still have approximated,
+ * and passing them on as valid would ask P2 to map something it has no clip for. So the
+ * raw label always survives and `known` is null when it is not on either list.
+ */
+export const InlineTagSchema = z.object({
+  kind: InlineTagKindSchema,
+  value: z.string().min(1),
+  known: z.union([CharacterEmotionSchema, CharacterGestureSchema]).nullable(),
+  offset: z.number().int().min(0),
+});
+export type InlineTag = z.infer<typeof InlineTagSchema>;
 
 /** Who asked for a tool to run. Schedules and the user can, not only the model. */
 export const ToolCallSourceSchema = z.enum(['llm', 'schedule', 'user']);
@@ -99,9 +125,23 @@ export const ConversationEventSchema = z.discriminatedUnion('type', [
   }),
   z.object({ ...eventBase, type: z.literal('user.message'), text: z.string().min(1) }),
 
+  /** Tag-free since P1-T12: `TagFilter` holds a partial tag back rather than streaming it. */
   z.object({ ...eventBase, type: z.literal('assistant.token'), text: z.string() }),
-  /** One chunk out of the sentence splitter, the unit TTS is asked for (P1-T04). */
-  z.object({ ...eventBase, type: z.literal('assistant.sentence'), text: z.string().min(1), index: z.number().int().min(0) }),
+  /**
+   * One chunk out of the sentence splitter, the unit TTS is asked for (P1-T04), with the
+   * tags that were lifted out of it (P1-T12, closing ADR-23). `text` is what is spoken;
+   * `tags` carry offsets into that spoken text, which is what P2-T07 schedules against.
+   *
+   * Additive: `tags` defaults to `[]`, so a producer written before P1-T12 still parses
+   * and `PROTOCOL_VERSION` stays 1.
+   */
+  z.object({
+    ...eventBase,
+    type: z.literal('assistant.sentence'),
+    text: z.string().min(1),
+    index: z.number().int().min(0),
+    tags: z.array(InlineTagSchema).default([]),
+  }),
   z.object({ ...eventBase, type: z.literal('assistant.audio.started'), sentenceIndex: z.number().int().min(0) }),
   z.object({ ...eventBase, type: z.literal('assistant.audio.ended'), sentenceIndex: z.number().int().min(0) }),
   z.object({ ...eventBase, type: z.literal('assistant.message'), entry: TranscriptEntrySchema }),

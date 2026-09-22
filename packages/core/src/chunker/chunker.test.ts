@@ -110,9 +110,15 @@ describe('SentenceChunker tags', () => {
     expect(chunk?.tags.map((tag) => tag.known)).toEqual(['joy', null]);
   });
 
-  it('never marks a gesture as a known emotion', () => {
+  it('marks a gesture against the gesture list, not the emotion one', () => {
+    // P1-T12 gave gestures a vocabulary; before it, every gesture was `known: null`.
     const [chunk] = chunkText('Who knows [gesture:shrug] really.');
-    expect(chunk?.tags).toEqual([{ kind: 'gesture', value: 'shrug', known: null, offset: 10 }]);
+    expect(chunk?.tags).toEqual([{ kind: 'gesture', value: 'shrug', known: 'shrug', offset: 10 }]);
+  });
+
+  it('leaves an invented gesture unknown, and an emotion name is not a gesture', () => {
+    const [chunk] = chunkText('Hup [gesture:backflip] and [gesture:joy] go.');
+    expect(chunk?.tags.map((tag) => tag.known)).toEqual([null, null]);
   });
 
   it('attaches a tag between sentences to the sentence that follows it', () => {
@@ -129,7 +135,7 @@ describe('SentenceChunker tags', () => {
     // follows. Nothing follows, so it is trailing rather than attached to `you!`.
     expect(chunks[0]?.tags).toEqual([]);
     expect(chunker.trailingTags).toEqual([
-      { kind: 'gesture', value: 'wave', known: null, offset: 0 },
+      { kind: 'gesture', value: 'wave', known: 'wave', offset: 0 },
     ]);
   });
 
@@ -138,7 +144,7 @@ describe('SentenceChunker tags', () => {
     const chunks = [...chunker.push('[gesture:wave]'), ...chunker.flush()];
     expect(chunks).toEqual([]);
     expect(chunker.trailingTags).toEqual([
-      { kind: 'gesture', value: 'wave', known: null, offset: 0 },
+      { kind: 'gesture', value: 'wave', known: 'wave', offset: 0 },
     ]);
   });
 

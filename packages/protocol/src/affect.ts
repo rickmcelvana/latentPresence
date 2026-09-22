@@ -34,6 +34,28 @@ export const CharacterEmotionSchema = z.enum([
 export type CharacterEmotion = z.infer<typeof CharacterEmotionSchema>;
 
 /**
+ * What the character can do with its body, as a closed list. The LLM emits these in
+ * `[gesture:x]` tags and P2-T03's clip library has to cover **exactly** these labels, so
+ * the vocabulary is an art commitment as much as an engineering one — confirmed by Rick
+ * 2026-09-21 against the eight the P1-T12 pilot produced.
+ *
+ * Small on purpose, and for a different reason than `CharacterEmotion`: the whole list
+ * goes into every system prompt, so a long one crowds out the rest of the persona, and a
+ * label with no clip behind it is a gesture the character promises and cannot make.
+ */
+export const CharacterGestureSchema = z.enum([
+  'nod',
+  'shake-head',
+  'shrug',
+  'wave',
+  'tilt-head',
+  'lean-in',
+  'open-hands',
+  'think',
+]);
+export type CharacterGesture = z.infer<typeof CharacterGestureSchema>;
+
+/**
  * What the sensing side can report about the user. These are the nine classes the
  * prosody models emit (RESEARCH section 5); the text and face channels map onto the
  * same set so the fused estimate has one vocabulary.

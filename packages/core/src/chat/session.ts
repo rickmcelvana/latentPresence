@@ -1,5 +1,6 @@
 import type { ConversationEvent, LLMProvider, LlmFinishReason, LlmMessage } from '@latentpresence/protocol';
 import { Cancellation } from '../cancellation';
+import { TagFilter } from '../chunker';
 import type { ConversationMachine } from '../conversation/machine';
 
 /**
@@ -38,7 +39,10 @@ export interface ChatSessionOptions {
 interface Streaming {
   readonly id: string;
   readonly cancellation: Cancellation;
+  /** What was shown: tag-free, and the text a stopped answer is remembered by. */
   text: string;
+  /** Tags are held back mid-delta, so `text` never briefly contains one (P1-T12). */
+  readonly tagFilter: TagFilter;
 }
 
 export const NO_TEXT_MESSAGE = 'the model produced no text';
@@ -78,6 +82,7 @@ export class ChatSession {
       id: `${this.options.sessionId}-reply-${(this.replies += 1)}`,
       cancellation: new Cancellation(),
       text: '',
+      tagFilter: new TagFilter(),
     };
     this.streaming = streaming;
     void this.run(streaming);
@@ -119,8 +124,11 @@ export class ChatSession {
       for await (const part of llm.stream(request, { signal: streaming.cancellation })) {
         if (this.streaming !== streaming) return;
         if (part.type === 'text-delta' && part.text !== '') {
-          streaming.text += part.text;
-          this.dispatch({ type: 'assistant.token', text: part.text });
+          const shown = streaming.tagFilter.push(part.text);
+          if (shown !== '') {
+            streaming.text += shown;
+            this.dispatch({ type: 'assistant.token', text: shown });
+          }
         } else if (part.type === 'finish') {
           reason = part.reason;
         }
@@ -130,6 +138,12 @@ export class ChatSession {
     }
     if (this.streaming !== streaming) return;
     this.streaming = null;
+    // Held-back text that never became a tag is still the model's words.
+    const tail = streaming.tagFilter.flush();
+    if (tail !== '') {
+      streaming.text += tail;
+      this.dispatch({ type: 'assistant.token', text: tail });
+    }
 
     if (failure === null && reason === 'error') failure = 'the model stream ended with an error';
     if (failure === null && streaming.text === '') {

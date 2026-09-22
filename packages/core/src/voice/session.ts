@@ -208,7 +208,7 @@ export class VoiceSession<R> {
         this.publish(pending, { type: 'assistant.token', text: event.text });
         return;
       case 'sentence':
-        this.publish(pending, { type: 'assistant.sentence', text: event.text, index: event.index });
+        this.publish(pending, { type: 'assistant.sentence', text: event.text, index: event.index, tags: [...event.tags] });
         return;
       case 'audio-started':
         this.dispatch({ type: 'assistant.audio.started', sentenceIndex: event.index });
