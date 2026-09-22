@@ -1573,6 +1573,21 @@ latency: **9–167 s per turn** (median ~60 s) against ADR-20's 500 ms to first 
 box, and the cap is the only variable changed deliberately, so this explains the pilot
 rather than ruling out other causes.
 
+**Run 5 (2026-09-21, persona reworded on Rick's call): `gemma4` 20/20 · 20/20 · 100% · 0,
+`claude-fable-5-1` 20/20 · 20/20 · 100% · 0.** The style line that made Alice deflect a
+plain request ("say one thing at a time, wait to be asked") became "give it — briefly —
+then go back to the person", and she now answers the sleep question with five tips in
+spoken prose and *then* asks about the worry.
+
+**A second near-miss of the tag syntax exists, and chasing it would have been wrong.** The
+first run after the rewording had `gemma4` writing bare **`[concern]`** — no `emote:`
+prefix — on 18 of 20 turns. It looked caused by the edit and was not: an identical re-run
+came back 0 leaks. **Two runs of the same model on the same prompt differed by 18 leaks**,
+which is the sharpest measurement here of how little one run is worth. Bare `[label]` is
+recorded as a known near-miss and **deliberately not aliased**: unlike `emotion`, a bare
+bracket is ordinary text (`[1]`, `[note]`), so accepting it would eat real speech to fix
+something that has appeared once.
+
 **Models want a contemplative emote and the twelve do not have one.** `gemma4` wrote
 `emote:thought` in run 4 — reaching for `[gesture:think]` with the wrong kind. Reported by
 label rather than dropped, which is `known: null` behaving as ADR-30 designed. Worth P3's
