@@ -4,7 +4,7 @@ A conversational AI you talk to face to face. A realistic-styled, full-body char
 
 Site: https://latentpresence.com · App: https://app.latentpresence.com
 
-**Status: Phase 1, conversation core.** A typed chat and a settings page work today; the voice pipeline runs on a dev page; the avatar arrives in Phase 2. See `PROJECT.md` for the current task.
+**Status: Phase 1, conversation core — every task built, the phase not yet closed.** A typed chat and a settings page work today. **The voice pipeline is complete and measured but still only runs on a dev page**: P1-T15 puts it behind a real route, and Phase 1 closes on a five-minute spoken conversation (R-9), not on its task list. The avatar arrives in Phase 2. See `PROJECT.md` for the current task.
 
 ## Quick start
 

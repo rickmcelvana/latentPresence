@@ -143,4 +143,4 @@ Styled in `theme.css` with the tokens, like everything else.
 
 Persisting the transcript across reloads (memory, P4); editing or deleting a line; partial
 user transcripts; tool-call lines (P5); a persona's name and system prompt (P1-T12); voice on
-`/chat` (after P1-T13's consent); typed messages during a spoken call (Phase 2's call screen).
+`/chat` (P1-T13 built the consent screen; **P1-T15** is what actually puts voice behind a real route); typed messages during a spoken call (Phase 2's call screen).

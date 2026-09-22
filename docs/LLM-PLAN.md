@@ -64,11 +64,11 @@ Done when: every spike doc is linked from `docs/DECISIONS.md`, and no ADR contra
 
 ## Phase 1 — Conversation core
 
-### P1-T01 Conversation state machine — owner: main
+### P1-T01 Conversation state machine — owner: main (done; eb52a01)
 `packages/core/conversation`: explicit states `idle | listening | thinking | speaking | interrupted`, typed event bus, transition table, timers. No DOM, no audio APIs; ports for `AudioIn`, `AudioOut`, providers.
 Done when: unit tests cover every transition including barge-in during `thinking` and during `speaking`.
 
-### P1-T02 OpenAI-compatible LLM provider and model discovery — owner: main
+### P1-T02 OpenAI-compatible LLM provider and model discovery — owner: main (done; 1318da9, live-verified across nine endpoints in D-2)
 `packages/providers/llm/openai-compatible.ts` using AI SDK with base URL, key, model, headers. Presets: Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA (`https://integrate.api.nvidia.com/v1`), DeepSeek, Kimi. Model discovery ported from latentCreate `crates/llm-bridge` (`ollama.rs`, `docs/LLM-SURFACE.md`): Ollama `/api/tags` capabilities (`completion`, `thinking`, cloud), context length, LM Studio listing, `/v1/models` fallback; embedding models excluded from the chat picker. Verified shapes recorded in `docs/SURFACE.md`.
 Done when: streaming text and tool calls work against Ollama and NVIDIA in a manual test; the picker hides embedding models and flags thinking models; `FakeLLMProvider` replays a scripted stream; fixtures captured from a live Ollama.
 
@@ -133,9 +133,22 @@ spoken path has not been heard doing this by a person.
 Consent modal listing model, size, licence, source URL before any browser model download; cache in Cache Storage; a settings page to delete caches.
 Done when: no network fetch of weights occurs before consent (verified in Playwright by intercepting requests). **Met, but not in Playwright — deliberately.** The repo has none, and adding it for one assertion was not worth a browser download and CI changes when **P1-T14 is already a Playwright task**. Proven instead by a structural test: for each of the four worker entry points, no consent throws before `create*Worker` or `fetch` is touched. **The browser leg is owed and belongs to P1-T14.** Note that a `fetch` wrapper could never have proven this — onnxruntime-web fetched weights internally from a URL, which is the thing that changed.
 
-### P1-T14 Phase 1 end-to-end test — owner: main
+### P1-T14 Phase 1 end-to-end test — owner: main (done 2026-09-22; Playwright against a new dev-only `/dev/e2e`, and it pays P1-T13's browser debt)
 Playwright test feeding synthetic audio through a virtual mic, `FakeLLMProvider` and `FakeTTSProvider`, asserting the state machine sequence and a barge-in.
-Done when: test runs in CI under 2 minutes.
+Done when: test runs in CI under 2 minutes. **Met: 8.2 s.** Real `getUserMedia`, capture and playback worklets, Silero as wasm, `TurnDetector`, the machine, `Reply` and `BargeInGate`; the model, the voice and recognition are fakes, so CI needs no WebGPU and fetches only Silero's 2.2 MB. **Chrome's built-in fake audio device drives Silero but fires once at the start of the stream** (measured over 30 s), which is a turn and never a barge-in — so the microphone is fed a committed fixture of two utterances, looped. Its own CI job rather than `pnpm gate`, on the `vector` job's precedent.
+
+### P1-T15 Voice in the product — owner: main
+Depends: P1-T13. **Found when Phase 1's tasks were all done and its exit criteria were not.**
+Every piece of the voice pipeline ships and is measured, and **none of it is reachable by a
+user**: `/dev/voice` is a dev-only harness dropped from production builds, `/chat` is typed
+only, and `/settings`'s Voice and Hearing sections choose providers nothing instantiates.
+Put the pipeline behind a real route, using the consent screen P1-T13 already built, and make
+the Voice and Hearing choices do something. The stage and the call framing are P2; this is
+the audio loop reaching a person without a dev server.
+Done when: a user who has never opened a dev route can hold a spoken conversation from a
+production build, and `/dev/voice`'s guard needles (`onnxruntime`, `kokoro-js`,
+`@huggingface/transformers`, the two worklet names) can come out of `apps/web/vite.config.ts`
+because the pipeline is meant to be in the bundle.
 
 ---
 
