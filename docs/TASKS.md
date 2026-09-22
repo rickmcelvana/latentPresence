@@ -94,16 +94,25 @@ Then open `http://localhost:5173/spike/avatar` on the other machine and let it r
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
-### R-9 · The five-minute conversation · **blocked on P1-T15**
+### R-9 · The five-minute conversation · **ready to run** (P1-T15 landed 2026-09-22)
 **Why:** this is Phase 1's exit criterion, not a nice-to-have — *"five-minute unscripted
 voice conversation with interruptions, under 1 s to first audio on a mid-range laptop with
 browser models, and under 600 ms with a local server"* (`docs/PLAN.md`). Every piece is
 built and measured; nobody has held a long conversation with her, and the timing half looks
 unlikely to pass as written (R-8 measured 1.8–9.2 s end to end with real models).
 
-**Blocked on me** — P1-T15 has to put the voice pipeline behind a real route first. When it
-lands this becomes: talk to her for five minutes, interrupt often, and say what broke.
+**Run:**
+```bash
+pnpm build && pnpm exec vite preview --port 4173   # or: pnpm dev
+```
+Open `/chat`, press **Start voice**, agree to the download on the first call, and talk to her
+for five minutes, interrupting often. **A production build is the point** — that is the half
+nobody has checked, and `/chat` is the same page in both. Two things to expect: the first
+call fetches **21.6 MB of onnxruntime wasm** from our server *before* Silero's 2.2 MB starts,
+and the 473 MB of browser weights download with **no progress and no cancel** while the panel
+says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
+`docs/runs/R-9-conversation-<date>.md`.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.

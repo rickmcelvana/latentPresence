@@ -137,7 +137,7 @@ Done when: no network fetch of weights occurs before consent (verified in Playwr
 Playwright test feeding synthetic audio through a virtual mic, `FakeLLMProvider` and `FakeTTSProvider`, asserting the state machine sequence and a barge-in.
 Done when: test runs in CI under 2 minutes. **Met: 8.2 s.** Real `getUserMedia`, capture and playback worklets, Silero as wasm, `TurnDetector`, the machine, `Reply` and `BargeInGate`; the model, the voice and recognition are fakes, so CI needs no WebGPU and fetches only Silero's 2.2 MB. **Chrome's built-in fake audio device drives Silero but fires once at the start of the stream** (measured over 30 s), which is a turn and never a barge-in — so the microphone is fed a committed fixture of two utterances, looped. Its own CI job rather than `pnpm gate`, on the `vector` job's precedent.
 
-### P1-T15 Voice in the product — owner: main
+### P1-T15 Voice in the product — owner: main (done 2026-09-22; voice is a button on `/chat`, the Voice and Hearing choices build real providers, and the guard's voice needles came out)
 Depends: P1-T13. **Found when Phase 1's tasks were all done and its exit criteria were not.**
 Every piece of the voice pipeline ships and is measured, and **none of it is reachable by a
 user**: `/dev/voice` is a dev-only harness dropped from production builds, `/chat` is typed
@@ -148,7 +148,23 @@ the audio loop reaching a person without a dev server.
 Done when: a user who has never opened a dev route can hold a spoken conversation from a
 production build, and `/dev/voice`'s guard needles (`onnxruntime`, `kokoro-js`,
 `@huggingface/transformers`, the two worklet names) can come out of `apps/web/vite.config.ts`
-because the pipeline is meant to be in the bundle.
+because the pipeline is meant to be in the bundle. **Met as far as a machine can take it.**
+Voice is a panel on `/chat` — a lazy chunk behind a *Start voice* button, over P1-T12b's one
+machine and one history, so a typed message and a spoken turn are one conversation — and
+`apps/web/src/voice/providers.ts` is now the only place the two `/settings` selects become
+providers: Kokoro or an OpenAI-compatible server, Moonshine, Whisper or a server, with the
+turn models always browser ones because neither has a server counterpart here. The consent
+list is derived from the same settings (`browserModelsFor`) so the screen cannot ask for
+something the call will not build. **`kokoroSupport` — written in P1-T05 for "the settings UI
+steers on it" and called by nothing since — is now wired**, so a browser without WebGPU is
+refused in a sentence instead of dying inside onnxruntime; it is checked whichever Voice and
+Hearing sources are chosen, because Smart Turn's `gpu` build is the only one wired and Spike
+D's int8 `cpu` fallback is not. **The guard was rewritten rather than deleted**: the five
+voice needles are expected in a bundle now, so they were replaced by `voiceHarness` and
+`e2eHandle` — names only the two dev pages write — and both were mutation-checked (removing
+`import.meta.env.DEV` from either route fails the build). The production build emits the
+workers and the 21.6 MB onnxruntime wasm (`docs/SURFACE.md`). **The half a machine cannot
+verify is R-9**: nobody has yet held the five-minute conversation from a production build.
 
 ---
 

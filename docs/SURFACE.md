@@ -1724,3 +1724,49 @@ which looks exactly like a broken playback queue rather than a policy.
 
 **What CI actually downloads for this: Silero's 2.2 MB, and nothing else.** No WebGPU is
 required, because the only real model is wasm.
+
+## The voice pipeline in a production build — measured 2026-09-22 (P1-T15)
+
+`pnpm build` on the Windows box, Vite 8.2.2 / Rolldown 1.2.7, after voice moved to `/chat`.
+
+**What the bundle now contains that it did not before**, for a route a user can reach:
+
+| asset | bytes | gzip |
+|---|---|---|
+| `kokoro.worker` | 2 217 520 | — |
+| `asr.worker` | 888 510 | — |
+| `smart-turn.worker` | 888 850 | — |
+| `vad.worker` | 394 520 | — |
+| `ort-wasm-simd-threaded.jsep.wasm` | 21 596 010 | 5 168 670 |
+| `playback.worklet` | 2 110 | — |
+| `capture.worklet` | 610 | — |
+| `VoicePanel` (lazy, on Start voice) | 46 700 | 14 240 |
+
+**The onnxruntime wasm is 21.6 MB and is fetched on the first call**, like any other asset
+of ours — it is not a model, is not in `ModelDescriptor`, and therefore is not on the consent
+screen. That is the honest reading of CLAUDE.md's rule (the rule is about weights), but the
+number is real and P8 should know it: a first call at `app.latentpresence.com` costs 21.6 MB
+before Silero's 2.2 MB even starts.
+
+**`VoicePanel` is a separate lazy chunk, so a typed conversation stays light.** Before this
+task the production bundle had no model code in it at all; now the model code exists but sits
+behind a click. **Checked in the emitted chunks, not assumed:** `index` (196.7 kB) and
+`ChatPage` (24.2 kB) contain no reference to `onnxruntime`, `transformers` or `kokoro-js` at
+all — the runtime is in the four worker chunks alone (`asr`, `kokoro`, `smart-turn`, `vad`),
+which nothing loads until a call is started — and `VoicePanel` (48.2 kB) is the only page
+chunk that names the playback worklet. `SettingsPage` matches "transformers" on the cache
+name `transformers-cache`, not on the library.
+
+**The build guard was rewritten, and both new needles were mutation-checked.** Removing
+`import.meta.env.DEV` from `/dev/voice`'s route (and its dead-branch return) fails the build
+with `references "voiceHarness"`; the same mutation on `/dev/e2e` fails with
+`references "e2eHandle"`. Both reverted, build green. The old needles — ONNX Runtime,
+transformers.js, kokoro-js and the two worklet processor names — are **expected** in a
+production bundle now, so a guard that still named them would fail every build; the two
+names only the dev pages write keep the same instrument measuring the same thing.
+
+**A stale Vite dev server makes the Playwright suite fail once.** With
+`reuseExistingServer: true` locally, a server left running from an earlier session restarts on
+any `vite.config.ts` change and reloads the page mid-test — `Execution context was destroyed`.
+The suite passes on the next run (11.1 s), and CI starts its own server, so this is a local
+artefact rather than a flake the CI job can hit.
