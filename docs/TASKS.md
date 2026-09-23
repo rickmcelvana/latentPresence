@@ -137,9 +137,9 @@ Newest first. Each line is the outcome, not the instructions — the detail is i
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
 - **D-24 · R-11: watch her talk** — run by Rick 2026-09-22, two recordings: **"The mouth and
-  lip syncs looked good to me."** Measured from the videos: on Kokoro the mouth is within one
-  30 fps frame of the sound (−20 and +10 ms); Rick's own non-speech-shaped audio reads +110 ms
-  whole-signal but shuts ~50 ms after each pause. `docs/runs/R-11-lipsync-2026-09-22.md`.
+  lip syncs looked good to me."** Measured from the videos: the mouth is ~50–60 ms behind the
+  sound on both Kokoro recordings (analysis 40–50 ms, display ~10 ms) — under the 80 ms bar.
+  A first reading ("within one frame", and +110 ms on Rick's file) was withdrawn the same day. `docs/runs/R-11-lipsync-2026-09-22.md`.
 
 - **D-23 · R-10: does she look alive?** — reviewed by Rick 2026-09-22 on `/dev/avatar`'s Life
   panel: **"No frozen time. Not too much blinking. Looks good."** P2-T02's done-when met with
