@@ -23,7 +23,8 @@ const SOURCE = join(repo, 'assets/clips/source', PACK, 'Unreal-Godot/UAL1_Standa
 const OUT = join(repo, 'assets/clips');
 
 const CLIPS = [
-  { id: 'idle', source: 'Idle_Loop', use: 'idle, listening, thinking, interrupted' },
+  // R-15: the pack's idle clenches both fists; half-way back to the open rest is a relaxed hand.
+  { id: 'idle', source: 'Idle_Loop', use: 'idle, listening, thinking, interrupted', relaxFingers: 0.6 },
   { id: 'talk', source: 'Idle_Talking_Loop', use: 'speaking' },
 ] as const;
 
@@ -35,7 +36,11 @@ if (problems.length > 0) {
 
 mkdirSync(OUT, { recursive: true });
 const entries = CLIPS.map((clip) => {
-  const bytes = buildVrma(source, clip.source, { boneMap: UAL_TO_VRM, generator: `latentPresence build-clips (${clip.source})` });
+  const bytes = buildVrma(source, clip.source, {
+    boneMap: UAL_TO_VRM,
+    generator: `latentPresence build-clips (${clip.source})`,
+    ...('relaxFingers' in clip ? { relaxFingers: clip.relaxFingers } : {}),
+  });
   const file = `${clip.id}.vrma`;
   writeFileSync(join(OUT, file), bytes);
   console.log(`${file.padEnd(10)} ${bytes.byteLength.toLocaleString('en')} bytes  ← ${clip.source}`);
@@ -45,6 +50,7 @@ const entries = CLIPS.map((clip) => {
     bytes: bytes.byteLength,
     sha256: createHash('sha256').update(bytes).digest('hex'),
     use: clip.use,
+    ...('relaxFingers' in clip ? { relaxFingers: clip.relaxFingers } : {}),
     source: { pack: 'Quaternius Universal Animation Library (Standard)', file: 'Unreal-Godot/UAL1_Standard.glb', animation: clip.source },
     licence: 'CC0-1.0',
     author: 'Quaternius',

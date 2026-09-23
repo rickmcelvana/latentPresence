@@ -203,6 +203,35 @@ export interface VrmaOptions {
   readonly boneMap: Readonly<Record<string, VrmHumanBone>>;
   /** Written into `asset.generator`, so a file says where it came from. */
   readonly generator: string;
+  /**
+   * Ease the finger joints back towards the open rest pose, by this fraction (0 keeps the
+   * clip, 1 flattens the hand). R-15: UAL's `Idle_Loop` holds both hands in fists, which
+   * read as "ready to fight" on her; half-way back is a relaxed hand.
+   */
+  readonly relaxFingers?: number;
+}
+
+const FINGER = /(Thumb|Index|Middle|Ring|Little)/u;
+
+/** Spherical interpolation from `a` to `b`, taking the short way round. */
+function slerp(a: readonly number[], b: readonly number[], t: number): number[] {
+  const [ax = 0, ay = 0, az = 0, aw = 1] = a;
+  let [bx = 0, by = 0, bz = 0, bw = 1] = b;
+  let cos = ax * bx + ay * by + az * bz + aw * bw;
+  if (cos < 0) {
+    [bx, by, bz, bw] = [-bx, -by, -bz, -bw];
+    cos = -cos;
+  }
+  if (cos > 0.9995) {
+    const out = [ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t, aw + (bw - aw) * t];
+    const length = Math.hypot(...out);
+    return out.map((v) => v / length);
+  }
+  const angle = Math.acos(cos);
+  const sin = Math.sin(angle);
+  const wa = Math.sin((1 - t) * angle) / sin;
+  const wb = Math.sin(t * angle) / sin;
+  return [ax * wa + bx * wb, ay * wa + by * wb, az * wa + bz * wb, aw * wa + bw * wb];
 }
 
 /**
@@ -234,10 +263,12 @@ export function buildVrma(source: Glb, animationName: string, options: VrmaOptio
   const bufferViews: GltfBufferView[] = [];
   let byteLength = 0;
   const copied = new Map<number, number>();
-  function copy(index: number): number {
-    const existing = copied.get(index);
+  /** `reshape` rewrites the values; a reshaped copy is never shared with another channel. */
+  function copy(index: number, reshape?: (values: Float32Array) => void): number {
+    const existing = reshape === undefined ? copied.get(index) : undefined;
     if (existing !== undefined) return existing;
     const { values, accessor } = readFloats(source, index);
+    reshape?.(values);
     bufferViews.push({ buffer: 0, byteOffset: byteLength, byteLength: values.byteLength });
     const out: GltfAccessor = { bufferView: bufferViews.length - 1, componentType: FLOAT, count: accessor.count, type: accessor.type };
     // Min and max are required on an animation input (glTF 2.0 §5.1.7).
@@ -246,11 +277,12 @@ export function buildVrma(source: Glb, animationName: string, options: VrmaOptio
     accessors.push(out);
     chunks.push(values);
     byteLength += values.byteLength;
-    copied.set(index, accessors.length - 1);
+    if (reshape === undefined) copied.set(index, accessors.length - 1);
     return accessors.length - 1;
   }
 
   const humanNodes = new Set(Object.values(humanBones).map((bone) => bone.node));
+  const boneOf = new Map(Object.entries(humanBones).map(([bone, { node }]) => [node, bone]));
   const channels: GltfChannel[] = [];
   const samplers: GltfSampler[] = [];
   for (const channel of animation.channels) {
@@ -260,7 +292,15 @@ export function buildVrma(source: Glb, animationName: string, options: VrmaOptio
     if (path !== 'rotation' && !(path === 'translation' && node === hips.node)) continue;
     const sampler = animation.samplers[channel.sampler];
     if (sampler === undefined) throw new Error(`channel refers to missing sampler ${channel.sampler}`);
-    samplers.push({ input: copy(sampler.input), output: copy(sampler.output), interpolation: sampler.interpolation ?? 'LINEAR' });
+    const relax = options.relaxFingers ?? 0;
+    const isFinger = path === 'rotation' && relax > 0 && FINGER.test(boneOf.get(node) ?? '');
+    const rest = nodes[node]?.rotation ?? [0, 0, 0, 1];
+    const reshape = isFinger
+      ? (values: Float32Array): void => {
+          for (let i = 0; i < values.length; i += 4) values.set(slerp(Array.from(values.subarray(i, i + 4)), rest, relax), i);
+        }
+      : undefined;
+    samplers.push({ input: copy(sampler.input), output: copy(sampler.output, reshape), interpolation: sampler.interpolation ?? 'LINEAR' });
     channels.push({ sampler: samplers.length - 1, target: { node, path } });
   }
 

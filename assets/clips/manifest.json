@@ -5,8 +5,9 @@
       "id": "idle",
       "file": "idle.vrma",
       "bytes": 92628,
-      "sha256": "9872105377f300faae8065183d8985d26b0cd71544622f7e8d7a2af3c842bf25",
+      "sha256": "91aa77ad35c23b154b9ba3d3e679df9f340d90c5373893d8c6c5307db8ff6f1a",
       "use": "idle, listening, thinking, interrupted",
+      "relaxFingers": 0.6,
       "source": {
         "pack": "Quaternius Universal Animation Library (Standard)",
         "file": "Unreal-Godot/UAL1_Standard.glb",

@@ -23,7 +23,7 @@ function tinySource(options: { armDrop?: number; faceMinusZ?: boolean } = {}): U
   const nodes = [
     { name: 'Armature', children: [1] },
     { name: 'root', rotation: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2], children: [2] },
-    { name: 'pelvis', translation: local(0, 0.9, 0), children: [3, 5, 7, 9, 10, 11] },
+    { name: 'pelvis', translation: local(0, 0.9, 0), children: [3, 5, 7, 9, 10, 11, 12] },
     { name: 'upperarm_l', translation: local(0.2 * flip, 0.5, 0), children: [4] },
     { name: 'hand_l', translation: local(0.5 * flip, -drop, 0) },
     { name: 'upperarm_r', translation: local(-0.2 * flip, 0.5, 0), children: [6] },
@@ -33,6 +33,7 @@ function tinySource(options: { armDrop?: number; faceMinusZ?: boolean } = {}): U
     { name: 'Head', translation: local(0, 0.65, 0) },
     { name: 'thumb_04_leaf_l', translation: local(0.1, 0, 0) },
     { name: 'Mannequin', mesh: 0 },
+    { name: 'index_01_l', translation: local(0.6, 0.5, 0) },
   ];
   const times = new Float32Array([0, 1]);
   const quat = new Float32Array([0, 0, 0, 1, 0, 0.0998, 0, 0.995]);
@@ -47,7 +48,7 @@ function tinySource(options: { armDrop?: number; faceMinusZ?: boolean } = {}): U
     { input: 0, output: 2 },
     { input: 0, output: 2 },
   ];
-  for (const node of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+  for (const node of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]) {
     channels.push({ sampler: 0, target: { node, path: 'rotation' } });
     channels.push({ sampler: 1, target: { node, path: 'translation' } });
     channels.push({ sampler: 2, target: { node, path: 'scale' } });
@@ -93,7 +94,7 @@ describe('buildVrma', () => {
     const animation = await loadVrma(buildVrma(parseGlb(tinySource()), 'Idle_Loop', { boneMap: UAL_TO_VRM, generator: 'test' }));
 
     expect([...animation.humanoidTracks.rotation.keys()].toSorted()).toEqual(
-      ['head', 'hips', 'leftFoot', 'leftHand', 'leftToes', 'leftUpperArm', 'rightHand', 'rightUpperArm'].toSorted(),
+      ['head', 'hips', 'leftFoot', 'leftHand', 'leftIndexProximal', 'leftToes', 'leftUpperArm', 'rightHand', 'rightUpperArm'].toSorted(),
     );
     expect([...animation.humanoidTracks.translation.keys()]).toEqual(['hips']);
     // Any track the loader objected to — a translation on an arm, an unknown path — is a
@@ -115,6 +116,23 @@ describe('buildVrma', () => {
     const a = buildVrma(source, 'Idle_Loop', { boneMap: UAL_TO_VRM, generator: 'test' });
     const b = buildVrma(source, 'Idle_Loop', { boneMap: UAL_TO_VRM, generator: 'test' });
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(true);
+  });
+
+  it('eases the fingers towards the rest pose when asked, and nothing else', () => {
+    // R-15: the idle's fists. The fixture turns every bone 11.5° about Y at t = 1; with
+    // relaxFingers 0.5 a finger keeps half that, and a hand keeps all of it.
+    const out = parseGlb(buildVrma(parseGlb(tinySource()), 'Idle_Loop', { boneMap: UAL_TO_VRM, generator: 'test', relaxFingers: 0.5 }));
+    const lastRotation = (name: string): number => {
+      const node = out.json.nodes?.findIndex((candidate) => candidate.name === name) ?? -1;
+      const animation = out.json.animations?.[0];
+      const channel = animation?.channels.find((candidate) => candidate.target.node === node && candidate.target.path === 'rotation');
+      const accessor = out.json.accessors?.[animation?.samplers[channel?.sampler ?? -1]?.output ?? -1];
+      const view = out.json.bufferViews?.[accessor?.bufferView ?? -1];
+      const values = new Float32Array(out.bin.slice(view?.byteOffset ?? 0, (view?.byteOffset ?? 0) + (view?.byteLength ?? 0)).buffer);
+      return 2 * Math.asin(values[5] ?? 0) * (180 / Math.PI);
+    };
+    expect(lastRotation('hand_l')).toBeCloseTo(11.46, 1);
+    expect(lastRotation('index_01_l')).toBeCloseTo(5.73, 1);
   });
 
   it('refuses an animation that is not there', () => {
