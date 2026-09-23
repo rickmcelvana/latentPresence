@@ -169,6 +169,15 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-17 · Hear her answer a typed message · ~3 minutes
+**Why:** P2-T08's done-when was checked by measurement in the Browser pane; this is your ear and eye on it.
+1. `pnpm dev`, open `http://localhost:5173/chat`, click **Speak replies** (Agree once if asked — Kokoro, 325.5 MB).
+2. Type a question that wants a few sentences. She should speak it, with the talking animation and her mouth moving.
+3. Ask for a story, and press **Stop** part way. The voice should fade at once; the transcript keeps what she said and strikes the rest.
+4. Click **Speak replies** again to turn it off, then **Start voice** once — the page must stay up both times.
+
+**Report:** pass, or what looked or sounded wrong.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

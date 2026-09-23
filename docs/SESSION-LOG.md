@@ -495,3 +495,9 @@ Did: R-16 recorded (D-28, passed on all); R-12 moved to Done (D-27); TASKS.md ga
 Left: the laptop session (R-13 laptop half, R-1, R-9) — Rick, today. R-3 (doc I owe). C-7.
 Next: P2-T08 typed replies spoken aloud (`main`), then P2-T09 Kokoro word timings, then P3-T01.
 Decisions: none. Click-through: n/a (docs only).
+
+## 2026-09-23 claude — P2-T08 typed replies spoken aloud
+Did: `ChatSession.setVoice` (typed turn → `Reply`, heard rule on Stop once audible); `Speaker` (lazy, voice only, consent = Kokoro alone, no WebGPU for a server voice); **Speak replies** on `/chat`; `CallStage` lip sync follows a voice output, not a call. 6d7c06e. Live check (Kokoro downloaded with Rick's OK) found `tapAnalyser.disconnect` throwing after the graph closed — blanked `/chat` on switch-off, and End call since P2-T06 — fixed cfc2a61. 1100 tests.
+Left: R-17 (Rick hears it); R-13 laptop half, R-1, R-9; R-3; C-7.
+Next: P2-T09 Kokoro word timings, then P3-T01.
+Decisions: none new; Speak replies ends when a call starts and is not persisted across reloads. Click-through: Browser pane vs glm-5.2:cloud — spoken reply 13.2 s, analyser 255/0, Stop silent < 150 ms with heard prefix, switch off/on.
