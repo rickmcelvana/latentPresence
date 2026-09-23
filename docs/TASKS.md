@@ -82,6 +82,25 @@ right.
 
 ## Open — rick
 
+### R-14 · Talk to her in the call layout (P2-T06) · ~10 minutes
+**Why:** the Browser pane checked the layout at 1024 px, 1080p and 4K, the consent panel and
+a typed turn. It cannot check the three things that need your hardware: **the camera PiP**,
+**lip sync during a real call** (the first time the mouth follows the voice on `/chat` rather
+than `/dev/avatar`), and **Mute** with a live microphone.
+
+```bash
+pnpm dev
+```
+Open `http://localhost:5173/chat`. Agree to the character, then:
+1. **Camera** — your picture appears bottom-left, mirrored; press it again and the camera
+   light goes off.
+2. **Start voice** → agree → talk. Her mouth should move with her voice and close when she stops.
+3. **Mute** mid-sentence: she should answer what you said before muting, then hear nothing
+   until you unmute.
+4. Drag the window between your monitors or resize it: nothing overlaps, the bar stays one row.
+
+**Report:** pass/fail per step, and anything that looked wrong.
+
 ### R-1 · Avatar frame rate on a different class of GPU
 **Why:** every frame-rate number we have is from one RTX 5060 Ti. The interesting machine is
 a worse one — a laptop, or anything with integrated graphics. Not urgent; nothing is blocked.

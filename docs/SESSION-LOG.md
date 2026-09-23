@@ -470,3 +470,9 @@ Left: R-12's clip table and standing/sitting; R-13 laptop half, R-1, R-9 (laptop
 Next: P2-T06 video-call layout (`sub`), fresh session. P2-T03 once R-12's table is in — with the MCP for inspection.
 Decisions: none. Click-through: n/a.
 
+
+## 2026-09-23 claude — P2-T06 video-call layout; R-12 answered
+Did: R-12 recorded (Rick: `Idle_Loop`, standing; read from the glb: `Idle_Talking_Loop` for talk, no gestures in the free pack). P2-T06 briefed and built by a Sonnet subagent; review fixed mute (dropping frames froze an open turn — now silence), a bar that wrapped at 1024 px, and 1080p-sized overlays at 4K (stepped `zoom`). Added the missing `setMuted` test. Committed d5d2843, 1052 tests.
+Left: R-14 (camera, lip sync in a call, mute — needs Rick's hardware); R-13 laptop half, R-1, R-9.
+Next: P2-T03 clip retarget (Idle_Loop, Idle_Talking_Loop → .vrma via Blender headless), then P2-T07.
+Decisions: none new; brief took the avatar-consent-via-`ModelConsent` route. Click-through: 1024×768, 1920×1080, 3840×2160 and a typed turn against glm-5.2:cloud in the Browser pane.
