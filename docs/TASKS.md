@@ -114,7 +114,7 @@ says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
 `docs/runs/R-9-conversation-<date>.md`.
 
-### R-13 · Stage frame rate: 1080p here, and an integrated GPU · **ready** (P2-T05 landed 2026-09-22)
+### R-13 · Stage frame rate on an integrated GPU · **desktop half passed 2026-09-23; laptop half open**
 **Why:** P2-T05's done-when is *"60 fps at 1080p on Rick's machine and 30 fps on an integrated
 GPU"*. The Browser pane cannot measure it — a hidden pane runs no frames. Two halves: **this
 desktop now**, and **the laptop when it is ready** (do it alongside R-1 and R-9).
@@ -129,7 +129,12 @@ pnpm dev
 4. Repeat with **Shadows** `off` — if the laptop misses 30 fps with shadows, this is the first dial.
 
 **Report:** the reading line for each (median fps, 5th percentile, worst frame, canvas size) and
-the GPU name. Pass is a median of 60+ here and 30+ on the laptop.
+the GPU name. Pass is a median of 30+ on the laptop.
+
+**Desktop, 2026-09-23 (Rick):** `full`, 1080p, shadows on **and** off identical — **59.9 fps
+median · 59.5 fps 5th percentile · worst frame 16.9 ms · 1920×1078**. That is the display's
+60 Hz refresh, not the GPU: Spike B read 120.5 fps on this card, and shadows made no
+difference. **Passes the 60 fps half; says nothing about headroom.**
 
 ### R-12 · Pick her animation clips (P2-T03) · **ready**
 **Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that

@@ -110,6 +110,22 @@ board has no integrated graphics, so every avatar number here comes from one car
 well above mid-range. Nothing depends on it yet; P2 should not quote 120.5 fps as a system
 requirement.
 
+**Amended 2026-09-23, after P2-T01–T05.** The interface held unchanged; four things were
+learned under it.
+- **`setViseme` is five channels, not one mouth.** Each shape keeps its weight until set
+  again and `sil` closes all five, so a lip-sync driver can blend (P2-T01). Any renderer
+  implements that rule — it is shared code (`applyViseme`), not a convention.
+- **wawa-lipsync is ported, not depended on** (P2-T04). It cannot attach to a node in
+  another `AudioContext`, and ours is an AudioWorklet; its ~200-line classifier is now
+  `packages/avatar/src/lipsync/classifier.ts` (MIT, NOTICE), golden-tested against the
+  original. Measured on Kokoro through the real output graph: the mouth trails the sound
+  by ~50–60 ms (R-11, D-24), against an 80 ms bar.
+- **The life layer and lip sync ride on top of clips** through `AdditivePose`, which undoes
+  itself each frame — a mixer only writes the bones its clip animates (P2-T02).
+- **With the full stage the same card holds 60 fps at 1080p**, shadows on or off (R-13,
+  2026-09-23) — but that reading is the display's 60 Hz cap, so it is a floor, not a
+  measure of headroom. The different-GPU reading is still owed (R-1, R-13's laptop half).
+
 ## ADR-04 Vercel AI SDK + MCP
 
 Streaming, tool calls, structured outputs and an MCP client in one Apache-2.0 TypeScript library that runs in the browser. The OpenAI-compatible provider covers Ollama, LM Studio, vLLM, llama.cpp, OpenRouter, NVIDIA (Nemotron). Native Anthropic and Google adapters where features matter. Model discovery (what Ollama and LM Studio actually have, capabilities, context length) follows the verified shapes in latentCreate's `llm-bridge` and `docs/LLM-SURFACE.md`; we port the TypeScript equivalent rather than re-derive them. RESEARCH §4.

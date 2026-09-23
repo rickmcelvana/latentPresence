@@ -458,3 +458,9 @@ Next: P2-T06 video-call layout (`sub`) — the first production route to mount t
 Decisions: none new. The subagent's own calls (desk off her axis, one side wall, bust as default preset) kept.
 Click-through: presets, shadows on/off and the 1080p buffer checked in the Browser pane; fps is R-13.
 
+## 2026-09-23 claude — R-13 desktop half, docs brought up to date
+Did: recorded R-13's desktop reading (59.9 fps at 1080p, shadows on = off — the 60 Hz display's cap); ADR-03 amended with what P2 learned (viseme channels, the wawa port, additive life, the capped reading); README status moved to Phase 2; PROJECT's phase, dev-route and toolchain lines caught up.
+Left: R-13 laptop half, R-1, R-9 (laptop); R-12 (clips + Blender). **Proposed by Rick: a separate session to set up a Blender MCP** — my view is in the reply of this date: worth it for P7 and for inspecting rigs, but P2-T03's retarget should still land as a committed headless script.
+Next: P2-T06 video-call layout (`sub`), in a fresh session.
+Decisions: none. Click-through: n/a.
+
