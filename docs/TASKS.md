@@ -82,49 +82,6 @@ right.
 
 ## Open — rick
 
-### R-15 · Does her body look right? (P2-T03) · ~10 minutes
-**Why:** P2-T03's done-when is *"state changes crossfade under 300 ms without pops"*. The
-logic is tested (250 ms, and a playing loop is never restarted); **whether it looks right is
-yours** — the clips were made on a bulkier mannequin and retargeted onto her.
-
-```bash
-pnpm dev
-```
-1. `http://localhost:5173/dev/avatar` → agree → **Camera** `full`. **Clip** `idle` → **Loop
-   clip**; then `talk` → **Loop clip** (switching crossfades). Does either look wrong — a hand
-   through her body, a twisted wrist, a foot sliding?
-2. `http://localhost:5173/chat` → talk to her (typed is enough). She should go from the idle
-   to the talking loop as she answers and back when she finishes, **with no jump**.
-
-**Report:** pass/fail on each, and anything that looks off (a screenshot helps).
-
-### R-14 · Talk to her in the call layout (P2-T06) · **passed 2026-09-23** (after two layout fixes)
-
-**Result (Rick):** 1 camera shows and hides ✓. 2 **Start voice opened a card hidden behind the
-text box** — reachable only by Tab + Enter, unseen; the live-call card then showed correctly.
-3 mute ✓ ("she answered what I said before I muted, while I was still talking"). 4 resize kept
-proportions ✓, **but the text box overlapped the transcript drawer**. Both fixed the same day:
-the text box is put away while the voice panel is open, and both cards centre left of an open
-drawer (regression test for the first). 2 lip sync ✓ — "her mouth moved with her voice", several calls, correct each time.
-
-**Why:** the Browser pane checked the layout at 1024 px, 1080p and 4K, the consent panel and
-a typed turn. It cannot check the three things that need your hardware: **the camera PiP**,
-**lip sync during a real call** (the first time the mouth follows the voice on `/chat` rather
-than `/dev/avatar`), and **Mute** with a live microphone.
-
-```bash
-pnpm dev
-```
-Open `http://localhost:5173/chat`. Agree to the character, then:
-1. **Camera** — your picture appears bottom-left, mirrored; press it again and the camera
-   light goes off.
-2. **Start voice** → agree → talk. Her mouth should move with her voice and close when she stops.
-3. **Mute** mid-sentence: she should answer what you said before muting, then hear nothing
-   until you unmute.
-4. Drag the window between your monitors or resize it: nothing overlaps, the bar stays one row.
-
-**Report:** pass/fail per step, and anything that looked wrong.
-
 ### R-1 · Avatar frame rate on a different class of GPU
 **Why:** every frame-rate number we have is from one RTX 5060 Ti. The interesting machine is
 a worse one — a laptop, or anything with integrated graphics. Not urgent; nothing is blocked.
@@ -259,6 +216,17 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-26 · R-15: does her body look right?** — Rick 2026-09-23: no clipping, twists or foot
+  sliding; voice chat's idle → talk → idle "looks smooth". **The idle's fists** ("like she's
+  ready to fight") were relaxed the same day (`relaxFingers` 0.6, 736c97e). **Typed replies
+  never animate** — correct as built (no audio, so never `speaking`); **Rick decided: typed
+  replies are spoken aloud**, a switch once voice is set up — P2-T08.
+
+- **D-25 · R-14: the call layout on real hardware** — Rick 2026-09-23: camera PiP, mute,
+  resize and lip sync in live calls ("her mouth moved with her voice", several calls) pass.
+  Two overlaps it found — the voice card behind the text box, the text box under the drawer —
+  fixed in 1cf832e and 05c7c4b.
 
 - **D-24 · R-11: watch her talk** — run by Rick 2026-09-22, two recordings: **"The mouth and
   lip syncs looked good to me."** Measured from the videos: the mouth is ~50–60 ms behind the

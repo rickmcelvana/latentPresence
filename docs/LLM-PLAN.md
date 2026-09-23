@@ -178,7 +178,7 @@ Done when: sample VRM shows all presets via a debug panel; interface tests pass 
 Breathing (chest and shoulders), blink with saccades and rate tied to state, gaze policy with drift and return, micro weight shifts. All parameterised.
 Done when: with no clips playing, the character does not look frozen in a 60 s recording reviewed by Rick. **Met by R-10 (D-23): "No frozen time. Not too much blinking. Looks good."** — `/dev/avatar`'s Life panel records the minute (canvas to a local webm). Every rate is tested in node against seeded time (blinks at the mean asked for, a listener on the user > 75% of the time and a speaker less, no look away longer than 1.6× its mean, no frame-to-frame jump over 0.02 rad); the sign conventions were checked in the Browser pane. **Two things P2-T03 inherits:** the rest pose stands down whenever a clip is posing the body, so a clip that leaves the arms out leaves them in T-pose; and a VRMA look-at track will fight the gaze policy for the eyes.
 
-### P2-T03 Clip library and retarget — owner: human + main (built 2026-09-23; `packages/avatar/src/clips`, `pnpm clips:build`, ADR-31; R-15 is the look)
+### P2-T03 Clip library and retarget — owner: human + main (done 2026-09-23, R-15 passed; `packages/avatar/src/clips`, `pnpm clips:build`, ADR-31; R-15 is the look)
 Rick selects CC0 clips (Quaternius); Aider adds the retarget script (Blender headless or Mesh2Motion export) and the runtime blend graph (idle, listen, talk, gesture channels with crossfades).
 **As built:** R-12 gave `Idle_Loop` and `Idle_Talking_Loop`; no gesture clips exist in the free pack, so the gesture channel waits for P2-T07 and a second source. The retarget is a node converter, not Blender (ADR-31), because the pack's rest pose was measured to be VRM's already. `BaseClipGraph` crossfades 250 ms and never restarts a playing loop.
 Done when: `assets/clips/` has a manifest with licences; state changes crossfade under 300 ms without pops.
@@ -198,6 +198,10 @@ Done when: responsive from 1024 px to 4K.
 ### P2-T07 Tag to animation bridge — owner: main
 Depends: P1-T04, P2-T01. `[emote:]` and `[gesture:]` events scheduled at their audio time offsets; mapping tables in `packages/avatar/mappings/`.
 Done when: a scripted response with five tags fires each within 100 ms of its word.
+
+### P2-T08 Speak typed replies — owner: main
+Added 2026-09-23 on R-15 (D-26): a typed message on `/chat` is answered aloud — text in, voice out — so she talks, lip-syncs and uses the talking clip as she does in a call. A switch, available once voice is set up (same consent as Start voice); no microphone.
+Done when: with the switch on, a typed turn is spoken with lip sync and the talk clip, Stop cuts the voice as it cuts the text, and the transcript is unchanged.
 
 ---
 
