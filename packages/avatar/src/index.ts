@@ -18,6 +18,7 @@ export {
   type ExpressionTarget,
 } from './expressions';
 export { gazeDirection, gazePoint, type GazeOffset, type Vec3 } from './gaze';
+export * from './affect';
 export {
   CameraRig,
   DEFAULT_FOV_DEGREES,

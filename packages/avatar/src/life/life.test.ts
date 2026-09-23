@@ -266,4 +266,21 @@ describe('LifeLayer', () => {
     expect(pose.rest.leftUpperArm?.[2]).toBeLessThan(0);
     expect(pose.rest.rightUpperArm?.[2]).toBeGreaterThan(0);
   });
+
+  // P3-T02: a modulation of null must be a true no-op, so `/chat` (which never calls
+  // `setModulation`) sees exactly the frames it always has.
+  it('setModulation(null) leaves a seeded run identical', () => {
+    const life = new LifeLayer(P, 25);
+    life.setState('listening');
+    life.setModulation(null);
+    expect(run(60_000, () => life.update(FRAME))).toEqual(minute(25));
+  });
+
+  it('keeps the eyes on the base target over a minute when lookAwayScale is 0', () => {
+    const life = new LifeLayer(P, 26);
+    life.setState('thinking'); // normally looks away a lot
+    life.setModulation({ lookAwayScale: 0, holdScale: 1, awayMeanScale: 1, blinkScale: 1, breathScale: 1 });
+    const poses = run(60_000, () => life.update(FRAME));
+    expect(poses.every((pose) => pose.gaze.target === 'user')).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
 import type { ConversationState, GazeTarget } from '@latentpresence/protocol';
+import { modulateMood, type GazeModulation } from '../affect/body';
 import { type GazeOffset, type Vec3, gazeDirection } from '../gaze';
 import { BlinkScheduler } from './blink';
 import { Breathing } from './breathing';
@@ -57,6 +58,11 @@ export interface LifePose {
  * habits follow it — plus an optional base gaze target for when something wants the eyes
  * elsewhere. Seeded, so two runs with one seed are the same minute.
  *
+ * **`setModulation`** (P3-T02) layers a `GazeModulation` from `affectToBody` on top of the
+ * state's own `MoodParams` (`modulateMood`), applied fresh in `update` every frame. `null`
+ * — the default — changes nothing, so a run that never calls it is identical to before
+ * this existed.
+ *
  * Sign conventions, in the normalised rig: turning towards the character's left is +Y,
  * looking up is -X, leaning back is -X, the left arm lowers with -Z and the right with +Z.
  * The Browser pane is where they were checked, not the head.
@@ -70,6 +76,8 @@ export class LifeLayer {
   private readonly weight: WeightShift;
   /** Head turn so far, [yaw, pitch], easing towards where the eyes are. */
   private head: [number, number] = [0, 0];
+  /** A `GazeModulation` applied on top of the state's own mood; `null` changes nothing. */
+  private modulation: GazeModulation | null = null;
 
   constructor(params: LifeParams = DEFAULT_LIFE_PARAMS, seed = 1) {
     this.params = params;
@@ -90,6 +98,12 @@ export class LifeLayer {
     if (this.gaze.setBase(target)) this.blink.withSaccade();
   }
 
+  /** `affectToBody`'s gaze multipliers on top of the state's own mood; `null` (the
+   * default) drives the state's mood unchanged. */
+  setModulation(gaze: GazeModulation | null): void {
+    this.modulation = gaze;
+  }
+
   /**
    * Advances everything by `deltaMs`, capped at `MAX_STEP_MS`: a tab that comes back from
    * the background hands over seconds in one frame, and the character should carry on
@@ -97,7 +111,8 @@ export class LifeLayer {
    */
   update(deltaMs: number): LifePose {
     deltaMs = Math.min(Math.max(0, deltaMs), MAX_STEP_MS);
-    const mood = this.params.moods[this.state];
+    const baseMood = this.params.moods[this.state];
+    const mood = this.modulation === null ? baseMood : modulateMood(baseMood, this.modulation);
     const { breathing, gaze: gazeParams, rest } = this.params;
 
     const breath = this.breathing.update(deltaMs, mood.breathsPerMinute);

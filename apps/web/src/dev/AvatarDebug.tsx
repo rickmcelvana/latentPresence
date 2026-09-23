@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import {
   CharacterEmotionSchema,
   CharacterGestureSchema,
+  type CharacterEmotion,
   type ConversationState,
   ConversationStateSchema,
   type ExpressionName,
@@ -10,8 +11,12 @@ import {
   type ExpressionWeights,
   type GazeTarget,
   GazeTargetSchema,
+  type Mood,
 } from '@latentpresence/protocol';
 import {
+  type AffectBody,
+  type AffectInputs,
+  affectToBody,
   type CameraPreset,
   CuePerformer,
   type ExpressionPlan,
@@ -24,12 +29,14 @@ import {
   tapAnalyser,
 } from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
+import { AffectEngine, DEFAULT_AFFECT_PARAMS, dominantEmotion, initialAffect } from '@latentpresence/core';
 import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/providers';
 // Kokoro speech, generated for P1-T14's end-to-end test; dev-only, like this page.
 import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
 import { type FrameResult, FrameRecorder } from '../spikes/frame-rate';
 import { AVATAR, totalAssetBytes } from '../spikes/avatar-consent';
 import { BASE_CLIP_URLS } from '../call/clips';
+import { AFFECT_REVIEW_STATES } from './affect-review';
 
 /**
  * `/dev/avatar` (P2-T01): the VRM renderer behind a debug panel — every expression name
@@ -55,6 +62,15 @@ import { BASE_CLIP_URLS } from '../call/clips';
  * rendered frame is marked, **Take reading** reports median fps, 5th-percentile fps, the
  * worst frame and the canvas's real backing size, and changing preset, shadows or scale
  * resets the window, since a reading only means one configuration.
+ *
+ * **Affect (P3-T02)** turns a mood into a body: `affectToBody` (`packages/avatar/src/affect`)
+ * live, either from hand sliders or from a real `AffectEngine` (`@latentpresence/core`)
+ * ticked here by hand — this page assembles the plain `AffectInputs` the avatar package
+ * itself is not allowed to know about. The **Review** select carries the ten named states
+ * (`./affect-review.ts`) Rick signs off on; **Drive the character** feeds the result into
+ * the face (max-merged with whatever a played tag is doing) and into `LifeLayer.setModulation`,
+ * off leaving the page exactly as it was before this existed. Not `/chat` — wiring the
+ * affect engine into the call is a later task.
  *
  * Spike B's `/spike/avatar` stays beside it: that page is the frame-rate instrument R-1
  * runs on another machine, and this one measures nothing.
@@ -104,6 +120,33 @@ function describeTargets(plan: ExpressionPlan | null, name: ExpressionName): str
     .join(', ');
 }
 
+/** The default `AffectInputs`: the character's own baseline, feeling nothing (`docs/affect.md`). */
+const DEFAULT_AFFECT_INPUTS: AffectInputs = {
+  mood: DEFAULT_AFFECT_PARAMS.baseline.mood,
+  energy: DEFAULT_AFFECT_PARAMS.baseline.energy,
+  stance: DEFAULT_AFFECT_PARAMS.baseline.stance,
+  feeling: { label: 'neutral', intensity: 0 },
+};
+
+type AffectSource = 'sliders' | 'engine';
+
+/** Per-name max of two expressions — the affect body's resting face and whatever a played
+ * tag's emote is doing, tags still reading through since their weights are usually higher. */
+function mergeExpressionsMax(a: ExpressionWeights, b: ExpressionWeights): ExpressionWeights {
+  const names = new Set([...Object.keys(a), ...Object.keys(b)] as ExpressionName[]);
+  const out: Partial<Record<ExpressionName, number>> = {};
+  for (const name of names) {
+    const value = Math.max(a[name] ?? 0, b[name] ?? 0);
+    if (value > 0) out[name] = value;
+  }
+  return out;
+}
+
+/** A short string for a bare number readout, e.g. `×1.20`. */
+function factor(value: number): string {
+  return `×${value.toFixed(2)}`;
+}
+
 export function AvatarDebug(): ReactElement {
   const [phase, setPhase] = useState<Phase>('consent');
   const [started, setStarted] = useState(false);
@@ -126,6 +169,33 @@ export function AvatarDebug(): ReactElement {
   // P2-T07's performer, the same one `/chat` drives from tags, played here by hand.
   const [performer] = useState(() => new CuePerformer());
   const [tagIndex, setTagIndex] = useState(0);
+
+  // P3-T02's Affect panel.
+  const [affectSource, setAffectSource] = useState<AffectSource>('sliders');
+  // Off until asked for: on, the face is the affect face, which would silently take the
+  // Expressions sliders away from anyone who never opened this panel.
+  const [driveAffect, setDriveAffect] = useState(false);
+  const [reviewName, setReviewName] = useState('');
+  const [sliderMood, setSliderMood] = useState<Mood>(DEFAULT_AFFECT_INPUTS.mood);
+  const [sliderEnergy, setSliderEnergy] = useState(DEFAULT_AFFECT_INPUTS.energy);
+  const [sliderStance, setSliderStance] = useState({ warmth: DEFAULT_AFFECT_INPUTS.stance.warmth, engagement: DEFAULT_AFFECT_INPUTS.stance.engagement });
+  const [sliderFeelingLabel, setSliderFeelingLabel] = useState<CharacterEmotion>(DEFAULT_AFFECT_INPUTS.feeling.label);
+  const [sliderFeelingIntensity, setSliderFeelingIntensity] = useState(DEFAULT_AFFECT_INPUTS.feeling.intensity);
+  const [engineReadout, setEngineReadout] = useState({ pleasure: 0, arousal: 0, dominance: 0, energy: 0 });
+  const [affectReadout, setAffectReadout] = useState<AffectBody>(() => affectToBody(DEFAULT_AFFECT_INPUTS, CLIP_IDS));
+  /** Read by the frame loop; kept current by an effect so the loop itself never restarts. */
+  const affectSourceRef = useRef<AffectSource>(affectSource);
+  const driveAffectRef = useRef(driveAffect);
+  /** What `affectToBody` reads this frame — the sliders' values, or the engine's latest. */
+  const affectInputsRef = useRef<AffectInputs>(DEFAULT_AFFECT_INPUTS);
+  /** This frame's `affectToBody` result, sampled into `affectReadout` twice a second. */
+  const affectBodyRef = useRef<AffectBody>(affectToBody(DEFAULT_AFFECT_INPUTS, CLIP_IDS));
+  const affectEngine = useRef<AffectEngine | null>(null);
+  /** `performance.now()` is monotonic but not wall time; this maps one onto the other,
+   * fixed at mount, so `AffectEngine.tick` gets a real clock without depending on
+   * `Date.now()`'s own jitter every frame. */
+  const wallOffset = useRef(0);
+  const engineReadoutRef = useRef({ pleasure: 0, arousal: 0, dominance: 0, energy: 0 });
   /** The sliders' face, for the frame loop to hand back when a played emote lets go. */
   const drivenRef = useRef<ExpressionWeights>({});
   /** Read by the frame loop, which must not restart on every toggle. */
@@ -161,10 +231,31 @@ export function AvatarDebug(): ReactElement {
       const delta = now - last;
       const layer = life.current;
       const cues = performer.update(delta);
+
+      // P3-T02: the engine, when it is the source, ticks on wall time and feeds its own
+      // state to `affectToBody`; the sliders feed it directly (see the effect above).
+      if (affectSourceRef.current === 'engine') {
+        const engine = affectEngine.current;
+        if (engine !== null) {
+          const state = engine.tick(now + wallOffset.current);
+          const feeling = dominantEmotion(state);
+          affectInputsRef.current = { mood: state.mood, energy: state.energy, stance: state.stance, feeling };
+          engineReadoutRef.current = { ...state.mood, energy: state.energy };
+        }
+      }
+      const affectBody = affectToBody(affectInputsRef.current, CLIP_IDS);
+      affectBodyRef.current = affectBody;
+      if (layer !== null) layer.setModulation(driveAffectRef.current ? affectBody.gaze : null);
+
       if (live.current) {
-        const faceFromCue = Object.keys(cues.expression).length > 0;
-        if (faceFromCue || cueFace) avatar.setExpression(faceFromCue ? cues.expression : drivenRef.current);
-        cueFace = faceFromCue;
+        if (driveAffectRef.current) {
+          avatar.setExpression(mergeExpressionsMax(affectBody.expression, cues.expression));
+          cueFace = Object.keys(cues.expression).length > 0;
+        } else {
+          const faceFromCue = Object.keys(cues.expression).length > 0;
+          if (faceFromCue || cueFace) avatar.setExpression(faceFromCue ? cues.expression : drivenRef.current);
+          cueFace = faceFromCue;
+        }
       }
       if (live.current && lifeOnRef.current && layer !== null) {
         const pose = layer.update(delta);
@@ -253,6 +344,66 @@ export function AvatarDebug(): ReactElement {
     life.current = new LifeLayer();
   }, []);
 
+  // One AffectEngine for the page, at the character's own baseline, fixed to wall time.
+  useEffect(() => {
+    wallOffset.current = Date.now() - performance.now();
+    affectEngine.current = new AffectEngine(initialAffect('dev-avatar', Date.now()));
+  }, []);
+
+  useEffect(() => {
+    affectSourceRef.current = affectSource;
+  }, [affectSource]);
+
+  useEffect(() => {
+    driveAffectRef.current = driveAffect;
+  }, [driveAffect]);
+
+  // The sliders feed the frame loop's inputs whenever they, not the engine, are the source.
+  useEffect(() => {
+    if (affectSource !== 'sliders') return;
+    affectInputsRef.current = {
+      mood: sliderMood,
+      energy: sliderEnergy,
+      stance: { warmth: sliderStance.warmth, formality: DEFAULT_AFFECT_INPUTS.stance.formality, engagement: sliderStance.engagement },
+      feeling: { label: sliderFeelingLabel, intensity: sliderFeelingIntensity },
+    };
+  }, [affectSource, sliderMood, sliderEnergy, sliderStance, sliderFeelingLabel, sliderFeelingIntensity]);
+
+  /** Fires an `emotion` input at the engine, at intensity 0.6 like an `[emote:x]` tag. */
+  const fireEmotion = useCallback((label: CharacterEmotion) => {
+    const engine = affectEngine.current;
+    if (engine === null) return;
+    engine.enqueue({ type: 'emotion', at: performance.now() + wallOffset.current, label, intensity: 0.6, source: 'internal' });
+    setDriveAffect(true);
+  }, []);
+
+  /** Sets the sliders from one of the ten named states and switches to them. */
+  const applyReviewState = useCallback((name: string) => {
+    const found = AFFECT_REVIEW_STATES.find((state) => state.name === name);
+    if (found === undefined) return;
+    setReviewName(name);
+    setAffectSource('sliders');
+    setDriveAffect(true);
+    setSliderMood(found.mood);
+    setSliderEnergy(found.energy);
+    setSliderStance({ warmth: found.stance.warmth, engagement: found.stance.engagement });
+    setSliderFeelingLabel(found.feeling.label);
+    setSliderFeelingIntensity(found.feeling.intensity);
+  }, []);
+
+  /** Performs the region's own top gesture through the same performer the tag select
+   * uses, as a `[gesture:x]`. */
+  const performBias = useCallback(() => {
+    const gesture = affectBodyRef.current.gestureBias[0];
+    if (gesture === undefined) return;
+    const result = performer.perform({ kind: 'gesture', value: gesture, known: gesture, offset: 0 });
+    setStatus(
+      result === 'performed'
+        ? `Playing bias [gesture:${gesture}].`
+        : `[gesture:${gesture}] has no motion yet (needs a clip).`,
+    );
+  }, [performer]);
+
   useEffect(() => {
     if (phase !== 'ready') return;
     lifeOnRef.current = lifeOn;
@@ -270,12 +421,14 @@ export function AvatarDebug(): ReactElement {
   }, [lifeState]);
 
   // The frame loop counts; this samples it twice a second rather than re-rendering the
-  // page sixty times.
+  // page sixty times. The Affect panel's readouts ride the same timer.
   useEffect(() => {
     if (phase !== 'ready') return;
     const timer = setInterval(() => {
       const c = counters.current;
       setReadout({ seconds: c.ms / 1000, blinks: c.blinks, gaze: c.gaze });
+      setAffectReadout(affectBodyRef.current);
+      if (affectSourceRef.current === 'engine') setEngineReadout(engineReadoutRef.current);
     }, 500);
     return () => clearInterval(timer);
   }, [phase]);
@@ -788,6 +941,177 @@ export function AvatarDebug(): ReactElement {
             {recording.kind === 'failed' ? (
               <p className="field-error">Recording failed: {recording.reason}</p>
             ) : null}
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Affect</span>
+              <span className={`pill ${driveAffect ? 'pill-ok' : ''}`}>{driveAffect ? 'driving' : 'off'}</span>
+            </div>
+            <p className="panel-note">
+              <code>affectToBody</code>&apos;s region table, live: the resting face and gaze habit
+              a mood maps to, before any <code>[emote:x]</code> tag rides on top. Sliders drive it
+              by hand, or the panel can tick a real core <code>AffectEngine</code>.
+            </p>
+            <div className="spike-controls">
+              <label className="field">
+                <span className="field-label">Source</span>
+                <select
+                  className="select"
+                  onChange={(event) => setAffectSource(event.target.value as AffectSource)}
+                  value={affectSource}
+                >
+                  <option value="sliders">sliders</option>
+                  <option value="engine">engine</option>
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Review</span>
+                <select className="select" onChange={(event) => applyReviewState(event.target.value)} value={reviewName}>
+                  <option value="">— pick a state —</option>
+                  {AFFECT_REVIEW_STATES.map((state) => (
+                    <option key={state.name} value={state.name}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <input checked={driveAffect} onChange={(event) => setDriveAffect(event.target.checked)} type="checkbox" />
+                {' '}Drive the character
+              </label>
+              <button className="btn" onClick={performBias} type="button">
+                Perform bias
+              </button>
+            </div>
+
+            {affectSource === 'sliders' ? (
+              <div className="avatar-debug-grid">
+                <label className="field">
+                  <span className="field-label">Pleasure</span>
+                  <input
+                    max={1}
+                    min={-1}
+                    onChange={(event) => setSliderMood((previous) => ({ ...previous, pleasure: Number(event.target.value) }))}
+                    step={0.05}
+                    type="range"
+                    value={sliderMood.pleasure}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Arousal</span>
+                  <input
+                    max={1}
+                    min={-1}
+                    onChange={(event) => setSliderMood((previous) => ({ ...previous, arousal: Number(event.target.value) }))}
+                    step={0.05}
+                    type="range"
+                    value={sliderMood.arousal}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Dominance</span>
+                  <input
+                    max={1}
+                    min={-1}
+                    onChange={(event) => setSliderMood((previous) => ({ ...previous, dominance: Number(event.target.value) }))}
+                    step={0.05}
+                    type="range"
+                    value={sliderMood.dominance}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Energy</span>
+                  <input
+                    max={1}
+                    min={0}
+                    onChange={(event) => setSliderEnergy(Number(event.target.value))}
+                    step={0.05}
+                    type="range"
+                    value={sliderEnergy}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Warmth</span>
+                  <input
+                    max={1}
+                    min={-1}
+                    onChange={(event) => setSliderStance((previous) => ({ ...previous, warmth: Number(event.target.value) }))}
+                    step={0.05}
+                    type="range"
+                    value={sliderStance.warmth}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Engagement</span>
+                  <input
+                    max={1}
+                    min={-1}
+                    onChange={(event) => setSliderStance((previous) => ({ ...previous, engagement: Number(event.target.value) }))}
+                    step={0.05}
+                    type="range"
+                    value={sliderStance.engagement}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Feeling</span>
+                  <select
+                    className="select"
+                    onChange={(event) => setSliderFeelingLabel(event.target.value as CharacterEmotion)}
+                    value={sliderFeelingLabel}
+                  >
+                    {CharacterEmotionSchema.options.map((label) => (
+                      <option key={label} value={label}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span className="field-label">Feeling intensity</span>
+                  <input
+                    max={1}
+                    min={0}
+                    onChange={(event) => setSliderFeelingIntensity(Number(event.target.value))}
+                    step={0.05}
+                    type="range"
+                    value={sliderFeelingIntensity}
+                  />
+                </label>
+              </div>
+            ) : (
+              <>
+                <div className="spike-controls">
+                  {CharacterEmotionSchema.options.map((label) => (
+                    <button className="btn btn-ghost" key={label} onClick={() => fireEmotion(label)} type="button">
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="spike-status">
+                  P {engineReadout.pleasure.toFixed(2)} · A {engineReadout.arousal.toFixed(2)} · D{' '}
+                  {engineReadout.dominance.toFixed(2)} · energy {engineReadout.energy.toFixed(2)}
+                </p>
+              </>
+            )}
+
+            <p className="spike-status">
+              region {affectReadout.region} · strength {affectReadout.strength.toFixed(2)} · idle{' '}
+              {affectReadout.idleClip}
+              {affectReadout.idleClip === affectReadout.idleClipWanted ? '' : ` (wanted ${affectReadout.idleClipWanted})`}
+            </p>
+            <p className="spike-status">
+              expression{' '}
+              {Object.entries(affectReadout.expression)
+                .map(([name, weight]) => `${name} ${(weight ?? 0).toFixed(2)}`)
+                .join(', ') || '—'}
+            </p>
+            <p className="spike-status">
+              gaze look-away {factor(affectReadout.gaze.lookAwayScale)} · hold {factor(affectReadout.gaze.holdScale)} · away{' '}
+              {factor(affectReadout.gaze.awayMeanScale)} · blink {factor(affectReadout.gaze.blinkScale)} · breath{' '}
+              {factor(affectReadout.gaze.breathScale)}
+            </p>
+            <p className="spike-status">gesture bias {affectReadout.gestureBias.join(', ')}</p>
           </section>
         </>
       ) : null}
