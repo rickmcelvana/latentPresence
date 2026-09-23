@@ -5,10 +5,17 @@
   "type": "module",
   "license": "Apache-2.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./vrm": "./src/vrm/index.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {
-    "@latentpresence/protocol": "workspace:*"
+    "@latentpresence/protocol": "workspace:*",
+    "@pixiv/three-vrm": "3.5.5",
+    "@pixiv/three-vrm-animation": "3.5.5",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.185.4"
   }
 }

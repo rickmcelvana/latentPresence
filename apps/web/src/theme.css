@@ -800,6 +800,29 @@ kbd {
   background: var(--bg);
 }
 
+/* P2-T01's debug panel. Unlike Spike B's fixed stage this one follows the column: it
+   measures nothing, and the renderer fits its drawing buffer to the canvas's CSS size. */
+.avatar-debug-stage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.avatar-debug-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-debug-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--gap-md);
+}
+
 /* P0-T08. The dev-only route index on the boot screen — the only navigation that exists
    inside a Tauri window, which has no address bar. */
 .boot-routes {

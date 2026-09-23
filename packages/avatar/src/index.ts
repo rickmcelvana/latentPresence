@@ -9,8 +9,18 @@ export {
   visemeWeight,
   type OculusViseme,
 } from './visemes';
+export {
+  EXPRESSION_TABLE,
+  plannedTargets,
+  resolveExpressionPlan,
+  weightsFor,
+  type ExpressionPlan,
+  type ExpressionTarget,
+} from './expressions';
+export { gazePoint, type Vec3 } from './gaze';
+export { FakeAvatarRenderer, MOUTH_SHAPES, applyViseme, type MouthShape } from './fake';
 
-/** Placeholder surface until this package is filled in. Keeps the wiring under test. */
+/** Keeps the workspace wiring under test. The renderer itself is `@latentpresence/avatar/vrm`. */
 export const packageInfo = {
   name: '@latentpresence/avatar',
   protocolVersion: PROTOCOL_VERSION,

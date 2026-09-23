@@ -212,6 +212,19 @@ importers:
       '@latentpresence/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@pixiv/three-vrm':
+        specifier: 3.5.5
+        version: 3.5.5(three@0.185.1)
+      '@pixiv/three-vrm-animation':
+        specifier: 3.5.5
+        version: 3.5.5(three@0.185.1)
+      three:
+        specifier: 0.185.1
+        version: 0.185.1
+    devDependencies:
+      '@types/three':
+        specifier: 0.185.4
+        version: 0.185.4
 
   packages/core:
     dependencies:

@@ -21,6 +21,10 @@ export const DEV_VOICE_PATH = '/dev/voice';
  */
 export const DEV_E2E_PATH = '/dev/e2e';
 
+/** The dev-only VRM renderer debug panel (P2-T01): every expression, mouth shape, gaze
+ * target and clip, on the placeholder character. */
+export const DEV_AVATAR_PATH = '/dev/avatar';
+
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
@@ -69,6 +73,13 @@ const AvatarStage = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./spikes/AvatarStage');
   return { default: module.AvatarStage };
+});
+
+/** P2-T01's debug panel, behind the same guard: it pulls in three.js and three-vrm. */
+const AvatarDebug = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./dev/AvatarDebug');
+  return { default: module.AvatarDebug };
 });
 
 /**
@@ -129,6 +140,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
+  if (import.meta.env.DEV && path === DEV_AVATAR_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the avatar panel…</p>}>
+        <AvatarDebug />
+      </Suspense>
+    );
+  }
+
   if (import.meta.env.DEV && path === SPIKE_AVATAR_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
@@ -181,7 +200,8 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
             [GALLERY_PATH, 'Design-system gallery'],
             [SPIKE_SHELL_PATH, 'Spike E — webview capabilities'],
             [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
-            [SPIKE_AVATAR_PATH, 'Spike B — avatar and lip sync'],
+            [DEV_AVATAR_PATH, 'Avatar — VRM renderer debug panel (P2-T01)'],
+            [SPIKE_AVATAR_PATH, 'Spike B — avatar frame rate and lip sync'],
           ].map(([href, label]) => (
             <li key={href}>
               <a href={href}>{label}</a>

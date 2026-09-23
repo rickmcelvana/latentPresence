@@ -21,9 +21,10 @@ import { defineConfig, type Plugin } from 'vitest/config';
  * guard is the same instrument measuring the same thing instead of being retired with its
  * subject. The `.wasm` assertion went with the rest: the pipeline's own wasm is the point.
  *
- * `@pixiv/three-vrm` and `three/examples/jsm` come out at **P2-T01**, deliberately: the
- * avatar stops being dev-only the moment the stage is real, and that is the one line here
- * meant to come out rather than stay forever.
+ * `@pixiv/three-vrm` and `three/examples/jsm` were to come out at **P2-T01**, and stay:
+ * P2-T01 built the renderer, but its only page is the dev-only `/dev/avatar`, so a VRM
+ * in a production chunk still means a dev page leaked. They come out when a production
+ * route first mounts the renderer — the call layout, P2-T06 — and not before.
  */
 function assertSpikeExcludedFromBuild(): Plugin {
   const forbidden = [
