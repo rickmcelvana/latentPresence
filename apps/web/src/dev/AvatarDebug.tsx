@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
+  CharacterEmotionSchema,
+  CharacterGestureSchema,
   type ConversationState,
   ConversationStateSchema,
   type ExpressionName,
@@ -11,8 +13,11 @@ import {
 } from '@latentpresence/protocol';
 import {
   type CameraPreset,
+  CuePerformer,
   type ExpressionPlan,
   LifeLayer,
+  RELEASE_AFTER_MS,
+  withGesture,
   LipSync,
   MOUTH_SHAPES,
   type MouthShape,
@@ -60,6 +65,11 @@ type Phase = 'consent' | 'loading' | 'ready' | 'failed';
 /** Only the character is fetched now: the clips are P2-T03's, served with the app. */
 const DOWNLOADS = [AVATAR];
 const CLIP_IDS = Object.keys(BASE_CLIP_URLS);
+/** Every tag the model can write, for playing one by hand (P2-T07). */
+const TAG_OPTIONS = [
+  ...CharacterGestureSchema.options.map((value) => ({ kind: 'gesture' as const, value })),
+  ...CharacterEmotionSchema.options.map((value) => ({ kind: 'emote' as const, value })),
+];
 const PRESETS: readonly ExpressionName[] = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
 const CYCLE_MS = 1000;
 const RECORD_MS = 60_000;
@@ -113,6 +123,11 @@ export function AvatarDebug(): ReactElement {
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const renderer = useRef<VrmAvatarRenderer | null>(null);
   const life = useRef<LifeLayer | null>(null);
+  // P2-T07's performer, the same one `/chat` drives from tags, played here by hand.
+  const [performer] = useState(() => new CuePerformer());
+  const [tagIndex, setTagIndex] = useState(0);
+  /** The sliders' face, for the frame loop to hand back when a played emote lets go. */
+  const drivenRef = useRef<ExpressionWeights>({});
   /** Read by the frame loop, which must not restart on every toggle. */
   const lifeOnRef = useRef(lifeOn);
   const live = useRef(false);
@@ -140,12 +155,20 @@ export function AvatarDebug(): ReactElement {
     let cancelled = false;
     let frame = 0;
     let last = performance.now();
+    /** Whether the face was the performer's last frame, so the sliders get it back once. */
+    let cueFace = false;
     const tick = (now: number): void => {
       const delta = now - last;
       const layer = life.current;
+      const cues = performer.update(delta);
+      if (live.current) {
+        const faceFromCue = Object.keys(cues.expression).length > 0;
+        if (faceFromCue || cueFace) avatar.setExpression(faceFromCue ? cues.expression : drivenRef.current);
+        cueFace = faceFromCue;
+      }
       if (live.current && lifeOnRef.current && layer !== null) {
         const pose = layer.update(delta);
-        avatar.setLifePose(pose);
+        avatar.setLifePose(withGesture(pose, cues.additive));
         const c = counters.current;
         c.ms += delta;
         if (c.lastBlink < 0.5 && pose.blink >= 0.5) c.blinks += 1;
@@ -203,7 +226,7 @@ export function AvatarDebug(): ReactElement {
       avatar.dispose();
       renderer.current = null;
     };
-  }, [started]);
+  }, [started, performer]);
 
   // While cycling, one preset at full weight overrides the sliders; after, they apply again.
   const driven = useMemo<ExpressionWeights>(
@@ -212,8 +235,18 @@ export function AvatarDebug(): ReactElement {
   );
 
   useEffect(() => {
+    drivenRef.current = driven;
     if (phase === 'ready') renderer.current?.setExpression(driven);
   }, [driven, phase]);
+
+  const playTag = useCallback(() => {
+    const option = TAG_OPTIONS[tagIndex];
+    if (option === undefined) return;
+    const result = performer.perform({ kind: option.kind, value: option.value, known: option.value, offset: 0 });
+    setStatus(result === 'performed' ? `Playing [${option.kind}:${option.value}].` : `[${option.kind}:${option.value}] has no motion yet (needs a clip).`);
+    // As after an answer: the face holds the emote, then lets go.
+    if (option.kind === 'emote') setTimeout(() => performer.release(), RELEASE_AFTER_MS);
+  }, [performer, tagIndex]);
 
   // One life layer for the page; made in an effect rather than during render.
   useEffect(() => {
@@ -565,6 +598,19 @@ export function AvatarDebug(): ReactElement {
               </button>
               <button className="btn btn-ghost" onClick={() => playClip(true)} type="button">
                 Loop clip
+              </button>
+              <label className="field">
+                <span className="field-label">Tag (P2-T07)</span>
+                <select className="select" onChange={(event) => setTagIndex(Number(event.target.value))} value={tagIndex}>
+                  {TAG_OPTIONS.map((option, index) => (
+                    <option key={`${option.kind}:${option.value}`} value={index}>
+                      {option.kind}:{option.value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn" onClick={playTag} type="button">
+                Play tag
               </button>
             </div>
           </section>

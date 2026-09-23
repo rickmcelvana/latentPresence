@@ -257,3 +257,52 @@ describe('Reply — failures', () => {
     expect(outcome()).toMatchObject({ status: 'failed', spokenPrefix: 'Hello there.', scope: 'tts', error: 'voice failed on "How are you?"' });
   });
 });
+
+describe('Reply — sentence timing for the tag bridge (P2-T07)', () => {
+  /** Kokoro's shape: silence, a second of voice, silence — with word timings on the original. */
+  class PaddedTTS implements TTSProvider {
+    readonly id = 'padded-tts';
+    async capabilities(): Promise<never> {
+      throw new Error('unused');
+    }
+    async listVoices(): Promise<never[]> {
+      return [];
+    }
+    async *synthesize() {
+      const rate = 24_000;
+      const samples = new Float32Array(rate * 1.8);
+      samples.fill(0.5, rate * 0.3, rate * 1.3);
+      yield {
+        samples,
+        sampleRate: rate,
+        startMs: 0,
+        isFinal: true,
+        words: [
+          { text: 'Hello', startMs: 300, endMs: 700 },
+          { text: 'there.', startMs: 750, endMs: 1300 },
+        ],
+      };
+    }
+  }
+
+  it('reports where the voice and the words are in what plays, not in what was synthesised', async () => {
+    const { sink, events } = make(new ScriptedLLM(text('Hello there.')), new PaddedTTS() as unknown as ScriptedTTS);
+    await settle();
+    sink.start(100);
+    await settle();
+
+    const started = events.find((event) => event.type === 'audio-started');
+    if (started?.type !== 'audio-started') throw new Error('no audio-started');
+    // ADR-27 keeps 50 ms before the voice: 250 ms of the lead was cut, so everything moves
+    // 250 ms earlier. Unshifted, "Hello" would be scheduled 250 ms after it is heard.
+    expect(started.timing).toEqual({
+      durationMs: 1300,
+      voicedStartMs: 50,
+      voicedEndMs: 1050,
+      words: [
+        { text: 'Hello', startMs: 50, endMs: 450 },
+        { text: 'there.', startMs: 500, endMs: 1050 },
+      ],
+    });
+  });
+});

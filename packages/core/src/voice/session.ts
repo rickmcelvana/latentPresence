@@ -249,7 +249,7 @@ export class VoiceSession<R> {
         this.publish(pending, { type: 'assistant.sentence', text: event.text, index: event.index, tags: [...event.tags] });
         return;
       case 'audio-started':
-        this.dispatch({ type: 'assistant.audio.started', sentenceIndex: event.index });
+        this.dispatch({ type: 'assistant.audio.started', sentenceIndex: event.index, timing: event.timing });
         return;
       case 'audio-ended':
         this.dispatch({ type: 'assistant.audio.ended', sentenceIndex: event.index });

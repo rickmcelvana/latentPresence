@@ -55,19 +55,21 @@ export interface EdgePadding {
 export const DEFAULT_EDGE_PADDING: EdgePadding = { leadMs: 50, tailMs: 250 };
 
 /**
- * Cut a sentence down to its voice plus `padding`. Returns a copy, and where the voice
- * sits within it. Never lengthens: padding past the audio's own edges is not invented.
+ * Cut a sentence down to its voice plus `padding`. Returns a copy, where the voice sits
+ * within it, and `trimmedFrom`, the frame of the original the copy starts at — which a
+ * backend's word timings, measured on the original, must be moved by. Never lengthens:
+ * padding past the audio's own edges is not invented.
  */
 export function trimToVoice(
   samples: Float32Array,
   sampleRate: number,
   padding: EdgePadding = DEFAULT_EDGE_PADDING,
   threshold = DEFAULT_VOICED_THRESHOLD,
-): { readonly samples: Float32Array; readonly voicedStart: number; readonly voicedEnd: number } {
+): { readonly samples: Float32Array; readonly voicedStart: number; readonly voicedEnd: number; readonly trimmedFrom: number } {
   const voiced = voicedRange(samples, threshold);
   const from = Math.max(0, voiced.start - Math.round((padding.leadMs / 1000) * sampleRate));
   const to = Math.min(samples.length, voiced.end + Math.round((padding.tailMs / 1000) * sampleRate));
-  return { samples: samples.slice(from, to), voicedStart: voiced.start - from, voicedEnd: voiced.end - from };
+  return { samples: samples.slice(from, to), voicedStart: voiced.start - from, voicedEnd: voiced.end - from, trimmedFrom: from };
 }
 
 /** One sentence of an answer, as the estimator needs to know it. */

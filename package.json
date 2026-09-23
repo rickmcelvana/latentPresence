@@ -34,6 +34,7 @@
     "live:turn": "pnpm --filter @latentpresence/ml-web exec vite-node live/turn.ts",
     "live:bargein": "pnpm --filter @latentpresence/ml-web exec vite-node live/bargein.ts",
     "live:backchannel": "pnpm --filter @latentpresence/ml-web exec vite-node live/backchannel.ts",
+    "live:cues": "pnpm --filter @latentpresence/ml-web exec vite-node live/cues.ts",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {

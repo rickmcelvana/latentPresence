@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, UserAffectSchema } from './affect';
 import { DurationMsSchema, IdSchema, JsonObjectSchema, JsonValueSchema, TimestampSchema, UnitIntervalSchema } from './common';
+import { WordTimingSchema } from './media';
 
 /** The states of the conversation machine (P1-T01). Exactly these, no sub-states. */
 export const ConversationStateSchema = z.enum([
@@ -37,6 +38,25 @@ export const InlineTagSchema = z.object({
   offset: z.number().int().min(0),
 });
 export type InlineTag = z.infer<typeof InlineTagSchema>;
+
+/**
+ * Where the words are inside one sentence's audio, as played (P2-T07). Everything is in
+ * ms from the sentence's first played frame — the moment `assistant.audio.started` stands
+ * for — so a listener can place any character of the spoken text in time without the
+ * audio itself.
+ *
+ * `voicedStartMs`/`voicedEndMs` bound the speech inside the segment's padding (ADR-27
+ * keeps 50 ms before and 250 ms after). `words` is there only when the TTS reported word
+ * timings, which neither shipping provider does; without them a position is interpolated
+ * by character across the voiced span, the same estimate the spoken prefix uses.
+ */
+export const SentenceTimingSchema = z.object({
+  durationMs: DurationMsSchema,
+  voicedStartMs: DurationMsSchema,
+  voicedEndMs: DurationMsSchema,
+  words: z.array(WordTimingSchema).optional(),
+});
+export type SentenceTiming = z.infer<typeof SentenceTimingSchema>;
 
 /** Who asked for a tool to run. Schedules and the user can, not only the model. */
 export const ToolCallSourceSchema = z.enum(['llm', 'schedule', 'user']);
@@ -142,7 +162,17 @@ export const ConversationEventSchema = z.discriminatedUnion('type', [
     index: z.number().int().min(0),
     tags: z.array(InlineTagSchema).default([]),
   }),
-  z.object({ ...eventBase, type: z.literal('assistant.audio.started'), sentenceIndex: z.number().int().min(0) }),
+  /**
+   * A sentence became audible. `timing` (P2-T07, additive, so `PROTOCOL_VERSION` stays 1)
+   * is what the tag bridge schedules expressions and gestures against: the bus stamps
+   * events when they are dispatched, which says nothing about a word 1.5 s into the audio.
+   */
+  z.object({
+    ...eventBase,
+    type: z.literal('assistant.audio.started'),
+    sentenceIndex: z.number().int().min(0),
+    timing: SentenceTimingSchema.optional(),
+  }),
   z.object({ ...eventBase, type: z.literal('assistant.audio.ended'), sentenceIndex: z.number().int().min(0) }),
   z.object({ ...eventBase, type: z.literal('assistant.message'), entry: TranscriptEntrySchema }),
   /**

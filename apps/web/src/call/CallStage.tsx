@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationMachine } from '@latentpresence/core';
 import type { ConversationState } from '@latentpresence/protocol';
-import type { CharacterSource, ModelDescriptor, Viseme } from '@latentpresence/protocol';
+import type { CharacterSource, ExpressionWeights, ModelDescriptor, Viseme } from '@latentpresence/protocol';
 import {
   BaseClipGraph,
+  CuePerformer,
   LifeLayer,
+  TagBridge,
+  withGesture,
   LipSync,
   MOUTH_SHAPES,
   tapAnalyser,
@@ -47,6 +50,7 @@ export interface CallStageRenderer {
   mount(canvas: HTMLCanvasElement): Promise<void>;
   loadCharacter(source: CharacterSource): Promise<void>;
   setViseme(viseme: Viseme, weight: number): void;
+  setExpression(weights: ExpressionWeights): void;
   update(deltaMs: number): void;
   dispose(): void;
   setLifePose?(pose: LifePose | null): void;
@@ -119,7 +123,12 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
 
     const life = new LifeLayer();
     life.setState(machine.getState());
+    // P2-T07: the model's [emote:] and [gesture:] tags, placed on the words they were
+    // written before, from the sentence timing each `assistant.audio.started` carries.
+    const performer = new CuePerformer();
+    const bridge = new TagBridge(performer);
     const unsubscribe = machine.subscribe((event) => {
+      bridge.handle(event, performance.now());
       if (event.type !== 'state.changed') return;
       life.setState(event.to);
       if (clipsReadyRef.current) playBaseClip(avatar, graphRef.current, event.to);
@@ -134,9 +143,11 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
     const tick = (now: number): void => {
       const delta = now - last;
       last = now;
+      bridge.update(now);
       if (readyRef.current) {
-        const pose = life.update(delta);
-        avatar.setLifePose?.(pose);
+        const cues = performer.update(delta);
+        avatar.setLifePose?.(withGesture(life.update(delta), cues.additive));
+        avatar.setExpression(cues.expression);
         const lipSync = lipSyncRef.current;
         if (lipSync !== null) {
           for (const [shape, weight] of lipSync.update(delta, now)) avatar.setViseme(shape, weight);

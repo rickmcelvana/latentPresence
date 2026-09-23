@@ -1,6 +1,7 @@
 import type {
   LLMProvider,
   LlmRequest,
+  SentenceTiming,
   TTSProvider,
   WordTiming,
 } from '@latentpresence/protocol';
@@ -48,7 +49,7 @@ export type ReplyEvent =
    */
   | { readonly type: 'token'; readonly text: string }
   | { readonly type: 'sentence'; readonly index: number; readonly text: string; readonly tags: readonly InlineTag[] }
-  | { readonly type: 'audio-started'; readonly index: number; readonly at: number }
+  | { readonly type: 'audio-started'; readonly index: number; readonly at: number; readonly timing: SentenceTiming }
   | { readonly type: 'audio-ended'; readonly index: number; readonly at: number };
 
 export type ReplyOutcome =
@@ -78,6 +79,19 @@ interface Sentence extends SpokenSentence {
   readonly id: number;
   started: boolean;
   ended: boolean;
+}
+
+/** A played sentence's timing in ms, for `assistant.audio.started` (P2-T07). */
+function timingOf(sentence: SpokenSentence): SentenceTiming {
+  const ms = (frames: number): number => Math.round((frames / sentence.sampleRate) * 1000);
+  return {
+    durationMs: ms(sentence.frames),
+    voicedStartMs: ms(sentence.voicedStart ?? 0),
+    voicedEndMs: ms(sentence.voicedEnd ?? sentence.frames),
+    ...(sentence.words === undefined
+      ? {}
+      : { words: sentence.words.map((word) => ({ text: word.text, startMs: Math.round(word.startMs), endMs: Math.round(word.endMs) })) }),
+  };
 }
 
 function concat(parts: readonly Float32Array[]): Float32Array {
@@ -260,7 +274,12 @@ export class Reply {
     // Measured before the sink can transfer the buffer away.
     const whole = concat(parts);
     const voiced =
-      padding === null ? { samples: whole, voicedStart: 0, voicedEnd: whole.length } : trimToVoice(whole, sampleRate, padding);
+      padding === null ? { samples: whole, voicedStart: 0, voicedEnd: whole.length, trimmedFrom: 0 } : trimToVoice(whole, sampleRate, padding);
+    // A backend's word timings are measured on the audio it returned; what plays is the
+    // trimmed copy, and both the spoken prefix and the tag bridge (P2-T07) read positions
+    // in what plays. Unshifted, every word would land ~260 ms late on Kokoro's padding.
+    const shiftMs = (voiced.trimmedFrom / sampleRate) * 1000;
+    const played = words?.map((word) => ({ ...word, startMs: Math.max(0, word.startMs - shiftMs), endMs: Math.max(0, word.endMs - shiftMs) }));
     const samples = voiced.samples;
     const frames = samples.length;
     const id = this.deps.sink.enqueue({ samples, sampleRate });
@@ -272,7 +291,7 @@ export class Reply {
       sampleRate,
       voicedStart: voiced.voicedStart,
       voicedEnd: voiced.voicedEnd,
-      ...(words === undefined ? {} : { words }),
+      ...(played === undefined ? {} : { words: played }),
       started: false,
       ended: false,
     };
@@ -286,7 +305,7 @@ export class Reply {
     if (sentence === undefined) return;
     if (event.type === 'started') {
       sentence.started = true;
-      this.emit({ type: 'audio-started', index: sentence.index, at: event.at });
+      this.emit({ type: 'audio-started', index: sentence.index, at: event.at, timing: timingOf(sentence) });
     } else {
       sentence.started = true;
       sentence.ended = true;
