@@ -182,9 +182,9 @@ Done when: with no clips playing, the character does not look frozen in a 60 s r
 Rick selects CC0 clips (Quaternius); Aider adds the retarget script (Blender headless or Mesh2Motion export) and the runtime blend graph (idle, listen, talk, gesture channels with crossfades).
 Done when: `assets/clips/` has a manifest with licences; state changes crossfade under 300 ms without pops.
 
-### P2-T04 Lip sync — owner: sub
+### P2-T04 Lip sync — owner: sub → main (built 2026-09-22; `LipSync` in `packages/avatar/src/lipsync`; the video review is R-11)
 wawa-lipsync on the output audio node into visemes; if the TTS provides word or phoneme timing, drive from timing instead; jaw and lip smoothing.
-Done when: side-by-side video with Kokoro shows sync error under 80 ms.
+Done when: side-by-side video with Kokoro shows sync error under 80 ms. **Built; the video is R-11's.** **Kept by the architect rather than delegated**, by CLAUDE.md's rule: every setting that makes it work came from a measurement — wawa-lipsync cannot attach to our output node at all (so its classifier is ported, MIT, held to the original by a 6000-frame golden test), its defaults hold the mouth open 153 ms past a word, and the floor that fixes the rest was read off Kokoro speech. **Measured offline on Kokoro: opens a median 15 ms after speech, shuts 55 ms after, best-fit lag 35 ms** — inside 80 before output and display latency, which pull in opposite directions. The timing path (`visemeAt`, `LipSync.useTimings`) exists for a TTS that reports words; none does, and `PlaybackSegment` carries none, so wiring it through `Reply` waits for one that does.
 
 ### P2-T05 Stage v1 — owner: sub
 Room with floor, wall, window, desk; three-point lighting; camera presets (bust, medium, full) with smooth transitions; post-processing off by default.

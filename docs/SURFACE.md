@@ -1795,3 +1795,44 @@ the last two checked in the Browser pane on the placeholder VRM.
   `three` peer** (`3.5.5` rather than `3.5.5(three@0.185.1)`) when both were added in one
   `pnpm add`, and linked a store directory that does not exist, so node could not resolve the
   package while `pnpm install` reported "up to date". Fixed by hand to match `apps/web`'s entry.
+
+## wawa-lipsync 0.0.2 and the analyser's lag — read and measured 2026-09-22 (P2-T04)
+
+Read from the installed `dist/wawa-lipsync.es.js` and `index.d.ts`; licence read from
+`github.com/wass08/wawa-lipsync/blob/main/LICENSE` (MIT, Copyright (c) 2025 Wassim SAMAD —
+the package ships no LICENSE file). Measured offline in the Browser pane with
+`OfflineAudioContext.suspend()` at every render quantum, which needs no rAF.
+
+- **It cannot attach to our voice.** `connectAudio(HTMLMediaElement)` and
+  `connectMicrophone()` are the only inputs, and the constructor makes its own
+  `AudioContext`; our voice is an AudioWorklet in ours, and nodes do not cross contexts.
+  Everything goes through one private `AnalyserNode` — hence the port.
+- **It never sets `smoothingTimeConstant`**, so it runs at the browser default 0.8.
+- **Classifying a silent frame repeats the last sound:** a frame whose bins sum to 0 is not
+  pushed to history, and `detectState` classifies the previous one again.
+- **The analyser's lag, synthetic vowel tone, 24 kHz** (mouth half-closed / fully closed after
+  the sound stops; onset in every case 7–17 ms):
+
+  | fftSize, smoothing | window | half-closed | silent |
+  |---|---|---|---|
+  | 2048, 0.8 (wawa's default) | 85 ms | **153 ms** | 185 ms |
+  | 1024, 0.8 | 43 ms | 111 ms | 169 ms |
+  | 1024, 0.5 | 43 ms | 57 ms | 73 ms |
+  | **1024, 0 (chosen)** | 43 ms | **41 ms** | 41 ms |
+  | 512, 0 | 21 ms | 20 ms | 25 ms |
+
+  1024 at 24 kHz is 23.4 Hz a bin — what wawa's thresholds were tuned at (2048 at 48 kHz).
+- **On Kokoro speech (`e2e/fixtures/speech.wav`, 10.75 s), the whole chain at 60 fps:**
+  the analyser's volume (dB-scaled, 0..1) reads 0.18 at the 90th percentile of the quiet
+  between words and 0.33 at the 10th percentile of speech. Mouth floor 0.08 → closes a
+  median **170 ms** after speech stops; **0.25 → opens 15 ms after speech (median), closes
+  55 ms after, best-fit lag 35 ms (r 0.745)**, 14 of 16 onsets and 16 of 16 offsets matched.
+  Excludes the device's output latency (which makes the mouth *earlier* than the ear) and
+  display latency (later).
+- **An `AnalyserNode` tapped off the playback worklet and connected to nothing still
+  analyses** in a live context (Chrome) — seen driving the mouth in the pane.
+- **`MediaRecorder` records zero bytes, with no error, if the canvas track never delivers a
+  frame** — even with a live audio track in the stream. A hidden tab runs no rAF, so its
+  WebGL canvas never draws. `video/webm;codecs=vp9` with an audio track records fine
+  (63 KB in 3 s), so the MIME type was not the cause.
+

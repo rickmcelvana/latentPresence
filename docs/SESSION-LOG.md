@@ -438,3 +438,10 @@ Next: R-10 (Rick, any machine), then P2-T03 (clip library — Rick picks CC0 cli
 Decisions: none new. The step cap (100 ms) is a behaviour, recorded in `LifeLayer.update`.
 Click-through: pending — R-10.
 
+## 2026-09-22 claude — P2-T04 lip sync (and R-10 recorded as passed)
+Did: R-10 → D-23. Ported wawa-lipsync's classifier (golden-tested against the original), `tapAnalyser` on `AudioOutputHandle.node`, `MouthDriver`, word-timing path, lip-sync panel with close-up and voice in the recording. 1002 → 1015 tests, gate green, committed 56ba6a0.
+Left: **R-11** — Rick watches (and ideally records) her speaking the Kokoro sample. Nothing drives the mouth in `/chat` yet: there is no avatar there until P2-T06.
+Next: R-11 (Rick), then P2-T05 stage v1, or P2-T03 when Rick has picked clips.
+Decisions: none new; `sub` kept by the architect because the settings were measurements.
+Click-through: mouth seen moving on the Kokoro sample in the Browser pane; R-11 pending.
+

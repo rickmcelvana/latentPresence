@@ -114,6 +114,26 @@ says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
 `docs/runs/R-9-conversation-<date>.md`.
 
+### R-11 · Watch her talk — lip sync against Kokoro · **ready** (P2-T04 landed 2026-09-22)
+**Why:** P2-T04's done-when is *"side-by-side video with Kokoro shows sync error under 80 ms"*.
+Measured offline the mouth opens ~15 ms after speech and shuts ~55 ms after it; what that
+looks like on a real screen with real speakers is only decidable by watching. Any machine.
+
+**Run:**
+```bash
+pnpm dev
+```
+1. Open `http://localhost:5173/dev/avatar`, click **Agree and download**.
+2. In **Lip sync**, set **Camera** to **close-up**.
+3. Click **Play the Kokoro sample** and watch and listen — speakers or headphones, either.
+4. For the video: in **Life**, click **Record 60 s**, then **Play the Kokoro sample** straight
+   away; keep the tab visible. **Save the recording** — it has the voice in it.
+5. Optional: **…or your own audio** takes any file.
+
+**Report:** does the mouth move with the words — early, late, or with them? Does it close
+between words, or hang open? The video file if you have one; I can step through it frame by
+frame. Every dial is in `packages/avatar/src/lipsync/mouth.ts` (`DEFAULT_MOUTH_PARAMS`).
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
