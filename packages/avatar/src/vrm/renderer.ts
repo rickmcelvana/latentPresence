@@ -20,16 +20,22 @@ import {
 import type { ExpressionPlan } from '../expressions';
 import { type GazeOffset, type Vec3, gazePoint } from '../gaze';
 import type { LifeBone, LifePose } from '../life';
+import { type Body, CameraRig, DEFAULT_FOV_DEGREES, DEFAULT_TRANSITION_MS, type CameraPreset, framing } from '../stage/camera';
 import { AdditivePose } from './additive-pose';
 import { ClipPlayer } from './clip-player';
 import { VrmFaceDriver } from './face';
+import { DEFAULT_STAGE_OPTIONS, type StageOptions, buildStage } from './stage';
 
-/** What drawing needs from a WebGL renderer; `THREE.WebGLRenderer` is the real one. */
+/**
+ * What drawing needs from a WebGL renderer; `THREE.WebGLRenderer` is the real one.
+ * `shadowMap` is optional so a fake surface (tests) need not carry one.
+ */
 export interface DrawingSurface {
   setPixelRatio(ratio: number): void;
   setSize(width: number, height: number, updateStyle?: boolean): void;
   render(scene: THREE.Scene, camera: THREE.Camera): void;
   dispose(): void;
+  shadowMap?: { enabled: boolean; type: number };
 }
 
 export interface VrmRendererDeps {
@@ -43,15 +49,42 @@ function defaultDeps(): VrmRendererDeps {
   loader.register((parser) => new VRMLoaderPlugin(parser));
   loader.register((parser) => new VRMAnimationLoaderPlugin(parser));
   return {
-    createSurface: (canvas) => new THREE.WebGLRenderer({ canvas, antialias: true }),
+    createSurface: (canvas) => {
+      const surface = new THREE.WebGLRenderer({ canvas, antialias: true });
+      // The default surface enables shadows; the stage's `key` light is the only caster.
+      surface.shadowMap.enabled = true;
+      surface.shadowMap.type = THREE.PCFSoftShadowMap;
+      return surface;
+    },
     loadGltf: (url) => loader.loadAsync(url),
     pixelRatio: () => globalThis.devicePixelRatio ?? 1,
   };
 }
 
-/** A video call frames head and shoulders. P2-T05 owns the presets; this is the default. */
-const CAMERA_DISTANCE = 1.6;
-const CAMERA_FOV = 30;
+export interface VrmRendererOptions {
+  /** The room and its lighting (P2-T05). `false` gives a bare scene with a little ambient light. */
+  readonly stage?: StageOptions | false;
+}
+
+/** Roughly a standing person, for the camera rig's seed and a stageless bare scene. */
+const DEFAULT_BODY: Body = {
+  x: 0,
+  z: 0,
+  head: 1.5,
+  top: 1.72,
+  eyes: 1.57,
+  upperChest: 1.35,
+  chest: 1.25,
+  hips: 0.9,
+  leftFoot: 0,
+  rightFoot: 0,
+};
+
+function setCastShadow(root: THREE.Object3D, on: boolean): void {
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh) node.castShadow = on;
+  });
+}
 
 interface Loaded {
   readonly vrm: VRM;
@@ -77,7 +110,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
 
   private readonly deps: VrmRendererDeps;
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(CAMERA_FOV, 16 / 9, 0.1, 20);
+  private readonly camera = new THREE.PerspectiveCamera(DEFAULT_FOV_DEGREES, 16 / 9, 0.1, 20);
   /** What `lookAt` follows; moved every frame, because the head moves under a clip. */
   private readonly gazeObject = new THREE.Object3D();
   private readonly animations = new Map<string, VRMAnimation>();
@@ -88,20 +121,29 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private loaded: Loaded | null = null;
   private gaze: GazeTarget = 'user';
   private gazeOffset: GazeOffset = [0, 0];
-  private cameraDistance = CAMERA_DISTANCE;
+  private readonly stage: THREE.Group | null;
+  private readonly rig: CameraRig;
+  private cameraPreset: CameraPreset = 'bust';
+  private shadowsOn: boolean;
   private life: LifePose | null = null;
   private disposed = false;
 
-  constructor(deps: Partial<VrmRendererDeps> = {}) {
+  constructor(deps: Partial<VrmRendererDeps> = {}, options: VrmRendererOptions = {}) {
     this.deps = { ...defaultDeps(), ...deps };
 
-    // Deliberately plain: three-point lighting and the room are P2-T05's.
-    this.scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(1, 2, 3);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
-    fill.position.set(-2, 1, -1);
-    this.scene.add(key, fill, this.gazeObject);
+    if (options.stage === false) {
+      // No room: keep a little ambient light so a model is still visible.
+      this.scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+      this.stage = null;
+      this.shadowsOn = false;
+    } else {
+      const stageOptions = options.stage ?? DEFAULT_STAGE_OPTIONS;
+      this.stage = buildStage(stageOptions);
+      this.shadowsOn = stageOptions.shadows;
+      this.scene.add(this.stage);
+    }
+    this.scene.add(this.gazeObject);
+    this.rig = new CameraRig(framing(this.cameraPreset, DEFAULT_BODY, DEFAULT_FOV_DEGREES));
   }
 
   capabilities(): AvatarCapabilities {
@@ -141,6 +183,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
 
     this.unloadCharacter();
     this.scene.add(vrm.scene);
+    setCastShadow(vrm.scene, this.shadowsOn);
     const face = new VrmFaceDriver(vrm);
     face.attachGazeTarget(this.gazeObject);
     const clips = new ClipPlayer(vrm.scene);
@@ -194,12 +237,19 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   update(deltaMs: number): void {
     if (this.disposed || this.surface === null) return;
     this.fitCanvas();
+    // Steps the rig towards its goal and applies it, every frame — a transition in
+    // progress, or a settled preset, either way the camera comes from here, not from
+    // `frameHead`'s one-shot set.
+    const pose = this.rig.update(deltaMs);
+    this.camera.position.set(pose.position[0], pose.position[1], pose.position[2]);
+    this.camera.lookAt(pose.target[0], pose.target[1], pose.target[2]);
     const loaded = this.loaded;
     if (loaded !== null) {
       // Take last frame's life off before the mixer writes this frame's clip pose.
       loaded.pose.restore();
       loaded.clips.update(deltaMs);
       this.applyLife(loaded);
+      // After the camera, so gaze reads this frame's position, not last frame's.
       this.placeGaze();
       // After the mixer, so expressions, look-at, spring bones and constraints all
       // settle on this frame's pose (Spike B's order).
@@ -239,12 +289,43 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   }
 
   /**
-   * How far in front of the face the camera sits, metres; 1.6 is the call's bust framing.
-   * A stand-in until P2-T05's camera presets — P2-T04 needed a close-up to judge a mouth.
+   * Moves the camera to a preset (P2-T05), eased over `transitionMs` (default 700, `0`
+   * snaps) from wherever it currently is — a preset picked mid-transition never jumps.
+   * Framed from the loaded model's own bones; with none loaded, from a generic body.
    */
-  setCameraDistance(metres: number): void {
-    this.cameraDistance = Math.min(4, Math.max(0.3, metres));
-    if (this.loaded !== null) this.frameHead();
+  setCameraPreset(preset: CameraPreset, transitionMs = DEFAULT_TRANSITION_MS): void {
+    this.assertLive();
+    this.cameraPreset = preset;
+    this.rig.setGoal(framing(preset, this.bodyHeights(), DEFAULT_FOV_DEGREES), transitionMs);
+  }
+
+  /**
+   * Toggles PCF soft shadows: the surface's shadow map, the stage's `key` light (the only
+   * caster) and the loaded character's meshes together, so nothing is left half-lit.
+   */
+  setShadows(on: boolean): void {
+    this.shadowsOn = on;
+    const shadowMap = this.surface?.shadowMap;
+    if (shadowMap !== undefined) shadowMap.enabled = on;
+    const key = this.stage?.getObjectByName('key');
+    if (key instanceof THREE.DirectionalLight) key.castShadow = on;
+    if (this.loaded !== null) setCastShadow(this.loaded.vrm.scene, on);
+    // Materials are compiled with or without shadow sampling. Without a recompile, "off"
+    // kept drawing the last shadow map — seen in the Browser pane (P2-T05 review).
+    this.scene.traverse((node) => {
+      if (!(node instanceof THREE.Mesh)) return;
+      const materials: THREE.Material[] = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of materials) material.needsUpdate = true;
+    });
+  }
+
+  /**
+   * The drawing buffer's pixel ratio, independent of the device's own — the debug panel's
+   * 1080p render scale sets `1920 / canvas.clientWidth` so the buffer is 1920 px wide
+   * whatever the column is.
+   */
+  setPixelRatio(ratio: number): void {
+    this.surface?.setPixelRatio(ratio);
   }
 
   /** What each protocol expression resolved to on the loaded model. */
@@ -300,12 +381,43 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     return [position.x, position.y, position.z];
   }
 
+  /** Computes the body from the loaded model's bones and gives the rig a new, snapped goal. */
   private frameHead(): void {
     this.loaded?.vrm.scene.updateMatrixWorld(true);
-    const [x, y, z] = this.headPosition() ?? [0, 1.4, 0];
-    this.camera.position.set(x, y, z + this.cameraDistance);
-    this.camera.lookAt(x, y - 0.05, z);
+    this.rig.setGoal(framing(this.cameraPreset, this.bodyHeights(), DEFAULT_FOV_DEGREES), 0);
     this.placeGaze();
+  }
+
+  /**
+   * The loaded model's own proportions, for `framing` — bone heights plus where it
+   * stands, read from the humanoid rig rather than hard-coded. Falls back to a generic
+   * standing body with no character loaded.
+   */
+  private bodyHeights(): Body {
+    const vrm = this.loaded?.vrm;
+    if (vrm === undefined) return DEFAULT_BODY;
+    const humanoid = vrm.humanoid;
+    const boneY = (name: VRMHumanBoneName): number | null => {
+      const node = humanoid.getNormalizedBoneNode(name);
+      return node === null ? null : node.getWorldPosition(new THREE.Vector3()).y;
+    };
+    const [x, head, z] = this.headPosition() ?? [DEFAULT_BODY.x, DEFAULT_BODY.head, DEFAULT_BODY.z];
+    // The crown, hair included: the head bone is at the base of the skull, and framing to
+    // it cropped the top of her head (P2-T05 review).
+    const bounds = new THREE.Box3().setFromObject(vrm.scene);
+    const eyes = [boneY('leftEye'), boneY('rightEye')].filter((y): y is number => y !== null);
+    return {
+      x,
+      z,
+      head,
+      top: bounds.isEmpty() ? null : bounds.max.y,
+      eyes: eyes.length === 0 ? null : eyes.reduce((sum, y) => sum + y, 0) / eyes.length,
+      upperChest: boneY('upperChest'),
+      chest: boneY('chest'),
+      hips: boneY('hips'),
+      leftFoot: boneY('leftFoot'),
+      rightFoot: boneY('rightFoot'),
+    };
   }
 
   private placeGaze(): void {

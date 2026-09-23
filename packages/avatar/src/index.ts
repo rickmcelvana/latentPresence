@@ -18,6 +18,15 @@ export {
   type ExpressionTarget,
 } from './expressions';
 export { gazeDirection, gazePoint, type GazeOffset, type Vec3 } from './gaze';
+export {
+  CameraRig,
+  DEFAULT_FOV_DEGREES,
+  DEFAULT_TRANSITION_MS,
+  framing,
+  type Body,
+  type CameraPreset,
+  type Framing,
+} from './stage/camera';
 export * from './life';
 export * from './lipsync';
 export { FakeAvatarRenderer, MOUTH_SHAPES, applyViseme, type MouthShape } from './fake';

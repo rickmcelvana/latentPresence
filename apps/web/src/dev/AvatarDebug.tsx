@@ -10,6 +10,7 @@ import {
   GazeTargetSchema,
 } from '@latentpresence/protocol';
 import {
+  type CameraPreset,
   type ExpressionPlan,
   LifeLayer,
   LipSync,
@@ -21,6 +22,7 @@ import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/providers';
 // Kokoro speech, generated for P1-T14's end-to-end test; dev-only, like this page.
 import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
+import { type FrameResult, FrameRecorder } from '../spikes/frame-rate';
 import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/avatar-consent';
 
 /**
@@ -39,7 +41,14 @@ import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/ava
  *
  * **Lip sync (P2-T04)** plays Kokoro speech — or any file — through the same output graph
  * `/chat` uses (`createAudioOutput`), taps its node with an analyser and drives the mouth
- * every frame. **Close-up** moves the camera in so a recording shows the mouth.
+ * every frame.
+ *
+ * **Stage (P2-T05)** is the room, three-point lighting and the four camera presets — face,
+ * bust, medium, full — with eased transitions; a shadows toggle; a render scale (native or
+ * a 1080 px drawing buffer); and the instrument Rick measures frame rate with: every
+ * rendered frame is marked, **Take reading** reports median fps, 5th-percentile fps, the
+ * worst frame and the canvas's real backing size, and changing preset, shadows or scale
+ * resets the window, since a reading only means one configuration.
  *
  * Spike B's `/spike/avatar` stays beside it: that page is the frame-rate instrument R-1
  * runs on another machine, and this one measures nothing.
@@ -51,6 +60,11 @@ const CLIP_ID = 'test';
 const PRESETS: readonly ExpressionName[] = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
 const CYCLE_MS = 1000;
 const RECORD_MS = 60_000;
+
+const CAMERA_PRESETS: readonly CameraPreset[] = ['face', 'bust', 'medium', 'full'];
+type RenderScale = 'native' | '1080p';
+/** The drawing buffer's width at the 1080p render scale, whatever the canvas's CSS width is. */
+const RENDER_SCALE_WIDTH_1080P = 1920;
 
 interface LifeReadout {
   readonly seconds: number;
@@ -101,9 +115,15 @@ export function AvatarDebug(): ReactElement {
   const live = useRef(false);
   const counters = useRef({ ms: 0, blinks: 0, lastBlink: 0, gaze: 'user' });
   const [lipStatus, setLipStatus] = useState('Silent.');
-  const [closeUp, setCloseUp] = useState(false);
   const audio = useRef<AudioOutputHandle | null>(null);
   const lips = useRef<LipSync | null>(null);
+
+  const [cameraPreset, setCameraPreset] = useState<CameraPreset>('bust');
+  const [shadows, setShadows] = useState(true);
+  const [renderScale, setRenderScale] = useState<RenderScale>('native');
+  const frameRate = useRef(new FrameRecorder());
+  const [reading, setReading] = useState<FrameResult | null>(null);
+  const [backingSize, setBackingSize] = useState<{ readonly width: number; readonly height: number } | null>(null);
 
   // One renderer for the page's life, driven by the browser's frame loop: the interface
   // says `update` belongs to the render loop, not to a timer inside the renderer.
@@ -134,6 +154,9 @@ export function AvatarDebug(): ReactElement {
         for (const [shape, weight] of lipSync.update(delta, now)) avatar.setViseme(shape, weight);
       }
       avatar.update(delta);
+      // Marked here, not in `Take reading`: the instrument has to see every rendered
+      // frame, not just the ones a person happens to be watching for.
+      if (live.current) frameRate.current.mark(now);
       last = now;
       frame = requestAnimationFrame(tick);
     };
@@ -320,8 +343,35 @@ export function AvatarDebug(): ReactElement {
   }, []);
 
   useEffect(() => {
-    if (phase === 'ready') renderer.current?.setCameraDistance(closeUp ? 0.6 : 1.6);
-  }, [closeUp, phase]);
+    if (phase === 'ready') renderer.current?.setCameraPreset(cameraPreset);
+  }, [cameraPreset, phase]);
+
+  useEffect(() => {
+    if (phase === 'ready') renderer.current?.setShadows(shadows);
+  }, [phase, shadows]);
+
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    const surface = canvas.current;
+    if (surface === null) return;
+    const ratio = renderScale === '1080p' ? RENDER_SCALE_WIDTH_1080P / surface.clientWidth : window.devicePixelRatio || 1;
+    renderer.current?.setPixelRatio(ratio);
+  }, [phase, renderScale]);
+
+  // A reading is only meaningful for one configuration, so each select clears the window
+  // itself, from the event that changed it — not from an effect watching the new value,
+  // which would fire a second render for no reason.
+  const clearReading = useCallback(() => {
+    frameRate.current.reset();
+    setReading(null);
+    setBackingSize(null);
+  }, []);
+
+  const takeReading = useCallback(() => {
+    setReading(frameRate.current.summary());
+    const surface = canvas.current;
+    setBackingSize(surface === null ? null : { width: surface.width, height: surface.height });
+  }, []);
 
   // The output graph is made on the first click — a context made without a gesture is
   // suspended — and closed with the page.
@@ -531,19 +581,86 @@ export function AvatarDebug(): ReactElement {
                   type="file"
                 />
               </label>
+            </div>
+            <p className="spike-status">{lipStatus}</p>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Stage</span>
+              <span className={`pill ${shadows ? 'pill-ok' : ''}`}>{shadows ? 'shadows on' : 'shadows off'}</span>
+            </div>
+            <p className="panel-note">
+              The room and three-point lighting (P2-T05), the four camera presets — framed
+              from this model&apos;s own bones, eased between — and the instrument frame rate is
+              measured with: every rendered frame is marked here, and{' '}
+              <strong>Take reading</strong> reports the median, the 5th-percentile (the bad
+              frames) and the single worst frame, plus the canvas&apos;s real backing size.
+            </p>
+            <div className="spike-controls">
               <label className="field">
                 <span className="field-label">Camera</span>
                 <select
                   className="select"
-                  onChange={(event) => setCloseUp(event.target.value === 'close')}
-                  value={closeUp ? 'close' : 'bust'}
+                  onChange={(event) => {
+                    setCameraPreset(event.target.value as CameraPreset);
+                    clearReading();
+                  }}
+                  value={cameraPreset}
                 >
-                  <option value="bust">bust (the call)</option>
-                  <option value="close">close-up (for judging the mouth)</option>
+                  {CAMERA_PRESETS.map((preset) => (
+                    <option key={preset} value={preset}>
+                      {preset}
+                    </option>
+                  ))}
                 </select>
               </label>
+              <label className="field">
+                <span className="field-label">Shadows</span>
+                <select
+                  className="select"
+                  onChange={(event) => {
+                    setShadows(event.target.value === 'on');
+                    clearReading();
+                  }}
+                  value={shadows ? 'on' : 'off'}
+                >
+                  <option value="on">on</option>
+                  <option value="off">off</option>
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Render scale</span>
+                <select
+                  className="select"
+                  onChange={(event) => {
+                    setRenderScale(event.target.value as RenderScale);
+                    clearReading();
+                  }}
+                  value={renderScale}
+                >
+                  <option value="native">native</option>
+                  <option value="1080p">1080p</option>
+                </select>
+              </label>
+              <button className="btn btn-primary" onClick={takeReading} type="button">
+                Take reading
+              </button>
+              <button className="btn btn-ghost" onClick={clearReading} type="button">
+                Reset
+              </button>
             </div>
-            <p className="spike-status">{lipStatus}</p>
+            {reading === null ? null : reading.measured ? (
+              <p className="spike-status">
+                {reading.stats.medianFps.toFixed(1)} fps median · {reading.stats.fifthPercentileFps.toFixed(1)} fps
+                5th-percentile · worst frame {reading.stats.worstFrameMs.toFixed(1)} ms
+                {backingSize === null ? '' : ` · ${backingSize.width}×${backingSize.height}`}
+              </p>
+            ) : (
+              <p className="spike-status">
+                Only {reading.frames} frames since the last reset — {reading.needed} needed for a reading.
+              </p>
+            )}
           </section>
 
           <section className="panel">
