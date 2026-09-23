@@ -1770,3 +1770,28 @@ names only the dev pages write keep the same instrument measuring the same thing
 any `vite.config.ts` change and reloads the page mid-test — `Execution context was destroyed`.
 The suite passes on the next run (11.1 s), and CI starts its own server, so this is a local
 artefact rather than a flake the CI job can hit.
+
+## three-vrm 3.5.5 as a renderer, not a spike — read 2026-09-22 (P2-T01)
+
+Read from the installed package (`@pixiv/three-vrm-core` types and `lib/*.module.js`), and
+the last two checked in the Browser pane on the placeholder VRM.
+
+- **`VRMExpressionManager.setValue(name, w)` on a name the model lacks is a silent no-op**
+  (`getExpression` returns null, nothing is written, nothing is logged), and it saturates the
+  weight to 0–1. So the renderer writes a resolved plan rather than guarding every call.
+- **The preset names are 18**: `aa ih ou ee oh`, `blink blinkLeft blinkRight`,
+  `happy angry sad relaxed surprised neutral`, `lookUp lookDown lookLeft lookRight`. The
+  placeholder (`VRM1_Constraint_Twist_Sample`) registers exactly those 18 and no custom
+  expressions — so on it, every ARKit-style protocol name is either a preset fallback or
+  nothing.
+- **`VRMUtils.rotateVRM0` only acts on `meta.metaVersion === "0"`** (sets `scene.rotation.y =
+  π`), so it is safe to call on every model.
+- **`createVRMAnimationClip` warns and builds a `VRMLookAtQuaternionProxy` itself** if none is
+  a child of `vrm.scene` — the look-at track of a VRMA goes through it. The renderer adds one
+  on load; the warning is gone in the Browser pane.
+- **A clip with a look-at track will fight `setGaze`** for the eyes, since both drive
+  `vrm.lookAt`. Not a problem with `test.vrma`; P2-T03's blend graph has to decide who wins.
+- **pnpm 12.3.4 wrote `@pixiv/three-vrm` into `packages/avatar`'s lockfile importer without its
+  `three` peer** (`3.5.5` rather than `3.5.5(three@0.185.1)`) when both were added in one
+  `pnpm add`, and linked a store directory that does not exist, so node could not resolve the
+  package while `pnpm install` reported "up to date". Fixed by hand to match `apps/web`'s entry.

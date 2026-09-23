@@ -170,9 +170,9 @@ verify is R-9**: nobody has yet held the five-minute conversation from a product
 
 ## Phase 2 — Avatar and stage v1
 
-### P2-T01 AvatarRenderer VRM implementation — owner: main
+### P2-T01 AvatarRenderer VRM implementation — owner: main (done 2026-09-22; `VrmAvatarRenderer` at `@latentpresence/avatar/vrm`, debug panel at `/dev/avatar`)
 `packages/avatar/vrm`: load VRM 1.0 and VRMA, implement `AvatarRenderer`, expression mapping table (VRM presets and ARKit passthrough), look-at target.
-Done when: sample VRM shows all presets via a debug panel; interface tests pass against a `FakeAvatarRenderer`.
+Done when: sample VRM shows all presets via a debug panel; interface tests pass against a `FakeAvatarRenderer`. **Met.** `/dev/avatar` cycles the six presets on the placeholder and shows what each of the fourteen protocol names resolved to on that model; checked in the Browser pane with `surprised`, `angry`, the `mouthSmile` → half-`happy` fallback, `aa`, two gaze targets and a one-shot VRMA resolving on its own end. The fake, the clip player (a real `AnimationMixer`) and the face driver (a real `VRMExpressionManager`) are tested in node. **Two rules the later tasks inherit:** a viseme is its own channel and keeps its weight until set again, with `sil` closing all five — so P2-T04 can blend as Spike B did; and `playClip` resolves a one-shot when it ends *or is replaced*. The build guard's `three-vrm` needle stays until a production route mounts the renderer (P2-T06).
 
 ### P2-T02 Procedural life layer — owner: main
 Breathing (chest and shoulders), blink with saccades and rate tied to state, gaze policy with drift and return, micro weight shifts. All parameterised.
