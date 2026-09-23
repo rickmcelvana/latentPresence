@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { VisemeClassifier } from './classifier';
-import { LipSync, type SpectrumSource } from './lipsync';
+import { LipSync, tapAnalyser, type SpectrumSource } from './lipsync';
 import { DEFAULT_MOUTH_PARAMS, MouthDriver, type MouthWeights, visemeAt } from './mouth';
 
 const FRAME = 1000 / 60;
@@ -140,5 +140,37 @@ describe('LipSync', () => {
     expect(weights.get('aa')).toBeGreaterThan(0.5);
     for (let t = 1300; t < 1600; t += FRAME) weights = lips.update(FRAME, t);
     expect(total(weights)).toBeLessThan(0.05);
+  });
+});
+
+/** Just enough of an audio graph to track one node's outgoing connections. */
+function graph() {
+  const analyser = { fftSize: 0, smoothingTimeConstant: 1, getByteFrequencyData: () => undefined };
+  const connected = new Set<unknown>();
+  const node = {
+    connect: (to: unknown) => connected.add(to),
+    disconnect: (to?: unknown) => {
+      if (to === undefined) connected.clear();
+      else if (!connected.delete(to)) throw new DOMException('the given destination is not connected', 'InvalidAccessError');
+    },
+  };
+  const context = { sampleRate: 24_000, createAnalyser: () => analyser };
+  return { node: node as unknown as AudioNode, context: context as unknown as BaseAudioContext, connected };
+}
+
+describe('tapAnalyser', () => {
+  it('removes only its own branch', () => {
+    const g = graph();
+    const tap = tapAnalyser(g.context, g.node);
+    expect(g.connected.size).toBe(1);
+    tap.disconnect();
+    expect(g.connected.size).toBe(0);
+  });
+
+  it('does not throw once the graph has been closed under it (P2-T08: it blanked /chat)', () => {
+    const g = graph();
+    const tap = tapAnalyser(g.context, g.node);
+    g.node.disconnect();
+    expect(() => tap.disconnect()).not.toThrow();
   });
 });

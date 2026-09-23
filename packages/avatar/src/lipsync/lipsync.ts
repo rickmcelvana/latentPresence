@@ -22,6 +22,12 @@ export const ANALYSER_FFT_SIZE = 1024;
  * Taps a node in the voice's own graph — `AudioOutputHandle.node`, which P1-T08 exposed
  * for exactly this. The analyser is a side branch: the voice's path to the speakers is
  * untouched, and `disconnect` removes only the tap.
+ *
+ * **`disconnect` is safe after the graph has closed** (P2-T08). `AudioOutputHandle.close`
+ * disconnects the node from everything, and React runs a lip-sync effect's cleanup only
+ * after that — so a plain `node.disconnect(analyser)` threw `InvalidAccessError` in the
+ * cleanup and React unmounted the whole of `/chat`. The tap is already gone then, which is
+ * all `disconnect` promises.
  */
 export function tapAnalyser(
   context: BaseAudioContext,
@@ -36,7 +42,13 @@ export function tapAnalyser(
     sampleRate: context.sampleRate,
     fftSize,
     read: (into) => analyser.getByteFrequencyData(into),
-    disconnect: () => node.disconnect(analyser),
+    disconnect: () => {
+      try {
+        node.disconnect(analyser);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'InvalidAccessError')) throw error;
+      }
+    },
   };
 }
 
