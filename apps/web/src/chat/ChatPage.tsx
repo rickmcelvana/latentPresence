@@ -264,11 +264,15 @@ function ConfiguredChatPage({
     }
   }
 
-  // Docked above the bar and disabled during a call exactly as it was before the call
-  // layout existed — now hidden outright rather than a greyed-out box nobody can use.
-  const showTextBox = textOpen && !callActive;
+  // Docked above the bar, and gone for as long as the voice panel is open — not only while
+  // a call is live. The panel's card sits in the same place, and with both showing the text
+  // box covered the consent card entirely (R-14, 2026-09-23): Start voice looked like it did
+  // nothing. Typing is blocked for the call anyway.
+  const showTextBox = textOpen && !voiceOpen;
+  // The two centred cards shift left of an open drawer rather than sliding under it (R-14).
+  const pageClass = drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
   return (
-    <main className="call-page">
+    <main className={pageClass}>
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
         <CallStage call={call} consent={deps.consent} createRenderer={createRenderer} machine={machine} />
       </Suspense>
@@ -346,7 +350,7 @@ function ConfiguredChatPage({
         <button aria-pressed={userCamera.active} className="btn call-control-btn" onClick={toggleCamera} type="button">
           Camera
         </button>
-        <button aria-pressed={showTextBox} className="btn call-control-btn" onClick={() => setTextOpen((open) => !open)} type="button">
+        <button aria-pressed={showTextBox} className="btn call-control-btn" disabled={voiceOpen} onClick={() => setTextOpen((open) => !open)} type="button">
           Text
         </button>
         <button aria-pressed={drawerOpen} className="btn call-control-btn" onClick={() => setDrawerOpen((open) => !open)} type="button">

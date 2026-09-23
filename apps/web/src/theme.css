@@ -1357,7 +1357,7 @@ kbd {
   bottom: var(--call-bar-height);
   z-index: 2;
   display: flex;
-  width: clamp(320px, 26vw, 640px);
+  width: var(--call-drawer-width);
   padding: var(--gap-md);
 }
 
@@ -1460,6 +1460,16 @@ kbd {
 
 .call-page {
   --call-ui-zoom: 1;
+  --call-drawer-width: clamp(320px, 26vw, 640px);
+}
+
+/* With the drawer open, the voice card and the text box centre in the space left of it
+   instead of on the page, so at narrow widths they never slide under the transcript
+   (R-14). Same units as the drawer: both are zoomed by the same step. */
+.call-page-drawer-open .call-voice-card,
+.call-page-drawer-open .call-text-dock {
+  left: calc((100% - var(--call-drawer-width)) / 2);
+  max-width: calc(100% - var(--call-drawer-width) - 2 * var(--gap-md));
 }
 
 @media (min-width: 2400px) {

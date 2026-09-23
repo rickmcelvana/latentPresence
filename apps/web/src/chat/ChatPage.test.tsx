@@ -336,6 +336,22 @@ describe('ChatPage — the call layout (P2-T06)', () => {
     expect(screen.getByRole('textbox')).toBeTruthy();
   });
 
+  it('puts the text box away while the voice panel is open, and brings it back after', async () => {
+    // R-14 (2026-09-23): both cards share the spot above the bar, and with the text box
+    // showing, the voice panel's consent card was hidden behind it.
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await waitFor(() => expect(screen.getByText(/A browser voice and hearing/u)).toBeTruthy());
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Text' }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('textbox')).toBeTruthy());
+  });
+
   it('Mute is disabled with no call running', () => {
     const storage = memoryStorage();
     seedConfigured(storage);
