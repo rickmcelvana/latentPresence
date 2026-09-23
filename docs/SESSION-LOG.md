@@ -445,3 +445,9 @@ Next: R-11 (Rick), then P2-T05 stage v1, or P2-T03 when Rick has picked clips.
 Decisions: none new; `sub` kept by the architect because the settings were measurements.
 Click-through: mouth seen moving on the Kokoro sample in the Browser pane; R-11 pending.
 
+## 2026-09-22 claude — R-11 analysed and recorded (D-24)
+Did: measured Rick's two recordings in the Browser pane (audio via decodeAudioData, mouth via seeked video frames): Kokoro −20 / +10 ms, inside one frame; Rick's own audio +110 ms whole-signal but ~50 ms per pause, explained by its 0.5 Hz swells. Recordings moved to gitignored `docs/runs/media/`. `docs/runs/R-11-lipsync-2026-09-22.md`.
+Left: nothing on P2-T04. P2-T03 waits on Rick's clips.
+Next: P2-T05 stage v1.
+Decisions: none. Click-through: passed (Rick, 2026-09-22).
+
