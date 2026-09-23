@@ -18,7 +18,7 @@ import {
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/consent';
 import { ConsentScreen } from '../consent/ConsentScreen';
-import type { ActiveCall } from '../voice/VoicePanel';
+import type { AudioOutputHandle } from '@latentpresence/providers';
 import { AVATAR, AVATAR_DESCRIPTOR } from './character-asset';
 import { BASE_CLIP_URLS } from './clips';
 import { computePixelRatio } from './pixel-ratio';
@@ -35,10 +35,10 @@ import { computePixelRatio } from './pixel-ratio';
  * `latentpresence.consent.v1` store the voice models share. A returning user who already
  * granted it never sees the panel.
  *
- * **Lip sync follows the call** (decision 5): `call` is `null` between calls, and whatever
- * `VoicePanel` hands `/chat` through `onCallStarted` while one is running. `call.output` is
- * optional on `ActiveCall` for a test call with no audio graph; this component treats a
- * call with no `output` the same as no call at all.
+ * **Lip sync follows the voice** (decision 5): `voice` is the output graph of whatever is
+ * speaking — a call's (`VoicePanel` hands it to `/chat` through `onCallStarted`) or, since
+ * P2-T08, the speaker that reads typed replies aloud — and `null` when neither is. A test
+ * call with no audio graph has no `output`, and `/chat` passes that as `null` too.
  */
 
 /** What `CallStage` needs from a renderer — the protocol's `AvatarRenderer` plus the four
@@ -67,8 +67,8 @@ export interface CallStageProps {
   /** The shared consent book (`deps.consent` — the same object `/settings` and the voice
    * panel read and revoke). */
   readonly consent: ModelConsent;
-  /** The running call, for lip sync, or `null` between calls. */
-  readonly call: ActiveCall | null;
+  /** The voice's output graph, for lip sync, or `null` when nothing can speak. */
+  readonly voice: AudioOutputHandle | null;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -88,7 +88,7 @@ type CharacterPhase = 'consent' | 'loading' | 'ready' | 'declined' | 'failed';
 
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
 
-export function CallStage({ machine, consent, call, createRenderer = defaultCreateRenderer, fetchModel = cachedModelFetch }: CallStageProps): ReactElement {
+export function CallStage({ machine, consent, voice, createRenderer = defaultCreateRenderer, fetchModel = cachedModelFetch }: CallStageProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<CallStageRenderer | null>(null);
   const lipSyncRef = useRef<LipSync | null>(null);
@@ -243,11 +243,11 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
     };
   }, [mounted, phase, fetchModel, machine]);
 
-  // Follows `call`: taps the voice's output node for lip sync while one is running, and
-  // shuts the mouth again — every viseme to 0 — the moment it is not (decision 5).
+  // Follows `voice`: taps its output node for lip sync while there is one, and shuts the
+  // mouth again — every viseme to 0 — the moment there is not (decision 5).
   useEffect(() => {
-    const output = call?.output;
-    if (output === undefined) {
+    const output = voice;
+    if (output === null) {
       lipSyncRef.current = null;
       const avatar = rendererRef.current;
       if (avatar !== null && readyRef.current) for (const shape of MOUTH_SHAPES) avatar.setViseme(shape, 0);
@@ -261,7 +261,7 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
       const avatar = rendererRef.current;
       if (avatar !== null && readyRef.current) for (const shape of MOUTH_SHAPES) avatar.setViseme(shape, 0);
     };
-  }, [call]);
+  }, [voice]);
 
   function agree(): void {
     consent.grant([AVATAR_DESCRIPTOR]);

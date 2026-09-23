@@ -1,8 +1,10 @@
-import type { ConversationEvent, LLMProvider, LlmFinishReason, LlmMessage } from '@latentpresence/protocol';
+import type { ConversationEvent, LLMProvider, LlmFinishReason, LlmMessage, TTSProvider } from '@latentpresence/protocol';
 import { Cancellation } from '../cancellation';
 import { TagFilter } from '../chunker';
 import { ConversationHistory } from '../history/history';
 import type { ConversationMachine } from '../conversation/machine';
+import type { PlaybackSink } from '../playback/sink';
+import { Reply, type ReplyEvent, type ReplyOutcome } from '../reply/reply';
 
 /**
  * A typed conversation with no voice in it (P1-T11): text in, a streamed answer out, every
@@ -25,7 +27,23 @@ import type { ConversationMachine } from '../conversation/machine';
  * what the transcript shows. Pass one in to share it with a `VoiceSession`; left out, the
  * session makes its own and behaves as before. The heard-not-meant rule now lives there,
  * derived from the transcript rather than restated here.
+ *
+ * **Since P2-T08 an answer can be spoken** (`setVoice`): the typed turn is answered by the
+ * same `Reply` a call uses — sentences, tags, audio — so the machine reaches `speaking`, the
+ * talk clip plays, the mouth follows the voice and the tag bridge acts on the words. Stop
+ * then follows the heard rule a barge-in does, but only once she is audible: stopped before
+ * a word was played, the answer settles exactly as a typed one does, as the text shown.
  */
+
+/** What speaking an answer needs (P2-T08). The sink is the character's voice on this page. */
+export interface ChatVoice {
+  readonly tts: TTSProvider;
+  readonly sink: PlaybackSink;
+  readonly voiceId: string;
+  readonly speed?: number;
+  /** Stop's fade. Should match the machine's `fadeOutMs`; 100 by default, as barge-in. */
+  readonly fadeMs?: number;
+}
 
 export interface ChatSessionOptions {
   readonly sessionId: string;
@@ -43,6 +61,8 @@ export interface ChatSessionOptions {
    * session keeps its own.
    */
   readonly history?: ConversationHistory;
+  /** Speak every answer from the first (P2-T08). Omitted: answers are text until `setVoice`. */
+  readonly voice?: ChatVoice | null;
   /** Wall clock for event stamps. */
   readonly now?: () => string;
 }
@@ -55,6 +75,9 @@ interface Streaming {
   text: string;
   /** Tags are held back mid-delta, so `text` never briefly contains one (P1-T12). */
   readonly tagFilter: TagFilter;
+  /** A spoken answer's reply (P2-T08); null for a text one. */
+  reply: Reply | null;
+  readonly fadeMs: number;
 }
 
 export const NO_TEXT_MESSAGE = 'the model produced no text';
@@ -65,11 +88,13 @@ export class ChatSession {
   private readonly now: () => string;
   private readonly history: ConversationHistory;
   private streaming: Streaming | null = null;
+  private voice: ChatVoice | null;
   private replies = 0;
   private disposed = false;
 
   constructor(options: ChatSessionOptions) {
     this.options = options;
+    this.voice = options.voice ?? null;
     this.now = options.now ?? (() => new Date().toISOString());
     this.history = options.history ?? new ConversationHistory({ system: options.system ?? null });
     // The history watches the bus rather than being written to, so it can never disagree
@@ -90,6 +115,22 @@ export class ChatSession {
     return this.history.messages;
   }
 
+  /** Answers are spoken. */
+  get speaking(): boolean {
+    return this.voice !== null;
+  }
+
+  /**
+   * Speak answers from now on, or stop speaking them (null). **An answer in flight is
+   * stopped**, as Stop would: its voice belongs to a sink the caller is about to replace or
+   * close, and an answer half spoken and half not is neither.
+   */
+  setVoice(voice: ChatVoice | null): void {
+    if (voice === this.voice) return;
+    this.stop();
+    this.voice = voice;
+  }
+
   /** Send a typed message. Blank text is ignored and returns false. */
   send(text: string): boolean {
     const said = text.trim();
@@ -102,18 +143,33 @@ export class ChatSession {
       cancellation: new Cancellation(),
       text: '',
       tagFilter: new TagFilter(),
+      reply: null,
+      fadeMs: this.voice?.fadeMs ?? 100,
     };
     this.streaming = streaming;
-    void this.run(streaming);
+    if (this.voice === null) void this.run(streaming);
+    else this.speak(streaming, this.voice);
     return true;
   }
 
-  /** Cut the streaming answer where it is. Nothing streaming: nothing happens. */
+  /**
+   * Cut the streaming answer where it is. Nothing streaming: nothing happens.
+   *
+   * Spoken and audible, it is a barge-in by button: the voice fades and the answer is
+   * remembered as what was heard (`assistant.interrupted` moves the machine through the
+   * fade). Not yet audible, it settles as a typed answer does — the text shown was read.
+   */
   stop(): void {
     const streaming = this.streaming;
     if (streaming === null) return;
     this.streaming = null;
     streaming.cancellation.abort();
+    const outcome = streaming.reply?.interrupt(streaming.fadeMs);
+    if (outcome?.status === 'interrupted') {
+      this.dispatch({ type: 'assistant.interrupted', spokenPrefix: outcome.spokenPrefix });
+      this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, outcome.spokenPrefix, outcome.text) });
+      return;
+    }
     if (streaming.text !== '') {
       this.dispatch({ type: 'assistant.interrupted', spokenPrefix: streaming.text });
     }
@@ -178,8 +234,68 @@ export class ChatSession {
     this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, null) });
   }
 
-  private entry(streaming: Streaming, spokenPrefix: string | null) {
-    return { id: streaming.id, role: 'assistant' as const, text: streaming.text, at: this.now(), spokenPrefix };
+  /**
+   * A spoken answer (P2-T08): the `Reply` a call's turn gets, with no hold — a typed turn is
+   * final the moment it is sent. Its events go on the bus as `VoiceSession` puts them there.
+   */
+  private speak(streaming: Streaming, voice: ChatVoice): void {
+    const { llm, modelId } = this.options;
+    const request = {
+      modelId,
+      messages: this.history.request(),
+      tools: [],
+      temperature: this.options.temperature ?? null,
+      maxOutputTokens: this.options.maxOutputTokens ?? null,
+    };
+    const reply = new Reply(
+      request,
+      { llm, tts: voice.tts, sink: voice.sink, voiceId: voice.voiceId, ...(voice.speed === undefined ? {} : { speed: voice.speed }) },
+      { onEvent: (event) => this.onReply(streaming, event) },
+    );
+    streaming.reply = reply;
+    void reply.done.then((outcome) => this.settled(streaming, outcome));
+  }
+
+  private onReply(streaming: Streaming, event: ReplyEvent): void {
+    if (this.streaming !== streaming) return;
+    switch (event.type) {
+      case 'token':
+        streaming.text += event.text;
+        this.dispatch({ type: 'assistant.token', text: event.text });
+        return;
+      case 'sentence':
+        this.dispatch({ type: 'assistant.sentence', text: event.text, index: event.index, tags: [...event.tags] });
+        return;
+      case 'audio-started':
+        this.dispatch({ type: 'assistant.audio.started', sentenceIndex: event.index, timing: event.timing });
+        return;
+      case 'audio-ended':
+        this.dispatch({ type: 'assistant.audio.ended', sentenceIndex: event.index });
+        return;
+    }
+  }
+
+  /** A spoken answer that ended on its own: played out, or failed. `stop` settles the rest. */
+  private settled(streaming: Streaming, outcome: ReplyOutcome): void {
+    if (this.streaming !== streaming) return;
+    this.streaming = null;
+    if (outcome.status === 'complete') {
+      this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, null, outcome.text) });
+      return;
+    }
+    if (outcome.status !== 'failed') return;
+    this.dispatch({ type: 'error', scope: outcome.scope, message: outcome.error });
+    // Cut short by the failure. Heard words are what she said; nothing heard, the text
+    // shown is, as for a typed answer that failed part way.
+    if (outcome.spokenPrefix !== '') {
+      this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, outcome.spokenPrefix, outcome.text) });
+    } else if (streaming.text !== '') {
+      this.dispatch({ type: 'assistant.message', entry: this.entry(streaming, streaming.text) });
+    }
+  }
+
+  private entry(streaming: Streaming, spokenPrefix: string | null, text: string = streaming.text) {
+    return { id: streaming.id, role: 'assistant' as const, text, at: this.now(), spokenPrefix };
   }
 
   private dispatch(event: DistributiveOmit<ConversationEvent, 'sessionId' | 'at'>): void {

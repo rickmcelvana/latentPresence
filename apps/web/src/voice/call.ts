@@ -50,7 +50,19 @@ export const BARGE_IN_MS = 200;
 
 /** One short word, synthesised and thrown away. Loading Kokoro is ~1 s and the first
  * sentence would otherwise pay it inside the turn the user is waiting on. */
-const WARM_TEXT = 'Ready.';
+export const WARM_TEXT = 'Ready.';
+
+/** The output graph as the core's `PlaybackSink`. Arrows, so no method is read unbound. */
+export function sinkOf(audio: AudioOutputHandle): PlaybackSink {
+  return {
+    enqueue: (segment) => audio.output.enqueue(segment),
+    duck: () => audio.output.duck(),
+    unduck: () => audio.output.unduck(),
+    fadeOut: (ms) => audio.output.fadeOut(ms),
+    position: () => audio.output.position(),
+    subscribe: (listener) => audio.output.subscribe(listener),
+  };
+}
 
 /**
  * The two turn pieces, as this module uses them.
@@ -98,7 +110,8 @@ export interface VoiceCallOptions {
   readonly createJudge?: () => JudgeLike;
 }
 
-async function synthesizeAndDiscard(tts: TTSProvider, text: string, voiceId: string): Promise<number> {
+/** Pay the voice's load cost now rather than inside the first answer. Shared with P2-T08's speaker. */
+export async function synthesizeAndDiscard(tts: TTSProvider, text: string, voiceId: string): Promise<number> {
   let samples = 0;
   for await (const chunk of tts.synthesize({ text, voiceId, speed: 1, hint: null })) {
     samples += chunk.samples.length;
@@ -192,14 +205,7 @@ export class VoiceCall {
     const captureWith = options.capture ?? startCapture;
 
     const audio = await createAudio();
-    const sink: PlaybackSink = {
-      enqueue: (segment) => audio.output.enqueue(segment),
-      duck: () => audio.output.duck(),
-      unduck: () => audio.output.unduck(),
-      fadeOut: (ms) => audio.output.fadeOut(ms),
-      position: () => audio.output.position(),
-      subscribe: (listener) => audio.output.subscribe(listener),
-    };
+    const sink = sinkOf(audio);
 
     const vad = (options.createVad ?? ((): VadLike => new BrowserSileroVad({ createWorker: () => createGatedVadWorker(options.consent) })))();
     const judge = (options.createJudge ??

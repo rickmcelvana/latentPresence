@@ -26,10 +26,17 @@ export function browserModelsFor(settings: Pick<Settings, 'tts' | 'stt'>): Model
   if (settings.stt.kind === 'moonshine-browser' || settings.stt.kind === 'whisper-browser') {
     models.push(asrModel(settings.stt.model, 'fp32'));
   }
-  if (settings.tts.kind === 'kokoro-browser') {
-    models.push(kokoroModel('fp32'));
-  }
+  models.push(...voiceModelsFor(settings));
   return dedupeById(models);
+}
+
+/**
+ * What speaking typed replies needs (P2-T08): the voice and nothing else — no microphone,
+ * so no turn models and no recogniser. Empty for a server voice, which downloads nothing.
+ * The same rule as `browserModelsFor`: exactly what `buildTtsProvider` will build.
+ */
+export function voiceModelsFor(settings: Pick<Settings, 'tts'>): ModelDescriptor[] {
+  return settings.tts.kind === 'kokoro-browser' ? [kokoroModel('fp32')] : [];
 }
 
 /** Consent is per `ModelDescriptor.id`, so the same model twice would be asked about

@@ -3,6 +3,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer } from '@latentpresence/avatar';
+import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
+import { kokoroModel } from '@latentpresence/ml-web';
+import { FakeTTSProvider } from '@latentpresence/providers';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
@@ -10,7 +13,7 @@ import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { SETTINGS_STORAGE_KEY } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
-import { CHAT_CHARACTER_NAME, ChatPage } from './ChatPage';
+import { CHAT_CHARACTER_NAME, ChatPage, type SpeakerLoader } from './ChatPage';
 import type { ChatLlmOptions } from './chat-llm';
 
 afterEach(cleanup);
@@ -358,5 +361,155 @@ describe('ChatPage — the call layout (P2-T06)', () => {
     render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
 
     expect((screen.getByRole('button', { name: 'Mute' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+/**
+ * A speaker with no audio graph (P2-T08). Every sentence starts playing as it is queued and
+ * none ever ends, so an answer stays audible until something stops it — which is the state
+ * Stop has to handle.
+ */
+function fakeSpeaker() {
+  const log: string[] = [];
+  const tts = new FakeTTSProvider('fake-tts', { msPerChar: 1 });
+  const listeners = new Set<(event: PlaybackEvent) => void>();
+  let playing: number | null = null;
+  let ids = 0;
+  const sink: PlaybackSink = {
+    enqueue: () => {
+      ids += 1;
+      const id = ids;
+      playing = id;
+      queueMicrotask(() => {
+        for (const listener of listeners) listener({ type: 'started', id, at: 0 });
+      });
+      return id;
+    },
+    duck: () => undefined,
+    unduck: () => undefined,
+    fadeOut: async (ms) => {
+      log.push(`fade ${ms}`);
+    },
+    position: () => (playing === null ? null : { id: playing, frame: 0 }),
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  const loader: SpeakerLoader = {
+    voiceModelsFor: () => [kokoroModel('fp32')],
+    start: async () => {
+      log.push('start');
+      return {
+        voice: { tts, sink, voiceId: 'af_heart' },
+        output: null,
+        stop: async () => {
+          log.push('stop');
+        },
+      };
+    },
+  };
+  return { loadSpeaker: async () => loader, log, tts };
+}
+
+function speakButton(): HTMLButtonElement {
+  return screen.getByRole('button', { name: /Speak replies|Loading voice/u }) as HTMLButtonElement;
+}
+
+function speakRig(script: readonly LlmStreamChunk[] = [], consented = true) {
+  const storage = memoryStorage();
+  seedConfigured(storage);
+  const deps = testDeps({ storage });
+  if (consented) deps.consent.grant([kokoroModel('fp32')]);
+  const speaker = fakeSpeaker();
+  const view = render(
+    <ChatPage buildProvider={scriptedProvider(script)} createRenderer={fakeCreateRenderer} deps={deps} loadSpeaker={speaker.loadSpeaker} />,
+  );
+  return { ...speaker, deps, view, button: speakButton };
+}
+
+async function type(text: string): Promise<void> {
+  const textbox = screen.getByRole('textbox');
+  fireEvent.change(textbox, { target: { value: text } });
+  fireEvent.keyDown(textbox, { key: 'Enter' });
+  await act(() => settle());
+}
+
+describe('ChatPage — Speak replies (P2-T08)', () => {
+  it('asks for the voice alone before anything loads, where the text box was', async () => {
+    const r = speakRig([], false);
+    fireEvent.click(r.button());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Agree' })).toBeTruthy());
+
+    expect(r.log).toEqual([]);
+    expect(r.deps.consent.granted()).toEqual([]);
+    expect(screen.getByText(/Kokoro/u)).toBeTruthy();
+    expect(screen.queryByText(/Silero/u)).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('textbox')).toBeTruthy());
+    expect(r.button().getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(r.button());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Agree' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Agree' }));
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+    expect(r.log).toEqual(['start']);
+    expect(r.deps.consent.has([kokoroModel('fp32')])).toBe(true);
+  });
+
+  it('speaks a typed reply, and Stop cuts the voice as it cuts the text', async () => {
+    const r = speakRig([
+      { type: 'text-delta', text: 'Hello there. ' },
+      { type: 'text-delta', text: 'How are you?' },
+      { type: 'finish', reason: 'stop', usage: null },
+    ]);
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+
+    await type('hi');
+    await waitFor(() => expect(r.tts.requests.map((request) => request.text)).toContain('Hello there.'));
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
+    await act(() => settle());
+    expect(r.log).toContain('fade 100');
+    expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
+  });
+
+  it('turned off, it stops the speaker and the next reply is text', async () => {
+    const r = speakRig([
+      { type: 'text-delta', text: 'Plain.' },
+      { type: 'finish', reason: 'stop', usage: null },
+    ]);
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(r.button());
+    await act(() => settle());
+
+    expect(r.log).toEqual(['start', 'stop']);
+    expect(r.button().getAttribute('aria-pressed')).toBe('false');
+    await type('hi');
+    expect(r.tts.requests).toHaveLength(0);
+  });
+
+  it('ends when a call begins, since a call brings its own voice', async () => {
+    const r = speakRig();
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await act(() => settle());
+
+    expect(r.log).toEqual(['start', 'stop']);
+    expect(r.button().disabled).toBe(true);
+  });
+
+  it('stops the speaker when the page goes', async () => {
+    const r = speakRig();
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+    r.view.unmount();
+    expect(r.log).toEqual(['start', 'stop']);
   });
 });

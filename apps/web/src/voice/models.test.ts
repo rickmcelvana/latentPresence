@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { asrModel, kokoroModel, sileroVadModel, smartTurnModel } from '@latentpresence/ml-web';
 import type { Settings } from '../settings/settings';
-import { browserModelsFor } from './models';
+import { browserModelsFor, voiceModelsFor } from './models';
 
 /**
  * The consent list has to be exactly what the call builds. Too long and the screen asks
@@ -61,5 +61,15 @@ describe('browserModelsFor', () => {
   it('never names a model twice, because consent is per id', () => {
     const models = browserModelsFor(settings());
     expect(new Set(ids(models)).size).toBe(models.length);
+  });
+});
+
+describe('voiceModelsFor (P2-T08)', () => {
+  it('asks for the voice alone: no microphone, so no turn models and no recogniser', () => {
+    expect(ids(voiceModelsFor(settings()))).toEqual([kokoroModel('fp32').id]);
+  });
+
+  it('asks for nothing when the voice is a server', () => {
+    expect(voiceModelsFor(settings({ tts: { kind: 'openai-compatible', baseUrl: 'http://127.0.0.1:8880/v1', model: 'kokoro', voiceId: 'af_heart', speed: 1 } }))).toEqual([]);
   });
 });

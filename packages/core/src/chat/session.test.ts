@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { CancellationSignal, ConversationEvent, LLMProvider, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import { ConversationMachine } from '../conversation/machine';
-import { deferred, settle, text } from '../testing/scripted';
+import { deferred, ManualSink, ScriptedTTS, settle, text } from '../testing/scripted';
+import { emptyTranscript, reduceTranscript } from '../transcript/transcript';
 import { ChatSession, NO_TEXT_LENGTH_MESSAGE } from './session';
 
 /** Replays one script per request, optionally stopping at a gate, and keeps every request. */
@@ -176,5 +177,149 @@ describe('ChatSession — failures', () => {
     expect(r.of('error')[0]).toMatchObject({ scope: 'llm', message: '401 Unauthorized' });
     expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Partial', spokenPrefix: 'Partial' });
     expect(r.machine.getState()).toBe('listening');
+  });
+});
+
+/** A transcript's lines as words, badges aside. */
+function words(events: ConversationEvent[]) {
+  return events.reduce(reduceTranscript, emptyTranscript()).lines.map((line) => ('status' in line ? [line.kind, line.status, line.text] : [line.kind, line.text]));
+}
+
+/** P2-T08: the same rig with a voice, played by hand through `ManualSink`. */
+function spokenRig(llm: LLMProvider, tts = new ScriptedTTS()) {
+  const sink = new ManualSink();
+  const r = rig(llm);
+  r.chat.setVoice({ tts, sink, voiceId: 'af_heart' });
+  return { ...r, sink, tts };
+}
+
+describe('ChatSession — spoken answers (P2-T08)', () => {
+  it('speaks a typed turn as a call does: sentences with their tags, audio, speaking, then listening', async () => {
+    const r = spokenRig(new ChatLLM([text('[emote:joy] Hello there. ', 'How are you?')]));
+    expect(r.chat.speaking).toBe(true);
+    r.chat.send('hi');
+    await settle();
+
+    expect(r.tts.requests.map((request) => request.text)).toEqual(['Hello there.', 'How are you?']);
+    expect(r.tts.requests[0]?.voiceId).toBe('af_heart');
+    expect(r.of('assistant.sentence').map((event) => event.tags.map((tag) => tag.value))).toEqual([['joy'], []]);
+    expect(r.machine.getState()).toBe('thinking');
+
+    r.sink.start(100);
+    await settle();
+    expect(r.machine.getState()).toBe('speaking');
+    expect(r.of('assistant.audio.started')[0]?.timing?.durationMs).toBeGreaterThan(0);
+    r.sink.end(100);
+    r.sink.start(101);
+    r.sink.end(101);
+    await settle();
+
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ id: 'c-reply-1', text: 'Hello there. How are you?', spokenPrefix: null });
+    expect(r.machine.getState()).toBe('listening');
+    expect(r.chat.busy).toBe(false);
+    expect(r.sink.listenerCount).toBe(0);
+  });
+
+  it('Stop while she is audible cuts the voice at what was heard, and that is what is remembered', async () => {
+    const llm = new ChatLLM([text('One two three. ', 'Four five six.'), text('Next.')]);
+    const r = spokenRig(llm);
+    r.chat.send('count');
+    await settle();
+    r.sink.start(100);
+    // Mid-sentence: "One two" played; the 100 ms fade's midpoint adds 1.2 k frames.
+    r.sink.current = { id: 100, frame: 6_000 };
+    r.chat.stop();
+
+    expect(llm.signals[0]?.aborted).toBe(true);
+    expect(r.sink.fades).toEqual([100]);
+    const heard = r.of('assistant.interrupted')[0]?.spokenPrefix ?? '';
+    expect(heard.length).toBeGreaterThan(0);
+    expect('One two three. Four five six.'.startsWith(heard)).toBe(true);
+    expect(heard).not.toBe('One two three. Four five six.');
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'One two three. Four five six.', spokenPrefix: heard });
+    expect(r.machine.getState()).toBe('interrupted');
+    expect(r.chat.busy).toBe(false);
+
+    // The sink finishing the fade late settles nothing twice.
+    r.sink.end(100);
+    await settle();
+    expect(r.of('assistant.message')).toHaveLength(1);
+    expect(r.chat.messages.at(-1)).toEqual({ role: 'assistant', content: heard, toolCalls: [] });
+  });
+
+  it('Stop before a word was played settles as a typed answer does, as the text shown', async () => {
+    const gate = deferred();
+    const r = spokenRig(new ChatLLM([text('Half ', 'of it.')], { promise: gate.promise, after: 1 }));
+    r.chat.send('go');
+    await settle();
+    r.chat.stop();
+
+    expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('Half ');
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Half ', spokenPrefix: 'Half ' });
+    expect(r.of('assistant.audio.started')).toHaveLength(0);
+    expect(r.machine.getState()).toBe('listening');
+    gate.resolve();
+    await settle();
+    expect(r.sink.segments).toHaveLength(0);
+    expect(r.of('assistant.message')).toHaveLength(1);
+  });
+
+  it('a voice that fails reports it and keeps what was heard', async () => {
+    const r = spokenRig(new ChatLLM([text('Fine. ', 'Broken here.')]), new ScriptedTTS({ fail: 'Broken here.' }));
+    r.chat.send('go');
+    await settle();
+    r.sink.start(100);
+    r.sink.end(100);
+    await settle();
+
+    expect(r.of('error')[0]).toMatchObject({ scope: 'tts', message: 'voice failed on "Broken here."' });
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Fine. Broken here.', spokenPrefix: 'Fine.' });
+    expect(r.machine.getState()).toBe('listening');
+  });
+
+  it('turning the voice off mid-answer stops that answer, and the next one is text', async () => {
+    const gate = deferred();
+    const llm = new ChatLLM([text('Spoken ', 'answer.'), text('Typed.')], { promise: gate.promise, after: 1 });
+    const r = spokenRig(llm);
+    r.chat.send('one');
+    await settle();
+    r.chat.setVoice(null);
+    expect(llm.signals[0]?.aborted).toBe(true);
+    expect(r.chat.busy).toBe(false);
+    expect(r.chat.speaking).toBe(false);
+
+    gate.resolve();
+    r.chat.send('two');
+    await settle();
+    expect(r.tts.requests).toHaveLength(0);
+    expect(r.of('assistant.message').map((event) => event.entry.text)).toEqual(['Spoken ', 'Typed.']);
+    expect(r.machine.getState()).toBe('listening');
+  });
+
+  it('leaves the transcript as a typed answer leaves it — the same lines, the same words', async () => {
+    const script = () => new ChatLLM([text('[gesture:nod] Yes. ', 'Of course.')]);
+    const typed = rig(script());
+    const typedEvents: ConversationEvent[] = [];
+    typed.machine.subscribe((event) => typedEvents.push(event));
+    typed.chat.send('can you?');
+    await settle();
+
+    const spoken = spokenRig(script());
+    const spokenEvents: ConversationEvent[] = [];
+    spoken.machine.subscribe((event) => spokenEvents.push(event));
+    spoken.chat.send('can you?');
+    await settle();
+    spoken.sink.start(100);
+    spoken.sink.end(100);
+    spoken.sink.start(101);
+    spoken.sink.end(101);
+    await settle();
+
+    expect(words(spokenEvents)).toEqual(words(typedEvents));
+    expect(words(spokenEvents)).toEqual([
+      ['user', 'can you?'],
+      ['assistant', 'complete', 'Yes. Of course.'],
+    ]);
+    expect(spoken.chat.messages).toEqual(typed.chat.messages);
   });
 });

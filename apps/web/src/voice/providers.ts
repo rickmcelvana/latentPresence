@@ -53,7 +53,7 @@ export interface SpeechProviders {
  * reloads 325 MB. The two browser providers do have one, and a call that ended has to use
  * it or the worker thread stays alive for the life of the page.
  */
-interface Terminable {
+export interface Terminable {
   terminate?: () => void;
 }
 
@@ -95,6 +95,39 @@ async function requireWebGpu(gpu: GpuLike | null | undefined): Promise<void> {
   );
 }
 
+/**
+ * The Voice slot alone (P2-T08), for typed replies spoken aloud: no microphone, so no
+ * hearing and no turn models. **WebGPU is required only for a browser voice** — a server
+ * voice speaks in any browser, which a full call cannot, because its turn models cannot.
+ */
+export async function buildTtsProvider(
+  settings: Pick<Settings, 'tts'>,
+  deps: SettingsDeps,
+  consent: ModelConsent,
+  /** Test seam: the real one is `navigator.gpu`. */
+  gpu?: GpuLike | null,
+): Promise<TTSProvider & Terminable> {
+  const { tts } = settings;
+  if (tts.kind === 'kokoro-browser') {
+    await requireWebGpu(gpu);
+    return new KokoroBrowserTTSProvider({
+      id: 'kokoro-browser',
+      // `fp32` and nothing else: every quantised Kokoro build is refused on WebGPU
+      // (P1-T08 measured q8 returning speech-shaped audio with no words in it), and this
+      // provider defaults to WebGPU because wasm synthesis is 3779 ms against 245 ms.
+      createWorker: () => createGatedKokoroWorker(consent, 'fp32'),
+    });
+  }
+  const apiKey = await deps.vault.loadKey(TTS_KEY_REF);
+  return new OpenAICompatibleTTSProvider({
+    id: 'tts-server',
+    baseUrl: tts.baseUrl,
+    model: tts.model,
+    fetch: deps.fetch,
+    ...(apiKey === null ? {} : { apiKey }),
+  });
+}
+
 export async function buildSpeechProviders(
   settings: Pick<Settings, 'tts' | 'stt'>,
   deps: SettingsDeps,
@@ -103,27 +136,8 @@ export async function buildSpeechProviders(
   gpu?: GpuLike | null,
 ): Promise<SpeechProviders> {
   await requireWebGpu(gpu);
-  const { tts, stt } = settings;
-
-  let builtTts: TTSProvider;
-  if (tts.kind === 'kokoro-browser') {
-    builtTts = new KokoroBrowserTTSProvider({
-      id: 'kokoro-browser',
-      // `fp32` and nothing else: every quantised Kokoro build is refused on WebGPU
-      // (P1-T08 measured q8 returning speech-shaped audio with no words in it), and this
-      // provider defaults to WebGPU because wasm synthesis is 3779 ms against 245 ms.
-      createWorker: () => createGatedKokoroWorker(consent, 'fp32'),
-    });
-  } else {
-    const apiKey = await deps.vault.loadKey(TTS_KEY_REF);
-    builtTts = new OpenAICompatibleTTSProvider({
-      id: 'tts-server',
-      baseUrl: tts.baseUrl,
-      model: tts.model,
-      fetch: deps.fetch,
-      ...(apiKey === null ? {} : { apiKey }),
-    });
-  }
+  const { stt } = settings;
+  const builtTts = await buildTtsProvider(settings, deps, consent, gpu);
 
   let builtStt: STTProvider;
   if (stt.kind === 'moonshine-browser') {

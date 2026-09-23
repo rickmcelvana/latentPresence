@@ -48,7 +48,7 @@ describe('CallStage — consent gates the fetch', () => {
     const fetchModel = vi.fn(async () => new Uint8Array([1, 2, 3]));
     render(
       <CallStage
-        call={null}
+        voice={null}
         consent={consent}
         createRenderer={() => new FakeAvatarRenderer()}
         fetchModel={fetchModel}
@@ -66,7 +66,7 @@ describe('CallStage — consent gates the fetch', () => {
     const fetchModel = vi.fn(async () => new Uint8Array([1, 2, 3]));
     const renderer = new FakeAvatarRenderer();
     render(
-      <CallStage call={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
+      <CallStage voice={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
     );
     await settle();
 
@@ -84,7 +84,7 @@ describe('CallStage — consent gates the fetch', () => {
     const fetchModel = vi.fn(async () => new Uint8Array([1, 2, 3]));
     const renderer = new FakeAvatarRenderer();
     render(
-      <CallStage call={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
+      <CallStage voice={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
     );
 
     expect(screen.queryByText('This will download the character')).toBeNull();
@@ -98,7 +98,7 @@ describe('CallStage — consent gates the fetch', () => {
     const fetchModel = vi.fn(async () => new Uint8Array([1, 2, 3]));
     const renderer = new FakeAvatarRenderer();
     render(
-      <CallStage call={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
+      <CallStage voice={null} consent={consent} createRenderer={() => renderer} fetchModel={fetchModel} machine={machine()} />,
     );
     await settle();
 
@@ -153,7 +153,7 @@ describe('CallStage — base clips follow the conversation (P2-T03)', () => {
     const scripted = scriptedMachine();
     render(
       <CallStage
-        call={null}
+        voice={null}
         consent={consent}
         createRenderer={() => renderer}
         fetchModel={async () => new Uint8Array([1])}

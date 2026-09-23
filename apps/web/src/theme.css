@@ -1237,6 +1237,13 @@ kbd {
   font-size: 12px;
 }
 
+/* Speak replies (P2-T08): the voice loading, or why it would not. */
+.chat-speak-status {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
 /* --- Voice on /chat (P1-T15) -------------------------------------------------
    The consent screen, the call bar and the button that opens them. The panel
    itself is `.panel`; these are the three pieces that are only ever voice. */

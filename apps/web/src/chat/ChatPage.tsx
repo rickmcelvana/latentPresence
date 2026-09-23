@@ -1,7 +1,9 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
-import { ChatSession, ConversationMachine, attachHistory, renderSystemPrompt } from '@latentpresence/core';
-import type { ConversationEvent, LLMProvider } from '@latentpresence/protocol';
+import { ChatSession, ConversationMachine, attachHistory, renderSystemPrompt, type ChatVoice } from '@latentpresence/core';
+import type { ConversationEvent, LLMProvider, ModelDescriptor } from '@latentpresence/protocol';
+import type { AudioOutputHandle } from '@latentpresence/providers';
+import { ConsentScreen } from '../consent/ConsentScreen';
 import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
@@ -47,6 +49,31 @@ const CallStage = lazy(async () => {
   return { default: module.CallStage };
 });
 
+/** What `/chat` needs from the speaker that reads typed replies aloud (P2-T08). `Speaker`
+ * satisfies it; a test hands over one with no audio graph behind it. */
+export interface SpeakerLike {
+  readonly voice: ChatVoice;
+  readonly output: AudioOutputHandle | null;
+  stop(): Promise<void>;
+}
+
+/** The speaker module, loaded on the first click of Speak replies and never before. */
+export interface SpeakerLoader {
+  voiceModelsFor(settings: Settings): ModelDescriptor[];
+  start(options: { settings: Settings; deps: SettingsDeps; consent: SettingsDeps['consent'] }): Promise<SpeakerLike>;
+}
+
+/**
+ * `lazy()`'s reasoning without a component: `voice/speaker.ts` imports kokoro-js and ONNX
+ * Runtime, so it is fetched when a person asks her to speak, not with the page.
+ */
+async function loadDefaultSpeaker(): Promise<SpeakerLoader> {
+  const module = await import('../voice/speaker');
+  return { voiceModelsFor: module.voiceModelsFor, start: (options) => module.Speaker.start(options) };
+}
+
+type SpeakPhase = 'off' | 'consent' | 'starting' | 'on';
+
 export interface ChatPageProps {
   readonly deps?: Partial<SettingsDeps>;
   /** Test-only seam: replaces the provider `chatLlmProvider` would otherwise build from
@@ -60,6 +87,8 @@ export interface ChatPageProps {
   /** Test seam, forwarded to `useUserCamera`: an injectable `getUserMedia`. Production
    * never passes it. */
   readonly camera?: UseUserCameraDeps | undefined;
+  /** Test seam: the speaker module (P2-T08). Production never passes it. */
+  readonly loadSpeaker?: () => Promise<SpeakerLoader>;
 }
 
 /**
@@ -70,7 +99,13 @@ export interface ChatPageProps {
  * (P1-T12b) — this task only moves where things sit, never how `ChatSession`,
  * `attachHistory` or `VoicePanel`'s state machine work.
  */
-export function ChatPage({ deps: depsOverride, buildProvider = chatLlmProvider, createRenderer, camera }: ChatPageProps = {}): ReactElement {
+export function ChatPage({
+  deps: depsOverride,
+  buildProvider = chatLlmProvider,
+  createRenderer,
+  camera,
+  loadSpeaker = loadDefaultSpeaker,
+}: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
   const { llm, companionUrl } = settings;
@@ -97,6 +132,7 @@ export function ChatPage({ deps: depsOverride, buildProvider = chatLlmProvider, 
       createRenderer={createRenderer}
       deps={deps}
       endpoint={llm.endpoint}
+      loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
       settings={settings}
       temperature={llm.temperature}
@@ -115,6 +151,7 @@ interface ConfiguredChatPageProps {
   readonly buildProvider: (options: ChatLlmOptions) => LLMProvider;
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
   readonly camera?: UseUserCameraDeps | undefined;
+  readonly loadSpeaker: () => Promise<SpeakerLoader>;
 }
 
 function ConfiguredChatPage({
@@ -128,6 +165,7 @@ function ConfiguredChatPage({
   buildProvider,
   createRenderer,
   camera: cameraDeps,
+  loadSpeaker,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
@@ -190,6 +228,27 @@ function ConfiguredChatPage({
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const userCamera = useUserCamera(cameraDeps);
 
+  // Typed replies spoken aloud (P2-T08). `speaker` is state for the stage's lip sync;
+  // `speakerRef` is the same object for teardown, which must not wait on a render.
+  const [speak, setSpeak] = useState<SpeakPhase>('off');
+  const [speaker, setSpeaker] = useState<SpeakerLike | null>(null);
+  const [speakStatus, setSpeakStatus] = useState<string | null>(null);
+  const [speakConsent, setSpeakConsent] = useState<{ loader: SpeakerLoader; models: ModelDescriptor[] } | null>(null);
+  const speakerRef = useRef<SpeakerLike | null>(null);
+  // False once the page has gone, so a speaker that finishes loading afterwards is closed
+  // rather than left holding a worker and an audio graph nobody can reach.
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      chat.setVoice(null);
+      void speakerRef.current?.stop();
+      speakerRef.current = null;
+    };
+  }, [chat]);
+
   useEffect(() => machine.subscribe(() => setBusy(chat.busy)), [machine, chat]);
 
   // The PiP `<video>` takes a `MediaStream` through `srcObject`, which has no JSX prop —
@@ -226,6 +285,69 @@ function ConfiguredChatPage({
     // toggle, so its own display state should not carry over to the next call either.
     setMuted(false);
   }, []);
+
+  const startSpeaking = useCallback(
+    async (loader: SpeakerLoader) => {
+      setSpeakConsent(null);
+      setSpeak('starting');
+      setSpeakStatus('Loading the voice…');
+      try {
+        const started = await loader.start({ settings, deps, consent: deps.consent });
+        if (!aliveRef.current) {
+          void started.stop();
+          return;
+        }
+        speakerRef.current = started;
+        chat.setVoice(started.voice);
+        setSpeaker(started);
+        setSpeak('on');
+        setSpeakStatus(null);
+      } catch (error) {
+        setSpeak('off');
+        setSpeakStatus(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [chat, deps, settings],
+  );
+
+  /** Back to text. `setVoice(null)` first: it stops an answer that is still speaking. */
+  const stopSpeaking = useCallback(() => {
+    const current = speakerRef.current;
+    speakerRef.current = null;
+    chat.setVoice(null);
+    void current?.stop();
+    setSpeaker(null);
+    setSpeak('off');
+  }, [chat]);
+
+  /**
+   * The switch. Its consent is the voice's alone — `voiceModelsFor`, not a call's list: with
+   * no microphone there is no Silero, no Smart Turn and no recogniser to ask about, and a
+   * server voice asks about nothing. Agreed once, here or by Start voice, it never asks again.
+   */
+  const toggleSpeak = useCallback(async () => {
+    if (speak === 'on') {
+      stopSpeaking();
+      return;
+    }
+    if (speak !== 'off') return;
+    setSpeakStatus(null);
+    const loader = await loadSpeaker();
+    const models = loader.voiceModelsFor(settings);
+    if (deps.consent.has(models)) {
+      await startSpeaking(loader);
+    } else {
+      setSpeakConsent({ loader, models });
+      setSpeak('consent');
+    }
+  }, [deps.consent, loadSpeaker, settings, speak, startSpeaking, stopSpeaking]);
+
+  /** A call brings its own voice, and two would load Kokoro twice: speaking typed replies
+   * ends when a call begins. */
+  const openVoice = useCallback(() => {
+    stopSpeaking();
+    setVoiceOpen(true);
+  }, [stopSpeaking]);
 
   const onVoiceEnd = useCallback(() => {
     setVoiceOpen(false);
@@ -268,13 +390,16 @@ function ConfiguredChatPage({
   // a call is live. The panel's card sits in the same place, and with both showing the text
   // box covered the consent card entirely (R-14, 2026-09-23): Start voice looked like it did
   // nothing. Typing is blocked for the call anyway.
-  const showTextBox = textOpen && !voiceOpen;
+  // The speaker's consent card takes the same place, for the same reason.
+  const showTextBox = textOpen && !voiceOpen && speakConsent === null;
+  // Lip sync follows whichever voice exists; a test call with no audio graph has none.
+  const voiceOutput = call?.output ?? speaker?.output ?? null;
   // The two centred cards shift left of an open drawer rather than sliding under it (R-14).
   const pageClass = drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
   return (
     <main className={pageClass}>
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
-        <CallStage call={call} consent={deps.consent} createRenderer={createRenderer} machine={machine} />
+        <CallStage consent={deps.consent} createRenderer={createRenderer} machine={machine} voice={voiceOutput} />
       </Suspense>
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
@@ -314,6 +439,22 @@ function ConfiguredChatPage({
         </div>
       )}
 
+      {speakConsent !== null && (
+        <div className="call-voice-card">
+          <ConsentScreen
+            descriptors={speakConsent.models}
+            onAgree={() => {
+              deps.consent.grant(speakConsent.models);
+              void startSpeaking(speakConsent.loader);
+            }}
+            onCancel={() => {
+              setSpeakConsent(null);
+              setSpeak('off');
+            }}
+          />
+        </div>
+      )}
+
       {showTextBox && (
         <div className="call-text-dock">
           <textarea
@@ -335,12 +476,13 @@ function ConfiguredChatPage({
             )}
             <span className="chat-hint">Enter sends · Shift+Enter for a new line</span>
           </div>
+          {speakStatus !== null && <p className="chat-speak-status">{speakStatus}</p>}
         </div>
       )}
 
       <div className="call-controls-bar">
         {!voiceOpen && (
-          <button className="btn btn-primary" onClick={() => setVoiceOpen(true)} type="button">
+          <button className="btn btn-primary" disabled={speak === 'consent' || speak === 'starting'} onClick={openVoice} type="button">
             Start voice
           </button>
         )}
@@ -352,6 +494,16 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={showTextBox} className="btn call-control-btn" disabled={voiceOpen} onClick={() => setTextOpen((open) => !open)} type="button">
           Text
+        </button>
+        <button
+          aria-pressed={speak === 'on'}
+          className="btn call-control-btn"
+          disabled={voiceOpen || speak === 'consent' || speak === 'starting'}
+          onClick={() => void toggleSpeak()}
+          title="Speak typed replies aloud"
+          type="button"
+        >
+          {speak === 'starting' ? 'Loading voice…' : 'Speak replies'}
         </button>
         <button aria-pressed={drawerOpen} className="btn call-control-btn" onClick={() => setDrawerOpen((open) => !open)} type="button">
           Transcript

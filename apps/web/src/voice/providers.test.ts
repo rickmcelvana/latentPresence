@@ -12,7 +12,7 @@ import type { MinimalCacheStorage } from '../consent/deps';
 import type { SettingsDeps } from '../settings/deps';
 import { DEFAULT_SETTINGS, STT_KEY_REF, TTS_KEY_REF, type Settings } from '../settings/settings';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
-import { buildSpeechProviders } from './providers';
+import { buildSpeechProviders, buildTtsProvider } from './providers';
 
 /**
  * The point of this module is that `/settings`'s two slots become the providers a call
@@ -212,5 +212,18 @@ describe('buildSpeechProviders — stopping a call', () => {
     const deps = testDeps();
     const speech = await buildSpeechProviders({ tts: SERVER_TTS, stt: SERVER_STT }, deps, deps.consent, WORKING_GPU);
     expect(() => speech.dispose()).not.toThrow();
+  });
+});
+
+describe('buildTtsProvider (P2-T08)', () => {
+  it('builds the voice alone, and a server voice needs no WebGPU', async () => {
+    const deps = testDeps();
+    expect(await buildTtsProvider({ tts: DEFAULT_SETTINGS.tts }, deps, deps.consent, WORKING_GPU)).toBeInstanceOf(KokoroBrowserTTSProvider);
+    expect(await buildTtsProvider({ tts: SERVER_TTS }, deps, deps.consent, null)).toBeInstanceOf(OpenAICompatibleTTSProvider);
+  });
+
+  it('refuses a browser voice without WebGPU, in the same words a call does', async () => {
+    const deps = testDeps();
+    await expect(buildTtsProvider({ tts: DEFAULT_SETTINGS.tts }, deps, deps.consent, null)).rejects.toThrow(/Chrome or Edge/u);
   });
 });
