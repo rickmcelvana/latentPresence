@@ -507,3 +507,9 @@ Did: R-17 recorded (D-29). P2-T09: probed the timestamped export (outputs `wavef
 Left: R-13 laptop half, R-1, R-9 (laptop); R-3; C-7. Old plain-Kokoro caches (node and browser) can be deleted from /settings or the transformers cache when Rick wants.
 Next: P3-T01 affect engine core.
 Decisions: none new; the reference's −3 frame offset kept because it measured best. Click-through: /chat Speak replies with fp32 timestamped — consent asked afresh, 4 sentences timed.
+
+## 2026-09-23 claude — P3-T01 affect engine core
+Did: `packages/core/src/affect` — params (baseline, half-lives, gains, EMOTION_PAD/STANCE), pure engine (relax + saturating push, 100 ms fixed step, closed-form jump when nothing is felt), `AffectEngine` queue, tag/user-affect inputs, serialize/parse/restore; seeded property tests (bounded, decays to baseline, cadence-independent), two mutation checks; `docs/affect.md`. f42678c, 1126 tests. Stale protocol comment on word timings fixed (comment only).
+Left: R-13 laptop half, R-1, R-9 (laptop); R-3; C-7.
+Next: P3-T02 affect → expression and gesture (`sub`: brief, then a Sonnet subagent), then P3-T03.
+Decisions: none new — ADR-12 as written; all parameters hand-set for P3-T02's review. Click-through: n/a (core only).
