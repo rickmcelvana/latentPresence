@@ -54,6 +54,11 @@ export class VrmFaceDriver {
     for (const [shape, value] of this.mouth) manager.setValue(shape, value);
   }
 
+  /** The eyelids, from the life layer. Separate from expressions, like the mouth. */
+  setBlink(weight: number): void {
+    this.face.expressionManager?.setValue('blink', weight);
+  }
+
   /** Points the model's look-at at `target`, which the renderer moves each frame. */
   attachGazeTarget(target: THREE.Object3D): void {
     const lookAt = this.face.lookAt;

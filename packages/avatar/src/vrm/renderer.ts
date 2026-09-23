@@ -18,7 +18,9 @@ import {
   type Viseme,
 } from '@latentpresence/protocol';
 import type { ExpressionPlan } from '../expressions';
-import { type Vec3, gazePoint } from '../gaze';
+import { type GazeOffset, type Vec3, gazePoint } from '../gaze';
+import type { LifeBone, LifePose } from '../life';
+import { AdditivePose } from './additive-pose';
 import { ClipPlayer } from './clip-player';
 import { VrmFaceDriver } from './face';
 
@@ -55,6 +57,7 @@ interface Loaded {
   readonly vrm: VRM;
   readonly face: VrmFaceDriver;
   readonly clips: ClipPlayer;
+  readonly pose: AdditivePose;
 }
 
 /**
@@ -84,6 +87,8 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private size: readonly [number, number] = [0, 0];
   private loaded: Loaded | null = null;
   private gaze: GazeTarget = 'user';
+  private gazeOffset: GazeOffset = [0, 0];
+  private life: LifePose | null = null;
   private disposed = false;
 
   constructor(deps: Partial<VrmRendererDeps> = {}) {
@@ -141,7 +146,8 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     for (const [id, animation] of this.animations) {
       clips.add(id, createVRMAnimationClip(animation, vrm));
     }
-    this.loaded = { vrm, face, clips };
+    const pose = new AdditivePose((bone: LifeBone) => vrm.humanoid.getNormalizedBoneNode(bone));
+    this.loaded = { vrm, face, clips, pose };
     this.frameHead();
   }
 
@@ -172,9 +178,11 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     this.character().face.setViseme(viseme, weight);
   }
 
+  /** While a life pose is set it owns the gaze; steer it with `LifeLayer.setGazeBase`. */
   setGaze(target: GazeTarget): void {
     this.character();
     this.gaze = target;
+    this.gazeOffset = [0, 0];
     this.placeGaze();
   }
 
@@ -187,7 +195,10 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     this.fitCanvas();
     const loaded = this.loaded;
     if (loaded !== null) {
+      // Take last frame's life off before the mixer writes this frame's clip pose.
+      loaded.pose.restore();
       loaded.clips.update(deltaMs);
+      this.applyLife(loaded);
       this.placeGaze();
       // After the mixer, so expressions, look-at, spring bones and constraints all
       // settle on this frame's pose (Spike B's order).
@@ -206,6 +217,16 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   }
 
   // --- beyond the interface, for the life layer and the debug panel ---
+
+  /**
+   * The life layer's pose for the next `update` (P2-T02), or null to stop applying one.
+   * Additive over clips; the rest pose only while no clip is posing the body.
+   */
+  setLifePose(pose: LifePose | null): void {
+    this.character();
+    this.life = pose;
+    if (pose === null) this.loaded?.face.setBlink(0);
+  }
 
   /**
    * A humanoid bone by its VRM name, normalised so a rotation means the same thing on
@@ -242,10 +263,21 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     if (this.disposed) throw new Error('renderer is disposed');
   }
 
+  private applyLife(loaded: Loaded): void {
+    const life = this.life;
+    if (life === null) return;
+    loaded.pose.apply(loaded.clips.posing ? [life.additive] : [life.rest, life.additive], life.hipsOffset);
+    loaded.face.setBlink(life.blink);
+    this.gaze = life.gaze.target;
+    this.gazeOffset = life.gaze.offset;
+  }
+
   private unloadCharacter(): void {
     const loaded = this.loaded;
     if (loaded === null) return;
     this.loaded = null;
+    this.life = null;
+    loaded.pose.restore();
     loaded.clips.dispose();
     this.scene.remove(loaded.vrm.scene);
     VRMUtils.deepDispose(loaded.vrm.scene);
@@ -270,7 +302,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     const head = this.headPosition();
     if (head === null) return;
     const { x, y, z } = this.camera.position;
-    const [px, py, pz] = gazePoint(this.gaze, head, [x, y, z]);
+    const [px, py, pz] = gazePoint(this.gaze, head, [x, y, z], this.gazeOffset);
     this.gazeObject.position.set(px, py, pz);
     this.gazeObject.updateMatrixWorld();
   }

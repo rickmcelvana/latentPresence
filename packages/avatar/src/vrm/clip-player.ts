@@ -36,6 +36,14 @@ export class ClipPlayer {
     return this.clips.has(id);
   }
 
+  /**
+   * Whether a clip owns the body: playing, or a one-shot holding its last pose. The rest
+   * pose stands down while this is true, because a clip brings its own arms.
+   */
+  get posing(): boolean {
+    return this.current !== null && this.current.enabled && this.current.getEffectiveWeight() > 0;
+  }
+
   play(id: string, options: ClipOptions): Promise<void> {
     const clip = this.clips.get(id);
     if (clip === undefined) return Promise.reject(new Error(`unknown clip "${id}"`));

@@ -17,7 +17,8 @@ export {
   type ExpressionPlan,
   type ExpressionTarget,
 } from './expressions';
-export { gazePoint, type Vec3 } from './gaze';
+export { gazeDirection, gazePoint, type GazeOffset, type Vec3 } from './gaze';
+export * from './life';
 export { FakeAvatarRenderer, MOUTH_SHAPES, applyViseme, type MouthShape } from './fake';
 
 /** Keeps the workspace wiring under test. The renderer itself is `@latentpresence/avatar/vrm`. */

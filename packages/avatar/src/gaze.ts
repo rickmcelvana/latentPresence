@@ -8,12 +8,18 @@ import type { GazeTarget } from '@latentpresence/protocol';
  * call — so "away" stays away and "down" stays down whichever camera preset P2-T05
  * picks, instead of being hard-coded to one framing.
  *
- * P2-T01 places the targets; making them move — drift, saccades, the return to the user —
- * is the gaze policy's job (P2-T02), which is why `wander` is a fixed point just off the
- * user rather than something that wanders.
+ * This places the targets; making them move — fixation hops, looks away and the return —
+ * is `GazePolicy`'s (P2-T02), which hands back a target plus a small offset, which is why
+ * `wander` is a fixed point just off the user rather than something that wanders.
  */
 
 export type Vec3 = readonly [number, number, number];
+
+/** Sideways (towards the character's left) and up, metres, in the target's own frame. */
+export type GazeOffset = readonly [number, number];
+
+/** How far the user is taken to be for turning angles, before a stage says otherwise. */
+const USER_DISTANCE = 1.6;
 
 /**
  * Each target as sideways, up and forward components, in metres at the scale of a
@@ -40,6 +46,15 @@ function normalise(v: Vec3): Vec3 | null {
 }
 
 /**
+ * Each target as sideways, up and forward from the head, with the user straight ahead —
+ * what the life layer turns into a head angle without knowing where the camera is.
+ */
+export function gazeDirection(target: GazeTarget, offset: GazeOffset = [0, 0]): Vec3 {
+  const [side, up, ahead] = target === 'user' ? [0, 0, USER_DISTANCE] : DIRECTIONS[target];
+  return [side + offset[0], up + offset[1], ahead];
+}
+
+/**
  * The world position to look at.
  *
  * `user` is the camera itself. Everything else is placed on a horizontal basis facing
@@ -47,18 +62,27 @@ function normalise(v: Vec3): Vec3 | null {
  * A camera directly above the head has no horizontal direction; the character is then
  * assumed to face +Z, which is VRM 1.0's forward.
  */
-export function gazePoint(target: GazeTarget, head: Vec3, camera: Vec3): Vec3 {
-  if (target === 'user') return camera;
+export function gazePoint(
+  target: GazeTarget,
+  head: Vec3,
+  camera: Vec3,
+  offset: GazeOffset = [0, 0],
+): Vec3 {
+  if (target === 'user' && offset[0] === 0 && offset[1] === 0) return camera;
 
   const toCamera = subtract(camera, head);
   const forward = normalise([toCamera[0], 0, toCamera[2]]) ?? [0, 0, 1];
   // Up × forward: the character's left when it faces the camera.
   const left: Vec3 = [forward[2], 0, -forward[0]];
-  const [side, up, ahead] = DIRECTIONS[target];
+  // The user is the camera itself, offset on the same basis; the rest hang off the head.
+  const origin = target === 'user' ? camera : head;
+  const [side, up, ahead] = target === 'user' ? [0, 0, 0] : DIRECTIONS[target];
+  const s = side + offset[0];
+  const u = up + offset[1];
 
   return [
-    head[0] + left[0] * side + forward[0] * ahead,
-    head[1] + up,
-    head[2] + left[2] * side + forward[2] * ahead,
+    origin[0] + left[0] * s + forward[0] * ahead,
+    origin[1] + u,
+    origin[2] + left[2] * s + forward[2] * ahead,
   ];
 }

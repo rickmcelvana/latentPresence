@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import {
+  type ConversationState,
+  ConversationStateSchema,
   type ExpressionName,
   ExpressionNameSchema,
   type ExpressionWeights,
   type GazeTarget,
   GazeTargetSchema,
 } from '@latentpresence/protocol';
-import { type ExpressionPlan, MOUTH_SHAPES, type MouthShape } from '@latentpresence/avatar';
+import { type ExpressionPlan, LifeLayer, MOUTH_SHAPES, type MouthShape } from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/avatar-consent';
 
@@ -20,6 +22,11 @@ import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/ava
  * one button: each preset at full weight for a second, in turn, so a person can watch the
  * whole set without dragging fourteen sliders.
  *
+ * **Life (P2-T02)** runs the procedural layer — breathing, blinks, gaze, weight shifts —
+ * with a conversation-state select, a live readout, and **Record 60 s**, which captures
+ * the canvas to a webm for the done-when's review. With life on, the gaze select below
+ * sets the base the eyes return to rather than a fixed target.
+ *
  * Spike B's `/spike/avatar` stays beside it: that page is the frame-rate instrument R-1
  * runs on another machine, and this one measures nothing.
  */
@@ -29,6 +36,19 @@ type Phase = 'consent' | 'loading' | 'ready' | 'failed';
 const CLIP_ID = 'test';
 const PRESETS: readonly ExpressionName[] = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
 const CYCLE_MS = 1000;
+const RECORD_MS = 60_000;
+
+interface LifeReadout {
+  readonly seconds: number;
+  readonly blinks: number;
+  readonly gaze: string;
+}
+
+type Recording =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'recording' }
+  | { readonly kind: 'done'; readonly url: string; readonly bytes: number }
+  | { readonly kind: 'failed'; readonly reason: string };
 
 function formatMb(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`;
@@ -54,8 +74,18 @@ export function AvatarDebug(): ReactElement {
   const [modelExpressions, setModelExpressions] = useState<readonly string[]>([]);
   const [plan, setPlan] = useState<ExpressionPlan | null>(null);
 
+  const [lifeOn, setLifeOn] = useState(true);
+  const [lifeState, setLifeState] = useState<ConversationState>('listening');
+  const [readout, setReadout] = useState<LifeReadout>({ seconds: 0, blinks: 0, gaze: 'user' });
+  const [recording, setRecording] = useState<Recording>({ kind: 'idle' });
+
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const renderer = useRef<VrmAvatarRenderer | null>(null);
+  const life = useRef<LifeLayer | null>(null);
+  /** Read by the frame loop, which must not restart on every toggle. */
+  const lifeOnRef = useRef(lifeOn);
+  const live = useRef(false);
+  const counters = useRef({ ms: 0, blinks: 0, lastBlink: 0, gaze: 'user' });
 
   // One renderer for the page's life, driven by the browser's frame loop: the interface
   // says `update` belongs to the render loop, not to a timer inside the renderer.
@@ -70,7 +100,18 @@ export function AvatarDebug(): ReactElement {
     let frame = 0;
     let last = performance.now();
     const tick = (now: number): void => {
-      avatar.update(now - last);
+      const delta = now - last;
+      const layer = life.current;
+      if (live.current && lifeOnRef.current && layer !== null) {
+        const pose = layer.update(delta);
+        avatar.setLifePose(pose);
+        const c = counters.current;
+        c.ms += delta;
+        if (c.lastBlink < 0.5 && pose.blink >= 0.5) c.blinks += 1;
+        c.lastBlink = pose.blink;
+        c.gaze = pose.gaze.target;
+      }
+      avatar.update(delta);
       last = now;
       frame = requestAnimationFrame(tick);
     };
@@ -97,6 +138,7 @@ export function AvatarDebug(): ReactElement {
           setStatus(`Clip failed: ${error instanceof Error ? error.message : String(error)}`);
         }
         if (cancelled) return;
+        live.current = true;
         setPhase('ready');
         setStatus((previous) => (previous.startsWith('Clip failed') ? previous : 'Ready.'));
       } catch (error) {
@@ -108,6 +150,7 @@ export function AvatarDebug(): ReactElement {
 
     return () => {
       cancelled = true;
+      live.current = false;
       cancelAnimationFrame(frame);
       avatar.dispose();
       renderer.current = null;
@@ -124,9 +167,77 @@ export function AvatarDebug(): ReactElement {
     if (phase === 'ready') renderer.current?.setExpression(driven);
   }, [driven, phase]);
 
+  // One life layer for the page; made in an effect rather than during render.
   useEffect(() => {
-    if (phase === 'ready') renderer.current?.setGaze(gaze);
-  }, [gaze, phase]);
+    life.current = new LifeLayer();
+  }, []);
+
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    lifeOnRef.current = lifeOn;
+    // With life on, the select is the base the eyes return to; off, it is where they are.
+    if (lifeOn) {
+      life.current?.setGazeBase(gaze);
+    } else {
+      renderer.current?.setLifePose(null);
+      renderer.current?.setGaze(gaze);
+    }
+  }, [gaze, lifeOn, phase]);
+
+  useEffect(() => {
+    life.current?.setState(lifeState);
+  }, [lifeState]);
+
+  // The frame loop counts; this samples it twice a second rather than re-rendering the
+  // page sixty times.
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    const timer = setInterval(() => {
+      const c = counters.current;
+      setReadout({ seconds: c.ms / 1000, blinks: c.blinks, gaze: c.gaze });
+    }, 500);
+    return () => clearInterval(timer);
+  }, [phase]);
+
+  const resetCounts = useCallback(() => {
+    counters.current = { ms: 0, blinks: 0, lastBlink: 0, gaze: counters.current.gaze };
+    setReadout({ seconds: 0, blinks: 0, gaze: counters.current.gaze });
+  }, []);
+
+  /**
+   * Sixty seconds of the canvas as a webm, for the done-when's review. `captureStream`
+   * records what WebGL draws, and the file is a local download — nothing is uploaded.
+   */
+  const record = useCallback(() => {
+    const surface = canvas.current;
+    if (surface === null) return;
+    try {
+      const stream = surface.captureStream(30);
+      const vp9 = 'video/webm;codecs=vp9';
+      const mimeType = MediaRecorder.isTypeSupported(vp9) ? vp9 : 'video/webm';
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        setRecording({ kind: 'done', url: URL.createObjectURL(blob), bytes: blob.size });
+      };
+      recorder.start(1000);
+      setRecording({ kind: 'recording' });
+      resetCounts();
+      setTimeout(() => recorder.stop(), RECORD_MS);
+    } catch (error) {
+      setRecording({ kind: 'failed', reason: error instanceof Error ? error.message : String(error) });
+    }
+  }, [resetCounts]);
+
+  useEffect(() => {
+    return () => {
+      if (recording.kind === 'done') URL.revokeObjectURL(recording.url);
+    };
+  }, [recording]);
 
   useEffect(() => {
     if (phase !== 'ready') return;
@@ -307,6 +418,73 @@ export function AvatarDebug(): ReactElement {
                 Loop clip
               </button>
             </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
+              <span className="panel-title">Life</span>
+              <span className={`pill ${lifeOn ? 'pill-ok' : ''}`}>{lifeOn ? 'on' : 'off'}</span>
+            </div>
+            <p className="panel-note">
+              Breathing, blinks, gaze that looks away and comes back, and weight shifts, with no
+              clip playing. Rates follow the conversation state. The arms come down from the
+              T-pose only while no clip is posing the body.
+            </p>
+            <div className="spike-controls">
+              <label className="field">
+                <span className="field-label">Life layer</span>
+                <select
+                  className="select"
+                  onChange={(event) => setLifeOn(event.target.value === 'on')}
+                  value={lifeOn ? 'on' : 'off'}
+                >
+                  <option value="on">on</option>
+                  <option value="off">off (frozen, for comparison)</option>
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Conversation state</span>
+                <select
+                  className="select"
+                  onChange={(event) => setLifeState(event.target.value as ConversationState)}
+                  value={lifeState}
+                >
+                  {ConversationStateSchema.options.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="btn btn-primary"
+                disabled={recording.kind === 'recording'}
+                onClick={record}
+                type="button"
+              >
+                {recording.kind === 'recording' ? 'Recording…' : 'Record 60 s'}
+              </button>
+              <button className="btn btn-ghost" onClick={resetCounts} type="button">
+                Reset counts
+              </button>
+            </div>
+            <p className="spike-status">
+              {readout.seconds.toFixed(0)} s · {readout.blinks} blinks
+              {readout.seconds >= 10 ? ` (${((readout.blinks * 60) / readout.seconds).toFixed(1)}/min)` : ''}
+              {' · gaze '}
+              {readout.gaze}
+            </p>
+            {recording.kind === 'done' ? (
+              <p className="panel-note">
+                <a download={`avatar-life-${lifeState}.webm`} href={recording.url}>
+                  Save the recording
+                </a>{' '}
+                ({formatMb(recording.bytes)}) — a local file; nothing was uploaded.
+              </p>
+            ) : null}
+            {recording.kind === 'failed' ? (
+              <p className="field-error">Recording failed: {recording.reason}</p>
+            ) : null}
           </section>
         </>
       ) : null}
