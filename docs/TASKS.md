@@ -82,14 +82,14 @@ right.
 
 ## Open — rick
 
-### R-14 · Talk to her in the call layout (P2-T06) · **run 2026-09-23 — camera, mute and resize pass; lip sync unreported**
+### R-14 · Talk to her in the call layout (P2-T06) · **passed 2026-09-23** (after two layout fixes)
 
 **Result (Rick):** 1 camera shows and hides ✓. 2 **Start voice opened a card hidden behind the
 text box** — reachable only by Tab + Enter, unseen; the live-call card then showed correctly.
 3 mute ✓ ("she answered what I said before I muted, while I was still talking"). 4 resize kept
 proportions ✓, **but the text box overlapped the transcript drawer**. Both fixed the same day:
 the text box is put away while the voice panel is open, and both cards centre left of an open
-drawer (regression test for the first). **Still to hear: whether her mouth followed her voice.**
+drawer (regression test for the first). 2 lip sync ✓ — "her mouth moved with her voice", several calls, correct each time.
 
 **Why:** the Browser pane checked the layout at 1024 px, 1080p and 4K, the consent panel and
 a typed turn. It cannot check the three things that need your hardware: **the camera PiP**,

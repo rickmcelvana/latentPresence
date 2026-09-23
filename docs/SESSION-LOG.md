@@ -476,3 +476,4 @@ Did: R-12 recorded (Rick: `Idle_Loop`, standing; read from the glb: `Idle_Talkin
 Left: R-14 (camera, lip sync in a call, mute — needs Rick's hardware); R-13 laptop half, R-1, R-9.
 Next: P2-T03 clip retarget (Idle_Loop, Idle_Talking_Loop → .vrma via Blender headless), then P2-T07.
 Decisions: none new; brief took the avatar-consent-via-`ModelConsent` route. Click-through: 1024×768, 1920×1080, 3840×2160 and a typed turn against glm-5.2:cloud in the Browser pane.
+Addendum: R-14 run by Rick the same day — camera, mute, resize and lip sync in a live call pass; two overlaps (voice card behind the text box, text box under the drawer) fixed in 1cf832e with a regression test. P2-T06 closed.
