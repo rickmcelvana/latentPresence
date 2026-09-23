@@ -1836,3 +1836,20 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   WebGL canvas never draws. `video/webm;codecs=vp9` with an audio track records fine
   (63 KB in 3 s), so the MIME type was not the cause.
 
+## Animation clips: Quaternius and the VRM add-on for Blender — read 2026-09-22 (P2-T03 prep)
+
+- **Quaternius Universal Animation Library** (quaternius.com, quaternius.itch.io): **CC0**,
+  "120+" clips on a universal humanoid rig, "compatible with other common rigs (Mixamo for
+  example)". itch.io tiers: **Standard 15 MB, name your own price**; Pro 41 MB at $9.99+;
+  Source (the `.blend`) 46 MB at $14.99+. Formats FBX / GLB / Blend. **v3.0 (2026-06-16)**
+  added root motion to locomotion — the pack ships both with and without it; v2.1 fixed files
+  that had been exported at 24 fps instead of 30. The clip list is only visible in a Godot
+  wasm viewer (`/animviewer.html`), not as text, so a person browses it.
+- **VRM Add-on for Blender** (vrm-addon-for-blender.info): supports Blender **2.93 to 5.2**;
+  latest zip for ≤ 4.1 is v4.7.1 (2026-09-06); on ≥ 4.2 it installs from **Get Extensions**.
+  **Exports `.vrma`** (File → Export → VRM Animation) from a **VRM 1.0 armature in the
+  scene**: humanoid bone rotations, hips translation, expression preview values, and the
+  look-at preview target. Has a Python API "for automation via Python scripts" — the route
+  for a headless retarget.
+- This machine has Blender config folders for 2.90 and 3.6 but **no installed Blender**.
+

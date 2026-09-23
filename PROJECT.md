@@ -55,7 +55,7 @@
 
 ## Tasks needing a human or a live endpoint
 
-**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **3 open for Rick** — a different-GPU avatar reading, **R-9: the five-minute conversation** (Phase 1's exit criterion, **ready to run since P1-T15 landed** — `/chat`, Start voice, in a production build), and the character pipeline (blocked on a doc I owe). R-2, R-4, R-5, R-6, R-7, R-8, R-10 and R-11 are done (D-17–D-24). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
+**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **4 open for Rick** — **R-12: pick the animation clips** (P2-T03's human half), a different-GPU avatar reading, **R-9: the five-minute conversation** (Phase 1's exit criterion, **ready to run since P1-T15 landed** — `/chat`, Start voice, in a production build), and the character pipeline (blocked on a doc I owe). R-2, R-4, R-5, R-6, R-7, R-8, R-10 and R-11 are done (D-17–D-24). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
 
 ## Backlog (architect)
 

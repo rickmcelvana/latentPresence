@@ -51,3 +51,6 @@ packages/ml-web/live/out/
 # Recordings from human runs (R-11's videos): tens of MB each, analysed into docs/runs/,
 # kept locally for re-analysis and never committed
 docs/runs/media/
+
+# Downloaded animation packs (R-12): only the retargeted .vrma and the manifest are committed
+assets/clips/source/

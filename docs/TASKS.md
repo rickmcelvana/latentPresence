@@ -114,6 +114,53 @@ says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
 `docs/runs/R-9-conversation-<date>.md`.
 
+### R-12 · Pick her animation clips (P2-T03) · **ready**
+**Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that
+retargets them onto a VRM and exports `.vrma` (the format the renderer loads), plus the
+runtime blend graph. Nothing here is code. About 30–45 minutes, most of it browsing.
+
+**1 · Download the pack (free).** Quaternius **Universal Animation Library**, CC0 —
+https://quaternius.itch.io/universal-animation-library → *Download Now* → enter **0** (or
+anything) → **Standard** (15 MB). *Pro* ($9.99+) only adds more clips; *Source* ($14.99+) adds
+the `.blend` — neither is needed. Unzip it to:
+```
+Z:\_dev\latentPresence\assets\clips\source\
+```
+That folder is gitignored: the pack stays on your machine, and only the retargeted `.vrma`
+files and a manifest get committed.
+
+**2 · Choose the clips.** Browse them in the viewer at https://quaternius.com/animviewer.html,
+and fill this in with the clip names exactly as the pack spells them (one per slot; two if
+you like both — "none" is a fine answer):
+
+| slot | what it is for | your pick |
+|---|---|---|
+| `idle` | standing, doing nothing, loops — the base of everything | |
+| `listen` | idle while you talk: attentive, a little still | |
+| `talk` | idle while she talks: light movement, loops | |
+| `wave` | hello / goodbye | |
+| `shrug` | "I don't know" | |
+| `open-hands` | explaining, presenting | |
+| `think` | hand to chin, or looking up | |
+| `lean-in` | interest | |
+| `nod`, `shake-head`, `tilt-head` | head only — **probably not in the pack**; if not, I do these procedurally, like the life layer's head | |
+
+Those eight gestures are the `[gesture:…]` tags the model can write (`CharacterGestureSchema`).
+Avoid clips that walk, turn or travel — she stays on her mark.
+
+**3 · Standing or sitting?** Everything so far assumes **standing** — the life layer shifts her
+weight between legs, and P2-T05's "full" camera preset shows her whole. Sitting at the desk is
+the other option and changes which clips fit. **Recommended: standing.** Say if you want sitting.
+
+**4 · Install Blender** (the script runs it headless; you only open it once). Blender **4.2 or
+later** from https://www.blender.org/download/ — the VRM add-on supports up to 5.2. Then the
+add-on: start Blender → **Edit → Preferences → Get Extensions** → if asked, **Allow Online
+Access** → search **VRM** → **VRM format** → **Install**. (Offline alternative: download the
+zip from the Blender Extensions Platform, **do not unzip it**, and use **Add-ons → ˅ → Install
+from Disk**.)
+
+**Report:** the filled-in table, standing or sitting, and the Blender version you installed.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
