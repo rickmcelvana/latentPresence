@@ -1463,13 +1463,14 @@ kbd {
   --call-drawer-width: clamp(320px, 26vw, 640px);
 }
 
-/* With the drawer open, the voice card and the text box centre in the space left of it
-   instead of on the page, so at narrow widths they never slide under the transcript
-   (R-14). Same units as the drawer: both are zoomed by the same step. */
+/* With the drawer open, the voice card and the text box stay centred on the page, in line
+   with the bar and the character, and narrow symmetrically instead, so their right edge
+   never reaches the drawer (R-14). Centring them in the space left of the drawer, the
+   first fix, stopped the overlap but put them visibly off-centre. Same units as the
+   drawer: both are zoomed by the same step. */
 .call-page-drawer-open .call-voice-card,
 .call-page-drawer-open .call-text-dock {
-  left: calc((100% - var(--call-drawer-width)) / 2);
-  max-width: calc(100% - var(--call-drawer-width) - 2 * var(--gap-md));
+  max-width: calc(100% - 2 * var(--call-drawer-width) - 2 * var(--gap-md));
 }
 
 @media (min-width: 2400px) {
