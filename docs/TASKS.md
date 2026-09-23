@@ -114,6 +114,23 @@ says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
 `docs/runs/R-9-conversation-<date>.md`.
 
+### R-13 · Stage frame rate: 1080p here, and an integrated GPU · **ready** (P2-T05 landed 2026-09-22)
+**Why:** P2-T05's done-when is *"60 fps at 1080p on Rick's machine and 30 fps on an integrated
+GPU"*. The Browser pane cannot measure it — a hidden pane runs no frames. Two halves: **this
+desktop now**, and **the laptop when it is ready** (do it alongside R-1 and R-9).
+
+**Run:**
+```bash
+pnpm dev
+```
+1. Open `http://localhost:5173/dev/avatar`, **Agree and download**.
+2. In **Stage**: **Camera** `full` (the most on screen), **Shadows** `on`, **Render scale** `1080p`.
+3. Keep the tab visible and still for ~20 s (moving the mouse over it is fine), then **Take reading**.
+4. Repeat with **Shadows** `off` — if the laptop misses 30 fps with shadows, this is the first dial.
+
+**Report:** the reading line for each (median fps, 5th percentile, worst frame, canvas size) and
+the GPU name. Pass is a median of 60+ here and 30+ on the laptop.
+
 ### R-12 · Pick her animation clips (P2-T03) · **ready**
 **Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that
 retargets them onto a VRM and exports `.vrma` (the format the renderer loads), plus the

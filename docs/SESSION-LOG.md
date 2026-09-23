@@ -451,3 +451,10 @@ Left: nothing on P2-T04. P2-T03 waits on Rick's clips.
 Next: P2-T05 stage v1.
 Decisions: none. Click-through: passed (Rick, 2026-09-22).
 
+## 2026-09-22 claude — P2-T05 stage v1 (sub), R-12 written, R-11 corrected
+Did: corrected R-11 (Rick's file was Kokoro: ~50–60 ms, not "one frame"); wrote R-12 (clips: pack, slots, Blender + VRM add-on, verified at source); brief → Sonnet subagent built the stage; review fixed the crown crop, a shadow toggle that did not turn off, and a white window. 1015 → 1033 tests, gate green, committed 076c69f.
+Left: **R-13** frame rates (desktop now, laptop later); **R-12** Rick's clip picks; P2-T03 waits on R-12.
+Next: P2-T06 video-call layout (`sub`) — the first production route to mount the renderer, so the build guard's three-vrm needle comes out there.
+Decisions: none new. The subagent's own calls (desk off her axis, one side wall, bust as default preset) kept.
+Click-through: presets, shadows on/off and the 1080p buffer checked in the Browser pane; fps is R-13.
+
