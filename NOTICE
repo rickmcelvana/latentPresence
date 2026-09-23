@@ -15,3 +15,7 @@ user is responsible for reviewing and complying with.
 
 Character, set and animation assets are distributed under their own licences,
 recorded alongside them in assets/.
+
+packages/avatar/src/lipsync/classifier.ts is ported from wawa-lipsync 0.0.2
+(https://github.com/wass08/wawa-lipsync), Copyright (c) 2025 Wassim SAMAD, under the
+MIT License. The licence text is reproduced at the top of that file.

@@ -88,6 +88,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private loaded: Loaded | null = null;
   private gaze: GazeTarget = 'user';
   private gazeOffset: GazeOffset = [0, 0];
+  private cameraDistance = CAMERA_DISTANCE;
   private life: LifePose | null = null;
   private disposed = false;
 
@@ -237,6 +238,15 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     return this.loaded?.vrm.humanoid.getNormalizedBoneNode(name) ?? null;
   }
 
+  /**
+   * How far in front of the face the camera sits, metres; 1.6 is the call's bust framing.
+   * A stand-in until P2-T05's camera presets — P2-T04 needed a close-up to judge a mouth.
+   */
+  setCameraDistance(metres: number): void {
+    this.cameraDistance = Math.min(4, Math.max(0.3, metres));
+    if (this.loaded !== null) this.frameHead();
+  }
+
   /** What each protocol expression resolved to on the loaded model. */
   expressionPlan(): ExpressionPlan | null {
     return this.loaded?.face.plan ?? null;
@@ -293,7 +303,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private frameHead(): void {
     this.loaded?.vrm.scene.updateMatrixWorld(true);
     const [x, y, z] = this.headPosition() ?? [0, 1.4, 0];
-    this.camera.position.set(x, y, z + CAMERA_DISTANCE);
+    this.camera.position.set(x, y, z + this.cameraDistance);
     this.camera.lookAt(x, y - 0.05, z);
     this.placeGaze();
   }

@@ -9,8 +9,18 @@ import {
   type GazeTarget,
   GazeTargetSchema,
 } from '@latentpresence/protocol';
-import { type ExpressionPlan, LifeLayer, MOUTH_SHAPES, type MouthShape } from '@latentpresence/avatar';
+import {
+  type ExpressionPlan,
+  LifeLayer,
+  LipSync,
+  MOUTH_SHAPES,
+  type MouthShape,
+  tapAnalyser,
+} from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
+import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/providers';
+// Kokoro speech, generated for P1-T14's end-to-end test; dev-only, like this page.
+import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
 import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/avatar-consent';
 
 /**
@@ -26,6 +36,10 @@ import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/ava
  * with a conversation-state select, a live readout, and **Record 60 s**, which captures
  * the canvas to a webm for the done-when's review. With life on, the gaze select below
  * sets the base the eyes return to rather than a fixed target.
+ *
+ * **Lip sync (P2-T04)** plays Kokoro speech — or any file — through the same output graph
+ * `/chat` uses (`createAudioOutput`), taps its node with an analyser and drives the mouth
+ * every frame. **Close-up** moves the camera in so a recording shows the mouth.
  *
  * Spike B's `/spike/avatar` stays beside it: that page is the frame-rate instrument R-1
  * runs on another machine, and this one measures nothing.
@@ -86,6 +100,10 @@ export function AvatarDebug(): ReactElement {
   const lifeOnRef = useRef(lifeOn);
   const live = useRef(false);
   const counters = useRef({ ms: 0, blinks: 0, lastBlink: 0, gaze: 'user' });
+  const [lipStatus, setLipStatus] = useState('Silent.');
+  const [closeUp, setCloseUp] = useState(false);
+  const audio = useRef<AudioOutputHandle | null>(null);
+  const lips = useRef<LipSync | null>(null);
 
   // One renderer for the page's life, driven by the browser's frame loop: the interface
   // says `update` belongs to the render loop, not to a timer inside the renderer.
@@ -110,6 +128,10 @@ export function AvatarDebug(): ReactElement {
         if (c.lastBlink < 0.5 && pose.blink >= 0.5) c.blinks += 1;
         c.lastBlink = pose.blink;
         c.gaze = pose.gaze.target;
+      }
+      const lipSync = lips.current;
+      if (live.current && lipSync !== null) {
+        for (const [shape, weight] of lipSync.update(delta, now)) avatar.setViseme(shape, weight);
       }
       avatar.update(delta);
       last = now;
@@ -205,23 +227,57 @@ export function AvatarDebug(): ReactElement {
   }, []);
 
   /**
-   * Sixty seconds of the canvas as a webm, for the done-when's review. `captureStream`
-   * records what WebGL draws, and the file is a local download — nothing is uploaded.
+   * The voice's output graph, made on first use from a click — a context made without a
+   * gesture starts suspended — and the lip sync tapped onto it.
    */
-  const record = useCallback(() => {
+  const ensureAudio = useCallback(async (): Promise<AudioOutputHandle> => {
+    if (audio.current !== null) return audio.current;
+    const handle = await createAudioOutput();
+    audio.current = handle;
+    lips.current = new LipSync(tapAnalyser(handle.context, handle.node));
+    return handle;
+  }, []);
+
+  /**
+   * Sixty seconds of the canvas, and the voice, as a webm — P2-T02's and P2-T04's reviews.
+   * `captureStream` records what WebGL draws, and the file is a local download — nothing
+   * is uploaded.
+   */
+  const record = useCallback(async () => {
     const surface = canvas.current;
     if (surface === null) return;
     try {
       const stream = surface.captureStream(30);
-      const vp9 = 'video/webm;codecs=vp9';
-      const mimeType = MediaRecorder.isTypeSupported(vp9) ? vp9 : 'video/webm';
+      // The voice goes in the same file, taken from the playback node itself, so lip sync
+      // can be judged frame by frame (P2-T04). Taken before the device, so the device's own
+      // output latency is not in the recording — that is the pipeline, measured alone.
+      const handle = await ensureAudio();
+      const voice = handle.context.createMediaStreamDestination();
+      handle.node.connect(voice);
+      for (const track of voice.stream.getAudioTracks()) stream.addTrack(track);
+      // Both codecs named, since the stream now carries the voice as well as the canvas.
+      const mimeType =
+        ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'].find((type) => MediaRecorder.isTypeSupported(type)) ??
+        'video/webm';
       const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6_000_000 });
       const chunks: Blob[] = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunks.push(event.data);
       };
+      recorder.addEventListener('error', (event) => {
+        const reason = (event as Event & { error?: DOMException }).error?.message ?? 'the recorder stopped';
+        setRecording({ kind: 'failed', reason });
+      });
       recorder.onstop = () => {
+        handle.node.disconnect(voice);
         const blob = new Blob(chunks, { type: 'video/webm' });
+        // MediaRecorder waits for the first video frame, audio or not: a canvas that never
+        // drew — a hidden tab runs no frames — records zero bytes and raises no error
+        // (measured in the Browser pane, P2-T04). Say so instead of offering an empty file.
+        if (blob.size === 0) {
+          setRecording({ kind: 'failed', reason: 'nothing was recorded — keep the tab visible while it runs' });
+          return;
+        }
         setRecording({ kind: 'done', url: URL.createObjectURL(blob), bytes: blob.size });
       };
       recorder.start(1000);
@@ -231,7 +287,7 @@ export function AvatarDebug(): ReactElement {
     } catch (error) {
       setRecording({ kind: 'failed', reason: error instanceof Error ? error.message : String(error) });
     }
-  }, [resetCounts]);
+  }, [ensureAudio, resetCounts]);
 
   useEffect(() => {
     return () => {
@@ -262,6 +318,35 @@ export function AvatarDebug(): ReactElement {
       })
       .catch((error: unknown) => setStatus(`Clip: ${error instanceof Error ? error.message : String(error)}`));
   }, []);
+
+  useEffect(() => {
+    if (phase === 'ready') renderer.current?.setCameraDistance(closeUp ? 0.6 : 1.6);
+  }, [closeUp, phase]);
+
+  // The output graph is made on the first click — a context made without a gesture is
+  // suspended — and closed with the page.
+  useEffect(() => {
+    return () => {
+      lips.current = null;
+      void audio.current?.close();
+      audio.current = null;
+    };
+  }, []);
+
+  const speak = useCallback(async (source: ArrayBuffer, label: string) => {
+    try {
+      const handle = await ensureAudio();
+      const decoded = await handle.context.decodeAudioData(source);
+      handle.output.enqueue({ samples: decoded.getChannelData(0), sampleRate: decoded.sampleRate });
+      setLipStatus(`Playing ${label} (${decoded.duration.toFixed(1)} s) through the voice's output graph.`);
+    } catch (error) {
+      setLipStatus(`Could not play: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }, [ensureAudio]);
+
+  const speakSample = useCallback(() => {
+    void (async () => speak(await (await fetch(speechUrl)).arrayBuffer(), 'the Kokoro sample'))();
+  }, [speak]);
 
   const ready = phase === 'ready';
   const phaseTone = phase === 'failed' ? 'pill-danger' : ready ? 'pill-ok' : '';
@@ -422,6 +507,47 @@ export function AvatarDebug(): ReactElement {
 
           <section className="panel">
             <div className="panel-header">
+              <span className="panel-title">Lip sync</span>
+            </div>
+            <p className="panel-note">
+              The mouth follows what the voice&apos;s output graph renders — an analyser on the
+              playback worklet, the ported wawa-lipsync classifier, and smoothing that opens
+              fast and closes a little slower. While audio plays it overrides the Mouth
+              sliders.
+            </p>
+            <div className="spike-controls">
+              <button className="btn btn-primary" onClick={speakSample} type="button">
+                Play the Kokoro sample
+              </button>
+              <label className="field">
+                <span className="field-label">…or your own audio</span>
+                <input
+                  accept="audio/*"
+                  className="input"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file !== undefined) void file.arrayBuffer().then((bytes) => speak(bytes, file.name));
+                  }}
+                  type="file"
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">Camera</span>
+                <select
+                  className="select"
+                  onChange={(event) => setCloseUp(event.target.value === 'close')}
+                  value={closeUp ? 'close' : 'bust'}
+                >
+                  <option value="bust">bust (the call)</option>
+                  <option value="close">close-up (for judging the mouth)</option>
+                </select>
+              </label>
+            </div>
+            <p className="spike-status">{lipStatus}</p>
+          </section>
+
+          <section className="panel">
+            <div className="panel-header">
               <span className="panel-title">Life</span>
               <span className={`pill ${lifeOn ? 'pill-ok' : ''}`}>{lifeOn ? 'on' : 'off'}</span>
             </div>
@@ -459,7 +585,7 @@ export function AvatarDebug(): ReactElement {
               <button
                 className="btn btn-primary"
                 disabled={recording.kind === 'recording'}
-                onClick={record}
+                onClick={() => void record()}
                 type="button"
               >
                 {recording.kind === 'recording' ? 'Recording…' : 'Record 60 s'}
