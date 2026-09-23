@@ -47,8 +47,8 @@ export type InlineTag = z.infer<typeof InlineTagSchema>;
  *
  * `voicedStartMs`/`voicedEndMs` bound the speech inside the segment's padding (ADR-27
  * keeps 50 ms before and 250 ms after). `words` is there only when the TTS reported word
- * timings, which neither shipping provider does; without them a position is interpolated
- * by character across the voiced span, the same estimate the spoken prefix uses.
+ * timings — browser Kokoro does since P2-T09, a server may not; without them a position is
+ * interpolated by character across the voiced span, the same estimate the spoken prefix uses.
  */
 export const SentenceTimingSchema = z.object({
   durationMs: DurationMsSchema,

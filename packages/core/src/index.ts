@@ -17,4 +17,5 @@ export * from './voice';
 export * from './transcript';
 export * from './history';
 export * from './persona';
+export * from './affect';
 export { Cancellation } from './cancellation';
