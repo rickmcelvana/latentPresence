@@ -46,8 +46,8 @@ class FakePort implements KokoroWorkerPort {
   }
 }
 
-function audio(samples: number, sampleRate = 24_000): ScriptPart {
-  return { type: 'audio', index: 0, samples: new Float32Array(samples), sampleRate, text: 'x' };
+function audio(samples: number, sampleRate = 24_000, words: { text: string; startMs: number; endMs: number }[] | null = null): ScriptPart {
+  return { type: 'audio', index: 0, samples: new Float32Array(samples), sampleRate, text: 'x', words };
 }
 
 const DONE: ScriptPart = { type: 'done' };
@@ -137,8 +137,8 @@ describe('KokoroBrowserTTSProvider capabilities', () => {
     expect(capabilities.styleTags).toBe(false);
   });
 
-  it('admits it has no word timings, which is what sends P2 to lip-sync analysis', async () => {
-    expect((await providerWith(new FakePort()).capabilities()).wordTimestamps).toBe(false);
+  it('reports word timings, from the timestamped export (P2-T09)', async () => {
+    expect((await providerWith(new FakePort()).capabilities()).wordTimestamps).toBe(true);
   });
 });
 
@@ -189,6 +189,16 @@ describe('KokoroBrowserTTSProvider synthesize', () => {
     const chunks = await collect(providerWith(port).synthesize(request()));
 
     expect(chunks.map((chunk) => chunk.startMs)).toEqual([0, 10, 110]);
+  });
+
+  it('passes on each chunk’s word timings, relative to that chunk, and none when the worker had none', async () => {
+    const port = new FakePort();
+    const words = [{ text: 'Oh,', startMs: 525, endMs: 650 }];
+    port.speakScript = [audio(2400, 24_000, words), audio(240), DONE];
+    const chunks = await collect(providerWith(port).synthesize(request()));
+
+    expect(chunks[0]?.words).toEqual(words);
+    expect(chunks[1]).not.toHaveProperty('words');
   });
 
   it('still yields a final chunk when the worker produced no audio', async () => {

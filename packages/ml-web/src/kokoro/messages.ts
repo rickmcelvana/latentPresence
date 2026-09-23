@@ -1,4 +1,4 @@
-import type { ModelDescriptor } from '@latentpresence/protocol';
+import type { ModelDescriptor, WordTiming } from '@latentpresence/protocol';
 
 /**
  * The contract between the Kokoro worker and whatever drives it (P1-T05).
@@ -21,7 +21,14 @@ export type KokoroDtype = 'fp32' | 'fp16' | 'q8' | 'q4' | 'q4f16';
  * backend and is not reachable from a browser worker, so it is not offered. */
 export type KokoroDevice = 'webgpu' | 'wasm';
 
-export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
+/**
+ * The timestamped export since P2-T09: the same weights with `durations` as a second
+ * output, which is where word timings come from (`word-timings.ts`). **Its audio is
+ * bit-identical to the plain export's** (q8, 124,800 samples, max difference 0, measured
+ * 2026-09-23), so nothing measured on the plain one needs measuring again. A new id is a
+ * new consent: the files are different files.
+ */
+export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX-timestamped';
 
 /**
  * Kokoro's output rate, in Hz. kokoro-js 1.2.1 hard-codes it — `new RawAudio(data, 24e3)`
@@ -32,7 +39,8 @@ export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const KOKORO_SAMPLE_RATE = 24_000;
 
 /**
- * Exact `.onnx` sizes from the Hugging Face blob listing, 2026-09-12 (`docs/SURFACE.md`).
+ * Exact `.onnx` sizes from the Hugging Face blob listing — 2026-09-12 for the plain export,
+ * re-read 2026-09-23 for the timestamped one, 61–1,964 bytes smaller (`docs/SURFACE.md`).
  *
  * The filename is the trap, so it is written down: transformers.js maps a dtype to a
  * filename *suffix*, and `q8` maps to `_quantized`, not to anything containing "q8". The
@@ -41,9 +49,9 @@ export const KOKORO_SAMPLE_RATE = 24_000;
  * consent screen by 6 MB is exactly the misrepresentation ADR-09 exists to prevent.
  */
 const KOKORO_BYTES = {
-  q8: 92_361_116, // onnx/model_quantized.onnx
-  fp16: 163_234_740, // onnx/model_fp16.onnx
-  fp32: 325_532_232, // onnx/model.onnx
+  q8: 92_361_055, // onnx/model_quantized.onnx
+  fp16: 163_232_776, // onnx/model_fp16.onnx
+  fp32: 325_532_171, // onnx/model.onnx
 } as const satisfies Partial<Record<KokoroDtype, number>>;
 
 /** The precisions whose download size is a recorded fact. */
@@ -117,6 +125,9 @@ export type KokoroResponse =
       readonly sampleRate: number;
       /** The sentence these samples say, as kokoro-js split it. Useful for the transcript. */
       readonly text: string;
+      /** From the model's own durations (P2-T09), in ms from this chunk's start; null
+       * when they could not be aligned to the text's words. */
+      readonly words: readonly WordTiming[] | null;
     }
   | { readonly type: 'done'; readonly requestId: number }
   /** `requestId` is null for a failure that belongs to the worker rather than a request. */

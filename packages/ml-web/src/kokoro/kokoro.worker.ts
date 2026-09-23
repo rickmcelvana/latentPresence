@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
-import { KokoroTTS, TextSplitterStream } from 'kokoro-js';
-import { kokoroCombinationBlocker, type KokoroDevice, type KokoroDtype, type KokoroRequest, type KokoroResponse } from './messages';
+import { KokoroTTS } from 'kokoro-js';
+import { KOKORO_MODEL_ID, kokoroCombinationBlocker, type KokoroDevice, type KokoroDtype, type KokoroRequest, type KokoroResponse } from './messages';
+import { speakTimed } from './timed-stream';
 
 /**
  * Kokoro in a worker (P1-T05).
@@ -12,11 +13,12 @@ import { kokoroCombinationBlocker, type KokoroDevice, type KokoroDtype, type Kok
  *
  * Two things in it are not obvious and both are recorded surface, not preference:
  *
- * 1. **The splitter is built here.** `stream()` given a plain string hangs in kokoro-js
- *    1.2.1: it creates a `TextSplitterStream`, pushes, and never calls `close()`, while a
- *    sentence whose terminator is the last character is only flushed by `close()`. The
- *    generator then waits forever — no audio, no completion, no error. Observed live on
- *    2026-09-08 (`docs/SURFACE.md`).
+ * 1. **The splitter is built and closed** (in `speakTimed`). `stream()` given a plain string
+ *    hangs in kokoro-js 1.2.1: it creates a `TextSplitterStream`, pushes, and never calls
+ *    `close()`, while a sentence whose terminator is the last character is only flushed by
+ *    `close()`. The generator then waits forever — no audio, no completion, no error.
+ *    Observed live on 2026-09-08 (`docs/SURFACE.md`). Since P2-T09 `speakTimed` also reads
+ *    the timestamped export's `durations` and sends each chunk's word timings with it.
  * 2. **Cancellation is checked between chunks.** kokoro-js exposes no abort, so a
  *    cancelled request stops at the next sentence boundary. Since the caller sends one
  *    sentence at a time (P1-T04 already split the stream), that is usually immediate.
@@ -54,7 +56,7 @@ async function load(device: KokoroDevice, dtype: KokoroDtype): Promise<void> {
   const blocker = kokoroCombinationBlocker(device, dtype);
   if (blocker !== null) throw new Error(blocker);
   const started = performance.now();
-  tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
+  tts = await KokoroTTS.from_pretrained(KOKORO_MODEL_ID, {
     dtype,
     device,
     progress_callback: (progress: unknown) => {
@@ -70,10 +72,6 @@ async function load(device: KokoroDevice, dtype: KokoroDtype): Promise<void> {
 async function speak(request: Extract<KokoroRequest, { type: 'speak' }>): Promise<void> {
   if (tts === null) throw new Error('speak before load');
 
-  const sentences = new TextSplitterStream();
-  sentences.push(request.text);
-  sentences.close();
-
   // `voice` is typed as a union of the 28 built-in ids. The id reaching this worker came
   // out of `listVoices()`, which reads that same table, so the cast narrows rather than
   // widens — and a wrong id still throws from kokoro-js's own `_validate_voice`.
@@ -82,19 +80,20 @@ async function speak(request: Extract<KokoroRequest, { type: 'speak' }>): Promis
   >[1];
 
   let index = 0;
-  for await (const chunk of tts.stream(sentences, options)) {
+  for await (const chunk of speakTimed(tts, request.text, options)) {
     if (cancelled.has(request.requestId)) break;
-    // `chunk.audio.audio` is the Float32Array. Copy it so the buffer can be transferred
-    // without the library's own reference going with it.
-    const samples = Float32Array.from(chunk.audio.audio);
+    // `speakTimed` copies the samples, so the buffer can be transferred without the
+    // library's own reference going with it.
+    const { samples } = chunk;
     post(
       {
         type: 'audio',
         requestId: request.requestId,
         index,
         samples,
-        sampleRate: chunk.audio.sampling_rate,
+        sampleRate: chunk.sampleRate,
         text: chunk.text,
+        words: chunk.words,
       },
       [samples.buffer],
     );

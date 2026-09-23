@@ -6,9 +6,11 @@ import { scheduleCues } from '@latentpresence/avatar';
 import { trimToVoice } from '@latentpresence/core';
 import type { InlineTag } from '@latentpresence/protocol';
 import { KokoroTTS } from 'kokoro-js';
+import type { WordTiming } from '@latentpresence/protocol';
 import { ASR_MODELS, ASR_SAMPLE_RATE } from '../src/asr/messages';
 import { resample } from '../src/asr/resample';
 import { KOKORO_MODEL_ID } from '../src/kokoro/messages';
+import { speakTimed } from '../src/kokoro/timed-stream';
 
 /**
  * The live tag-timing check (P2-T07, `pnpm live:cues`): does a tag fire on its word?
@@ -24,6 +26,16 @@ import { KOKORO_MODEL_ID } from '../src/kokoro/messages';
  * few tens of ms, so this is an upper bound on the estimate's error, not the error itself.
  * A sentence whose transcript does not split into the same number of words is listed and
  * left out — matching words by index would then compare different words.
+ *
+ * **Since P2-T09 it scores two placements against the same truth:** the by-character
+ * estimate (no timings, as before) and Kokoro's own durations through `speakTimed` and the
+ * aligner, shifted by the trim exactly as `Reply` shifts them. The done-when is the second.
+ *
+ * **Its misses are mostly Whisper's** (P2-T09, checked by level): Whisper starts a word
+ * that follows a pause at the *start* of the pause. "because" was scored +288 ms late, but
+ * the audio is silent from 1640 to 1920 ms and the word sounds at ~1940 — Whisper said 1580,
+ * where "second," ends; Kokoro said 1868. "until" and "that" read the same way: Kokoro
+ * 67–73 ms before the sound, Whisper 280–440 ms before it. So the reported rate is a floor.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +43,9 @@ const out = join(here, 'out');
 mkdirSync(out, { recursive: true });
 
 const SENTENCES = [
+  'I have 25 apples, and honestly that is plenty.',
+  'It was about $4.50 each, which seemed fair in the end.',
+  'Dr. Smith said the U.S. version comes out at 3:30 on Friday.',
   'Oh, hello! It is lovely to see you again.',
   'Honestly, I was not sure you would come back today.',
   'Let me think about that for a second, because it is a good question.',
@@ -42,6 +57,7 @@ const SENTENCES = [
 ] as const;
 
 const RATE = 24_000;
+const signed = (value: number): string => `${value >= 0 ? '+' : ''}${value}`;
 const BAR_MS = 100;
 
 type Recogniser = (
@@ -50,21 +66,42 @@ type Recogniser = (
 ) => Promise<{ text?: string; chunks?: { text?: string; timestamp?: readonly (number | null)[] }[] }>;
 const build = pipeline as unknown as (task: string, model: string, options: Record<string, unknown>) => Promise<Recogniser>;
 
-console.log('speaking with Kokoro q8, timing words with Whisper base (timestamped) q8, both onnxruntime-node\n');
+console.log(`speaking with ${KOKORO_MODEL_ID} q8, timing words with Whisper base (timestamped) q8, both onnxruntime-node\n`);
 const tts = await KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
 const recognise = await build('automatic-speech-recognition', ASR_MODELS['whisper-base'].modelId, { device: 'cpu', dtype: 'q8' });
 
 const errors: number[] = [];
+const timedErrors: number[] = [];
+let untimed = 0;
 const lines: string[] = [];
 const skipped: string[] = [];
 
 for (const text of SENTENCES) {
-  const audio = await tts.generate(text, { voice: 'af_heart', speed: 1 });
-  if (audio.sampling_rate !== RATE) throw new Error(`Kokoro spoke at ${audio.sampling_rate} Hz`);
-  // Exactly what plays: `Reply` trims to the voice with ADR-27's 50 / 250 ms padding.
-  const played = trimToVoice(Float32Array.from(audio.audio), RATE);
+  // Chunks as the worker sends them (kokoro-js splits at "!" too), words offset by chunk.
+  const parts: Float32Array[] = [];
+  let spoken: WordTiming[] | null = [];
+  let offsetMs = 0;
+  for await (const chunk of speakTimed(tts, text, { voice: 'af_heart', speed: 1 })) {
+    if (chunk.sampleRate !== RATE) throw new Error(`Kokoro spoke at ${chunk.sampleRate} Hz`);
+    parts.push(chunk.samples);
+    const at = offsetMs;
+    spoken = spoken === null || chunk.words === null ? null : [...spoken, ...chunk.words.map((w) => ({ ...w, startMs: w.startMs + at, endMs: w.endMs + at }))];
+    offsetMs += (chunk.samples.length / RATE) * 1000;
+  }
+  const whole = new Float32Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let cursor = 0;
+  for (const part of parts) {
+    whole.set(part, cursor);
+    cursor += part.length;
+  }
+  // Exactly what plays: `Reply` trims to the voice with ADR-27's 50 / 250 ms padding, and
+  // shifts backend word times by what it cut from the front.
+  const played = trimToVoice(whole, RATE);
   const ms = (frames: number): number => Math.round((frames / RATE) * 1000);
+  const shiftMs = (played.trimmedFrom / RATE) * 1000;
   const timing = { durationMs: ms(played.samples.length), voicedStartMs: ms(played.voicedStart), voicedEndMs: ms(played.voicedEnd) };
+  const timedWords = spoken?.map((w) => ({ text: w.text, startMs: Math.round(Math.max(0, w.startMs - shiftMs)), endMs: Math.round(Math.max(0, w.endMs - shiftMs)) }));
+  if (timedWords === undefined) untimed += 1;
 
   const output = await recognise(resample(played.samples, RATE, ASR_SAMPLE_RATE), { return_timestamps: 'word' });
   const heard = (output.chunks ?? []).map((chunk) => ({ text: (chunk.text ?? '').trim(), startMs: Math.round((chunk.timestamp?.[0] ?? 0) * 1000) }));
@@ -76,23 +113,30 @@ for (const text of SENTENCES) {
 
   const tags: InlineTag[] = words.map((word) => ({ kind: 'gesture', value: 'nod', known: 'nod', offset: word.offset }));
   const cues = scheduleCues(text, tags, timing);
+  const timedCues = timedWords === undefined ? null : scheduleCues(text, tags, { ...timing, words: timedWords });
   const row = words.map((word, index) => {
     const estimate = cues[index]?.atMs ?? 0;
     const truth = heard[index]?.startMs ?? 0;
     errors.push(estimate - truth);
-    return `${word.text} ${estimate - truth >= 0 ? '+' : ''}${estimate - truth}`;
+    const timed = timedCues?.[index]?.atMs;
+    if (timed !== undefined) timedErrors.push(timed - truth);
+    return `${word.text} ${signed(estimate - truth)}/${timed === undefined ? '–' : signed(timed - truth)}`;
   });
   lines.push(`| ${text} | ${timing.voicedStartMs}–${timing.voicedEndMs} | ${row.join(' · ')} |`);
   console.log(`${text}\n  ${row.join('  ')}`);
 }
 
-const sorted = errors.map(Math.abs).toSorted((a, b) => a - b);
-const pick = (q: number): number => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
-const within = sorted.filter((value) => value < BAR_MS).length;
-const mean = errors.reduce((sum, value) => sum + value, 0) / Math.max(1, errors.length);
+function describe(label: string, values: readonly number[]): string {
+  const sorted = values.map(Math.abs).toSorted((a, b) => a - b);
+  const pick = (q: number): number => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] ?? 0;
+  const within = sorted.filter((value) => value < BAR_MS).length;
+  const mean = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  return `**${label}:** ${values.length} words, |error| median **${pick(0.5)} ms**, p90 **${pick(0.9)} ms**, max **${sorted.at(-1) ?? 0} ms**; mean signed ${mean.toFixed(0)} ms (+ is late); **${within} of ${values.length} within ${BAR_MS} ms (${((100 * within) / Math.max(1, values.length)).toFixed(0)}%)**.`;
+}
 const summary = [
-  `**${errors.length} words** from ${SENTENCES.length - skipped.length} sentences: |error| median **${pick(0.5)} ms**, p90 **${pick(0.9)} ms**, max **${sorted.at(-1) ?? 0} ms**; mean signed error ${mean.toFixed(0)} ms (+ is late).`,
-  `**${within} of ${errors.length} within ${BAR_MS} ms** (${((100 * within) / Math.max(1, errors.length)).toFixed(0)}%).`,
+  `${SENTENCES.length - skipped.length} sentences scored${untimed > 0 ? `, ${untimed} with no Kokoro timings` : ''}.`,
+  describe('Estimate (by character)', errors),
+  describe('Kokoro durations (P2-T09)', timedErrors),
 ];
 console.log(`\n${summary.join('\n')}`);
 if (skipped.length > 0) console.log(`\nskipped:\n${skipped.join('\n')}`);
@@ -102,7 +146,7 @@ writeFileSync(
   [
     '# live:cues — does a tag fire on its word?',
     '',
-    'Kokoro q8 af_heart, trimmed as `Reply` trims (50 / 250 ms). Estimate: `scheduleCues` by character over the voiced span. Truth: Whisper base timestamped word starts. Error = estimate − truth, ms.',
+    `${KOKORO_MODEL_ID} q8 af_heart, trimmed as \`Reply\` trims (50 / 250 ms). Truth: Whisper base timestamped word starts. Per word: by-character estimate / Kokoro durations, error against truth in ms.`,
     '',
     ...summary,
     '',

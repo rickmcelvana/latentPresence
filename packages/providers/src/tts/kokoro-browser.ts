@@ -98,9 +98,9 @@ export class KokoroBrowserTTSProvider implements TTSProvider {
     return {
       // Per sentence, which is the granularity kokoro-js's splitter emits at.
       streaming: true,
-      // Kokoro returns samples and nothing else. P2 gets its viseme timing from
-      // wawa-lipsync analysis of the audio instead.
-      wordTimestamps: false,
+      // Since P2-T09: the timestamped export's durations, aligned to the words. A chunk
+      // whose words could not be aligned carries none, and the caller estimates.
+      wordTimestamps: true,
       // There is no emotion control on this model. `speed` is honoured because
       // `TtsRequest` carries it in its own right, but a hint is dropped, and saying so
       // here is what lets the affect engine compensate rather than assume.
@@ -168,6 +168,7 @@ export class KokoroBrowserTTSProvider implements TTSProvider {
           sampleRate: message.sampleRate,
           startMs,
           isFinal: false,
+          ...(message.words === null ? {} : { words: message.words }),
         };
         startMs += (message.samples.length / message.sampleRate) * 1000;
       }
