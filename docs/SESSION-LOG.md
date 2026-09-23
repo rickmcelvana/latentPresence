@@ -483,3 +483,9 @@ Did: measured UAL's rest pose (VRM T-pose facing +Z already) and read the VRMA l
 Left: R-15 (Rick's look at the clips and the idle↔talk crossfade); R-13 laptop half, R-1, R-9. Gesture clips: none in the free pack.
 Next: P2-T07 tag → animation bridge (head gestures procedural; others wait for clips).
 Decisions: **ADR-31 proposed** — clips converted in node, not Blender, because the source's rest pose already matches; reverses for an A-posed source. Click-through: /dev/avatar full camera, idle and talk looping; /chat idle after load.
+
+## 2026-09-23 claude — R-15 fixes; P2-T07 tag bridge, measured
+Did: relaxed the idle's fists (`relaxFingers`); P2-T08 added on Rick's call (typed replies spoken). P2-T07: `SentenceTiming` on `assistant.audio.started` (ADR-30 amended), `scheduleCues`/`TagBridge`/`CuePerformer`, emotion and gesture mappings, `/chat` wiring, a tag player on `/dev/avatar`; fixed backend word timings being on the untrimmed clock. `pnpm live:cues` measured the by-character estimate on Kokoro: median 133 ms, 36/101 within 100 ms. 3f6b92b, 1081 tests.
+Left: R-16 (Rick's look at emotes and gestures). R-13 laptop half, R-1, R-9.
+Next: P2-T08 typed replies spoken; P2-T09 Kokoro timestamped export for real word timings.
+Decisions: none new beyond the ADR-30 amendment; pause-aware estimate tried and dropped (41/101). Click-through: /dev/avatar — tilt-head, nod, shrug, think, joy played in the Browser pane.

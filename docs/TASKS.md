@@ -82,6 +82,23 @@ right.
 
 ## Open — rick
 
+### R-16 · Does she mean it? Emotes and gestures (P2-T07) · ~10 minutes
+**Why:** the model's `[emote:…]` and `[gesture:…]` tags now move her face and head.
+Whether the motions read right — and are the right size — is yours.
+
+```bash
+pnpm dev
+```
+1. `http://localhost:5173/dev/avatar` → agree → **Camera** `bust`. In **Gaze and clips**, pick each
+   **Tag** and press **Play tag**: nod, shake-head, tilt-head, lean-in, shrug, think; then a few
+   emotes (joy, concern, surprise, amusement). `wave` and `open-hands` say they need a clip.
+   Too big, too small, wrong way?
+2. `http://localhost:5173/chat` → **voice** call (typed replies are silent until P2-T08). She should
+   show a feeling at the start of each answer and sometimes nod or tilt, and relax back after.
+
+**Report:** per gesture and emote, fine / too much / too little / wrong; and whether the call felt
+more alive or more fidgety.
+
 ### R-1 · Avatar frame rate on a different class of GPU
 **Why:** every frame-rate number we have is from one RTX 5060 Ti. The interesting machine is
 a worse one — a laptop, or anything with integrated graphics. Not urgent; nothing is blocked.

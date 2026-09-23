@@ -869,6 +869,17 @@ whether `often` expressiveness produces gestures a viewer finds excessive, which
 P2-T03's clips and eyes; and whether a second emote mid-reply lands where the feeling
 actually changes, which needs the avatar to be visible.
 
+**Amended 2026-09-23 by P2-T07 (architect-owned protocol change): `assistant.audio.started`
+carries an optional `timing` (`SentenceTimingSchema`: `durationMs`, `voicedStartMs`,
+`voicedEndMs`, optional `words`), in ms from the sentence's first played frame.** A tag's
+offset says which word; only the audio knows when that word is, and the bus's `at` is a
+dispatch time. Additive, optional, so `PROTOCOL_VERSION` stays 1 (this ADR's precedent).
+`Reply` fills it from the audio it already holds; `trimToVoice` now reports its cut so
+backend word timings are moved onto what plays. **Measured:** without word timings the
+position is estimated by character over the voiced span, and on Kokoro that is |error|
+median 133 ms, p90 281 ms against Whisper's word times (`pnpm live:cues`) — fine for the
+start-of-sentence tags the prompt asks for, not for mid-sentence ones. P2-T09 carries the fix.
+
 ## ADR-31 Animation clips are converted in node, not retargeted in Blender (proposed 2026-09-23)
 
 **Decision.** `pnpm clips:build` (`packages/avatar/tools/build-clips.ts` over

@@ -1897,3 +1897,25 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   model than the mannequin the clip was made on.
 - **TypeScript 7 no longer adds `@types/*` automatically** (the `types` default is empty): a
   test in a browser package that reads files needs `/// <reference types="node" />`.
+
+## Tag timing on Kokoro — measured 2026-09-23 (P2-T07)
+
+- **Kokoro-82M-v1.0-ONNX (what ships) outputs only `waveform`** — inputs `input_ids`, `style`,
+  `speed` (read from `model_quantized.onnx` with onnxruntime-node). kokoro-js 1.2.1's
+  `generate_from_ids` destructures `{ waveform }` and nothing else. So no durations.
+- **`onnx-community/Kokoro-82M-v1.0-ONNX-timestamped` exists** (HF API, 2026-09-23:
+  `library_name: transformers.js`, Apache-2.0, last modified 2025-02-21). Its outputs and
+  sizes were **not** read yet — P2-T09's first step.
+- **`pnpm live:cues`** (Kokoro q8 af_heart, trimmed as `Reply` trims; truth = Whisper base
+  timestamped word starts): by-character estimate over the voiced span, **101 words: |error|
+  median 133 ms, p90 281 ms, max 480 ms; 36/101 within 100 ms; mean +83 ms (late)**. Patterns:
+  words after "Oh, hello!" 250–300 ms early (Kokoro's punctuation pause); a comma-free sentence
+  drifting to +480 ms (rate not uniform). A pause-aware variant — silent gaps ≥ 60/100/150 ms
+  pinned to punctuation breaks, characters within — **41/101** at all three thresholds; not kept.
+  Whisper-base reports the first word at 0.00 s where the voice starts at 50 ms, so the truth
+  itself carries tens of ms of error.
+- **Where models put tags:** the persona prompt says "Start a reply with one tag for how you
+  feel"; the P1-T12 runs show an emote (and usually a gesture) at the start of every reply.
+  A tag at a sentence's start is scheduled at `voicedStartMs`, measured from the audio.
+- **Backend word timings were on the untrimmed clock** (latent until a TTS reports words):
+  `trimToVoice` cuts ~260 ms of Kokoro's lead; `Reply` now shifts words by the cut.
