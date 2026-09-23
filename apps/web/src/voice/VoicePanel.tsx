@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationHistory, ConversationMachine } from '@latentpresence/core';
 import type { LLMProvider } from '@latentpresence/protocol';
+import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
 import type { SettingsDeps } from '../settings/deps';
 import type { Settings } from '../settings/settings';
@@ -33,9 +34,16 @@ import { buildSpeechProviders } from './providers';
  */
 
 /** What the panel needs from a running call. `VoiceCall` satisfies it; a test hands over an
- * object with no audio graph behind it. */
+ * object with no audio graph behind it.
+ *
+ * `output` and `setMuted` are optional for exactly that reason (P2-T06): a test's fake
+ * call has no audio graph to hand over and nothing to mute, and `VoiceCall` supplies both
+ * for real. `CallStage` reads `output` to tap the voice for lip sync, and the controls
+ * bar's Mute button calls `setMuted` when it exists. */
 export interface ActiveCall {
   readonly inputLabel: string | null;
+  readonly output?: AudioOutputHandle;
+  setMuted?(muted: boolean): void;
   stop(): Promise<void>;
 }
 
@@ -51,6 +59,11 @@ export interface VoicePanelProps {
   readonly onActive: (active: boolean) => void;
   /** Leave voice and go back to typing. The panel is unmounted by the caller. */
   readonly onEnd: () => void;
+  /** The call itself, the moment it starts (P2-T06) — `CallStage` needs it for lip sync
+   * (`call.output`) and the controls bar's Mute button (`call.setMuted`), neither of
+   * which `onActive`'s boolean carries. Called with `null` when the call ends, so the
+   * caller can drop its reference and stop asking a dead call to do anything. */
+  readonly onCallStarted?: (call: ActiveCall | null) => void;
   /** Test seams. Production passes neither. */
   readonly startCall?: (options: VoiceCallOptions) => Promise<ActiveCall>;
   readonly buildSpeech?: typeof buildSpeechProviders;
@@ -68,6 +81,7 @@ export function VoicePanel({
   deps,
   onActive,
   onEnd,
+  onCallStarted,
   startCall,
   buildSpeech = buildSpeechProviders,
 }: VoicePanelProps): ReactElement {
@@ -90,10 +104,17 @@ export function VoicePanel({
    * prop update writes the ref, and only an actual unmount runs the teardown.
    */
   const activeListener = useRef(onActive);
+  /** Same ref-not-dependency shape as `activeListener`, and the same reason: `onCallStarted`
+   * is exactly as likely to arrive as a fresh inline arrow from `/chat` on every render. */
+  const callStartedListener = useRef(onCallStarted);
 
   useEffect(() => {
     activeListener.current = onActive;
   }, [onActive]);
+
+  useEffect(() => {
+    callStartedListener.current = onCallStarted;
+  }, [onCallStarted]);
   // This browser's consent book, from the shared deps bag — the same object
   // `/settings`'s Downloaded-models section reads and revokes, so agreeing here is visible
   // there and revoking there asks again here. A test hands over a memory-backed one.
@@ -113,6 +134,7 @@ export function VoicePanel({
       void call.current?.stop();
       call.current = null;
       activeListener.current(false);
+      callStartedListener.current?.(null);
     },
     [],
   );
@@ -137,6 +159,7 @@ export function VoicePanel({
       setStatus(`Listening on ${active.inputLabel ?? 'the microphone'}.`);
       setPhase('active');
       onActive(true);
+      callStartedListener.current?.(active);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
       setPhase('idle');
@@ -147,6 +170,7 @@ export function VoicePanel({
     await call.current?.stop();
     call.current = null;
     onActive(false);
+    callStartedListener.current?.(null);
     onEnd();
   }
 

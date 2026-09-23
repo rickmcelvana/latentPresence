@@ -17,19 +17,38 @@ export interface ConsentScreenProps {
   readonly descriptors: readonly ModelDescriptor[];
   readonly onAgree: () => void;
   readonly onCancel: () => void;
+  /** Overrides "This will download models" — for a caller whose descriptor is not a
+   * model in the ML sense (P2-T06's avatar asset), where that word would be false. */
+  readonly heading?: string;
+  /** Overrides "These come from Hugging Face to this computer. They stay in this
+   * browser — nothing is sent anywhere." — same reason as `heading`. */
+  readonly intro?: string;
+  /** Overrides the "Agree" button's label — P2-T06's avatar panel calls it "Show the
+   * character", which reads as what agreeing actually does. */
+  readonly agreeLabel?: string;
+  /** Overrides the "Cancel" button's label — P2-T06's avatar panel calls it "Not now". */
+  readonly cancelLabel?: string;
 }
 
-export function ConsentScreen({ descriptors, onAgree, onCancel }: ConsentScreenProps): ReactElement {
+export function ConsentScreen({
+  descriptors,
+  onAgree,
+  onCancel,
+  heading,
+  intro,
+  agreeLabel,
+  cancelLabel,
+}: ConsentScreenProps): ReactElement {
   const total = descriptors.reduce((sum, descriptor) => sum + descriptor.sizeBytes, 0);
 
   return (
     <section className="panel consent-screen">
       <div className="panel-header">
-        <span className="panel-title">This will download models</span>
+        <span className="panel-title">{heading ?? 'This will download models'}</span>
         <span className="pill pill-accent">{formatMb(total)} total</span>
       </div>
       <p className="consent-note">
-        These come from Hugging Face to this computer. They stay in this browser — nothing is sent anywhere.
+        {intro ?? 'These come from Hugging Face to this computer. They stay in this browser — nothing is sent anywhere.'}
       </p>
       <ul className="consent-models">
         {descriptors.map((descriptor) => (
@@ -46,10 +65,10 @@ export function ConsentScreen({ descriptors, onAgree, onCancel }: ConsentScreenP
       </ul>
       <div className="consent-actions">
         <button className="btn btn-primary" onClick={onAgree} type="button">
-          Agree
+          {agreeLabel ?? 'Agree'}
         </button>
         <button className="btn btn-ghost" onClick={onCancel} type="button">
-          Cancel
+          {cancelLabel ?? 'Cancel'}
         </button>
       </div>
     </section>

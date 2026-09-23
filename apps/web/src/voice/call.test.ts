@@ -204,6 +204,58 @@ describe('VoiceCall — the order it builds in', () => {
   });
 });
 
+describe('VoiceCall — mute (P2-T06)', () => {
+  it('feeds the VAD silence while muted, on the same clock, and the microphone again after', async () => {
+    // Silence rather than nothing: the turn detector's time runs on frames, so a turn
+    // muted halfway would otherwise stay open until unmute instead of ending.
+    const { machine, history } = baseOptions();
+    const pushed: { peak: number; at: number }[] = [];
+    const vad = fakeVad({
+      push: (samples, at) => {
+        pushed.push({ peak: Math.max(...samples.map(Math.abs)), at });
+      },
+    });
+    let deliver: ((samples: Float32Array, at: number) => void) | null = null;
+    const call = await VoiceCall.start({
+      machine,
+      history,
+      llm: llm(),
+      modelId: 'test',
+      temperature: null,
+      speech: speech(),
+      consent: new ModelConsent(memoryStorage()),
+      voiceId: 'af_heart',
+      speed: 1,
+      backchannels: false,
+      createAudio: async () => fakeAudio().handle,
+      createVad: () => vad.port,
+      createJudge: () => fakeJudge().port,
+      capture: async (_source, onFrame) => {
+        deliver = onFrame;
+        return mic();
+      },
+    });
+
+    const loud = new Float32Array(512).fill(0.5);
+    const frame = (at: number): void => {
+      if (deliver === null) throw new Error('the call never opened the microphone');
+      deliver(loud, at);
+    };
+    frame(10);
+    call.setMuted(true);
+    frame(42);
+    call.setMuted(false);
+    frame(74);
+
+    expect(pushed).toEqual([
+      { peak: 0.5, at: 10 },
+      { peak: 0, at: 42 },
+      { peak: 0.5, at: 74 },
+    ]);
+    await call.stop();
+  });
+});
+
 describe('VoiceCall — what it leaves behind when something refuses', () => {
   it('closes everything when the microphone is refused', async () => {
     const { machine, history } = baseOptions();

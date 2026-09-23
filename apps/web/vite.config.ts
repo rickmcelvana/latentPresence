@@ -21,20 +21,28 @@ import { defineConfig, type Plugin } from 'vitest/config';
  * guard is the same instrument measuring the same thing instead of being retired with its
  * subject. The `.wasm` assertion went with the rest: the pipeline's own wasm is the point.
  *
- * `@pixiv/three-vrm` and `three/examples/jsm` were to come out at **P2-T01**, and stay:
- * P2-T01 built the renderer, but its only page is the dev-only `/dev/avatar`, so a VRM
- * in a production chunk still means a dev page leaked. They come out when a production
- * route first mounts the renderer — the call layout, P2-T06 — and not before.
+ * `@pixiv/three-vrm` and `three/examples/jsm` came out at **P2-T06**: `/chat`'s call layout
+ * (`CallStage`) is the first production route to mount `VrmAvatarRenderer`, so both names
+ * are now *expected* in a production chunk — a guard that still named them would fail every
+ * build, the same reasoning P1-T15 already applied to the voice pipeline above. What
+ * replaces them are two needles only the two avatar dev pages still carry: `/spike/avatar`
+ * (`AvatarStage.tsx`) is the only file importing `@react-three/fiber` — `CallStage` drives
+ * three.js directly, not through react-three-fiber (`renderer.ts`'s own comment on that
+ * choice) — and `/dev/avatar` (`AvatarDebug.tsx`) is the only file naming
+ * `avatar-debug-canvas`, one of its own CSS classes and not a real class anything else
+ * uses, so it survives minification as a plain string the way `voiceHarness` does as a
+ * property name.
  */
 function assertSpikeExcludedFromBuild(): Plugin {
   const forbidden = [
-    '@pixiv/three-vrm',
-    'three/examples/jsm',
     // `/dev/voice` (P1-T08) and `/dev/e2e` (P1-T14). Each is a handle those pages hang on
     // `globalThis` for a person, or for Playwright, to read — nothing else writes either
     // name, and neither survives minification as a property name.
     'voiceHarness',
     'e2eHandle',
+    // `/spike/avatar` (Spike B) and `/dev/avatar` (P2-T01), per the comment above.
+    '@react-three/fiber',
+    'avatar-debug-canvas',
   ];
 
   return {

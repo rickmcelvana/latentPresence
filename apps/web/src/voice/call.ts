@@ -133,6 +133,10 @@ export class VoiceCall {
   private readonly judge: JudgeLike;
   private readonly session: VoiceSession<Promise<SttResult | null>>;
   private readonly capture: CaptureHandle | null;
+  /** A mutable box rather than a field the capture callback closes over `this` to read:
+   * the callback is built in `start()`, before the instance exists (the constructor is
+   * private and runs last), so `setMuted` writes through the same box the callback reads. */
+  private readonly mutedBox: { current: boolean };
   private stopped = false;
 
   private constructor(
@@ -142,6 +146,7 @@ export class VoiceCall {
     judge: JudgeLike,
     session: VoiceSession<Promise<SttResult | null>>,
     capture: CaptureHandle | null,
+    mutedBox: { current: boolean },
   ) {
     this.options = options;
     this.audio = audio;
@@ -149,11 +154,31 @@ export class VoiceCall {
     this.judge = judge;
     this.session = session;
     this.capture = capture;
+    this.mutedBox = mutedBox;
   }
 
   /** What the microphone calls itself, for the call bar. */
   get inputLabel(): string | null {
     return this.capture?.deviceLabel ?? null;
+  }
+
+  /** The output graph's context and worklet node, for the call layout's lip sync
+   * (`tapAnalyser`, P2-T06). Not optional here — `VoicePanel`'s `ActiveCall` seam is
+   * where it becomes optional, for a test call with no audio graph behind it. */
+  get output(): AudioOutputHandle {
+    return this.audio;
+  }
+
+  /**
+   * Stop, or resume, feeding microphone frames to the VAD (P2-T06, decision 6). The
+   * microphone itself stays open throughout — muting is "the VAD hears nothing", not "the
+   * capture is stopped and restarted" — so a muted call still costs nothing to unmute and
+   * never re-triggers a permission prompt. Because the VAD sees no speech while muted,
+   * barge-in and backchannel both fall out for free: `VoiceSession` never gets a frame
+   * that looks like the user starting to talk.
+   */
+  setMuted(muted: boolean): void {
+    this.mutedBox.current = muted;
   }
 
   /**
@@ -242,9 +267,18 @@ export class VoiceCall {
     vad.onFrame((frame) => session.push(frame));
     vad.onError((error) => log?.(`hearing failed: ${error.message}`));
 
+    // `setMuted` writes this after the instance exists; the capture callback is built
+    // now, before it does, so both read and write go through the same box.
+    const mutedBox = { current: false };
     let capture: CaptureHandle | null = null;
     try {
-      capture = await captureWith(microphoneSource, (samples, at) => vad.push(samples, at));
+      // Muted, the VAD gets silence rather than nothing: the turn detector's clock runs on
+      // frames, so dropping them mid-turn would leave that turn open until unmute instead
+      // of letting the hangover close it. A fresh array each time, since the VAD may
+      // transfer the buffer to its worker.
+      capture = await captureWith(microphoneSource, (samples, at) => {
+        vad.push(mutedBox.current ? new Float32Array(samples.length) : samples, at);
+      });
     } catch (error) {
       // A refused microphone: the graph is up but nothing can reach it. Leave nothing
       // running behind the error.
@@ -257,7 +291,7 @@ export class VoiceCall {
     }
     log?.(`listening on ${capture.deviceLabel}`);
 
-    return new VoiceCall(options, audio, vad, judge, session, capture);
+    return new VoiceCall(options, audio, vad, judge, session, capture, mutedBox);
   }
 
   /** End the call. Idempotent: a second call does nothing. */

@@ -10,33 +10,18 @@
  *
  * Sizes and licence terms were read out of the files themselves on 2026-09-09, from the
  * embedded `VRMC_vrm.meta`, and are recorded in `docs/SURFACE.md`.
+ *
+ * **`AVATAR` moved to `../call/character-asset.ts` at P2-T06**, so the call layout can
+ * gate it with `ModelConsent` the way the voice models are gated. Re-exported here
+ * unchanged so this page and `/spike/avatar` need no edits.
  */
 
-export interface AssetDownload {
-  readonly label: string;
-  /** SPDX where there is one, and the honest name where there is not. */
-  readonly licence: string;
-  /** Exact bytes, not an estimate. */
-  readonly bytes: number;
-  readonly sourceUrl: string;
-  readonly downloadUrl: string;
-  /** Who to credit, even when the licence says credit is unnecessary. */
-  readonly author: string;
-  /** What the licence actually permits, in one line, for the person deciding. */
-  readonly terms: string;
-}
+import { AVATAR, type AssetDownload } from '../call/character-asset';
+
+export { AVATAR };
+export type { AssetDownload };
 
 const RAW = 'https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages';
-
-export const AVATAR: AssetDownload = {
-  label: 'VRM1_Constraint_Twist_Sample (placeholder character)',
-  licence: 'VRM Public License 1.0 — not Creative Commons',
-  bytes: 10_776_032,
-  sourceUrl: 'https://github.com/pixiv/three-vrm',
-  downloadUrl: `${RAW}/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm`,
-  author: 'pixiv Inc. — (c) 2022',
-  terms: 'Use by anyone, redistribution and modification allowed, credit not required.',
-};
 
 export const IDLE_CLIP: AssetDownload = {
   label: 'test.vrma (animation loader check, not an idle)',

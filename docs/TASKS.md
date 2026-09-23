@@ -138,7 +138,17 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-12 · Pick her animation clips (P2-T03) · **step 4 done 2026-09-23** (Blender, the VRM add-on and the Blender MCP installed; the table and standing/sitting still open)
+### R-12 · Pick her animation clips (P2-T03) · **answered 2026-09-23** — pack in place, Blender 5.2 + VRM add-on + MCP installed
+
+**Result.** The Standard pack is one file, `Unreal-Godot/UAL1_Standard.glb` (43 clips, CC0,
+UE-style skeleton of 65 bones incl. fingers; `_RM` has root motion, the plain one does not —
+use the plain one). **Rick: `Idle_Loop` (2.50 s) for `idle`**, and nothing in the free pack
+fits the gestures — it is locomotion, combat and props. Read from the file: **`Idle_Talking_Loop`
+(2.93 s) fits `talk`**, and `listen` reuses `Idle_Loop` (the life layer carries attention).
+The eight gestures are **none** for now: head ones procedural as planned, the rest wait for a
+second source (Pro pack or another CC0 library). `Sitting_Idle_Loop`/`Sitting_Talking_Loop`
+exist, so sitting stays possible; **standing — Rick confirmed 2026-09-23.**
+
 **Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that
 retargets them onto a VRM and exports `.vrma` (the format the renderer loads), plus the
 runtime blend graph. Nothing here is code. About 30–45 minutes, most of it browsing.

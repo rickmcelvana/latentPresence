@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
+import { FakeAvatarRenderer } from '@latentpresence/avatar';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
@@ -16,6 +17,18 @@ afterEach(cleanup);
 
 async function settle(): Promise<void> {
   for (let i = 0; i < 50; i += 1) await Promise.resolve();
+}
+
+/** `CallStage`'s test seam (P2-T06): every test here renders the video-call layout, which
+ * mounts a renderer for the stage behind the scenes. The real `VrmAvatarRenderer` needs
+ * WebGL, which jsdom does not have — this fake keeps every test in this file exactly as
+ * fast and network-free as it always was. */
+function fakeCreateRenderer(): FakeAvatarRenderer {
+  return new FakeAvatarRenderer();
+}
+
+function setViewportWidth(width: number): void {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width, writable: true });
 }
 
 function memoryStorage(): Storage {
@@ -113,7 +126,7 @@ describe('ChatPage — the persona', () => {
         yield { type: 'finish', reason: 'stop', usage: null };
       },
     });
-    render(<ChatPage buildProvider={provider} deps={testDeps({ storage })} />);
+    render(<ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello' } });
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
     await waitFor(() => expect(seen.length).toBe(1));
@@ -147,7 +160,7 @@ describe('ChatPage — the text box', () => {
       { type: 'text-delta', text: 'Hi.' },
       { type: 'finish', reason: 'stop', usage: null },
     ]);
-    render(<ChatPage buildProvider={provider} deps={deps} />);
+    render(<ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={deps} />);
     const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
 
     fireEvent.change(textbox, { target: { value: 'hello' } });
@@ -177,7 +190,7 @@ describe('ChatPage — the text box', () => {
       ],
       { promise: gate, after: 1 },
     );
-    render(<ChatPage buildProvider={provider} deps={deps} />);
+    render(<ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={deps} />);
     const textbox = screen.getByRole('textbox');
 
     fireEvent.change(textbox, { target: { value: 'go' } });
@@ -203,7 +216,7 @@ describe('ChatPage — voice (P1-T15)', () => {
     const storage = memoryStorage();
     seedConfigured(storage);
     const deps = testDeps({ storage });
-    render(<ChatPage buildProvider={scriptedProvider([])} deps={deps} />);
+    render(<ChatPage buildProvider={scriptedProvider([])} createRenderer={fakeCreateRenderer} deps={deps} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
     // The panel itself is a lazy chunk: the second button only exists once it has loaded.
@@ -226,7 +239,7 @@ describe('ChatPage — as main.tsx mounts it', () => {
     ]);
     render(
       <StrictMode>
-        <ChatPage buildProvider={provider} deps={testDeps({ storage })} />
+        <ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />
       </StrictMode>,
     );
     const textbox = screen.getByRole('textbox');
@@ -244,7 +257,7 @@ describe('ChatPage — as main.tsx mounts it', () => {
       release = resolve;
     });
     const provider = scriptedProvider([{ type: 'text-delta', text: 'Late.' }, { type: 'finish', reason: 'stop', usage: null }], { promise: gate, after: 0 });
-    render(<ChatPage buildProvider={provider} deps={testDeps({ storage })} />);
+    render(<ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
     const textbox = screen.getByRole('textbox');
     fireEvent.change(textbox, { target: { value: 'go' } });
     fireEvent.keyDown(textbox, { key: 'Enter' });
@@ -261,7 +274,7 @@ describe('ChatPage — transport failure', () => {
     const deps = testDeps({ storage, probe: async (): Promise<EndpointProbe> => ({ kind: 'unreachable' }) });
     // No `buildProvider` override: the real `chatLlmProvider` runs, so `resolveTransport`
     // really executes against the stubbed `probe`.
-    const { container } = render(<ChatPage deps={deps} />);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={deps} />);
     const textbox = screen.getByRole('textbox');
 
     fireEvent.change(textbox, { target: { value: 'hi' } });
@@ -270,5 +283,64 @@ describe('ChatPage — transport failure', () => {
 
     expect(container.textContent).toContain('The language model failed:');
     expect(container.textContent).toContain('pnpm companion');
+  });
+});
+
+describe('ChatPage — the call layout (P2-T06)', () => {
+  const ORIGINAL_INNER_WIDTH = window.innerWidth;
+
+  afterEach(() => {
+    setViewportWidth(ORIGINAL_INNER_WIDTH);
+  });
+
+  it('the transcript drawer starts closed below 1440 px', () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('the transcript drawer starts open at 1440 px and up', () => {
+    setViewportWidth(1440);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+  });
+
+  it('the Transcript button toggles the drawer open and shut', () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+  });
+
+  it('the Text button hides and shows the text box', () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    expect(screen.getByRole('textbox')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+    expect(screen.queryByRole('textbox')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+    expect(screen.getByRole('textbox')).toBeTruthy();
+  });
+
+  it('Mute is disabled with no call running', () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+
+    expect((screen.getByRole('button', { name: 'Mute' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

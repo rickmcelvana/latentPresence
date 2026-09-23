@@ -58,6 +58,9 @@
   --gap-lg: 24px;
   --gap-xl: 40px;
   --drawer-width: 380px;
+  /** The call layout's controls bar (P2-T06): the transcript drawer and the PiP both
+   * measure their own height against this so neither one sits under the bar. */
+  --call-bar-height: 72px;
 }
 
 * {
@@ -1219,12 +1222,6 @@ kbd {
   color: var(--text-muted);
 }
 
-.chat-box {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-sm);
-}
-
 .chat-textarea {
   min-height: 64px;
 }
@@ -1263,3 +1260,216 @@ kbd {
   gap: var(--gap-md);
 }
 
+
+/* --- Call layout (P2-T06) ---------------------------------------------------
+   `/chat` as a video call: the stage fills the viewport, the controls bar sits
+   along the bottom, the transcript is a drawer on the right and the user's own
+   camera is a corner PiP. Responsive from 1024 px to 4K — sizes below come from
+   `clamp()` against the viewport rather than a fixed breakpoint table. */
+
+.call-page {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.call-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.call-stage-loading {
+  background: var(--bg);
+}
+
+.call-stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.call-stage-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-lg);
+  background: var(--scrim);
+}
+
+.call-stage-overlay .consent-screen {
+  width: min(480px, 100%);
+}
+
+.call-stage-overlay-minimal {
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: var(--gap-lg);
+  background: none;
+}
+
+/* --- PiP: the user's own camera (decision 8) -------------------------------
+   16:9, bottom-left, mirrored so it reads like a mirror rather than a security
+   camera. Nothing here ever reads a pixel from the stream — see `useUserCamera`. */
+
+.call-pip {
+  position: absolute;
+  left: var(--gap-lg);
+  bottom: calc(var(--call-bar-height) + var(--gap-lg));
+  width: clamp(160px, 14vw, 480px);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-bright);
+  box-shadow: var(--shadow-card);
+  background: var(--panel);
+  z-index: 3;
+}
+
+.call-pip-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.call-pip-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* --- Transcript drawer (decision 9) -----------------------------------------
+   Overlays the stage rather than resizing it; closed is `hidden`, not
+   unmounted, so its scroll position survives being toggled shut. */
+
+.call-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: var(--call-bar-height);
+  z-index: 2;
+  display: flex;
+  width: clamp(320px, 26vw, 640px);
+  padding: var(--gap-md);
+}
+
+.call-drawer-closed {
+  display: none;
+}
+
+.call-drawer .transcript-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.call-drawer .transcript-log {
+  flex: 1;
+  max-height: none;
+}
+
+/* --- Voice card and text dock -----------------------------------------------
+   Both dock just above the controls bar rather than sitting inline in a
+   column — the call bar's Start voice button opens the card; `VoicePanel`
+   drives what is inside it exactly as it always has. */
+
+.call-voice-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--call-bar-height) + var(--gap-md));
+  transform: translateX(-50%);
+  z-index: 3;
+  width: min(480px, calc(100vw - 2 * var(--gap-lg)));
+}
+
+.call-voice-card .panel {
+  margin: 0;
+}
+
+.call-text-dock {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--call-bar-height) + var(--gap-md));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  width: min(640px, calc(100vw - 2 * var(--gap-lg)));
+  padding: var(--gap-md);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+/* --- Controls bar -----------------------------------------------------------
+   One row, centred, over the bottom of the stage. */
+
+.call-controls-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--gap-md);
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  /* One row, always. `left: 50%` leaves an absolutely placed box only half the page to
+     shrink into, so without `max-content` it wrapped at 1024 px and pushed Settings off
+     the bottom of the screen. */
+  flex-wrap: nowrap;
+  width: max-content;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-sm);
+  height: calc(var(--call-bar-height) - var(--gap-md));
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(8px);
+}
+
+.call-control-btn[aria-pressed='true'] {
+  background: var(--accent-glow);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Everything floating over the stage is sized in px for 1080p; on a 1440p or 4K screen it
+   would sit tiny in the middle of the picture (P2-T06's done-when is 1024 px to 4K). One
+   zoom per step scales each overlay whole — text, padding and its offset from the bar
+   together — where rescaling every length by hand would miss one. The canvas is not an
+   overlay and is never zoomed: its drawing buffer follows `pixel-ratio.ts`. */
+.call-drawer,
+.call-voice-card,
+.call-text-dock,
+.call-controls-bar,
+.call-stage-overlay,
+.call-pip {
+  zoom: var(--call-ui-zoom);
+}
+
+.call-page {
+  --call-ui-zoom: 1;
+}
+
+@media (min-width: 2400px) {
+  .call-page {
+    --call-ui-zoom: 1.35;
+  }
+}
+
+@media (min-width: 3200px) {
+  .call-page {
+    --call-ui-zoom: 1.8;
+  }
+}
