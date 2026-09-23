@@ -501,3 +501,9 @@ Did: `ChatSession.setVoice` (typed turn → `Reply`, heard rule on Stop once aud
 Left: R-17 (Rick hears it); R-13 laptop half, R-1, R-9; R-3; C-7.
 Next: P2-T09 Kokoro word timings, then P3-T01.
 Decisions: none new; Speak replies ends when a call starts and is not persisted across reloads. Click-through: Browser pane vs glm-5.2:cloud — spoken reply 13.2 s, analyser 255/0, Stop silent < 150 ms with heard prefix, switch off/on.
+
+## 2026-09-23 claude — R-17 passed; P2-T09 Kokoro word timings
+Did: R-17 recorded (D-29). P2-T09: probed the timestamped export (outputs `waveform` + `durations`, 600-sample frames, audio bit-identical), `word-timings.ts` (DP word↔phoneme-group aligner, hexgrad's start rule), `speakTimed` (wraps kokoro-js's model call), worker → provider → `Reply` carry words; catalog on the timestamped repo. live:cues 91% within 100 ms (estimate 35%); browser 48/48 words. abaab0a, 1109 tests.
+Left: R-13 laptop half, R-1, R-9 (laptop); R-3; C-7. Old plain-Kokoro caches (node and browser) can be deleted from /settings or the transformers cache when Rick wants.
+Next: P3-T01 affect engine core.
+Decisions: none new; the reference's −3 frame offset kept because it measured best. Click-through: /chat Speak replies with fp32 timestamped — consent asked afresh, 4 sentences timed.

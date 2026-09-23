@@ -1919,3 +1919,33 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   A tag at a sentence's start is scheduled at `voicedStartMs`, measured from the audio.
 - **Backend word timings were on the untrimmed clock** (latent until a TTS reports words):
   `trimToVoice` cuts ~260 ms of Kokoro's lead; `Reply` now shifts words by the cut.
+
+## Kokoro word timings — measured 2026-09-23 (P2-T09)
+
+- **`onnx-community/Kokoro-82M-v1.0-ONNX-timestamped`** (HF API tree, 2026-09-23): same
+  file set as the plain export; `onnx/model.onnx` **325,532,171** B, `model_fp16.onnx`
+  163,232,776, `model_quantized.onnx` (q8) **92,361,055** — 61–1,964 B under the plain ones.
+  Voices present (`af_heart` …). README documents no outputs.
+- **Graph (onnxruntime-node, q8): inputs `input_ids`, `style`, `speed`; outputs `waveform`,
+  `durations`** (float32 `[1, tokens]`, one per input token including both pads). kokoro-js
+  1.2.1 calls `this.model(inputs)` and keeps only `waveform`; wrapping that call keeps both.
+- **Audio is bit-identical to the plain export** (q8, af_heart, 124,800 samples, max |diff| 0).
+- **Units:** frames of 600 samples at 24 kHz (25 ms). `max(1, round(d))` summed = waveform
+  length / 600 exactly ("Oh, hello!": 62 frames, 37,200 samples). One token per phoneme
+  character (checked: ids = phoneme chars + 2 on every probe sentence).
+- **Words ≠ phoneme groups:** espeak writes "in the" as `ɪnðɪ`, "25" as two groups, "$4.50"
+  as five (`fˈoːɹ dˈɑːlɚz ænd fˈɪfti sˈɛnts`), keeps "—" as a group, drops the dots of "U.S."
+  and "Dr.". Index pairing failed on 4 of 7 probe sentences → a DP aligner (`word-timings.ts`).
+- **hexgrad's `join_timestamps`** (`kokoro/pipeline.py`, read 2026-09-23): start = first token
+  (stress marks included — "ˈ" carries ~3 frames), a space split half to each side, pad less
+  3 frames (`# TODO: Is -3 an appropriate offset?`). Without these, every word was ~130 ms late
+  (mean +132 ms, 44% within 100 ms).
+- **`pnpm live:cues`** (q8, 9 sentences, 110 words, truth = Whisper base timestamped):
+  **durations 100/110 within 100 ms (91%), |error| median 31 ms, p90 98 ms, mean +31 ms**;
+  the by-character estimate on the same words 38/110 (35%), median 138 ms.
+- **The misses are mostly Whisper's**, checked by level (10 ms windows): Whisper starts a
+  word that follows a pause at the pause's head. "because": Whisper 1580 ms (end of
+  "second,"), silence −60 dB to 1920, sound at ~1940, Kokoro 1868. "until" and "that" the
+  same: Kokoro 67–73 ms before the sound, Whisper 280–440 ms before it.
+- **Browser (WebGPU fp32, Chrome in the Browser pane):** every chunk of a live 4-sentence
+  reply carried words, 48 of 48 text words, dashes included.
