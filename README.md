@@ -4,7 +4,7 @@ A conversational AI you talk to face to face. A realistic-styled, full-body char
 
 Site: https://latentpresence.com · App: https://app.latentpresence.com
 
-**Status: Phase 2, avatar and stage — under way; Phase 1's last check still open.** A typed chat, a settings page and **voice on `/chat`** work today (P1-T15, 2026-09-22); Phase 1 closes on a five-minute spoken conversation (R-9) held from a real build by a person. In Phase 2 the character renders, breathes, blinks, looks around, lip-syncs to her voice and stands in a lit room with four camera framings — on a dev page (`/dev/avatar`) until the video-call layout (P2-T06) puts her in `/chat`. See `PROJECT.md` for the current task.
+**Status: Phase 2, avatar and stage — under way; Phase 1's last check still open.** A typed chat, a settings page and **voice on `/chat`** work today (P1-T15, 2026-09-22); Phase 1 closes on a five-minute spoken conversation (R-9) held from a real build by a person. In Phase 2 she arrived in `/chat` as a video call: a full-body character in a lit room who breathes, blinks, looks around, lip-syncs to her voice, stands in idle and talking animations (CC0, Quaternius), and shows the emotions and gestures the model writes — with a transcript drawer, mute, and your camera as a picture-in-picture. See `PROJECT.md` for the current task.
 
 ## Quick start
 

@@ -195,7 +195,7 @@ Done when: 60 fps at 1080p on Rick's machine and 30 fps on an integrated GPU. **
 Layout: character full frame, transcript drawer, controls bar (mute, cam, text), user camera PiP when enabled (no processing yet).
 Done when: responsive from 1024 px to 4K.
 
-### P2-T07 Tag to animation bridge — owner: main (built 2026-09-23; `packages/avatar/src/cues`, `src/mappings`; R-16 is the look; done-when met for start-of-sentence tags, mid-sentence waits on P2-T09)
+### P2-T07 Tag to animation bridge — owner: main (built 2026-09-23; `packages/avatar/src/cues`, `src/mappings`; R-16 passed (D-28); done-when met for start-of-sentence tags, mid-sentence waits on P2-T09)
 Depends: P1-T04, P2-T01. `[emote:]` and `[gesture:]` events scheduled at their audio time offsets; mapping tables in `packages/avatar/mappings/`.
 Done when: a scripted response with five tags fires each within 100 ms of its word.
 **As built:** the unit test with backend word timings passes (and was mutation-checked). **On real Kokoro speech it does not, for mid-sentence tags**: `pnpm live:cues` scores every word against Whisper's word times and the by-character estimate is |error| median 133 ms, p90 281, 36 of 101 within 100 ms — Kokoro pauses at punctuation and drifts in rate, and a pause-aware variant (gaps pinned to punctuation) only reached 41 of 101, so it was not kept. Start-of-sentence tags, which the persona prompt asks for and the pilot runs show, land on the measured voice onset. Kokoro's shipped ONNX outputs only `waveform`.

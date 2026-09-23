@@ -489,3 +489,9 @@ Did: relaxed the idle's fists (`relaxFingers`); P2-T08 added on Rick's call (typ
 Left: R-16 (Rick's look at emotes and gestures). R-13 laptop half, R-1, R-9.
 Next: P2-T08 typed replies spoken; P2-T09 Kokoro timestamped export for real word timings.
 Decisions: none new beyond the ADR-30 amendment; pause-aware estimate tried and dropped (41/101). Click-through: /dev/avatar — tilt-head, nod, shrug, think, joy played in the Browser pane.
+
+## 2026-09-23 claude — R-16 passed; docs brought up to date for the laptop
+Did: R-16 recorded (D-28, passed on all); R-12 moved to Done (D-27); TASKS.md gained a "Laptop session" block (setup, then R-13, R-1, R-9) and R-9's preview command was fixed (`pnpm exec vite preview` ran from the root, with no config); README status, PROJECT (P2-T07 done, tasks pointer, phase line, stale P2-T06 guard note, sessions) and the plan caught up.
+Left: the laptop session (R-13 laptop half, R-1, R-9) — Rick, today. R-3 (doc I owe). C-7.
+Next: P2-T08 typed replies spoken aloud (`main`), then P2-T09 Kokoro word timings, then P3-T01.
+Decisions: none. Click-through: n/a (docs only).

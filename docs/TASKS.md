@@ -82,22 +82,31 @@ right.
 
 ## Open — rick
 
-### R-16 · Does she mean it? Emotes and gestures (P2-T07) · ~10 minutes
-**Why:** the model's `[emote:…]` and `[gesture:…]` tags now move her face and head.
-Whether the motions read right — and are the right size — is yours.
+### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
+All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
+Do them in this order: two quick frame-rate readings first, then the long conversation.
 
-```bash
-pnpm dev
-```
-1. `http://localhost:5173/dev/avatar` → agree → **Camera** `bust`. In **Gaze and clips**, pick each
-   **Tag** and press **Play tag**: nod, shake-head, tilt-head, lean-in, shrug, think; then a few
-   emotes (joy, concern, surprise, amusement). `wave` and `open-hands` say they need a clip.
-   Too big, too small, wrong way?
-2. `http://localhost:5173/chat` → **voice** call (typed replies are silent until P2-T08). She should
-   show a feeling at the start of each answer and sometimes nod or tilt, and relax back after.
+**Setup, once** (Windows; skip what the laptop already has):
+1. Install **Git**, **Node.js 22 LTS** and **Chrome or Edge** (WebGPU is required — Firefox won't do).
+2. In a terminal:
+   ```bash
+   npm install -g pnpm@12.3.4
+   ```
+   ```bash
+   git clone https://github.com/rickmcelvana/latentPresence.git
+   ```
+   (or `git pull` in an existing checkout), then in the checkout:
+   ```bash
+   pnpm install
+   ```
+3. **Plug the laptop in** and set Windows power mode to **Best performance** for the readings —
+   on battery an integrated GPU throttles, and the number would be the power plan's.
+4. Find the GPU name: **Task Manager → Performance → GPU 0** (the name is top right).
 
-**Report:** per gesture and emote, fine / too much / too little / wrong; and whether the call felt
-more alive or more fidgety.
+Then **R-13**, **R-1** and **R-9** below. Nothing from the desktop carries over: the laptop's
+browser asks for the character and the voice models again, and **`/settings` needs the language
+model set up again** — the same way as on the desktop (for `glm-5.2:cloud`, Ollama installed and
+signed in on the laptop), then **Test connection** in `/settings` before starting R-9.
 
 ### R-1 · Avatar frame rate on a different class of GPU
 **Why:** every frame-rate number we have is from one RTX 5060 Ti. The interesting machine is
@@ -106,7 +115,9 @@ a worse one — a laptop, or anything with integrated graphics. Not urgent; noth
 ```bash
 pnpm dev
 ```
-Then open `http://localhost:5173/spike/avatar` on the other machine and let it run ~30 s.
+Then open `http://localhost:5173/spike/avatar` on the laptop, agree to the download, and let it run
+~30 s with the tab visible. (This is Spike B's bare avatar, so it pairs with R-13's stage reading:
+the difference between the two is what the room costs on that GPU.)
 
 **Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
 **Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
@@ -120,9 +131,12 @@ unlikely to pass as written (R-8 measured 1.8–9.2 s end to end with real model
 
 **Run:**
 ```bash
-pnpm build && pnpm exec vite preview --port 4173   # or: pnpm dev
+pnpm build
 ```
-Open `/chat`, press **Start voice**, agree to the download on the first call, and talk to her
+```bash
+pnpm --filter @latentpresence/web run preview -- --port 4173
+```
+Open `http://localhost:4173/chat` (or use `pnpm dev` and port 5173 if the build gives trouble), press **Start voice**, agree to the download on the first call, and talk to her
 for five minutes, interrupting often. **A production build is the point** — that is the half
 nobody has checked, and `/chat` is the same page in both. Two things to expect: the first
 call fetches **21.6 MB of onnxruntime wasm** from our server *before* Silero's 2.2 MB starts,
@@ -155,63 +169,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-12 · Pick her animation clips (P2-T03) · **answered 2026-09-23** — pack in place, Blender 5.2 + VRM add-on + MCP installed
-
-**Result.** The Standard pack is one file, `Unreal-Godot/UAL1_Standard.glb` (43 clips, CC0,
-UE-style skeleton of 65 bones incl. fingers; `_RM` has root motion, the plain one does not —
-use the plain one). **Rick: `Idle_Loop` (2.50 s) for `idle`**, and nothing in the free pack
-fits the gestures — it is locomotion, combat and props. Read from the file: **`Idle_Talking_Loop`
-(2.93 s) fits `talk`**, and `listen` reuses `Idle_Loop` (the life layer carries attention).
-The eight gestures are **none** for now: head ones procedural as planned, the rest wait for a
-second source (Pro pack or another CC0 library). `Sitting_Idle_Loop`/`Sitting_Talking_Loop`
-exist, so sitting stays possible; **standing — Rick confirmed 2026-09-23.**
-
-**Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that
-retargets them onto a VRM and exports `.vrma` (the format the renderer loads), plus the
-runtime blend graph. Nothing here is code. About 30–45 minutes, most of it browsing.
-
-**1 · Download the pack (free).** Quaternius **Universal Animation Library**, CC0 —
-https://quaternius.itch.io/universal-animation-library → *Download Now* → enter **0** (or
-anything) → **Standard** (15 MB). *Pro* ($9.99+) only adds more clips; *Source* ($14.99+) adds
-the `.blend` — neither is needed. Unzip it to:
-```
-Z:\_dev\latentPresence\assets\clips\source\
-```
-That folder is gitignored: the pack stays on your machine, and only the retargeted `.vrma`
-files and a manifest get committed.
-
-**2 · Choose the clips.** Browse them in the viewer at https://quaternius.com/animviewer.html,
-and fill this in with the clip names exactly as the pack spells them (one per slot; two if
-you like both — "none" is a fine answer):
-
-| slot | what it is for | your pick |
-|---|---|---|
-| `idle` | standing, doing nothing, loops — the base of everything | |
-| `listen` | idle while you talk: attentive, a little still | |
-| `talk` | idle while she talks: light movement, loops | |
-| `wave` | hello / goodbye | |
-| `shrug` | "I don't know" | |
-| `open-hands` | explaining, presenting | |
-| `think` | hand to chin, or looking up | |
-| `lean-in` | interest | |
-| `nod`, `shake-head`, `tilt-head` | head only — **probably not in the pack**; if not, I do these procedurally, like the life layer's head | |
-
-Those eight gestures are the `[gesture:…]` tags the model can write (`CharacterGestureSchema`).
-Avoid clips that walk, turn or travel — she stays on her mark.
-
-**3 · Standing or sitting?** Everything so far assumes **standing** — the life layer shifts her
-weight between legs, and P2-T05's "full" camera preset shows her whole. Sitting at the desk is
-the other option and changes which clips fit. **Recommended: standing.** Say if you want sitting.
-
-**4 · Install Blender** (the script runs it headless; you only open it once). Blender **4.2 or
-later** from https://www.blender.org/download/ — the VRM add-on supports up to 5.2. Then the
-add-on: start Blender → **Edit → Preferences → Get Extensions** → if asked, **Allow Online
-Access** → search **VRM** → **VRM format** → **Install**. (Offline alternative: download the
-zip from the Blender Extensions Platform, **do not unzip it**, and use **Add-ons → ˅ → Install
-from Disk**.)
-
-**Report:** the filled-in table, standing or sitting, and the Blender version you installed.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -233,6 +190,15 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-28 · R-16: emotes and gestures** — Rick 2026-09-23: **passed on all** — "the gestures and
+  emotes are good", the voice chat good, "not too fidgety". P2-T07's mappings and amplitudes
+  stand unchanged. (Mid-sentence tag timing on Kokoro is P2-T09's, not a look problem.)
+
+- **D-27 · R-12: pick her animation clips** — Rick 2026-09-23: Quaternius UAL Standard downloaded to
+  `assets/clips/source/`; **`Idle_Loop`** for idle, nothing in the free pack for the gestures;
+  **standing**; Blender 5.2 + VRM add-on + Blender's MCP installed. From the file: `Idle_Talking_Loop`
+  for talk. The retarget turned out to need no Blender (ADR-31).
 
 - **D-26 · R-15: does her body look right?** — Rick 2026-09-23: no clipping, twists or foot
   sliding; voice chat's idle → talk → idle "looks smooth". **The idle's fists** ("like she's
