@@ -464,3 +464,9 @@ Left: R-13 laptop half, R-1, R-9 (laptop); R-12 (clips + Blender). **Proposed by
 Next: P2-T06 video-call layout (`sub`), in a fresh session.
 Decisions: none. Click-through: n/a.
 
+## 2026-09-23 claude — R-13 re-read at 120 Hz; Blender tooling in place
+Did: R-13 desktop half corrected to **120.5 fps median, 119.0 p5, worst 8.5 ms at 1080p, shadows on = off** (the 59.9 was a 60 Hz refresh after a clean driver install); ADR-03, plan, TASKS, PROJECT updated. Recorded Blender + VRM add-on + Blender's lab MCP server as installed (R-12 step 4).
+Left: R-12's clip table and standing/sitting; R-13 laptop half, R-1, R-9 (laptop).
+Next: P2-T06 video-call layout (`sub`), fresh session. P2-T03 once R-12's table is in — with the MCP for inspection.
+Decisions: none. Click-through: n/a.
+

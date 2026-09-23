@@ -131,12 +131,14 @@ pnpm dev
 **Report:** the reading line for each (median fps, 5th percentile, worst frame, canvas size) and
 the GPU name. Pass is a median of 30+ on the laptop.
 
-**Desktop, 2026-09-23 (Rick):** `full`, 1080p, shadows on **and** off identical — **59.9 fps
-median · 59.5 fps 5th percentile · worst frame 16.9 ms · 1920×1078**. That is the display's
-60 Hz refresh, not the GPU: Spike B read 120.5 fps on this card, and shadows made no
-difference. **Passes the 60 fps half; says nothing about headroom.**
+**Desktop, 2026-09-23 (Rick), RTX 5060 Ti, `full`, 1080p (1920×1078):** first read at a 60 Hz
+refresh left over from a clean driver install (59.9 fps, capped), then re-read at 120 Hz —
+**shadows on and off identical: 120.5 fps median · 119.0 fps 5th percentile · worst frame
+8.5 ms.** The same median Spike B read with no room at all: the stage and its shadows cost
+nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
+passes with 2× margin.**
 
-### R-12 · Pick her animation clips (P2-T03) · **ready**
+### R-12 · Pick her animation clips (P2-T03) · **step 4 done 2026-09-23** (Blender, the VRM add-on and the Blender MCP installed; the table and standing/sitting still open)
 **Why:** P2-T03 is `human + sub`: you choose the clips, I write the Blender script that
 retargets them onto a VRM and exports `.vrma` (the format the renderer loads), plus the
 runtime blend graph. Nothing here is code. About 30–45 minutes, most of it browsing.

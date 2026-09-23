@@ -1853,3 +1853,17 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   for a headless retarget.
 - This machine has Blender config folders for 2.90 and 3.6 but **no installed Blender**.
 
+## Blender MCP server — installed 2026-09-23 (P2-T03 prep)
+
+- **Source:** Blender's own lab project, https://www.blender.org/lab/mcp-server/ — installed
+  by Rick as a Blender add-on, alongside the VRM add-on, on the dev PC.
+- **Connection:** the Claude Code tools (`mcp__blender__*`) reach a **running** Blender at
+  `localhost:9876`; with Blender closed a call fails with "Cannot connect to Blender at
+  localhost:9876" (seen 2026-09-23). It offers `execute_blender_code` (arbitrary `bpy`, i.e.
+  full control of that Blender), scene and object summaries, viewport/window screenshots,
+  and bundled API/manual docs. Its own instructions say to prefer dedicated tools over
+  `execute_blender_code` and not to modify objects destructively without confirmation.
+- **Use in this repo:** inspection and trial retargets. P2-T03's retarget still lands as a
+  committed script run by `blender --background --python`, so clips rebuild without the MCP.
+- Blender's version was not read (Blender was closed); record it when P2-T03 starts.
+

@@ -122,9 +122,10 @@ learned under it.
   by ~50–60 ms (R-11, D-24), against an 80 ms bar.
 - **The life layer and lip sync ride on top of clips** through `AdditivePose`, which undoes
   itself each frame — a mixer only writes the bones its clip animates (P2-T02).
-- **With the full stage the same card holds 60 fps at 1080p**, shadows on or off (R-13,
-  2026-09-23) — but that reading is the display's 60 Hz cap, so it is a floor, not a
-  measure of headroom. The different-GPU reading is still owed (R-1, R-13's laptop half).
+- **With the full stage the same card holds 120.5 fps median at 1080p**, shadows on or off,
+  worst frame 8.5 ms (R-13, 2026-09-23, at 120 Hz) — Spike B's bare-avatar median exactly, so
+  the room, three lights and a shadow map cost nothing measurable and the page is still
+  display-bound. The different-GPU reading is still owed (R-1, R-13's laptop half).
 
 ## ADR-04 Vercel AI SDK + MCP
 
