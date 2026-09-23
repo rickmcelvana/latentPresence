@@ -513,3 +513,9 @@ Did: `packages/core/src/affect` — params (baseline, half-lives, gains, EMOTION
 Left: R-13 laptop half, R-1, R-9 (laptop); R-3; C-7.
 Next: P3-T02 affect → expression and gesture (`sub`: brief, then a Sonnet subagent), then P3-T03.
 Decisions: none new — ADR-12 as written; all parameters hand-set for P3-T02's review. Click-through: n/a (core only).
+
+## 2026-09-23 claude — P3-T02 affect to face, gaze and gestures (sub)
+Did: brief `docs/briefs/P3-T02.md`; a Sonnet subagent built `packages/avatar/src/affect` (regions, REGION_BODY, affectToBody, modulateMood), `LifeLayer.setModulation`, the `/dev/avatar` Affect panel and the ten review states. Review: Drive off by default and on when used; core baseline imported, not copied; anxious/disdainful faces given preset components (placeholder has no brows/squint). Checked in the Browser pane (hidden pane: frames only on screenshots). c90d2a7, 1150 tests.
+Left: R-18 (Rick's ten-state review); R-13 laptop half, R-1, R-9; R-3; C-7.
+Next: P3-T03 affect to voice and wording.
+Decisions: none new; wiring affect into /chat left for after R-18 (no task yet). Click-through: /dev/avatar Affect — exuberant, hostile, bored, anxious screenshotted; readout live.

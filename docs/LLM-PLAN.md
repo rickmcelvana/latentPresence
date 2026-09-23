@@ -219,7 +219,7 @@ Done when: with the switch on, a typed turn is spoken with lip sync and the talk
 Done when: property tests confirm bounded state and decay to baseline; documented in `docs/affect.md`.
 **Met:** seeded property tests over 300 random runs (out-of-range inputs included) — in schema at every step, within 0.01 of baseline a day later, never drifting once nothing is felt, identical however often ticked; boundedness and decay mutation-checked. Bounded by construction (saturating push), not by clamping. `[emote:x]` tags and user affect (by empathy) already map to inputs; nothing reads the state yet — P3-T02/T03. Every number hand-set, for P3-T02's review.
 
-### P3-T02 Affect to expression and gesture mapping — owner: sub
+### P3-T02 Affect to expression and gesture mapping — owner: sub (built 2026-09-23; `packages/avatar/src/affect`, `/dev/avatar` Affect panel; R-18 open)
 Depends: P3-T01, P2-T07. Tables from affect regions to expression weights, gesture bias, gaze policy, idle clip selection.
 Done when: the debug overlay shows the mapping live; Rick signs off on a 10-state review.
 

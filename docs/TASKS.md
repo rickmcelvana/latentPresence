@@ -82,6 +82,23 @@ right.
 
 ## Open — rick
 
+### R-18 · Her moods, ten states · ~10 minutes (P3-T02's sign-off)
+**Why:** P3-T02 maps the affect engine's mood to her resting face, gaze habit and gestures;
+every number is hand-set and this is where they meet a person.
+1. `pnpm dev`, open `http://localhost:5173/dev/avatar`, load the character, set **Stage →
+   Camera** to `bust`.
+2. In the **Affect** panel, pick each **Review** state in turn and watch her for ~20 seconds:
+   `neutral`, `exuberant`, `relaxed`, `dependent`, `docile`, `hostile`, `anxious`, `disdainful`,
+   `bored`, `joy flash`. The face is meant to be subtle (the strong faces come from tags on
+   top); the gaze habit — how often and where she looks away, how fast she blinks and
+   breathes — is half of it. **Perform bias** plays the gesture that mood reaches for.
+3. Optional: **Source → engine**, press an emotion button or two and watch the mood drift
+   back over a few minutes.
+
+**Report:** per state — right, too strong, too weak, or wrong — and anything that reads as a
+different mood than its name. Note: the placeholder model has no brow shapes, so the brows the
+tables ask for (anxious, dependent) can't show on it.
+
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
