@@ -431,3 +431,10 @@ Next: P2-T02 procedural life layer (breathing, blink, gaze drift) — it uses `b
 Decisions: none new; viseme channels and one-shot-resolves-on-replace are recorded in the plan entry.
 Click-through: passed in the Browser pane (presets, fallback, `aa`, gaze, clip). A person looking at it is part of P2-T02's 60 s recording.
 
+## 2026-09-22 claude — P2-T02 procedural life layer
+Did: `LifeLayer` (breathing, blinks, gaze policy, weight shifts, head follow) pure and seeded; `AdditivePose` on the renderer; Life panel with Record 60 s. 973 → 1002 tests, gate green, committed ea16ec3.
+Left: **R-10** — Rick watches a minute and says alive or frozen; the Browser pane was hidden, so rAF never ran continuously and the in-page blink readout could not be read here (node tests carry the rates). Rest pose vs clips is P2-T03's.
+Next: R-10 (Rick, any machine), then P2-T03 (clip library — Rick picks CC0 clips) or P2-T04 (lip sync, `sub`).
+Decisions: none new. The step cap (100 ms) is a behaviour, recorded in `LifeLayer.update`.
+Click-through: pending — R-10.
+

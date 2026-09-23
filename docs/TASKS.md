@@ -114,6 +114,26 @@ says "Loading…".
 **Report:** the transcript, the latency badges, and what it felt like after minute three.
 `docs/runs/R-9-conversation-<date>.md`.
 
+### R-10 · Does she look alive? A minute of the life layer · **ready** (P2-T02 landed 2026-09-22)
+**Why:** P2-T02's done-when is *"with no clips playing, the character does not look frozen in
+a 60 s recording reviewed by Rick"*. Every rate is tested in node; whether it reads as a
+person is only decidable by looking. Any machine will do — this one is not about speed.
+
+**Run:**
+```bash
+pnpm dev
+```
+1. Open `http://localhost:5173/dev/avatar`, click **Agree and download** (10.8 MB placeholder).
+2. In **Life**, leave the layer **on**, set **Conversation state** to `listening`.
+3. Keep the tab visible (a hidden tab stops drawing) and click **Record 60 s**.
+4. When it finishes, click **Save the recording**. Optionally repeat with `speaking` and `thinking`.
+5. For contrast, switch **Life layer** to **off** — that is what "frozen" looks like.
+
+**Report:** does she look alive or frozen, and anything that looks wrong: blinks too often or
+too rarely, eyes darting or staring, head moving too much, the sway seasick. Name the state.
+Every dial is one number in `packages/avatar/src/life/params.ts`; say "fewer blinks while
+listening" and I will change the number. The blink readout under the buttons gives the rate.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
