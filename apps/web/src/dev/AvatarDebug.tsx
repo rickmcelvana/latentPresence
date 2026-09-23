@@ -23,12 +23,13 @@ import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/provi
 // Kokoro speech, generated for P1-T14's end-to-end test; dev-only, like this page.
 import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
 import { type FrameResult, FrameRecorder } from '../spikes/frame-rate';
-import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/avatar-consent';
+import { AVATAR, totalAssetBytes } from '../spikes/avatar-consent';
+import { BASE_CLIP_URLS } from '../call/clips';
 
 /**
  * `/dev/avatar` (P2-T01): the VRM renderer behind a debug panel — every expression name
  * the protocol has, what it resolved to on the loaded model, the five mouth shapes, the
- * gaze targets and the one VRMA clip there is.
+ * gaze targets and the base clips (P2-T03: idle and talk).
  *
  * The done-when is "the sample VRM shows all presets", and **Cycle presets** is that in
  * one button: each preset at full weight for a second, in turn, so a person can watch the
@@ -56,7 +57,9 @@ import { AVATAR, AVATAR_ASSETS, IDLE_CLIP, totalAssetBytes } from '../spikes/ava
 
 type Phase = 'consent' | 'loading' | 'ready' | 'failed';
 
-const CLIP_ID = 'test';
+/** Only the character is fetched now: the clips are P2-T03's, served with the app. */
+const DOWNLOADS = [AVATAR];
+const CLIP_IDS = Object.keys(BASE_CLIP_URLS);
 const PRESETS: readonly ExpressionName[] = ['neutral', 'happy', 'angry', 'sad', 'relaxed', 'surprised'];
 const CYCLE_MS = 1000;
 const RECORD_MS = 60_000;
@@ -177,7 +180,7 @@ export function AvatarDebug(): ReactElement {
         setModelExpressions(avatar.modelExpressions());
         setPlan(avatar.expressionPlan());
         try {
-          await avatar.loadClip(CLIP_ID, IDLE_CLIP.downloadUrl);
+          await Promise.all(Object.entries(BASE_CLIP_URLS).map(([id, url]) => avatar.loadClip(id, url)));
         } catch (error) {
           // A missing clip is a note, not a failure: the face is what this page is for.
           setStatus(`Clip failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -330,17 +333,18 @@ export function AvatarDebug(): ReactElement {
     return () => clearTimeout(timer);
   }, [cycling]);
 
+  const [clipId, setClipId] = useState(CLIP_IDS[0] ?? 'idle');
   const playClip = useCallback((loop: boolean) => {
     const avatar = renderer.current;
     if (avatar === null) return;
     setStatus(loop ? 'Clip looping.' : 'Clip playing once…');
     avatar
-      .playClip(CLIP_ID, { loop, crossfadeMs: 250, weight: 1 })
+      .playClip(clipId, { loop, crossfadeMs: 250, weight: 1 })
       .then(() => {
         if (!loop) setStatus('Clip finished.');
       })
       .catch((error: unknown) => setStatus(`Clip: ${error instanceof Error ? error.message : String(error)}`));
-  }, []);
+  }, [clipId]);
 
   useEffect(() => {
     if (phase === 'ready') renderer.current?.setCameraPreset(cameraPreset);
@@ -408,7 +412,7 @@ export function AvatarDebug(): ReactElement {
         <p className="panel-note">
           P2-T01&apos;s <code>VrmAvatarRenderer</code> on the placeholder character. Every
           expression the protocol names, with what it resolved to on this model; the five
-          mouth shapes; the gaze targets; and a VRMA clip. Measures nothing — the frame-rate
+          mouth shapes; the gaze targets; and the base clips. Measures nothing — the frame-rate
           page is <code>/spike/avatar</code>.
         </p>
       </header>
@@ -417,7 +421,7 @@ export function AvatarDebug(): ReactElement {
         <section className="panel spike-consent">
           <div className="panel-header">
             <span className="panel-title">This will download assets</span>
-            <span className="pill pill-accent">{formatMb(totalAssetBytes(AVATAR_ASSETS))} total</span>
+            <span className="pill pill-accent">{formatMb(totalAssetBytes(DOWNLOADS))} total</span>
           </div>
           <p className="panel-note">
             Nothing has been fetched yet. The character carries the VRM Public License 1.0,
@@ -425,7 +429,7 @@ export function AvatarDebug(): ReactElement {
             repository.
           </p>
           <ul className="spike-models">
-            {AVATAR_ASSETS.map((asset) => (
+            {DOWNLOADS.map((asset) => (
               <li className="spike-model" key={asset.downloadUrl}>
                 <span className="spike-model-name">{asset.label}</span>
                 <span className="spike-model-meta">
@@ -542,6 +546,16 @@ export function AvatarDebug(): ReactElement {
                   {GazeTargetSchema.options.map((target) => (
                     <option key={target} value={target}>
                       {target}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Clip</span>
+                <select className="select" onChange={(event) => setClipId(event.target.value)} value={clipId}>
+                  {CLIP_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
                     </option>
                   ))}
                 </select>

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationMachine } from '@latentpresence/core';
+import type { ConversationState } from '@latentpresence/protocol';
 import type { CharacterSource, ModelDescriptor, Viseme } from '@latentpresence/protocol';
 import {
+  BaseClipGraph,
   LifeLayer,
   LipSync,
   MOUTH_SHAPES,
@@ -15,6 +17,7 @@ import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/cons
 import { ConsentScreen } from '../consent/ConsentScreen';
 import type { ActiveCall } from '../voice/VoicePanel';
 import { AVATAR, AVATAR_DESCRIPTOR } from './character-asset';
+import { BASE_CLIP_URLS } from './clips';
 import { computePixelRatio } from './pixel-ratio';
 
 /**
@@ -50,6 +53,9 @@ export interface CallStageRenderer {
   setCameraPreset?(preset: CameraPreset, transitionMs?: number): void;
   setPixelRatio?(ratio: number): void;
   setShadows?(on: boolean): void;
+  /** P2-T03's base clips. `loadClip` is VRM-only; a renderer without it plays no clips. */
+  loadClip?(id: string, url: string): Promise<void>;
+  playClip?(id: string, options: { loop: boolean; crossfadeMs: number; weight: number }): Promise<void>;
 }
 
 export interface CallStageProps {
@@ -67,6 +73,13 @@ export interface CallStageProps {
   readonly fetchModel?: (url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>;
 }
 
+/** Plays the base clip for `state` if it differs from the one playing (`BaseClipGraph`). */
+function playBaseClip(avatar: CallStageRenderer, graph: BaseClipGraph, state: ConversationState): void {
+  const change = graph.setState(state);
+  if (change === null) return;
+  void avatar.playClip?.(change.clip, { loop: true, crossfadeMs: change.crossfadeMs, weight: 1 });
+}
+
 type CharacterPhase = 'consent' | 'loading' | 'ready' | 'declined' | 'failed';
 
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
@@ -79,6 +92,9 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
    * VRM-only method before a character is actually loaded — `VrmAvatarRenderer.setLifePose`
    * and `.setViseme` both throw against an unloaded character. */
   const readyRef = useRef(false);
+  /** The body's base clip follows the conversation state (P2-T03), once the clips are in. */
+  const clipsReadyRef = useRef(false);
+  const graphRef = useRef(new BaseClipGraph());
 
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
@@ -104,7 +120,9 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
     const life = new LifeLayer();
     life.setState(machine.getState());
     const unsubscribe = machine.subscribe((event) => {
-      if (event.type === 'state.changed') life.setState(event.to);
+      if (event.type !== 'state.changed') return;
+      life.setState(event.to);
+      if (clipsReadyRef.current) playBaseClip(avatar, graphRef.current, event.to);
     });
 
     // StrictMode runs this effect's cleanup once in development before the mount promise
@@ -187,6 +205,21 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
           URL.revokeObjectURL(blobUrl);
         }
         if (cancelled) return;
+        // The clips come after the character: `loadClip` retargets onto whichever model is
+        // loaded. A clip that fails leaves her standing in the life layer's rest pose, which
+        // is how she stood before P2-T03 — a note, not a failure.
+        if (avatar.loadClip !== undefined) {
+          try {
+            await Promise.all(Object.entries(BASE_CLIP_URLS).map(([id, url]) => avatar.loadClip?.(id, url)));
+            if (cancelled) return;
+            graphRef.current.reset();
+            clipsReadyRef.current = true;
+            playBaseClip(avatar, graphRef.current, machine.getState());
+          } catch (error) {
+            console.warn('Base clips failed to load; standing in the rest pose.', error);
+          }
+        }
+        if (cancelled) return;
         setPhase('ready');
       } catch (error) {
         if (cancelled) return;
@@ -197,7 +230,7 @@ export function CallStage({ machine, consent, call, createRenderer = defaultCrea
     return () => {
       cancelled = true;
     };
-  }, [mounted, phase, fetchModel]);
+  }, [mounted, phase, fetchModel, machine]);
 
   // Follows `call`: taps the voice's output node for lip sync while one is running, and
   // shuts the mouth again — every viseme to 0 — the moment it is not (decision 5).

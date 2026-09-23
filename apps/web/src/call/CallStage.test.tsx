@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
+import type { ConversationEvent, ConversationState } from '@latentpresence/protocol';
 import { FakeAvatarRenderer } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR_DESCRIPTOR } from './character-asset';
@@ -107,5 +108,68 @@ describe('CallStage — consent gates the fetch', () => {
     expect(fetchModel).not.toHaveBeenCalled();
     expect(renderer.character).toBeNull();
     expect(screen.getByRole('button', { name: 'Show the character' })).toBeTruthy();
+  });
+});
+
+/** A fake with the two VRM-only clip methods, recording what it is asked. */
+class ClipRenderer extends FakeAvatarRenderer {
+  readonly loaded: string[] = [];
+  readonly played: { id: string; crossfadeMs: number }[] = [];
+  loadClip(id: string, _url: string): Promise<void> {
+    this.loaded.push(id);
+    return Promise.resolve();
+  }
+  override playClip(id: string, options: { loop: boolean; crossfadeMs: number; weight: number }): Promise<void> {
+    this.played.push({ id, crossfadeMs: options.crossfadeMs });
+    return Promise.resolve();
+  }
+}
+
+/** Just enough machine to move the state by hand. */
+function scriptedMachine() {
+  let state: ConversationState = 'listening';
+  const listeners = new Set<(event: ConversationEvent) => void>();
+  return {
+    machine: {
+      getState: () => state,
+      subscribe: (listener: (event: ConversationEvent) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    } as unknown as ConversationMachine,
+    to(next: ConversationState) {
+      const from = state;
+      state = next;
+      for (const listener of listeners) listener({ type: 'state.changed', from, to: next } as unknown as ConversationEvent);
+    },
+  };
+}
+
+describe('CallStage — base clips follow the conversation (P2-T03)', () => {
+  it('loads both clips after the character, starts the idle, and crossfades only on a real change', async () => {
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new ClipRenderer();
+    const scripted = scriptedMachine();
+    render(
+      <CallStage
+        call={null}
+        consent={consent}
+        createRenderer={() => renderer}
+        fetchModel={async () => new Uint8Array([1])}
+        machine={scripted.machine}
+      />,
+    );
+    await waitFor(() => expect(renderer.played.length).toBe(1));
+
+    expect(renderer.loaded.toSorted()).toEqual(['idle', 'talk']);
+    expect(renderer.played[0]).toEqual({ id: 'idle', crossfadeMs: 0 });
+
+    scripted.to('thinking');
+    scripted.to('speaking');
+    scripted.to('listening');
+    // thinking is idle too, so it asks for nothing: a second `idle` would restart the loop.
+    expect(renderer.played.map((play) => play.id)).toEqual(['idle', 'talk', 'idle']);
+    expect(renderer.played.slice(1).every((play) => play.crossfadeMs > 0 && play.crossfadeMs < 300)).toBe(true);
   });
 });

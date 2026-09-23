@@ -25,6 +25,7 @@
     "live:llm": "pnpm --filter @latentpresence/providers exec vite-node live/llm.ts",
     "e2e": "playwright test",
     "e2e:fixture": "pnpm --filter @latentpresence/ml-web exec vite-node live/e2e-fixture.ts",
+    "clips:build": "vite-node packages/avatar/tools/build-clips.ts",
     "live:history": "pnpm --filter @latentpresence/providers exec vite-node live/history.ts",
     "live:persona": "pnpm --filter @latentpresence/providers exec vite-node live/persona.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",

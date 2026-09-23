@@ -1,0 +1,35 @@
+{
+  "note": "Built by `pnpm clips:build` from the gitignored pack in source/. Do not edit by hand.",
+  "clips": [
+    {
+      "id": "idle",
+      "file": "idle.vrma",
+      "bytes": 92628,
+      "sha256": "9872105377f300faae8065183d8985d26b0cd71544622f7e8d7a2af3c842bf25",
+      "use": "idle, listening, thinking, interrupted",
+      "source": {
+        "pack": "Quaternius Universal Animation Library (Standard)",
+        "file": "Unreal-Godot/UAL1_Standard.glb",
+        "animation": "Idle_Loop"
+      },
+      "licence": "CC0-1.0",
+      "author": "Quaternius",
+      "url": "https://quaternius.itch.io/universal-animation-library"
+    },
+    {
+      "id": "talk",
+      "file": "talk.vrma",
+      "bytes": 103684,
+      "sha256": "1c9c5020e56feb2b35df855c02dae09f27a91746eb7ad0c107d4afcdfa71ede1",
+      "use": "speaking",
+      "source": {
+        "pack": "Quaternius Universal Animation Library (Standard)",
+        "file": "Unreal-Godot/UAL1_Standard.glb",
+        "animation": "Idle_Talking_Loop"
+      },
+      "licence": "CC0-1.0",
+      "author": "Quaternius",
+      "url": "https://quaternius.itch.io/universal-animation-library"
+    }
+  ]
+}
