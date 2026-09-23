@@ -477,3 +477,9 @@ Left: R-14 (camera, lip sync in a call, mute — needs Rick's hardware); R-13 la
 Next: P2-T03 clip retarget (Idle_Loop, Idle_Talking_Loop → .vrma via Blender headless), then P2-T07.
 Decisions: none new; brief took the avatar-consent-via-`ModelConsent` route. Click-through: 1024×768, 1920×1080, 3840×2160 and a typed turn against glm-5.2:cloud in the Browser pane.
 Addendum: R-14 run by Rick the same day — camera, mute, resize and lip sync in a live call pass; two overlaps (voice card behind the text box, text box under the drawer) fixed in 1cf832e with a regression test. P2-T06 closed.
+
+## 2026-09-23 claude — P2-T03 base clips, no Blender
+Did: measured UAL's rest pose (VRM T-pose facing +Z already) and read the VRMA loader's retarget, so `pnpm clips:build` converts in node (ADR-31, proposed); idle.vrma + talk.vrma + manifest committed; `BaseClipGraph` (250 ms, never re-requests the playing clip) wired into `/chat`; `/dev/avatar` uses the base clips instead of fetching test.vrma. Checked both clips on the placeholder VRM in the Browser pane. cb0367e, 1066 tests.
+Left: R-15 (Rick's look at the clips and the idle↔talk crossfade); R-13 laptop half, R-1, R-9. Gesture clips: none in the free pack.
+Next: P2-T07 tag → animation bridge (head gestures procedural; others wait for clips).
+Decisions: **ADR-31 proposed** — clips converted in node, not Blender, because the source's rest pose already matches; reverses for an A-posed source. Click-through: /dev/avatar full camera, idle and talk looping; /chat idle after load.

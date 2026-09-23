@@ -82,6 +82,22 @@ right.
 
 ## Open — rick
 
+### R-15 · Does her body look right? (P2-T03) · ~10 minutes
+**Why:** P2-T03's done-when is *"state changes crossfade under 300 ms without pops"*. The
+logic is tested (250 ms, and a playing loop is never restarted); **whether it looks right is
+yours** — the clips were made on a bulkier mannequin and retargeted onto her.
+
+```bash
+pnpm dev
+```
+1. `http://localhost:5173/dev/avatar` → agree → **Camera** `full`. **Clip** `idle` → **Loop
+   clip**; then `talk` → **Loop clip** (switching crossfades). Does either look wrong — a hand
+   through her body, a twisted wrist, a foot sliding?
+2. `http://localhost:5173/chat` → talk to her (typed is enough). She should go from the idle
+   to the talking loop as she answers and back when she finishes, **with no jump**.
+
+**Report:** pass/fail on each, and anything that looks off (a screenshot helps).
+
 ### R-14 · Talk to her in the call layout (P2-T06) · **passed 2026-09-23** (after two layout fixes)
 
 **Result (Rick):** 1 camera shows and hides ✓. 2 **Start voice opened a card hidden behind the

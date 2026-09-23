@@ -1867,3 +1867,33 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   committed script run by `blender --background --python`, so clips rebuild without the MCP.
 - Blender's version was not read (Blender was closed); record it when P2-T03 starts.
 
+
+## Quaternius UAL Standard as VRMA — measured 2026-09-23 (P2-T03)
+
+- **The pack (Standard, as Rick downloaded it):** `Unity/UAL1_Standard{,_RM}.fbx` and
+  `Unreal-Godot/UAL1_Standard{,_RM}.glb` (7.6 MB each); `_RM` has root motion. **43 clips**,
+  CC0 (`License.txt`). Mostly locomotion, combat and props; the idles are `Idle_Loop`
+  (2.50 s), `Idle_Talking_Loop` (2.93 s), `Sitting_Idle_Loop`, `Sitting_Talking_Loop`,
+  `Crouch_Idle_Loop`, `Swim_Idle_Loop`, `Idle_Torch_Loop`. **No wave, shrug, nod or point.**
+- **Skeleton:** 65 joints, Unreal names (`pelvis`, `spine_01..03`, `neck_01`, `Head`,
+  `clavicle_l`, `upperarm_l`, `lowerarm_l`, `hand_l`, `thigh_l`, `calf_l`, `foot_l`, `ball_l`,
+  fingers `thumb/index/middle/ring/pinky_01..03` plus `_04_leaf`). Tree: `Armature` → `root`
+  (rotated −90° about X) → `pelvis`.
+- **Rest pose is VRM's T-pose facing +Z** (world, from the node transforms): upper arms at
+  (±0.192, 1.441, −0.065), hands at (±0.739, 1.441, −0.065) — level; `thigh_l` (0.089, 0.932)
+  over `foot_l` (0.089, 0.104); `ball_l` z 0.113 ahead of `foot_l` z −0.036; left is +X.
+  Pelvis at 0.917 m. **This is why no re-posing or Blender is needed** (ADR-31).
+- **Every clip animates translation, rotation and scale on all 65 joints**, LINEAR, float
+  accessors, no stride. `three-vrm-animation` 3.5.5 pairs `channels[i]` with the i-th track and
+  **throws on `scale`** and warns-and-drops a translation on anything but `hips`, so the
+  converter keeps only humanoid rotations and the pelvis translation.
+- **The loader's retarget** (`_parseAnimation`): `parentRestWorld · q · restWorld⁻¹` per
+  rotation; hips translation through the hips' parent world matrix, scaled at clip creation by
+  the model's hips height over the file's. So a `.vrma` needs a T-pose rest facing +Z, nothing
+  else. The finger/limb axis conventions of the source do not matter.
+- **Built:** `idle.vrma` 92 628 B, `talk.vrma` 103 684 B. Loaded on the placeholder VRM in
+  `/dev/avatar`: a natural standing idle (arms down, no twisted joints, feet on the floor);
+  talk gestures with both hands in front of the chest — close to her body on this slimmer
+  model than the mannequin the clip was made on.
+- **TypeScript 7 no longer adds `@types/*` automatically** (the `types` default is empty): a
+  test in a browser package that reads files needs `/// <reference types="node" />`.

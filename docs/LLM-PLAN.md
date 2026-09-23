@@ -178,8 +178,9 @@ Done when: sample VRM shows all presets via a debug panel; interface tests pass 
 Breathing (chest and shoulders), blink with saccades and rate tied to state, gaze policy with drift and return, micro weight shifts. All parameterised.
 Done when: with no clips playing, the character does not look frozen in a 60 s recording reviewed by Rick. **Met by R-10 (D-23): "No frozen time. Not too much blinking. Looks good."** — `/dev/avatar`'s Life panel records the minute (canvas to a local webm). Every rate is tested in node against seeded time (blinks at the mean asked for, a listener on the user > 75% of the time and a speaker less, no look away longer than 1.6× its mean, no frame-to-frame jump over 0.02 rad); the sign conventions were checked in the Browser pane. **Two things P2-T03 inherits:** the rest pose stands down whenever a clip is posing the body, so a clip that leaves the arms out leaves them in T-pose; and a VRMA look-at track will fight the gaze policy for the eyes.
 
-### P2-T03 Clip library and retarget — owner: human + sub
+### P2-T03 Clip library and retarget — owner: human + main (built 2026-09-23; `packages/avatar/src/clips`, `pnpm clips:build`, ADR-31; R-15 is the look)
 Rick selects CC0 clips (Quaternius); Aider adds the retarget script (Blender headless or Mesh2Motion export) and the runtime blend graph (idle, listen, talk, gesture channels with crossfades).
+**As built:** R-12 gave `Idle_Loop` and `Idle_Talking_Loop`; no gesture clips exist in the free pack, so the gesture channel waits for P2-T07 and a second source. The retarget is a node converter, not Blender (ADR-31), because the pack's rest pose was measured to be VRM's already. `BaseClipGraph` crossfades 250 ms and never restarts a playing loop.
 Done when: `assets/clips/` has a manifest with licences; state changes crossfade under 300 ms without pops.
 
 ### P2-T04 Lip sync — owner: sub → main (done 2026-09-22; `LipSync` in `packages/avatar/src/lipsync`; R-11 passed)

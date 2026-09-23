@@ -868,3 +868,29 @@ rather than in a scripted check (`pnpm live:persona` measures the scripted case)
 whether `often` expressiveness produces gestures a viewer finds excessive, which needs
 P2-T03's clips and eyes; and whether a second emote mid-reply lands where the feeling
 actually changes, which needs the avatar to be visible.
+
+## ADR-31 Animation clips are converted in node, not retargeted in Blender (proposed 2026-09-23)
+
+**Decision.** `pnpm clips:build` (`packages/avatar/tools/build-clips.ts` over
+`src/clips/vrma.ts`) turns a glTF animation into a `.vrma` by relabelling the source's own
+bones as VRM humanoid bones and dropping every channel the format does not allow. No
+Blender, no VRM add-on and no retarget solve are in the pipeline. The built clips and a
+manifest with licences are committed in `assets/clips/`; the source pack is not.
+
+**Why this works.** `three-vrm-animation` retargets at load time by dividing every
+rotation by the file's own rest pose, so a `.vrma` needs one property of its skeleton and
+only one: **a rest pose that is VRM's T-pose facing +Z**. Quaternius's Universal Animation
+Library already has one (measured 2026-09-23: arms level along ±X, legs straight, toes
+towards +Z), so re-posing was never needed. `checkTPose` makes that an assertion the
+build runs rather than an assumption: an A-pose or a −Z-facing source is refused.
+
+**Why not Blender, which R-12 and the plan assumed.** It would put a 400 MB desktop
+application and an add-on's Python API between a CC0 file and the repo, for a step that
+turned out to be a filter. The node converter runs anywhere `pnpm` does, is deterministic
+(an unchanged rebuild is byte-identical) and is tested against the real loader. Blender
+and its MCP remain the tool for P7's character work.
+
+**What would reverse it.** A clip source whose rest pose is not a T-pose (Mixamo's is not
+exactly, and many packs are A-posed): then either the converter learns to re-pose the rest
+(rotate each chain onto the T-pose axes and rebase the tracks), or that source goes
+through Blender. Recommended option taken: node, with the reversal written down.
