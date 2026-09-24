@@ -526,3 +526,9 @@ Left: the laptop session (R-13 laptop half, R-1, R-9); R-3; C-7. ADR-31 confirme
 Next: P3-T03 affect to voice and wording, then P3-T09 affect in the call, then P3-T04.
 Decisions: **P3-T09 proposed** (recommended: straight after P3-T03, so body, voice and wording start agreeing in one call). Click-through: n/a (docs only).
 Addendum: ADR-31 accepted by Rick the same day (avatars stay swappable — clips retarget at load); index row added, it had none.
+
+## 2026-09-24 claude — P3-T03 affect to voice and wording
+Did: `core/affect/express.ts` (felt emotion, `VoiceStyle` = hint + pace ±15% + pause 150–450 ms, two-line feeling note + length bias); `Reply.voiceStyle` per sentence, `ChatVoice` passes it; `PromptContext.affect` (protocol, additive, ADR-12 amended); chunker accepts `[emotive:x]` (glm wrote it — would have been spoken). `pnpm live:affect`: mean words rest/low/bright 36/21/68 glm, 37/20/87 Fable; `live:affect-voice`: 3.24/3.55/3.75 words/s, 422/300/200 ms gaps on the same text. 547685f, 1170 tests.
+Left: R-19 (Rick's ear on the rendered wavs); laptop session (R-13 laptop half, R-1, R-9); R-3; C-7. Not in `/chat` yet — P3-T09.
+Next: P3-T09 affect in the call (prompt re-rendered per turn, `voiceStyle` on both Reply paths), then P3-T04.
+Decisions: ADR-12 amended (protocol `PromptContext.affect`; prosody we own, since Kokoro has no emotion control). Flag: twelve sad tags in two minutes drive pleasure to −0.92 — engine gains may be hot; P3-T09's live call judges. Click-through: n/a (core + live checks; `/chat` unchanged).
