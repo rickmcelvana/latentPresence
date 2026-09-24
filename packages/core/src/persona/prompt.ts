@@ -2,8 +2,9 @@ import {
   CharacterEmotionSchema,
   CharacterGestureSchema,
   type Persona,
-  type PromptContext,
+  type PromptContextInput,
 } from '@latentpresence/protocol';
+import { describeFeeling } from '../affect/express';
 
 /**
  * The system prompt (P1-T12): a persona plus what is true right now, rendered to the
@@ -31,7 +32,10 @@ const GESTURE_GUIDANCE = {
   often: 'Use gestures freely, most replies, the way an animated talker does.',
 } as const;
 
-export function renderSystemPrompt(persona: Persona, context: PromptContext): string {
+export function renderSystemPrompt(persona: Persona, context: PromptContextInput): string {
+  const userName = context.userName ?? null;
+  const affect = context.affect ?? null;
+  const feeling = affect === null ? null : describeFeeling(affect, context.now.getTime());
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
 
@@ -70,7 +74,9 @@ export function renderSystemPrompt(persona: Persona, context: PromptContext): st
     '',
     'RIGHT NOW',
     `- It is ${formatNow(context.now)}.`,
-    ...(context.userName === null ? [] : [`- You are talking to ${context.userName}.`]),
+    ...(userName === null ? [] : [`- You are talking to ${userName}.`]),
+    // P3-T03: the mood as two lines, last, where a model weighs what is true right now.
+    ...(feeling === null ? [] : [`- ${feeling.feeling}`, `- ${feeling.length}`]),
   ].join('\n');
 }
 

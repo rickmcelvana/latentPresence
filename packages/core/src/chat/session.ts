@@ -4,7 +4,7 @@ import { TagFilter } from '../chunker';
 import { ConversationHistory } from '../history/history';
 import type { ConversationMachine } from '../conversation/machine';
 import type { PlaybackSink } from '../playback/sink';
-import { Reply, type ReplyEvent, type ReplyOutcome } from '../reply/reply';
+import { Reply, type ReplyDependencies, type ReplyEvent, type ReplyOutcome } from '../reply/reply';
 
 /**
  * A typed conversation with no voice in it (P1-T11): text in, a streamed answer out, every
@@ -41,6 +41,8 @@ export interface ChatVoice {
   readonly sink: PlaybackSink;
   readonly voiceId: string;
   readonly speed?: number;
+  /** How each sentence should sound (P3-T03); passed to `Reply` as it is. */
+  readonly voiceStyle?: ReplyDependencies['voiceStyle'];
   /** Stop's fade. Should match the machine's `fadeOutMs`; 100 by default, as barge-in. */
   readonly fadeMs?: number;
 }
@@ -249,7 +251,14 @@ export class ChatSession {
     };
     const reply = new Reply(
       request,
-      { llm, tts: voice.tts, sink: voice.sink, voiceId: voice.voiceId, ...(voice.speed === undefined ? {} : { speed: voice.speed }) },
+      {
+        llm,
+        tts: voice.tts,
+        sink: voice.sink,
+        voiceId: voice.voiceId,
+        ...(voice.speed === undefined ? {} : { speed: voice.speed }),
+        ...(voice.voiceStyle === undefined ? {} : { voiceStyle: voice.voiceStyle }),
+      },
       { onEvent: (event) => this.onReply(streaming, event) },
     );
     streaming.reply = reply;

@@ -131,9 +131,10 @@ export const TAG_SCAN_LIMIT = 48;
  *
  * The parser is deliberately more forgiving than the prompt is instructive: the prompt
  * teaches one spelling, and accepting the obvious near-miss costs one alternation and
- * removes the ugliest failure a model can hand us.
+ * removes the ugliest failure a model can hand us. **`emotive` joined it in P3-T03**:
+ * `glm-5.2:cloud` wrote `[emotive:sad]` under a low mood (`pnpm live:affect`, 2026-09-24).
  */
-export const TAG_PATTERN = /^\[(emote|emotion|gesture):([a-z][a-z0-9-]*)\]/;
+export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture):([a-z][a-z0-9-]*)\]/;
 
 /** The verdict on a raw label: on its own kind's list, or null. */
 function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | null {

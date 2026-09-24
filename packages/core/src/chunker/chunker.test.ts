@@ -119,6 +119,12 @@ describe('SentenceChunker tags', () => {
     expect(chunk?.tags).toEqual([{ kind: 'emote', value: 'concern', known: 'concern', offset: 0 }]);
   });
 
+  it('accepts [emotive:x] too (glm-5.2:cloud, live:affect 2026-09-24)', () => {
+    const [chunk] = chunkText('[emotive:sad] Honestly, I do not know.');
+    expect(chunk?.text).toBe('Honestly, I do not know.');
+    expect(chunk?.tags).toEqual([{ kind: 'emote', value: 'sad', known: null, offset: 0 }]);
+  });
+
   it('does not invent a third kind out of the spelling', () => {
     const [chunk] = chunkText('[emotion:joy] Hello. [emote:joy] Hi.');
     expect(chunk?.tags.map((tag) => tag.kind)).toEqual(['emote']);

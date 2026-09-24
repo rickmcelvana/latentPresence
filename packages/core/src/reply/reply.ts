@@ -5,6 +5,7 @@ import type {
   TTSProvider,
   WordTiming,
 } from '@latentpresence/protocol';
+import { styledSpeed, type VoiceStyle } from '../affect/express';
 import { Cancellation } from '../cancellation';
 import { SentenceChunker, TagFilter, type InlineTag, type SentenceChunkerOptions, type SpeechChunk } from '../chunker';
 import type { PlaybackEvent, PlaybackSink } from '../playback/sink';
@@ -39,6 +40,13 @@ export interface ReplyDependencies {
    * Kokoro's own padding is ~310 ms in front, which a listener hears as latency (ADR-27).
    */
   readonly padding?: EdgePadding | null;
+  /**
+   * How each sentence should sound (P3-T03): the affect engine's hint, pace and pause, asked
+   * once per sentence just before it is synthesised, with the sentence's own tags. The pace
+   * multiplies `speed` inside the range Kokoro holds; the pause replaces the padding's tail.
+   * Omitted, or null for a sentence: the voice exactly as configured.
+   */
+  readonly voiceStyle?: (sentence: { readonly tags: readonly InlineTag[] }) => VoiceStyle | null;
 }
 
 export type ReplyEvent =
@@ -251,7 +259,9 @@ export class Reply {
     const parts: Float32Array[] = [];
     let sampleRate = 0;
     let words: WordTiming[] | undefined;
-    const request = { text: chunk.text, voiceId: this.deps.voiceId, speed: this.deps.speed ?? 1, hint: null };
+    const style = this.deps.voiceStyle?.(chunk) ?? null;
+    const speed = style === null ? (this.deps.speed ?? 1) : styledSpeed(this.deps.speed ?? 1, style);
+    const request = { text: chunk.text, voiceId: this.deps.voiceId, speed, hint: style?.hint ?? null };
     for await (const audio of this.deps.tts.synthesize(request, { signal })) {
       if (audio.samples.length > 0) {
         parts.push(audio.samples);
@@ -270,7 +280,8 @@ export class Reply {
     await Promise.race([this.hold, this.aborted()]);
     if (signal.aborted) return;
 
-    const padding = this.deps.padding === undefined ? DEFAULT_EDGE_PADDING : this.deps.padding;
+    const configured = this.deps.padding === undefined ? DEFAULT_EDGE_PADDING : this.deps.padding;
+    const padding = configured === null || style === null ? configured : { ...configured, tailMs: style.pauseMs };
     // Measured before the sink can transfer the buffer away.
     const whole = concat(parts);
     const voiced =

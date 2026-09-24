@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { LLMProvider, LlmRequest, TTSProvider } from '@latentpresence/protocol';
+import type { InlineTag, LLMProvider, LlmRequest, TTSProvider, TtsRequest } from '@latentpresence/protocol';
+import type { VoiceStyle } from '../affect/express';
 import { deferred, ManualSink, ScriptedLLM, ScriptedTTS, settle, text } from '../testing/scripted';
-import { Reply, type ReplyEvent, type ReplyOutcome } from './reply';
+import { Reply, type ReplyDependencies, type ReplyEvent, type ReplyOutcome } from './reply';
 
 const request: LlmRequest = {
   modelId: 'scripted',
@@ -304,5 +305,68 @@ describe('Reply — sentence timing for the tag bridge (P2-T07)', () => {
         { text: 'there.', startMs: 500, endMs: 1050 },
       ],
     });
+  });
+});
+
+describe('Reply — how each sentence sounds (P3-T03)', () => {
+  const sad: VoiceStyle = { hint: { label: 'sadness', intensity: 0.6, energy: 0.2 }, rate: 0.9, pauseMs: 400 };
+
+  /** A second of voice after 300 ms of silence and before 700 ms, room for any pause. */
+  class PaddedTTS extends ScriptedTTS {
+    override async *synthesize(req: TtsRequest) {
+      this.requests.push(req);
+      const rate = 24_000;
+      const samples = new Float32Array(rate * 2);
+      samples.fill(0.5, rate * 0.3, rate * 1.3);
+      yield { samples, sampleRate: rate, startMs: 0, isFinal: true };
+    }
+  }
+
+  function styled(voiceStyle: ReplyDependencies['voiceStyle'], speed?: number) {
+    const sink = new ManualSink();
+    const tts = new PaddedTTS();
+    const asked: (readonly InlineTag[])[] = [];
+    const reply = new Reply(
+      request,
+      {
+        llm: new ScriptedLLM(text('[emote:sadness] Oh. ', 'I see.')),
+        tts,
+        sink,
+        voiceId: 'v',
+        ...(speed === undefined ? {} : { speed }),
+        ...(voiceStyle === undefined
+          ? {}
+          : {
+              voiceStyle: (sentence) => {
+                asked.push(sentence.tags);
+                return voiceStyle(sentence);
+              },
+            }),
+      },
+    );
+    return { reply, sink, tts, asked };
+  }
+
+  it('asks once per sentence with its tags, and sends the hint and the paced speed', async () => {
+    const { tts, asked } = styled(() => sad, 1.1);
+    await settle();
+    expect(asked.map((tags) => tags.map((tag) => tag.known))).toEqual([['sadness'], []]);
+    expect(tts.requests.map((r) => r.hint)).toEqual([sad.hint, sad.hint]);
+    expect(tts.requests[0]?.speed).toBeCloseTo(0.99, 10);
+  });
+
+  it('keeps the pause it asks for after the voice', async () => {
+    const { sink } = styled(() => sad);
+    await settle();
+    // 50 ms lead + 1000 ms voice + 400 ms tail, where ADR-27's tail alone gives 1300.
+    expect(sink.segments[0]?.samples.length).toBe(24_000 * 1.45);
+  });
+
+  it('plays the voice exactly as configured with no style, or a null one', async () => {
+    for (const { tts, sink } of [styled(undefined, 1.1), styled(() => null, 1.1)]) {
+      await settle();
+      expect(tts.requests[0]).toMatchObject({ speed: 1.1, hint: null });
+      expect(sink.segments[0]?.samples.length).toBe(24_000 * 1.3);
+    }
   });
 });

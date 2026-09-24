@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AffectStateSchema } from './affect';
 import { IdSchema } from './common';
 
 /**
@@ -70,5 +71,13 @@ export const PromptContextSchema = z.object({
   now: z.date(),
   /** What the user likes to be called, when we know it. */
   userName: z.string().min(1).max(60).nullable().default(null),
+  /**
+   * How the character feels right now (P3-T03, ADR-12 amended): rendered by core as a
+   * two-line note and a reply-length bias, never as numbers. Null says nothing about mood,
+   * and the prompt is exactly what it was before P3.
+   */
+  affect: AffectStateSchema.nullable().default(null),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
+/** What a caller passes: the nullable fields may be left out and mean null. */
+export type PromptContextInput = z.input<typeof PromptContextSchema>;

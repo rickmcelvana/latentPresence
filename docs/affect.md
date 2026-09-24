@@ -73,11 +73,31 @@ A gap is stepped only while an event is alive (at most ~28 minutes of 100 ms ste
 5-minute half-life cap), then jumped in closed form. The state is stepped as numbers and
 converted to the stored form once.
 
+## Voice and wording (P3-T03)
+
+`packages/core/src/affect/express.ts`, pure like `affectToBody`:
+
+- **`feltEmotion`** — the strongest live feeling above `eventFelt` (0.25), else the
+  `EMOTION_PAD` point nearest the mood once the mood is past `moodFelt` (0.3; the baseline
+  sits at ~0.21, so at rest she feels nothing in particular).
+- **`affectToVoice(state, at, tags)`** → `VoiceStyle`: the TTS `hint` (a sentence's own
+  `[emote:x]` names its feeling, so the voice never contradicts the face), a pace `rate`
+  of 1 ± 15% and a `pauseMs` of 150–450 (250 at rest) after each sentence, both following
+  *drive* — arousal and energy against the baseline. `Reply` takes it as `voiceStyle`, per
+  sentence; `styledSpeed` keeps the result inside Kokoro's 0.75–1.25. The pace and pause
+  are ours, so they work on Kokoro, which has no emotion control at all.
+- **`describeFeeling`** — two lines for the system prompt (`PromptContext.affect`): how she
+  feels in words ("unhappy, tired and slow … and right now sad"; "do not say it out loud"),
+  and a length bias from `talkativeness` (energy, engagement, arousal): a sentence or two,
+  as the moment needs, or say a bit more.
+
+`pnpm live:affect` / `pnpm live:affect-voice` measure both (`docs/SURFACE.md`); R-19 is the ear.
+
 ## Not yet
 
 - **Only `/dev/avatar` reads it.** P3-T02 maps it to a resting face, gaze habit, gesture bias
   and idle clip (`packages/avatar/src/affect`, R-18 passed); **`/chat` does not run it yet**
-  (P3-T09). P3-T03 maps it to voice and wording (the two-line "how you feel"). Until then the
+  (P3-T09). P3-T03 maps it to voice and wording (above), **built but not yet wired into `/chat`** — P3-T09 sets `PromptContext.affect` before each turn and passes `voiceStyle`. Until then the
   call's tag bridge (P2-T07) shows tags directly.
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being
   interrupted, a long silence, a warm reply) become `stance`/`energy`/`emotion` inputs in

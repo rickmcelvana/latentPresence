@@ -1949,3 +1949,22 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   same: Kokoro 67–73 ms before the sound, Whisper 280–440 ms before it.
 - **Browser (WebGPU fp32, Chrome in the Browser pane):** every chunk of a live 4-sentence
   reply carried words, 48 of 48 text words, dashes included.
+
+## Mood in the prompt and the voice — measured 2026-09-24 (P3-T03)
+
+- **`pnpm live:affect`**: six prompts, no history, three moods **made by the engine from
+  tags** (rest; two minutes of `[emote:sadness]` every 10 s; the same of `[emote:joy]`),
+  rendered by `renderSystemPrompt` with `affect`. Moods reached: low P/A/D **−0.92 / −0.84 /
+  −0.85**, energy 0.32; bright **0.97 / 0.91 / 0.85**, energy 0.82 — **twelve tags in two
+  minutes nearly saturate the mood**, which P3-T09's live call should judge.
+- **Mean words (rest / low / bright): `glm-5.2:cloud` 36 / 21 / 68; `claude-fable-5-1`
+  37 / 20 / 87.** Unpleasant emotes: glm 0/6, 4/5, 0/10; Fable 0/7, 4/6, 0/11. Neither model
+  announced the mood in words. The note says "do not say it out loud"; neither did.
+- **`glm-5.2:cloud` wrote `[emotive:sad]`** once under the low mood — a third spelling after
+  qwen's `[emotion:x]` (P1-T12). Unparsed, it would have been **spoken**; `TAG_PATTERN` now
+  accepts `emotive`. The label `sad` is not on the list, so it is `known: null` and silent.
+- **`pnpm live:affect-voice`** (Kokoro q8 CPU, `af_heart`, the rest reply's text in each mood,
+  measured on the rendered audio): speed ×0.878 / 1.000 / ×1.110; **voiced words per second
+  3.24 / 3.55 / 3.75** on prompt 1 (every prompt within ±0.1 of the same ratios); **gaps
+  between sentences 422 / 300 / 200 ms** (tail pause + 50 ms lead, exact). Whether that is
+  *audible* is R-19.

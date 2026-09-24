@@ -82,6 +82,28 @@ right.
 
 ## Open — rick
 
+### R-19 · Her mood in her voice and her words · ~10 minutes (P3-T03's sign-off)
+**Why:** P3-T03's done-when is *"the same prompt with two moods yields audibly and textually
+different responses"*. Textually it is measured (below); **audibly is an ear's call**. Kokoro
+has no emotion control, so what changes is ours — pace and the pause after each sentence —
+and it is deliberately small (Kokoro degrades past 1.25×).
+Already rendered on this desktop (2026-09-24), from Fable's replies. To re-run:
+```bash
+pnpm live:affect
+```
+```bash
+pnpm live:affect-voice
+```
+1. Open `packages/ml-web/live/out/affect/` and play **`1-same-rest.wav`, `1-same-low.wav`,
+   `1-same-bright.wav`** — the same words in three moods, so only the voice differs. Then
+   `2-same-*` (the long one, about the sea).
+2. Play `2-low.wav` and `2-bright.wav` — her own answers in each mood, words and voice together.
+3. Skim `packages/providers/live/out/affect.md` for the replies side by side.
+
+**Report:** can you hear low from rest from bright on the `same` files without looking at
+the names? Too subtle, right, or too much (sluggish, rushed)? And do the low answers read
+as her being low, or as her being curt?
+
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.

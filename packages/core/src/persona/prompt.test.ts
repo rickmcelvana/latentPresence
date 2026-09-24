@@ -1,6 +1,7 @@
 import alice from '../../../../personas/alice.persona.json' with { type: 'json' };
-import { CharacterEmotionSchema, CharacterGestureSchema, PersonaSchema, type Persona } from '@latentpresence/protocol';
+import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, PersonaSchema, type Persona } from '@latentpresence/protocol';
 import { describe, expect, it } from 'vitest';
+import { initialAffect } from '../affect/engine';
 import { SentenceChunker } from '../chunker';
 import { renderSystemPrompt } from './prompt';
 
@@ -87,6 +88,23 @@ describe('renderSystemPrompt', () => {
     expect(tags.map((tag) => tag.known)).toEqual(['curiosity', 'nod']);
     expect(prompt).toContain('[emote:curiosity]');
     expect(prompt).toContain('[gesture:nod]');
+  });
+
+  it('says nothing about mood without an affect state, exactly as before P3-T03', () => {
+    expect(renderSystemPrompt(persona, { now: at, userName: null, affect: null })).toBe(prompt);
+    expect(renderSystemPrompt(persona, { now: at })).toBe(prompt);
+  });
+
+  it('ends with two lines on how she feels and how much to say when it has one', () => {
+    const rest = initialAffect('alice', at.getTime());
+    const low = AffectStateSchema.parse({ ...rest, mood: { pleasure: -0.6, arousal: -0.4, dominance: -0.3 }, energy: 0.2 });
+    const calm = renderSystemPrompt(persona, { now: at, userName: null, affect: rest });
+    const sad = renderSystemPrompt(persona, { now: at, userName: null, affect: low });
+    expect(calm.startsWith(prompt)).toBe(true);
+    expect(calm.slice(prompt.length).split('\n').filter(Boolean)).toHaveLength(2);
+    expect(sad.slice(prompt.length)).toContain('unhappy');
+    expect(sad.slice(prompt.length)).toContain('a sentence or two');
+    expect(sad).not.toBe(calm);
   });
 
   it('changes what it says about gestures with the expressiveness level', () => {

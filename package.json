@@ -28,6 +28,7 @@
     "clips:build": "vite-node packages/avatar/tools/build-clips.ts",
     "live:history": "pnpm --filter @latentpresence/providers exec vite-node live/history.ts",
     "live:persona": "pnpm --filter @latentpresence/providers exec vite-node live/persona.ts",
+    "live:affect": "pnpm --filter @latentpresence/providers exec vite-node live/affect.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",
     "live:kokoro": "pnpm --filter @latentpresence/ml-web exec vite-node live/kokoro-dtype.ts",
     "live:stt": "pnpm --filter @latentpresence/ml-web exec vite-node live/stt.ts",
@@ -35,6 +36,7 @@
     "live:bargein": "pnpm --filter @latentpresence/ml-web exec vite-node live/bargein.ts",
     "live:backchannel": "pnpm --filter @latentpresence/ml-web exec vite-node live/backchannel.ts",
     "live:cues": "pnpm --filter @latentpresence/ml-web exec vite-node live/cues.ts",
+    "live:affect-voice": "pnpm --filter @latentpresence/ml-web exec vite-node live/affect-voice.ts",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {

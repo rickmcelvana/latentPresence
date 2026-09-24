@@ -223,9 +223,10 @@ Done when: property tests confirm bounded state and decay to baseline; documente
 Depends: P3-T01, P2-T07. Tables from affect regions to expression weights, gesture bias, gaze policy, idle clip selection.
 Done when: the debug overlay shows the mapping live; Rick signs off on a 10-state review.
 
-### P3-T03 Affect to voice and wording — owner: main
+### P3-T03 Affect to voice and wording — owner: main (done 2026-09-24; `packages/core/src/affect/express.ts`; R-19 is the ear)
 Depends: P3-T01. TTS hint mapping per provider; prosody fallback (rate, pause length); system-context injection of a two-line feeling summary and response-length bias.
 Done when: the same prompt with two moods yields audibly and textually different responses.
+**Met textually, audibly pending R-19:** `pnpm live:affect` — mean words rest / low / bright 36 / 21 / 68 (glm-5.2:cloud) and 37 / 20 / 87 (Fable), sad tags only under the low mood; `pnpm live:affect-voice` — on the same text 3.24 / 3.55 / 3.75 voiced words/s and 422 / 300 / 200 ms between sentences. Protocol: `PromptContext.affect` (ADR-12 amended).
 
 ### P3-T04 User affect from text — owner: main
 Heuristic scorer (emoji, punctuation, caps, message pace) plus an LLM side-channel field in structured output.
@@ -253,7 +254,7 @@ Done when: reviewer cannot spot a reaction that contradicts the user's tone in a
 
 
 ### P3-T09 Affect in the call — owner: main
-Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` runs the affect engine yet — P3-T02 wired it only into `/dev/avatar`. One `AffectEngine` per `/chat` page, fed by `affectInputsFrom` on the machine's bus (`[emote:x]` tags now, user affect from P3-T07), ticked in `CallStage`'s frame loop; `affectToBody` drives the resting face (max-merged with the tag performer's) and `LifeLayer.setModulation`; the state persisted with P4. Do it straight after P3-T03, so body, voice and wording start agreeing in the same call.
+Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` runs the affect engine yet — P3-T02 wired it only into `/dev/avatar`. One `AffectEngine` per `/chat` page, fed by `affectInputsFrom` on the machine's bus (`[emote:x]` tags now, user affect from P3-T07), ticked in `CallStage`'s frame loop; `affectToBody` drives the resting face (max-merged with the tag performer's) and `LifeLayer.setModulation`; the state persisted with P4. Do it straight after P3-T03, so body, voice and wording start agreeing in the same call. From P3-T03: render `/chat`'s system prompt with `PromptContext.affect` before every turn (`ConversationHistory.system` is mutable for this) and pass `affectToVoice` as `ChatVoice.voiceStyle` and the call's `Reply`. Watch the gains: `live:affect` saw twelve sad tags in two minutes take pleasure to −0.92.
 Done when: in a live call a run of `[emote:sadness]` answers visibly lowers her resting face and gaze habit and it drifts back over minutes; with the engine at baseline `/chat` looks as it does today.
 
 ### P4-T01 Companion db crate and migrations — owner: main

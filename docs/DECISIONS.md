@@ -15,7 +15,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-09 | No models shipped; runtime download with consent and licence display, or BYO endpoints | accepted | 2026-09-07 |
 | ADR-10 | Code licence Apache-2.0 | accepted | 2026-09-07 |
 | ADR-11 | Monorepo layout and toolchain; **two cargo workspaces, `pnpm gate` compiles one** | accepted (amended) | 2026-09-11 |
-| ADR-12 | Affect engine is the single source of truth for expression, gesture, voice style and wording | accepted | 2026-09-07 |
+| ADR-12 | Affect engine is the single source of truth for expression, gesture, voice style and wording | accepted (amended) | 2026-09-24 |
 | ADR-13 | Build loop: architect edits, gate, commit on green; Aider only when it saves context | accepted (amended) | 2026-09-07 |
 | ADR-14 | Scheduled tasks the character executes | accepted | 2026-09-07 |
 | ADR-15 | Design system: dark theme with teal accent, one `theme.css`, className coverage test | accepted | 2026-09-07 |
@@ -243,6 +243,8 @@ Phase 0 needed one.
 ## ADR-12 Affect engine
 
 State: PAD mood vector (slow, persisted), discrete emotion events (fast, decaying), energy, social stance. Inputs: user affect estimate, conversation events, time of day, memory triggers. Outputs: expression weights, gesture bias, gaze policy, TTS hint, and a two-line "how you feel" injection into the LLM system context. The LLM can emit `[emote:x]` tags, which become events. RESEARCH §9.
+
+**Amended 2026-09-24 (P3-T03), protocol change, additive:** `PromptContext` gains `affect: AffectState | null` (default null), so `renderSystemPrompt` stays pure and renders the two lines itself — the feeling in words and a reply-length bias, never numbers — and a null affect leaves the prompt byte-identical to before. `PromptContextInput` (`z.input`) is exported so callers may omit the nullable fields. `PROTOCOL_VERSION` stays 1. **The TTS hint is not the whole voice:** Kokoro, the default, has no emotion control, so every voice also gets prosody we own — a pace multiplier (±15%, clamped to Kokoro's 0.75–1.25) and the pause after each sentence (150–450 ms in place of ADR-27's 250 ms tail), carried by `Reply`'s `voiceStyle`. A sentence's own `[emote:x]` names the hint's feeling for that line, so voice and face never disagree. `pnpm live:affect`: the same six prompts in three engine-made moods — glm-5.2:cloud 36 / 21 / 68 words (rest / low / bright), claude-fable-5-1 37 / 20 / 87.
 
 ## ADR-13 Build loop (amended 2026-09-07)
 
