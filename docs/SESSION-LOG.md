@@ -546,3 +546,4 @@ Did: `core/affect/user-text.ts` — `readUserText` (surface heuristic + `Message
 Left: R-21 (accept ADR-32 and the thresholds; Anthropic credit ran out — Fable live checks fail); laptop session (R-13, R-1, R-9); R-3; C-7. `live:persona` has not been re-run with the new prompt section.
 Next: P3-T05 user affect from voice (SER worker).
 Decisions: **ADR-32 proposed** ([user:x] inline tag as the LLM side channel, recommended option taken); thresholds proposed in the test file. The live check counted API errors as "no tag" — fixed. Click-through: n/a (core + live check; `/chat` sends the new prompt section but nothing reads the tag yet).
+Addendum: R-21 — Rick accepted ADR-32 and the thresholds (D-33).

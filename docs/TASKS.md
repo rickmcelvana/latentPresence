@@ -82,14 +82,6 @@ right.
 
 ## Open — rick
 
-### R-21 · Accept or reverse ADR-32, and the P3-T04 thresholds · ~5 minutes of reading
-**Why:** P3-T04's done-when says *"agreed thresholds"* — I proposed them, and the model's side
-channel became a new tag, `[user:x]` (ADR-32, proposed). Both are yours to agree.
-Read `docs/DECISIONS.md` → ADR-32, and the thresholds at the top of
-`packages/core/src/affect/user-text.test.ts`.
-**Report:** accept / change. **Also:** the Anthropic API key's account ran out of credit on
-2026-09-24 ("Your credit balance is too low"); Fable live checks fail until it is topped up.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -198,6 +190,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-33 · R-21: ADR-32 and P3-T04's thresholds** — Rick 2026-09-24: **both accepted** as
+  proposed. The Anthropic account's credit (Fable live checks) is still his to top up.
 
 - **D-32 · R-20: her mood in a live call** — Rick 2026-09-24: **passed on all three** — at the
   start she was the same as before; after a sad run her resting face and gaze read as low

@@ -18,7 +18,7 @@ const share = (hits: number, total: number) => hits / total;
  * feeling shows: `surface` (emoji, punctuation, capitals, words that name it), `semantic`
  * (only the situation says it — the model's `[user:x]` is for those) and `none`.
  *
- * **Thresholds (proposed 2026-09-24, flagged for Rick):** measured blind, before any tuning,
+ * **Thresholds (accepted by Rick 2026-09-24, D-33):** measured blind, before any tuning,
  * the scorer got 38 of 45 surface messages; seven rules later, 44. Because the set was then
  * used to tune, the blind figure is the honest estimate for new text, and the bar sits under it.
  */
