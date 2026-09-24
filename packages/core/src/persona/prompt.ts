@@ -1,6 +1,7 @@
 import {
   CharacterEmotionSchema,
   CharacterGestureSchema,
+  UserEmotionSchema,
   type Persona,
   type PromptContextInput,
 } from '@latentpresence/protocol';
@@ -25,6 +26,9 @@ import { describeFeeling } from '../affect/express';
  * latter, which is why no system prompt reached a model before 67dd675.
  */
 
+/** The user emotions a model is offered: `other` and `unknown` are for sensors, not for a reader. */
+const USER_READINGS = UserEmotionSchema.options.filter((label) => label !== 'other' && label !== 'unknown');
+
 /** How the expressiveness level is said to a model, which cannot read a number. */
 const GESTURE_GUIDANCE = {
   rare: 'Use a gesture only when it really adds something — a few times in a conversation.',
@@ -38,6 +42,7 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
   const feeling = affect === null ? null : describeFeeling(affect, context.now.getTime());
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
+  const readings = USER_READINGS.join(', ');
 
   return [
     `You are ${persona.name}.`,
@@ -68,6 +73,12 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     `- ${GESTURE_GUIDANCE[persona.expressiveness.gestures]}`,
     '- Use the exact words listed. A tag you invent does nothing.',
     '- The tags are how you are seen and heard. Do not also describe the feeling in words.',
+    '',
+    'READING THEM',
+    `- Before anything else, tag how the person you are talking to seems: [user:happy]`,
+    `- The only readings are: ${readings}. Use neutral when nothing shows.`,
+    '- Read their words, their punctuation and their emoji, not what you would feel in their place.',
+    '- This tag is never spoken or shown; it is how the call knows how they seem.',
     '',
     'WHAT YOU WILL NOT DO',
     ...persona.boundaries.map((line) => `- ${line}`),

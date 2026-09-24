@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CharacterEmotionSchema } from '@latentpresence/protocol';
-import { chunkText, knownEmotions, selfSpacingTerminators, terminators, SentenceChunker } from './chunker';
+import { CharacterEmotionSchema, UserEmotionSchema } from '@latentpresence/protocol';
+import { chunkText, knownEmotions, knownUserEmotions, selfSpacingTerminators, terminators, SentenceChunker } from './chunker';
 
 /** One row of the splitting table: text in, the spoken chunks it must become. */
 interface Row {
@@ -123,6 +123,18 @@ describe('SentenceChunker tags', () => {
     const [chunk] = chunkText('[emotive:sad] Honestly, I do not know.');
     expect(chunk?.text).toBe('Honestly, I do not know.');
     expect(chunk?.tags).toEqual([{ kind: 'emote', value: 'sad', known: null, offset: 0 }]);
+  });
+
+  it('lifts [user:x] out as its own kind, checked against the user emotions (P3-T04)', () => {
+    const [chunk] = chunkText('[user:sad] [emote:concern] Oh no. [user:weepy] I am here.');
+    expect(chunk?.text).toBe('Oh no. I am here.');
+    expect(chunk?.tags).toEqual([
+      { kind: 'user', value: 'sad', known: 'sad', offset: 0 },
+      { kind: 'emote', value: 'concern', known: 'concern', offset: 0 },
+      { kind: 'user', value: 'weepy', known: null, offset: 7 },
+    ]);
+    // `sad` is a user reading, not something she can show: never a known emote.
+    expect(chunkText('[emote:sad] Hm.')[0]?.tags[0]?.known).toBeNull();
   });
 
   it('does not invent a third kind out of the spelling', () => {
@@ -279,6 +291,10 @@ describe('SentenceChunker constants', () => {
     // `CharacterEmotion` and, without it, every tag naming it would be reported
     // `known: null` and the avatar would silently lose an expression it can play.
     expect([...knownEmotions].toSorted()).toEqual(CharacterEmotionSchema.options.toSorted());
+  });
+
+  it('knows exactly the user emotions the protocol defines (P3-T04)', () => {
+    expect([...knownUserEmotions].toSorted()).toEqual(UserEmotionSchema.options.toSorted());
   });
 
   it('treats every self-spacing mark as a terminator', () => {

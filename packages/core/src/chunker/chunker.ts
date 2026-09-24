@@ -1,4 +1,4 @@
-import type { CharacterEmotion, CharacterGesture, InlineTag, InlineTagKind } from '@latentpresence/protocol';
+import type { CharacterEmotion, CharacterGesture, InlineTag, InlineTagKind, UserEmotion } from '@latentpresence/protocol';
 
 export type { InlineTag, InlineTagKind };
 
@@ -117,6 +117,14 @@ export const knownGestures = new Set<string>([
 ]);
 
 /**
+ * The same arrangement for `[user:x]` (P3-T04, ADR-32): `chunker.test.ts` asserts this set
+ * equals `UserEmotionSchema.options`.
+ */
+export const knownUserEmotions = new Set<string>([
+  'neutral', 'happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised', 'other', 'unknown',
+]);
+
+/**
  * A `[` that is not closed within this many characters is literal text, not the start of
  * a tag. Without the cap an unmatched bracket would hold the rest of the turn in the
  * buffer waiting for a `]` that never arrives.
@@ -134,11 +142,12 @@ export const TAG_SCAN_LIMIT = 48;
  * removes the ugliest failure a model can hand us. **`emotive` joined it in P3-T03**:
  * `glm-5.2:cloud` wrote `[emotive:sad]` under a low mood (`pnpm live:affect`, 2026-09-24).
  */
-export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture):([a-z][a-z0-9-]*)\]/;
+export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture|user):([a-z][a-z0-9-]*)\]/;
 
 /** The verdict on a raw label: on its own kind's list, or null. */
-function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | null {
+function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | UserEmotion | null {
   if (kind === 'emote') return knownEmotions.has(value) ? (value as CharacterEmotion) : null;
+  if (kind === 'user') return knownUserEmotions.has(value) ? (value as UserEmotion) : null;
   return knownGestures.has(value) ? (value as CharacterGesture) : null;
 }
 
@@ -233,7 +242,7 @@ export class SentenceChunker {
         const rest = this.buffer.slice(i, i + TAG_SCAN_LIMIT);
         const match = TAG_PATTERN.exec(rest);
         if (match !== null) {
-          const kind = match[1] === 'gesture' ? 'gesture' : 'emote';
+          const kind = match[1] === 'gesture' || match[1] === 'user' ? match[1] : 'emote';
           const value = match[2] ?? '';
           this.tags.push({
             kind,

@@ -59,6 +59,7 @@ describe('TagFilter', () => {
     // Shares TAG_PATTERN with the chunker, so the alias lands in both by construction.
     expect(stream(['[emotion:concern] That sounds hard.'])).toBe('That sounds hard.');
     expect(stream(['[emotive:sad] That sounds hard.'])).toBe('That sounds hard.');
+    expect(stream(['[user:sad] [emote:concern] That sounds hard.'])).toBe('That sounds hard.');
   });
 
   it('removes an unknown label, because it is still a well-formed tag', () => {

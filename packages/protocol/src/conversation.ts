@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, UserAffectSchema } from './affect';
+import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, UserAffectSchema, UserEmotionSchema } from './affect';
 import { DurationMsSchema, IdSchema, JsonObjectSchema, JsonValueSchema, TimestampSchema, UnitIntervalSchema } from './common';
 import { WordTimingSchema } from './media';
 
@@ -13,8 +13,13 @@ export const ConversationStateSchema = z.enum([
 ]);
 export type ConversationState = z.infer<typeof ConversationStateSchema>;
 
-/** Which inline tag this is. The grammar is `[emote:x]` / `[gesture:x]` (P1-T12). */
-export const InlineTagKindSchema = z.enum(['emote', 'gesture']);
+/**
+ * Which inline tag this is. The grammar is `[emote:x]` / `[gesture:x]` (P1-T12), and since
+ * P3-T04 `[user:x]` — the model's read of how the *user* seems, a `UserEmotion`: the text
+ * channel's LLM side output (ADR-32, additive; `PROTOCOL_VERSION` stays 1). It is never
+ * performed; the avatar ignores it and user-affect fusion (P3-T07) reads it.
+ */
+export const InlineTagKindSchema = z.enum(['emote', 'gesture', 'user']);
 export type InlineTagKind = z.infer<typeof InlineTagKindSchema>;
 
 /**
@@ -34,7 +39,7 @@ export type InlineTagKind = z.infer<typeof InlineTagKindSchema>;
 export const InlineTagSchema = z.object({
   kind: InlineTagKindSchema,
   value: z.string().min(1),
-  known: z.union([CharacterEmotionSchema, CharacterGestureSchema]).nullable(),
+  known: z.union([CharacterEmotionSchema, CharacterGestureSchema, UserEmotionSchema]).nullable(),
   offset: z.number().int().min(0),
 });
 export type InlineTag = z.infer<typeof InlineTagSchema>;

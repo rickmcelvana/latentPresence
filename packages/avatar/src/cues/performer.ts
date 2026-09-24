@@ -40,6 +40,8 @@ export class CuePerformer {
 
   perform(tag: InlineTag): PerformResult {
     if (tag.known === null) return 'unmapped';
+    // `[user:x]` is the model's read of the user (P3-T04), not something she does.
+    if (tag.kind === 'user') return 'unmapped';
     if (tag.kind === 'emote') {
       const weights = EMOTION_EXPRESSIONS[tag.known as CharacterEmotion] as ExpressionWeights | undefined;
       if (weights === undefined) return 'unmapped';

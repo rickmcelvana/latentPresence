@@ -112,6 +112,9 @@ describe('CuePerformer', () => {
     const performer = new CuePerformer();
     expect(performer.perform(tag('gesture', 'wave', 0))).toBe('unmapped');
     expect(performer.perform({ kind: 'emote', value: 'smug', known: null, offset: 0 })).toBe('unmapped');
+    // P3-T04: the model's read of the user is not something she does.
+    expect(performer.perform({ kind: 'user', value: 'sad', known: 'sad', offset: 0 })).toBe('unmapped');
+    expect(performer.update(16).expression).toEqual({});
   });
 });
 
