@@ -125,6 +125,15 @@ Held to 100 labelled messages (`docs/SURFACE.md`). **Nothing consumes the readin
 P3-T07 fuses them into `UserAffect` and dispatches `affect.user.updated`, which the engine
 already catches by empathy.
 
+## Reading the user from their voice (P3-T05)
+
+`SpeechEmotionReader` (`packages/providers/src/ser`) drives a gated worker
+(`packages/ml-web/src/ser`) and returns an `AffectReading` on the `voice` channel for one
+user speech segment. Default: the 9.7 MB emotion2vec+ distill on wasm (23–43 ms); option:
+emotion2vec+ base on WebGPU, last 1.5 s (61–108 ms) — ADR-33. `other`/`unknown` probability
+is the model not knowing: it lowers confidence, and below half the mass the reading is
+neutral at zero confidence. Not in the call yet — P3-T07 fuses it.
+
 ## Not yet
 
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being

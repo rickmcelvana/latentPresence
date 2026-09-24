@@ -1985,3 +1985,28 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
 - **Anthropic API: "Your credit balance is too low"** from the 47th Fable request of the
   first run on (2026-09-24). An error reply was being scored as "no tag", which made Fable look
   like a model that stops tagging; failed calls are now counted apart.
+
+## Speech emotion models — read and measured 2026-09-24 (P3-T05)
+
+- **Rejected:** `onnx-community/wav2vec2-base-Speech_Emotion_Recognition-ONNX` — its base
+  `DunnBC22/wav2vec2-base-Speech_Emotion_Recognition` answers the API with an auth error (gone
+  or private); no licence can be documented. `ziyu12345/emotion2vec_plus_base_onnx` tags itself
+  MIT, which a derivative of FunASR-licensed weights cannot be.
+- **`pankotaro/emotion2vec-plus-base-onnx` @ 334d437**: `emotion2vec_plus_base.onnx`
+  373,159,295 B (input `(1, N)` 16 kHz float32, output `(1, frames, 768)`), `emotion2vec_head.json`
+  128,472 B (`labels` = angry, disgusted, fearful, happy, neutral, other, sad, surprised, unknown
+  — exactly `UserEmotion`; `weight` 9×768; `bias` 9). Mean-pool, head, softmax.
+- **`thomashallock/emotion2vec-web-distill` @ 566a831**: `distill-student-v4.fused.onnx`
+  9,695,687 B, sha256 `136b83ee…3795`; `waveform (batch, 48000)` in, `cosines (batch, 18)` out;
+  softmax temperature 0.0375; 18 poses and their anchor mixes in `distill-anchor-mix.json`. Its
+  card: 63.8% top-anchor agreement with the teacher held out, ~14% on non-calm moments of free
+  human speech ("far more conservative than its teacher").
+- **`pnpm live:ser`** (node, onnxruntime-web wasm, 1 thread, Kokoro speech — should read
+  neutral): distill 25–52 ms, neutral on 2 of 3 (a 0.4 s "Oh." read angry 0.37); base 217 ms
+  at 0.4 s, 1192 ms at 2.4 s, 3025 ms at 6 s, and **`unknown` 0.68** on the 2.4 s clip —
+  which is why `other`/`unknown` count as the model not knowing.
+- **`/dev/ser`, browser worker (Chrome in the Browser pane, RTX 5060 Ti)**, median (p90):
+  distill on wasm 26 (30), 26 (29), 23 (29), 25 (29), 43 (54) ms at 1, 1.5, 2, 3, 6 s; base on
+  WebGPU uncapped 63, 108, 171, 349, 1289 ms; **capped at 1.5 s** 61 (66), 108 (175), 107, 108,
+  107 ms. Load with warm-up: distill < 1 s cached. A reload of Vite's dev server mid-click
+  (new dependency optimised) lost the first click; the consent had been stored.

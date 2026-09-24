@@ -547,3 +547,9 @@ Left: R-21 (accept ADR-32 and the thresholds; Anthropic credit ran out — Fable
 Next: P3-T05 user affect from voice (SER worker).
 Decisions: **ADR-32 proposed** ([user:x] inline tag as the LLM side channel, recommended option taken); thresholds proposed in the test file. The live check counted API errors as "no tag" — fixed. Click-through: n/a (core + live check; `/chat` sends the new prompt section but nothing reads the tag yet).
 Addendum: R-21 — Rick accepted ADR-32 and the thresholds (D-33).
+
+## 2026-09-24 claude — P3-T05 user affect from voice
+Did: read the SER candidates on the HF API (wav2vec2 ONNX export rejected — no traceable licence); `ml-web/src/ser` (catalog pinned to revisions and exact sizes, pure arithmetic, both models, worker, gated factory); `SpeechEmotionReader` → voice-channel `AffectReading`; `/dev/ser` bench; `pnpm live:ser`. Rick chose both models, base default — then the browser worker measured base at 349 ms (3 s) and 1.3 s (6 s), and he flipped the default to the distill (23–43 ms). a0b9d9a, 1210 tests. ~383 MB of weights downloaded with his OK (node cache and the pane).
+Left: R-22 (optional: speak to /dev/ser in five tones); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
+Next: P3-T06 user affect from face (opt-in), then P3-T07 fusion.
+Decisions: **ADR-33 accepted** (distill default, base opt-in capped at the last 1.5 s; FunASR licence, attribution on consent lines). `other`/`unknown` = the model not knowing. Click-through: /dev/ser in the Browser pane — consent screen listed both base files with licence; timings above; build guard needle mutation-checked.

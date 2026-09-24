@@ -233,9 +233,10 @@ Heuristic scorer (emoji, punctuation, caps, message pace) plus an LLM side-chann
 Done when: unit tests over a labelled set of 100 messages reach agreed thresholds.
 **Met, thresholds accepted (D-33):** surface-cued named ≥ 80% (blind 84%, tuned 98%), neutral left calm ≥ 90% (100%), situation-only abstained ≥ 90% (97%), no confident wrong polarity (0). The set was written by a separate agent. The side channel is `[user:x]` (ADR-32): glm-5.2:cloud right on 84–90%, 77–87% of situation-only messages; model-else-heuristic 88–92%.
 
-### P3-T05 User affect from voice — owner: main
+### P3-T05 User affect from voice — owner: main (done 2026-09-24; `packages/ml-web/src/ser`, `packages/providers/src/ser`, ADR-33)
 SER worker (emotion2vec+ ONNX export or wav2vec2 SER ONNX) on user speech segments; outputs valence, arousal, label, confidence.
 Done when: inference under 150 ms per segment in a worker; documented model licence.
+**Met:** default (emotion2vec+ web distill, wasm) 23–43 ms median, p90 ≤ 54, at 1–6 s in a browser worker (`/dev/ser`); the base option capped at 1.5 s is 61–108 ms. Licence: FunASR Model Open Source Licence 1.1, on every consent line and in ADR-33 with attribution.
 
 ### P3-T06 User affect from face (opt-in) — owner: main
 MediaPipe Face Landmarker in a worker on the user camera; blendshapes to valence/arousal heuristics; explicit consent; no frames stored; indicator light while active.

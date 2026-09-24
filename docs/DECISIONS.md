@@ -35,6 +35,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted (amended) | 2026-09-21 |
 | ADR-31 | Animation clips are converted to `.vrma` in node, not retargeted in Blender; any VRM avatar plays them (retarget at load) | accepted | 2026-09-24 |
 | ADR-32 | The model reads the user with an inline `[user:x]` tag, first in its reply; `InlineTagKind` gains `user` (additive) | accepted | 2026-09-24 |
+| ADR-33 | Voice emotion: the emotion2vec+ web distill (9.7 MB, wasm) by default, emotion2vec+ base (373 MB, WebGPU, last 1.5 s) as the accurate option; FunASR Model Licence 1.1 | accepted | 2026-09-24 |
 
 ---
 
@@ -941,3 +942,30 @@ scored 88–92% against the heuristic's 69% alone. Its misses lean one way: poli
 **Accepted 2026-09-24 by Rick**, with P3-T04's thresholds as proposed. Reversal cost: the
 prompt's READING THEM section and one alternation in `TAG_PATTERN`; nothing downstream
 depends on the tag yet beyond `readingFromTag`.
+
+## ADR-33 Voice emotion: an emotion2vec+ distill by default, emotion2vec+ base as the accurate option (accepted 2026-09-24)
+
+**Context.** P3-T05: a speech-emotion model in a worker, under 150 ms per segment, with a
+documented licence. Candidates read on the Hugging Face API on 2026-09-24:
+`onnx-community/wav2vec2-base-Speech_Emotion_Recognition-ONNX` (transformers.js-ready) was
+**rejected** — its source repo is gone, so its licence cannot be documented. Every usable
+option is an emotion2vec+ derivative under the **FunASR Model Open Source Licence 1.1**: free
+to use, copy, modify and share with attribution and the model names kept; "for reference and
+learning purposes"; revisions take effect on publication.
+
+**Decision (Rick, twice).** First, on the recommendation: build both, base the default. Then,
+on the numbers measured in a browser worker, **the default flipped to the distill**:
+
+| model | size | backend | per segment (median, 1–6 s) |
+|---|---|---|---|
+| `thomashallock/emotion2vec-web-distill` v4 | 9.7 MB | wasm | **23–43 ms** |
+| `pankotaro/emotion2vec-plus-base-onnx` | 373 MB + 128 KB head | WebGPU | 63 ms at 1 s, 171 at 2 s, 349 at 3 s, 1289 at 6 s |
+
+Base's cost grows with the square of the length and it would hold the GPU Kokoro needs for the
+first sentence, so as the opt-in it hears only the **last 1.5 s** (61–108 ms). The distill's
+own card says it catches only ~14% of the non-calm moments its teacher hears in natural
+speech: it under-reacts rather than mis-reacts, and text (P3-T04) and `[user:x]` (ADR-32)
+carry the rest in fusion (P3-T07).
+
+**Attribution** is on every consent line (model name, source, licence) and here: emotion2vec
+(Ma et al., ACL 2024, arXiv:2312.15185), FunASR (Gao et al., INTERSPEECH 2023), Alibaba Group.
