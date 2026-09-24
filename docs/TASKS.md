@@ -192,9 +192,9 @@ Newest first. Each line is the outcome, not the instructions — the detail is i
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
 - **D-31 · R-19: her mood in her voice** — Rick 2026-09-24: all the renders on one shuffled
-  playlist — **low was picked out every time, by its slower pace**; beyond speed the moods
-  sound the same, as expected with Kokoro having no emotion control. Bright was not told apart from rest:
-  +11% fast doesn't register the way −12% slow does. Done-when met (two moods audibly different,
+  playlist — **"I could tell the low from the others"**, by its slower pace; beyond speed the
+  moods sound the same, as expected with Kokoro having no emotion control. Bright was not
+  reported as distinct from rest (+11% vs −12%). Done-when met (two moods audibly different,
   low vs the rest); P3-T03 closed. Bright's pace is a candidate to push towards Kokoro's 1.25
   if P3-T09's live call wants it.
 
