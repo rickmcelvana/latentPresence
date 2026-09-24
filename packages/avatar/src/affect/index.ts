@@ -2,7 +2,9 @@ export { NEUTRAL_RADIUS, affectRegion, regionStrength, type AffectRegion } from 
 export {
   REGION_BODY,
   affectToBody,
+  mergeExpressionsMax,
   modulateMood,
+  relativeGaze,
   type AffectBody,
   type AffectInputs,
   type GazeModulation,

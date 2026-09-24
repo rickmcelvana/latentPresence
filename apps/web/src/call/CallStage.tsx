@@ -8,11 +8,16 @@ import {
   CuePerformer,
   LifeLayer,
   TagBridge,
+  affectToBody,
+  mergeExpressionsMax,
+  relativeGaze,
   withGesture,
   LipSync,
   MOUTH_SHAPES,
   tapAnalyser,
+  type AffectInputs,
   type CameraPreset,
+  type GazeModulation,
   type LifePose,
 } from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
@@ -62,6 +67,16 @@ export interface CallStageRenderer {
   playClip?(id: string, options: { loop: boolean; crossfadeMs: number; weight: number }): Promise<void>;
 }
 
+/**
+ * The character's mood, for the body (P3-T09): what `affectToBody` reads, now, and where
+ * she rests. The gaze habit is applied **relative to the baseline**, so at rest the life
+ * layer is exactly what it was before affect existed (`relativeGaze`).
+ */
+export interface CallStageAffect {
+  inputs(): AffectInputs;
+  readonly baseline: AffectInputs;
+}
+
 export interface CallStageProps {
   readonly machine: ConversationMachine;
   /** The shared consent book (`deps.consent` — the same object `/settings` and the voice
@@ -69,6 +84,8 @@ export interface CallStageProps {
   readonly consent: ModelConsent;
   /** The voice's output graph, for lip sync, or `null` when nothing can speak. */
   readonly voice: AudioOutputHandle | null;
+  /** Her mood, read every frame; omitted or null, the stage shows tags alone, as before P3-T09. */
+  readonly affect?: CallStageAffect | null;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -88,7 +105,14 @@ type CharacterPhase = 'consent' | 'loading' | 'ready' | 'declined' | 'failed';
 
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
 
-export function CallStage({ machine, consent, voice, createRenderer = defaultCreateRenderer, fetchModel = cachedModelFetch }: CallStageProps): ReactElement {
+export function CallStage({
+  machine,
+  consent,
+  voice,
+  affect = null,
+  createRenderer = defaultCreateRenderer,
+  fetchModel = cachedModelFetch,
+}: CallStageProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<CallStageRenderer | null>(null);
   const lipSyncRef = useRef<LipSync | null>(null);
@@ -99,6 +123,8 @@ export function CallStage({ machine, consent, voice, createRenderer = defaultCre
   /** The body's base clip follows the conversation state (P2-T03), once the clips are in. */
   const clipsReadyRef = useRef(false);
   const graphRef = useRef(new BaseClipGraph());
+  /** The mood the frame loop reads, with its baseline's gaze worked out once. */
+  const affectRef = useRef<{ source: CallStageAffect; baselineGaze: GazeModulation } | null>(null);
 
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
@@ -110,6 +136,10 @@ export function CallStage({ machine, consent, voice, createRenderer = defaultCre
   useEffect(() => {
     readyRef.current = phase === 'ready';
   }, [phase]);
+
+  useEffect(() => {
+    affectRef.current = affect === null ? null : { source: affect, baselineGaze: affectToBody(affect.baseline).gaze };
+  }, [affect]);
 
   // One renderer for the stage's life: mounts the canvas and starts the frame loop right
   // away (the room and its lighting need no consent), and follows the conversation state
@@ -146,8 +176,19 @@ export function CallStage({ machine, consent, voice, createRenderer = defaultCre
       bridge.update(now);
       if (readyRef.current) {
         const cues = performer.update(delta);
+        // P3-T09: the mood's resting face under the tags' faces, and its gaze habit on the
+        // life layer — both before `life.update`, which reads the modulation this frame.
+        const mood = affectRef.current;
+        let face = cues.expression;
+        if (mood !== null) {
+          const body = affectToBody(mood.source.inputs());
+          life.setModulation(relativeGaze(body.gaze, mood.baselineGaze));
+          face = mergeExpressionsMax(body.expression, cues.expression);
+        } else {
+          life.setModulation(null);
+        }
         avatar.setLifePose?.(withGesture(life.update(delta), cues.additive));
-        avatar.setExpression(cues.expression);
+        avatar.setExpression(face);
         const lipSync = lipSyncRef.current;
         if (lipSync !== null) {
           for (const [shape, weight] of lipSync.update(delta, now)) avatar.setViseme(shape, weight);

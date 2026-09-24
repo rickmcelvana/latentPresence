@@ -27,9 +27,16 @@ import { emptyTranscript, reduceTranscript, type TranscriptLine, type Transcript
  * between turns. `docs/TASKS.md` D-21.
  */
 
+/** A fixed prompt, or one rendered each time a request is built. */
+export type SystemPrompt = string | (() => string);
+
 export interface ConversationHistoryOptions {
-  /** The persona prompt (P1-T12). Sent first, and never counted against `maxTurns`. */
-  readonly system?: string | null;
+  /**
+   * The persona prompt (P1-T12). Sent first, and never counted against `maxTurns`. A
+   * function is asked on every request (P3-T09), so what is true right now — her mood —
+   * is read when the model is called, not when the page mounted.
+   */
+  readonly system?: SystemPrompt | null;
   /**
    * How many messages of conversation to keep, newest first. Context is finite and a long
    * call is unbounded; P4 replaces this with retrieval. Default 40 — twenty exchanges,
@@ -104,8 +111,8 @@ function trim(messages: readonly LlmMessage[], maxMessages: number): LlmMessage[
 export class ConversationHistory {
   private state: TranscriptState = emptyTranscript();
   private readonly maxMessages: number;
-  /** The persona prompt. Mutable: P3 and P4 rewrite it between turns. */
-  system: string | null;
+  /** The persona prompt, or how to render it per request. Mutable: P4 rewrites it between turns. */
+  system: SystemPrompt | null;
 
   constructor(options: ConversationHistoryOptions = {}) {
     this.system = options.system ?? null;
@@ -134,7 +141,8 @@ export class ConversationHistory {
     const said = pendingUser?.trim() ?? '';
     const messages = this.messages;
     if (said !== '') append(messages, { role: 'user', content: said });
-    return this.system === null ? messages : [{ role: 'system', content: this.system }, ...messages];
+    const system = typeof this.system === 'function' ? this.system() : this.system;
+    return system === null ? messages : [{ role: 'system', content: system }, ...messages];
   }
 
   /** Forget everything said so far. `system` is kept: it is who the character is, not what happened. */

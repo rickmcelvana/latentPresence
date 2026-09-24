@@ -1,6 +1,6 @@
 import type { ConversationEvent, LLMProvider, LlmFinishReason, LlmMessage, TTSProvider } from '@latentpresence/protocol';
 import { Cancellation } from '../cancellation';
-import { TagFilter } from '../chunker';
+import { SentenceChunker, TagFilter, type SpeechChunk } from '../chunker';
 import { ConversationHistory } from '../history/history';
 import type { ConversationMachine } from '../conversation/machine';
 import type { PlaybackSink } from '../playback/sink';
@@ -77,6 +77,12 @@ interface Streaming {
   text: string;
   /** Tags are held back mid-delta, so `text` never briefly contains one (P1-T12). */
   readonly tagFilter: TagFilter;
+  /**
+   * The same words as sentences, for `assistant.sentence` (P3-T09): a typed answer shown as
+   * text still carries `[emote:x]` tags, and the affect engine feels them from the bus. The
+   * spoken path gets its sentences from `Reply`.
+   */
+  readonly sentences: SentenceChunker;
   /** A spoken answer's reply (P2-T08); null for a text one. */
   reply: Reply | null;
   readonly fadeMs: number;
@@ -145,6 +151,7 @@ export class ChatSession {
       cancellation: new Cancellation(),
       text: '',
       tagFilter: new TagFilter(),
+      sentences: new SentenceChunker(),
       reply: null,
       fadeMs: this.voice?.fadeMs ?? 100,
     };
@@ -205,6 +212,7 @@ export class ChatSession {
             streaming.text += shown;
             this.dispatch({ type: 'assistant.token', text: shown });
           }
+          this.sentences(streaming.sentences.push(part.text));
         } else if (part.type === 'finish') {
           reason = part.reason;
         }
@@ -220,6 +228,7 @@ export class ChatSession {
       streaming.text += tail;
       this.dispatch({ type: 'assistant.token', text: tail });
     }
+    this.sentences(streaming.sentences.flush());
 
     if (failure === null && reason === 'error') failure = 'the model stream ended with an error';
     if (failure === null && streaming.text === '') {
@@ -263,6 +272,12 @@ export class ChatSession {
     );
     streaming.reply = reply;
     void reply.done.then((outcome) => this.settled(streaming, outcome));
+  }
+
+  private sentences(chunks: readonly SpeechChunk[]): void {
+    for (const chunk of chunks) {
+      this.dispatch({ type: 'assistant.sentence', text: chunk.text, index: chunk.index, tags: [...chunk.tags] });
+    }
   }
 
   private onReply(streaming: Streaming, event: ReplyEvent): void {

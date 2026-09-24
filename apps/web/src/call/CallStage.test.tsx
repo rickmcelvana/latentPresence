@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
 import type { ConversationEvent, ConversationState } from '@latentpresence/protocol';
-import { FakeAvatarRenderer } from '@latentpresence/avatar';
+import { FakeAvatarRenderer, type AffectInputs } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR_DESCRIPTOR } from './character-asset';
 import { CallStage } from './CallStage';
@@ -171,5 +171,65 @@ describe('CallStage — base clips follow the conversation (P2-T03)', () => {
     // thinking is idle too, so it asks for nothing: a second `idle` would restart the loop.
     expect(renderer.played.map((play) => play.id)).toEqual(['idle', 'talk', 'idle']);
     expect(renderer.played.slice(1).every((play) => play.crossfadeMs > 0 && play.crossfadeMs < 300)).toBe(true);
+  });
+});
+
+class FaceRenderer extends FakeAvatarRenderer {
+  readonly faces: Record<string, number>[] = [];
+  override setExpression(weights: Record<string, number>): void {
+    this.faces.push({ ...weights });
+  }
+}
+
+describe('CallStage — her mood on her face (P3-T09)', () => {
+  const baseline: AffectInputs = {
+    mood: { pleasure: 0.2, arousal: 0.05, dominance: 0 },
+    energy: 0.6,
+    stance: { warmth: 0.4, formality: -0.3, engagement: 0.3 },
+    feeling: { label: 'neutral', intensity: 0 },
+  };
+  const low: AffectInputs = { ...baseline, mood: { pleasure: -0.8, arousal: -0.6, dominance: -0.6 }, energy: 0.3, feeling: { label: 'sadness', intensity: 0.4 } };
+
+  /** Frames run by hand: jsdom's animation frames are not something a test can count on. */
+  async function stageWith(affect: { inputs: () => AffectInputs; baseline: AffectInputs } | null) {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new FaceRenderer();
+    render(
+      <CallStage
+        affect={affect}
+        consent={consent}
+        createRenderer={() => renderer}
+        fetchModel={async () => new Uint8Array([1])}
+        machine={machine()}
+        voice={null}
+      />,
+    );
+    await waitFor(() => expect(renderer.character).not.toBeNull());
+    await settle();
+    let now = 0;
+    for (let i = 0; i < 5; i += 1) {
+      now += 16;
+      const next = frames.splice(0);
+      for (const frame of next) frame(now);
+    }
+    return renderer.faces;
+  }
+
+  it('rests exactly as it did before affect, at her baseline', async () => {
+    const without = await stageWith(null);
+    cleanup();
+    const atRest = await stageWith({ inputs: () => baseline, baseline });
+    expect(without.length).toBeGreaterThan(0);
+    expect(atRest).toEqual(without);
+    expect(atRest.every((face) => Object.keys(face).length === 0)).toBe(true);
+  });
+
+  it('shows a low mood as a resting face', async () => {
+    const faces = await stageWith({ inputs: () => low, baseline });
+    expect(Object.values(faces.at(-1) ?? {}).some((weight) => weight > 0.1)).toBe(true);
   });
 });

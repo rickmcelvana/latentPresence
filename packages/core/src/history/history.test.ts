@@ -114,6 +114,14 @@ describe('ConversationHistory', () => {
     expect(history.request('hi')).toEqual([{ role: 'user', content: 'hi' }]);
   });
 
+  it('asks a system function on every request, so it can say what is true right now (P3-T09)', () => {
+    let mood = 'calm';
+    const history = new ConversationHistory({ system: () => `You are Alice. You feel ${mood}.` });
+    expect(history.request('hi')[0]).toEqual({ role: 'system', content: 'You are Alice. You feel calm.' });
+    mood = 'low';
+    expect(history.request('hi')[0]).toEqual({ role: 'system', content: 'You are Alice. You feel low.' });
+  });
+
   it('ignores a blank pending turn', () => {
     const history = new ConversationHistory();
     expect(history.request('   ')).toEqual([]);

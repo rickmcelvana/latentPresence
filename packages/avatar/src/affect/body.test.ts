@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CharacterGestureSchema, type Mood, type SocialStance } from '@latentpresence/protocol';
 import type { MoodParams } from '../life/params';
 import { GESTURE_MOTIONS } from '../mappings/gestures';
-import { REGION_BODY, affectToBody, modulateMood, type AffectInputs } from './body';
+import { REGION_BODY, affectToBody, modulateMood, relativeGaze, type AffectInputs } from './body';
 import { affectRegion } from './regions';
 
 const NEUTRAL_MOOD: Mood = { pleasure: 0.2, arousal: 0.05, dominance: 0 };
@@ -125,5 +125,33 @@ describe('modulateMood', () => {
   it('replaces awayTargets only when the modulation names one', () => {
     expect(modulateMood(base, IDENTITY_GAZE).awayTargets).toEqual(base.awayTargets);
     expect(modulateMood(base, { ...IDENTITY_GAZE, awayTargets: ['down'] }).awayTargets).toEqual(['down']);
+  });
+});
+
+describe('relativeGaze (P3-T09)', () => {
+  const base = affectToBody({
+    mood: { pleasure: 0.2, arousal: 0.05, dominance: 0 },
+    energy: 0.6,
+    stance: { warmth: 0.4, formality: -0.3, engagement: 0.3 },
+    feeling: { label: 'neutral', intensity: 0 },
+  }).gaze;
+
+  it('is null at the baseline, so the life layer is left exactly as it was', () => {
+    // The baseline is not affectToBody's identity (energy 0.6, engagement 0.3), which is why this exists.
+    expect(base.blinkScale).not.toBe(1);
+    expect(relativeGaze(base, base)).toBeNull();
+  });
+
+  it('divides out the baseline and keeps a low mood\'s own away targets', () => {
+    const low = affectToBody({
+      mood: { pleasure: -0.8, arousal: -0.6, dominance: -0.6 },
+      energy: 0.3,
+      stance: { warmth: 0.4, formality: -0.3, engagement: -0.2 },
+      feeling: { label: 'sadness', intensity: 0.4 },
+    }).gaze;
+    const relative = relativeGaze(low, base);
+    expect(relative).not.toBeNull();
+    expect(relative?.lookAwayScale).toBeCloseTo(low.lookAwayScale / base.lookAwayScale, 10);
+    expect(relative?.awayTargets).toEqual(low.awayTargets);
   });
 });

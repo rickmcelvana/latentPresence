@@ -307,3 +307,34 @@ export function modulateMood(base: MoodParams, gaze: GazeModulation): MoodParams
     awayTargets: gaze.awayTargets ?? base.awayTargets,
   };
 }
+
+/**
+ * `gaze` as a change from `baseline` rather than from the life layer's own habit
+ * (P3-T09): each multiplier divided by the baseline's, `awayTargets` only from `gaze`.
+ * **`null` when nothing changes**, so a character sitting at her own baseline hands the
+ * life layer exactly what it had before affect existed. `affectToBody`'s identity is at
+ * energy 0.5 and engagement ≤ 0, which is not where a persona rests — without this, `/chat`
+ * would blink and breathe differently the moment the engine was switched on, feeling nothing.
+ */
+export function relativeGaze(gaze: GazeModulation, baseline: GazeModulation): GazeModulation | null {
+  const relative: GazeModulation = {
+    lookAwayScale: gaze.lookAwayScale / baseline.lookAwayScale,
+    holdScale: gaze.holdScale / baseline.holdScale,
+    awayMeanScale: gaze.awayMeanScale / baseline.awayMeanScale,
+    blinkScale: gaze.blinkScale / baseline.blinkScale,
+    breathScale: gaze.breathScale / baseline.breathScale,
+    ...(gaze.awayTargets === undefined ? {} : { awayTargets: gaze.awayTargets }),
+  };
+  const unchanged =
+    relative.awayTargets === undefined &&
+    [relative.lookAwayScale, relative.holdScale, relative.awayMeanScale, relative.blinkScale, relative.breathScale].every(
+      (value) => Math.abs(value - 1) < 1e-9,
+    );
+  return unchanged ? null : relative;
+}
+
+/** Per-name max of two faces — the resting face and whatever a played tag is doing, the tag
+ * still reading through since its weights are usually higher. Zeros are dropped. */
+export function mergeExpressionsMax(a: ExpressionWeights, b: ExpressionWeights): ExpressionWeights {
+  return mergedMax(a, b, 1);
+}

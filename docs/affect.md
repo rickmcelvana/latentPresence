@@ -93,17 +93,30 @@ converted to the stored form once.
 
 `pnpm live:affect` / `pnpm live:affect-voice` measure both (`docs/SURFACE.md`); R-19 is the ear.
 
+## In the call (P3-T09)
+
+`/chat` holds one engine for the page (`attachAffect`, core), fed from the bus like the
+history — including a **typed answer shown as text**, which now puts its sentences on the bus
+(`ChatSession`) so its tags are felt too. Three readers, each at the moment it needs it:
+
+- **The prompt** — `ConversationHistory.system` is a function now, rendered on every request
+  with `PromptContext.affect`; `now` stays fixed at mount, so only the last two lines move.
+- **The voice** — `affect.voiceStyle` on `ChatVoice` (Speak replies) and on the call's `Reply`.
+- **The body** — `CallStage` runs `affectToBody` every frame: the resting face max-merged under
+  the tags' faces, and the gaze habit **relative to her baseline** (`relativeGaze`), because
+  `affectToBody`'s identity is at energy 0.5 and engagement ≤ 0, not where Alice rests. At
+  baseline the life layer gets `null` and the face `{}` — exactly `/chat` before P3-T09.
+
+It starts at the baseline on every visit until P4 persists it. Gesture bias and idle-clip
+choice are not used in the call yet: nothing performs gestures unprompted, and only `idle` exists.
+
 ## Not yet
 
-- **Only `/dev/avatar` reads it.** P3-T02 maps it to a resting face, gaze habit, gesture bias
-  and idle clip (`packages/avatar/src/affect`, R-18 passed); **`/chat` does not run it yet**
-  (P3-T09). P3-T03 maps it to voice and wording (above), **built but not yet wired into `/chat`** — P3-T09 sets `PromptContext.affect` before each turn and passes `voiceStyle`. Until then the
-  call's tag bridge (P2-T07) shows tags directly.
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being
-  interrupted, a long silence, a warm reply) become `stance`/`energy`/`emotion` inputs in
-  P3-T03/T09; time of day in P6.
+  interrupted, a long silence, a warm reply) should become `stance`/`energy`/`emotion` inputs;
+  **no task owns that yet** (P3-T03/T09 did not). Time of day is P6.
 - **Not persisted anywhere yet** — `serializeAffect`/`restoreAffect` are ready for P4's
   MariaDB row.
 - **Every number is hand-set.** P3-T02's ten-state review (R-18, 2026-09-24) passed the body
   mapping on them; the engine's own dynamics (half-lives, gains) have not met a person yet —
-  that is P3-T09's live call.
+  that is R-20, P3-T09's live call.

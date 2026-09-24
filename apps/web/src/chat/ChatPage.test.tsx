@@ -110,6 +110,11 @@ function scriptedProvider(
   });
 }
 
+/** The system prompt a request carried, or '' when it carried none. */
+function systemOf(request: LlmRequest | undefined): string {
+  return request?.messages.find((message) => message.role === 'system')?.content ?? '';
+}
+
 describe('ChatPage — the persona', () => {
   it('sends the persona as a system prompt, with the tag rules in it', async () => {
     // The whole of P1-T12 reaches a model through this one field. Before 67dd675 a
@@ -138,6 +143,39 @@ describe('ChatPage — the persona', () => {
     expect(system?.content).toContain('You are Alice.');
     expect(system?.content).toContain('[emote:curiosity]');
     expect(system?.content).toContain('nod, shake-head, shrug');
+  });
+
+  it('tells the model how she feels, from the tags she has written (P3-T09)', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const seen: LlmRequest[] = [];
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        seen.push(request);
+        yield { type: 'text-delta', text: '[emote:sadness] Oh no. [emote:sadness] That is hard. [emote:sadness] I am sorry.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    render(<ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const say = async (text: string, count: number) => {
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: text } });
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+      await waitFor(() => expect(seen.length).toBe(count));
+      await act(() => settle());
+    };
+    await say('my cat died', 1);
+    // The engine takes a feeling on its next 100 ms step; a person's next turn is never sooner.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await say('she was nineteen', 2);
+
+    expect(systemOf(seen[0])).toContain('settled, your usual self');
+    expect(systemOf(seen[1])).toContain('and right now sad');
+    // The persona part is untouched: only the last two lines move.
+    expect(systemOf(seen[1]).split('\n').slice(0, -2)).toEqual(systemOf(seen[0]).split('\n').slice(0, -2));
   });
 
   it('names the character from the persona file rather than a constant', () => {

@@ -1,6 +1,15 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
-import { ChatSession, ConversationMachine, attachHistory, renderSystemPrompt, type ChatVoice } from '@latentpresence/core';
+import {
+  ChatSession,
+  ConversationMachine,
+  DEFAULT_AFFECT_PARAMS,
+  attachAffect,
+  attachHistory,
+  renderSystemPrompt,
+  type AttachedAffect,
+  type ChatVoice,
+} from '@latentpresence/core';
 import type { ConversationEvent, LLMProvider, ModelDescriptor } from '@latentpresence/protocol';
 import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
@@ -9,7 +18,7 @@ import { useTranscript } from '../transcript/useTranscript';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
-import type { CallStageRenderer } from '../call/CallStage';
+import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
 import type { ActiveCall } from '../voice/VoicePanel';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
@@ -73,6 +82,18 @@ async function loadDefaultSpeaker(): Promise<SpeakerLoader> {
 }
 
 type SpeakPhase = 'off' | 'consent' | 'starting' | 'on';
+
+/** The body's view of the page's affect engine (P3-T09): what `affectToBody` reads, now, and her baseline. */
+function stageAffectOf(affect: AttachedAffect): CallStageAffect {
+  const { baseline } = DEFAULT_AFFECT_PARAMS;
+  return {
+    inputs: () => {
+      const state = affect.state();
+      return { mood: state.mood, energy: state.energy, stance: state.stance, feeling: affect.feeling() };
+    },
+    baseline: { mood: baseline.mood, energy: baseline.energy, stance: baseline.stance, feeling: { label: 'neutral', intensity: 0 } },
+  };
+}
 
 export interface ChatPageProps {
   readonly deps?: Partial<SettingsDeps>;
@@ -172,7 +193,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ machine, chat, history, llm }] = useState(() => {
+  const [{ machine, chat, history, llm, affect, stageAffect }] = useState(() => {
     const builtMachine = new ConversationMachine({
       sessionId: SESSION_ID,
       characterId: defaultPersona.id,
@@ -180,14 +201,20 @@ function ConfiguredChatPage({
       // typed Stop — see `host-timers.ts`, which is a comment about exactly this trap.
       scheduler: hostTimers(),
     });
-    // Rendered once, when the page mounts: `now` is what the model is told the time is,
-    // and re-rendering it per turn would rewrite the prompt under a provider's prompt
-    // cache for the sake of a clock nobody is watching that closely.
+    // P3-T09: one affect engine for the page, fed by the same bus — `[emote:x]` tags now,
+    // the user's affect from P3-T07. It starts at her baseline every visit until P4 persists it.
+    const builtAffect = attachAffect(builtMachine, { characterId: defaultPersona.id });
+    // `now` is fixed when the page mounts: it is what the model is told the time is, and a
+    // clock rewritten per turn would change the prompt under a provider's prompt cache for
+    // the sake of a clock nobody is watching that closely. **The mood is not fixed** — it is
+    // read on every request, and it is the prompt's last two lines, so a cached prefix
+    // survives it (P3-T03).
     // **The history is attached here, not by `ChatSession`** (P1-T12b): a voice call on
     // this page is handed the same one, and a history that watched the bus twice would
     // count every message twice. Whoever creates it owns its subscription.
+    const mountedAt = new Date();
     const attached = attachHistory(builtMachine, {
-      system: renderSystemPrompt(defaultPersona, { now: new Date(), userName: null }),
+      system: () => renderSystemPrompt(defaultPersona, { now: mountedAt, userName: null, affect: builtAffect.state() }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
     const builtChat = new ChatSession({
@@ -199,7 +226,14 @@ function ConfiguredChatPage({
       history: attached,
     });
     builtMachine.start();
-    return { machine: builtMachine, chat: builtChat, history: attached, llm: builtProvider };
+    return {
+      machine: builtMachine,
+      chat: builtChat,
+      history: attached,
+      llm: builtProvider,
+      affect: builtAffect,
+      stageAffect: stageAffectOf(builtAffect),
+    };
   });
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
@@ -298,7 +332,8 @@ function ConfiguredChatPage({
           return;
         }
         speakerRef.current = started;
-        chat.setVoice(started.voice);
+        // Her mood in her voice (P3-T09): the same engine the stage and the prompt read.
+        chat.setVoice({ ...started.voice, voiceStyle: affect.voiceStyle });
         setSpeaker(started);
         setSpeak('on');
         setSpeakStatus(null);
@@ -307,7 +342,7 @@ function ConfiguredChatPage({
         setSpeakStatus(error instanceof Error ? error.message : String(error));
       }
     },
-    [chat, deps, settings],
+    [affect, chat, deps, settings],
   );
 
   /** Back to text. `setVoice(null)` first: it stops an answer that is still speaking. */
@@ -399,7 +434,13 @@ function ConfiguredChatPage({
   return (
     <main className={pageClass}>
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
-        <CallStage consent={deps.consent} createRenderer={createRenderer} machine={machine} voice={voiceOutput} />
+        <CallStage
+          affect={stageAffect}
+          consent={deps.consent}
+          createRenderer={createRenderer}
+          machine={machine}
+          voice={voiceOutput}
+        />
       </Suspense>
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
@@ -434,6 +475,7 @@ function ConfiguredChatPage({
               onEnd={onVoiceEnd}
               settings={settings}
               temperature={temperature}
+              voiceStyle={affect.voiceStyle}
             />
           </Suspense>
         </div>

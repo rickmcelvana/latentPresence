@@ -51,6 +51,17 @@ function rig(llm: LLMProvider, extra: { system?: string } = {}) {
 }
 
 describe('ChatSession — a typed turn', () => {
+  it("puts a typed answer's sentences on the bus with their tags, so the affect engine feels them (P3-T09)", async () => {
+    const r = rig(new ChatLLM([text('[emote:sadness] Oh. ', 'I see.')]));
+    r.chat.send('my cat died');
+    await settle();
+    expect(r.of('assistant.sentence').map((event) => [event.text, event.tags.map((tag) => tag.known)])).toEqual([
+      ['Oh.', ['sadness']],
+      ['I see.', []],
+    ]);
+    expect(r.of('assistant.message')[0]?.entry.text).toBe('Oh. I see.');
+  });
+
   it('puts the message on the bus, streams the answer as tokens, settles it and returns to listening', async () => {
     const r = rig(new ChatLLM([text('It is ', 'three.')]));
     expect(r.chat.send('  what time is it  ')).toBe(true);
@@ -58,7 +69,8 @@ describe('ChatSession — a typed turn', () => {
     expect(r.chat.busy).toBe(true);
     await settle();
 
-    expect(r.types()).toEqual(['session.started', 'user.message', 'assistant.token', 'assistant.token', 'assistant.message']);
+    // P3-T09: the answer's sentences too, so the affect engine can feel a typed answer's tags.
+    expect(r.types()).toEqual(['session.started', 'user.message', 'assistant.token', 'assistant.token', 'assistant.sentence', 'assistant.message']);
     expect(r.of('user.message')[0]?.text).toBe('what time is it');
     expect(r.of('assistant.message')[0]?.entry).toMatchObject({ id: 'c-reply-1', role: 'assistant', text: 'It is three.', spokenPrefix: null });
     expect(r.machine.getState()).toBe('listening');
@@ -142,6 +154,7 @@ describe('ChatSession — stopping', () => {
       'assistant.message',
       'user.message',
       'assistant.token',
+      'assistant.sentence',
       'assistant.message',
     ]);
     expect(r.of('assistant.message').map((event) => event.entry.id)).toEqual(['c-reply-1', 'c-reply-2']);

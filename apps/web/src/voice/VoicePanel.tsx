@@ -55,6 +55,8 @@ export interface VoicePanelProps {
   readonly temperature: number | null;
   readonly settings: Settings;
   readonly deps: SettingsDeps;
+  /** Her mood in her voice (P3-T09), passed to the call's replies. Should be a stable identity. */
+  readonly voiceStyle?: VoiceCallOptions['voiceStyle'];
   /** Whether a call is running, so `/chat` can put the keyboard away while it is. */
   readonly onActive: (active: boolean) => void;
   /** Leave voice and go back to typing. The panel is unmounted by the caller. */
@@ -79,6 +81,7 @@ export function VoicePanel({
   temperature,
   settings,
   deps,
+  voiceStyle,
   onActive,
   onEnd,
   onCallStarted,
@@ -153,6 +156,7 @@ export function VoicePanel({
         consent,
         voiceId: settings.tts.voiceId,
         speed: settings.tts.speed,
+        ...(voiceStyle === undefined ? {} : { voiceStyle }),
         log: (line) => setStatus(line),
       });
       call.current = active;
@@ -164,7 +168,7 @@ export function VoicePanel({
       setStatus(error instanceof Error ? error.message : String(error));
       setPhase('idle');
     }
-  }, [buildSpeech, consent, deps, history, llm, machine, modelId, onActive, settings, startCall, temperature]);
+  }, [buildSpeech, consent, deps, history, llm, machine, modelId, onActive, settings, startCall, temperature, voiceStyle]);
 
   async function end(): Promise<void> {
     await call.current?.stop();

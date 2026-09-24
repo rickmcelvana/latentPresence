@@ -7,6 +7,7 @@ import {
   type ConversationHistory,
   type ConversationMachine,
   type PlaybackSink,
+  type ReplyDependencies,
   type VadFrame,
 } from '@latentpresence/core';
 import type { ModelConsent } from '@latentpresence/ml-web/consent';
@@ -99,6 +100,8 @@ export interface VoiceCallOptions {
   readonly consent: ModelConsent;
   readonly voiceId: string;
   readonly speed: number;
+  /** How each sentence should sound: her mood (P3-T09). Omitted: the voice as configured. */
+  readonly voiceStyle?: ReplyDependencies['voiceStyle'];
   readonly sessionId?: string;
   /** ADR-28's clips. Off: the character never backchannels. Default on. */
   readonly backchannels?: boolean;
@@ -266,7 +269,14 @@ export class VoiceCall {
             temperature: options.temperature,
             maxOutputTokens: null,
           },
-          { llm: options.llm, tts: speech.tts, sink, voiceId, speed },
+          {
+            llm: options.llm,
+            tts: speech.tts,
+            sink,
+            voiceId,
+            speed,
+            ...(options.voiceStyle === undefined ? {} : { voiceStyle: options.voiceStyle }),
+          },
           replyOptions,
         ),
     });

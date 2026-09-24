@@ -17,6 +17,7 @@ import {
   type AffectBody,
   type AffectInputs,
   affectToBody,
+  mergeExpressionsMax,
   type CameraPreset,
   CuePerformer,
   type ExpressionPlan,
@@ -129,18 +130,6 @@ const DEFAULT_AFFECT_INPUTS: AffectInputs = {
 };
 
 type AffectSource = 'sliders' | 'engine';
-
-/** Per-name max of two expressions — the affect body's resting face and whatever a played
- * tag's emote is doing, tags still reading through since their weights are usually higher. */
-function mergeExpressionsMax(a: ExpressionWeights, b: ExpressionWeights): ExpressionWeights {
-  const names = new Set([...Object.keys(a), ...Object.keys(b)] as ExpressionName[]);
-  const out: Partial<Record<ExpressionName, number>> = {};
-  for (const name of names) {
-    const value = Math.max(a[name] ?? 0, b[name] ?? 0);
-    if (value > 0) out[name] = value;
-  }
-  return out;
-}
 
 /** A short string for a bare number readout, e.g. `×1.20`. */
 function factor(value: number): string {

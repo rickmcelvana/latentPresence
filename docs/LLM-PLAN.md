@@ -253,9 +253,10 @@ Done when: reviewer cannot spot a reaction that contradicts the user's tone in a
 ## Phase 4 — Memory and MariaDB
 
 
-### P3-T09 Affect in the call — owner: main
+### P3-T09 Affect in the call — owner: main (done 2026-09-24 in code; R-20 is the live call)
 Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` runs the affect engine yet — P3-T02 wired it only into `/dev/avatar`. One `AffectEngine` per `/chat` page, fed by `affectInputsFrom` on the machine's bus (`[emote:x]` tags now, user affect from P3-T07), ticked in `CallStage`'s frame loop; `affectToBody` drives the resting face (max-merged with the tag performer's) and `LifeLayer.setModulation`; the state persisted with P4. Do it straight after P3-T03, so body, voice and wording start agreeing in the same call. From P3-T03: render `/chat`'s system prompt with `PromptContext.affect` before every turn (`ConversationHistory.system` is mutable for this) and pass `affectToVoice` as `ChatVoice.voiceStyle` and the call's `Reply`. Watch the gains: `live:affect` saw twelve sad tags in two minutes take pleasure to −0.92.
 Done when: in a live call a run of `[emote:sadness]` answers visibly lowers her resting face and gaze habit and it drifts back over minutes; with the engine at baseline `/chat` looks as it does today.
+**Built:** `attachAffect` (core); the prompt rendered per request; `voiceStyle` on Speak replies and the call; `CallStage` face and gaze relative to the baseline (a test proves the baseline frames are identical to no affect). Typed text answers now put sentences on the bus, so their tags count. Browser pane vs glm-5.2:cloud: after a run of sad-tagged replies the prompt said *"tired and slow and unsure of yourself, and right now sad … a sentence or two"*; the face change in a screenshot was slight. **Pending R-20** (face, gaze, drift, by eye).
 
 ### P4-T01 Companion db crate and migrations — owner: main
 Tables: `sessions`, `turns`, `turn_embeddings`, `facts` (subject, predicate, object, valid_from, valid_to, confidence, source_turn), `self_blocks`, `plans`, `plan_items`, `documents`, `chunks`, `model_registry`. Vector columns with dimension per collection; HNSW indexes.
