@@ -37,6 +37,7 @@
     "live:bargein": "pnpm --filter @latentpresence/ml-web exec vite-node live/bargein.ts",
     "live:backchannel": "pnpm --filter @latentpresence/ml-web exec vite-node live/backchannel.ts",
     "live:cues": "pnpm --filter @latentpresence/ml-web exec vite-node live/cues.ts",
+    "live:ser": "pnpm --filter @latentpresence/ml-web exec vite-node live/ser.ts",
     "live:affect-voice": "pnpm --filter @latentpresence/ml-web exec vite-node live/affect-voice.ts",
     "clean": "tsc -b --clean"
   },

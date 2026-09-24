@@ -25,6 +25,9 @@ export const DEV_E2E_PATH = '/dev/e2e';
  * target and clip, on the placeholder character. */
 export const DEV_AVATAR_PATH = '/dev/avatar';
 
+/** The dev-only voice-emotion timing page (P3-T05): a model in its real worker, timed per segment. */
+export const DEV_SER_PATH = '/dev/ser';
+
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
@@ -80,6 +83,13 @@ const AvatarDebug = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./dev/AvatarDebug');
   return { default: module.AvatarDebug };
+});
+
+/** P3-T05's timing page, behind the same guard: it makes the ONNX Runtime worker. */
+const SerBench = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./dev/SerBench');
+  return { default: module.SerBench };
 });
 
 /**
@@ -148,6 +158,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
+  if (import.meta.env.DEV && path === DEV_SER_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the voice-emotion bench…</p>}>
+        <SerBench />
+      </Suspense>
+    );
+  }
+
   if (import.meta.env.DEV && path === SPIKE_AVATAR_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
@@ -201,6 +219,7 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
             [SPIKE_SHELL_PATH, 'Spike E — webview capabilities'],
             [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
             [DEV_AVATAR_PATH, 'Avatar — VRM renderer debug panel (P2-T01)'],
+            [DEV_SER_PATH, 'Voice emotion — worker timing (P3-T05)'],
             [SPIKE_AVATAR_PATH, 'Spike B — avatar frame rate and lip sync'],
           ].map(([href, label]) => (
             <li key={href}>

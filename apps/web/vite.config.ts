@@ -40,6 +40,8 @@ function assertSpikeExcludedFromBuild(): Plugin {
     // name, and neither survives minification as a property name.
     'voiceHarness',
     'e2eHandle',
+    // `/dev/ser` (P3-T05): the handle that page hangs on `globalThis`, as above.
+    'serBench',
     // `/spike/avatar` (Spike B) and `/dev/avatar` (P2-T01), per the comment above.
     '@react-three/fiber',
     'avatar-debug-canvas',

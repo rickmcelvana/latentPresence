@@ -10,6 +10,8 @@ import {
   type VadWorkerPort,
 } from '../turn';
 import { createSmartTurnWorker, createVadWorker } from '../turn/create-worker';
+import { serModels, type SerModelKey, type SerWorkerPort } from '../ser';
+import { createSerWorker } from '../ser/create-worker';
 import { requireConsent, type ModelConsent } from './consent';
 
 /**
@@ -53,4 +55,10 @@ export function createGatedAsrWorker(consent: ModelConsent, model: AsrModelKey, 
 export function createGatedKokoroWorker(consent: ModelConsent, dtype: KokoroSizedDtype): KokoroWorkerPort {
   requireConsent(consent, [kokoroModel(dtype)]);
   return createKokoroWorker();
+}
+
+/** Voice emotion (P3-T05): every file of the chosen model, the graph and (base) its head. */
+export function createGatedSerWorker(consent: ModelConsent, model: SerModelKey): SerWorkerPort {
+  requireConsent(consent, serModels(model));
+  return createSerWorker();
 }
