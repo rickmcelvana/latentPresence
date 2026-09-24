@@ -33,6 +33,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-28 | Backchannels are words, said in pauses Smart Turn judges unfinished, at most one per 8 s; a clip the user talks into ducks and finishes | accepted | 2026-09-13 |
 | ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | accepted | 2026-09-14 |
 | ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted (amended) | 2026-09-21 |
+| ADR-31 | Animation clips are converted to `.vrma` in node, not retargeted in Blender; any VRM avatar plays them (retarget at load) | accepted | 2026-09-24 |
 
 ---
 
@@ -880,7 +881,7 @@ position is estimated by character over the voiced span, and on Kokoro that is |
 median 133 ms, p90 281 ms against Whisper's word times (`pnpm live:cues`) — fine for the
 start-of-sentence tags the prompt asks for, not for mid-sentence ones. P2-T09 carries the fix.
 
-## ADR-31 Animation clips are converted in node, not retargeted in Blender (proposed 2026-09-23)
+## ADR-31 Animation clips are converted in node, not retargeted in Blender (accepted 2026-09-24)
 
 **Decision.** `pnpm clips:build` (`packages/avatar/tools/build-clips.ts` over
 `src/clips/vrma.ts`) turns a glTF animation into a `.vrma` by relabelling the source's own
@@ -905,3 +906,8 @@ and its MCP remain the tool for P7's character work.
 exactly, and many packs are A-posed): then either the converter learns to re-pose the rest
 (rotate each chain onto the T-pose axes and rebase the tracks), or that source goes
 through Blender. Recommended option taken: node, with the reversal written down.
+
+**Accepted 2026-09-24 by Rick**, on the condition that swapping or user-supplied avatars stay
+functional — which this does not touch: a `.vrma` is retargeted onto whichever VRM loads it,
+at load time, from that model's own humanoid rest pose. Only a new *clip* source can meet the
+reversal above (an A-posed pack such as Mixamo's).
