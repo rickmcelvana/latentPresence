@@ -519,3 +519,9 @@ Did: brief `docs/briefs/P3-T02.md`; a Sonnet subagent built `packages/avatar/src
 Left: R-18 (Rick's ten-state review); R-13 laptop half, R-1, R-9; R-3; C-7.
 Next: P3-T03 affect to voice and wording.
 Decisions: none new; wiring affect into /chat left for after R-18 (no task yet). Click-through: /dev/avatar Affect — exuberant, hostile, bored, anxious screenshotted; readout live.
+
+## 2026-09-24 claude — R-18 passed; stale docs caught up for a fresh session
+Did: R-18 recorded (D-30, all ten states pass) and P3-T02 closed; **P3-T09 "Affect in the call" added to the plan (proposed)** — `/chat` does not run the affect engine yet; README status (Phase 3, spoken typed replies, word timings), PROJECT (phase line, P3-T02, next task, stale laptop and word-timing lines), `docs/affect.md` (who reads it, what feeds it) brought up to date.
+Left: the laptop session (R-13 laptop half, R-1, R-9); R-3; C-7. ADR-31 (clips in node) is still `proposed` though R-15 passed on it — Rick to confirm.
+Next: P3-T03 affect to voice and wording, then P3-T09 affect in the call, then P3-T04.
+Decisions: **P3-T09 proposed** (recommended: straight after P3-T03, so body, voice and wording start agreeing in one call). Click-through: n/a (docs only).

@@ -219,7 +219,7 @@ Done when: with the switch on, a typed turn is spoken with lip sync and the talk
 Done when: property tests confirm bounded state and decay to baseline; documented in `docs/affect.md`.
 **Met:** seeded property tests over 300 random runs (out-of-range inputs included) — in schema at every step, within 0.01 of baseline a day later, never drifting once nothing is felt, identical however often ticked; boundedness and decay mutation-checked. Bounded by construction (saturating push), not by clamping. `[emote:x]` tags and user affect (by empathy) already map to inputs; nothing reads the state yet — P3-T02/T03. Every number hand-set, for P3-T02's review.
 
-### P3-T02 Affect to expression and gesture mapping — owner: sub (built 2026-09-23; `packages/avatar/src/affect`, `/dev/avatar` Affect panel; R-18 open)
+### P3-T02 Affect to expression and gesture mapping — owner: sub (done 2026-09-24; `packages/avatar/src/affect`, `/dev/avatar` Affect panel; R-18 passed, D-30)
 Depends: P3-T01, P2-T07. Tables from affect regions to expression weights, gesture bias, gaze policy, idle clip selection.
 Done when: the debug overlay shows the mapping live; Rick signs off on a 10-state review.
 
@@ -250,6 +250,11 @@ Done when: reviewer cannot spot a reaction that contradicts the user's tone in a
 ---
 
 ## Phase 4 — Memory and MariaDB
+
+
+### P3-T09 Affect in the call — owner: main
+Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` runs the affect engine yet — P3-T02 wired it only into `/dev/avatar`. One `AffectEngine` per `/chat` page, fed by `affectInputsFrom` on the machine's bus (`[emote:x]` tags now, user affect from P3-T07), ticked in `CallStage`'s frame loop; `affectToBody` drives the resting face (max-merged with the tag performer's) and `LifeLayer.setModulation`; the state persisted with P4. Do it straight after P3-T03, so body, voice and wording start agreeing in the same call.
+Done when: in a live call a run of `[emote:sadness]` answers visibly lowers her resting face and gaze habit and it drifts back over minutes; with the engine at baseline `/chat` looks as it does today.
 
 ### P4-T01 Companion db crate and migrations — owner: main
 Tables: `sessions`, `turns`, `turn_embeddings`, `facts` (subject, predicate, object, valid_from, valid_to, confidence, source_turn), `self_blocks`, `plans`, `plan_items`, `documents`, `chunks`, `model_registry`. Vector columns with dimension per collection; HNSW indexes.

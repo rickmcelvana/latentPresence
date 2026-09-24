@@ -35,7 +35,7 @@ Formality moves only when told to (a `stance` input); nothing she feels makes he
 
 Slightly content, slightly awake, neither leading nor led (pleasure 0.2, arousal 0.05,
 dominance 0); energy 0.6; warm, casual and attentive (0.4, −0.3, 0.3). A persona will set
-its own (P3-T02 onward).
+its own; none does yet.
 
 ## Inputs
 
@@ -45,7 +45,7 @@ its own (P3-T02 onward).
 |---|---|---|
 | `emotion` | `[emote:x]` tags (`affectInputsFrom`), later memory and schedules | an event, at `tagIntensity` (0.6) for a tag |
 | `user-affect` | P3-T04/T05's fused estimate (`affect.user.updated`) | an event by empathy: happy → joy, sad/angry/fearful/disgusted → concern, surprised → surprise; intensity `empathy × confidence` |
-| `stance` | the conversation (P3-T02 onward) | a clamped nudge |
+| `stance` | the conversation (P3-T03/T09) | a clamped nudge |
 | `energy` | the conversation, time of day (P6) | a clamped nudge |
 
 An input lands on the **first step boundary at or after its own time**; one older than the
@@ -75,12 +75,15 @@ converted to the stored form once.
 
 ## Not yet
 
-- **Nothing reads it.** P3-T02 maps it to expression, gesture bias, gaze and the idle clip;
-  P3-T03 to voice and wording (the two-line "how you feel"). Until then the tag bridge
-  (P2-T07) shows tags directly, as it does now.
+- **Only `/dev/avatar` reads it.** P3-T02 maps it to a resting face, gaze habit, gesture bias
+  and idle clip (`packages/avatar/src/affect`, R-18 passed); **`/chat` does not run it yet**
+  (P3-T09). P3-T03 maps it to voice and wording (the two-line "how you feel"). Until then the
+  call's tag bridge (P2-T07) shows tags directly.
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being
   interrupted, a long silence, a warm reply) become `stance`/`energy`/`emotion` inputs in
-  P3-T02/T03; time of day in P6.
+  P3-T03/T09; time of day in P6.
 - **Not persisted anywhere yet** — `serializeAffect`/`restoreAffect` are ready for P4's
   MariaDB row.
-- **Every number is hand-set.** P3-T02's ten-state review is where they meet a person.
+- **Every number is hand-set.** P3-T02's ten-state review (R-18, 2026-09-24) passed the body
+  mapping on them; the engine's own dynamics (half-lives, gains) have not met a person yet —
+  that is P3-T09's live call.
