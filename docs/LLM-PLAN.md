@@ -223,10 +223,10 @@ Done when: property tests confirm bounded state and decay to baseline; documente
 Depends: P3-T01, P2-T07. Tables from affect regions to expression weights, gesture bias, gaze policy, idle clip selection.
 Done when: the debug overlay shows the mapping live; Rick signs off on a 10-state review.
 
-### P3-T03 Affect to voice and wording — owner: main (done 2026-09-24; `packages/core/src/affect/express.ts`; R-19 is the ear)
+### P3-T03 Affect to voice and wording — owner: main (done 2026-09-24; `packages/core/src/affect/express.ts`; R-19 passed, D-31)
 Depends: P3-T01. TTS hint mapping per provider; prosody fallback (rate, pause length); system-context injection of a two-line feeling summary and response-length bias.
 Done when: the same prompt with two moods yields audibly and textually different responses.
-**Met textually, audibly pending R-19:** `pnpm live:affect` — mean words rest / low / bright 36 / 21 / 68 (glm-5.2:cloud) and 37 / 20 / 87 (Fable), sad tags only under the low mood; `pnpm live:affect-voice` — on the same text 3.24 / 3.55 / 3.75 voiced words/s and 422 / 300 / 200 ms between sentences. Protocol: `PromptContext.affect` (ADR-12 amended).
+**Met** (audibly: R-19, D-31 — low picked out blind by pace; bright not told from rest): `pnpm live:affect` — mean words rest / low / bright 36 / 21 / 68 (glm-5.2:cloud) and 37 / 20 / 87 (Fable), sad tags only under the low mood; `pnpm live:affect-voice` — on the same text 3.24 / 3.55 / 3.75 voiced words/s and 422 / 300 / 200 ms between sentences. Protocol: `PromptContext.affect` (ADR-12 amended).
 
 ### P3-T04 User affect from text — owner: main
 Heuristic scorer (emoji, punctuation, caps, message pace) plus an LLM side-channel field in structured output.

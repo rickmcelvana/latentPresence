@@ -82,28 +82,6 @@ right.
 
 ## Open — rick
 
-### R-19 · Her mood in her voice and her words · ~10 minutes (P3-T03's sign-off)
-**Why:** P3-T03's done-when is *"the same prompt with two moods yields audibly and textually
-different responses"*. Textually it is measured (below); **audibly is an ear's call**. Kokoro
-has no emotion control, so what changes is ours — pace and the pause after each sentence —
-and it is deliberately small (Kokoro degrades past 1.25×).
-Already rendered on this desktop (2026-09-24), from Fable's replies. To re-run:
-```bash
-pnpm live:affect
-```
-```bash
-pnpm live:affect-voice
-```
-1. Open `packages/ml-web/live/out/affect/` and play **`1-same-rest.wav`, `1-same-low.wav`,
-   `1-same-bright.wav`** — the same words in three moods, so only the voice differs. Then
-   `2-same-*` (the long one, about the sea).
-2. Play `2-low.wav` and `2-bright.wav` — her own answers in each mood, words and voice together.
-3. Skim `packages/providers/live/out/affect.md` for the replies side by side.
-
-**Report:** can you hear low from rest from bright on the `same` files without looking at
-the names? Too subtle, right, or too much (sluggish, rushed)? And do the low answers read
-as her being low, or as her being curt?
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -212,6 +190,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-31 · R-19: her mood in her voice** — Rick 2026-09-24: all the renders on one shuffled
+  playlist — **low was picked out every time, by its slower pace**; beyond speed the moods
+  sound the same, as expected with Kokoro having no emotion control. Bright was not told apart from rest:
+  +11% fast doesn't register the way −12% slow does. Done-when met (two moods audibly different,
+  low vs the rest); P3-T03 closed. Bright's pace is a candidate to push towards Kokoro's 1.25
+  if P3-T09's live call wants it.
 
 - **D-30 · R-18: her moods, ten states** — Rick 2026-09-24: **all ten pass**, gone through a
   couple of times on `/dev/avatar`. P3-T02's region tables stand unchanged. P3-T02 closed.

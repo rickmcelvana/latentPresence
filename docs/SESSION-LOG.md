@@ -532,3 +532,4 @@ Did: `core/affect/express.ts` (felt emotion, `VoiceStyle` = hint + pace ±15% + 
 Left: R-19 (Rick's ear on the rendered wavs); laptop session (R-13 laptop half, R-1, R-9); R-3; C-7. Not in `/chat` yet — P3-T09.
 Next: P3-T09 affect in the call (prompt re-rendered per turn, `voiceStyle` on both Reply paths), then P3-T04.
 Decisions: ADR-12 amended (protocol `PromptContext.affect`; prosody we own, since Kokoro has no emotion control). Flag: twelve sad tags in two minutes drive pleasure to −0.92 — engine gains may be hot; P3-T09's live call judges. Click-through: n/a (core + live checks; `/chat` unchanged).
+Addendum: R-19 passed (D-31) — Rick shuffled every render into one playlist and picked out low each time by pace; otherwise the moods sound alike (Kokoro), and bright was not told from rest. P3-T03 closed.
