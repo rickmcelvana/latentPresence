@@ -228,9 +228,10 @@ Depends: P3-T01. TTS hint mapping per provider; prosody fallback (rate, pause le
 Done when: the same prompt with two moods yields audibly and textually different responses.
 **Met** (audibly: R-19, D-31 — low told apart blind by pace; bright not reported distinct from rest): `pnpm live:affect` — mean words rest / low / bright 36 / 21 / 68 (glm-5.2:cloud) and 37 / 20 / 87 (Fable), sad tags only under the low mood; `pnpm live:affect-voice` — on the same text 3.24 / 3.55 / 3.75 voiced words/s and 422 / 300 / 200 ms between sentences. Protocol: `PromptContext.affect` (ADR-12 amended).
 
-### P3-T04 User affect from text — owner: main
+### P3-T04 User affect from text — owner: main (done 2026-09-24; `packages/core/src/affect/user-text.ts`, ADR-32 proposed)
 Heuristic scorer (emoji, punctuation, caps, message pace) plus an LLM side-channel field in structured output.
 Done when: unit tests over a labelled set of 100 messages reach agreed thresholds.
+**Met, on proposed thresholds:** surface-cued named ≥ 80% (blind 84%, tuned 98%), neutral left calm ≥ 90% (100%), situation-only abstained ≥ 90% (97%), no confident wrong polarity (0). The set was written by a separate agent. The side channel is `[user:x]` (ADR-32): glm-5.2:cloud right on 84–90%, 77–87% of situation-only messages; model-else-heuristic 88–92%.
 
 ### P3-T05 User affect from voice — owner: main
 SER worker (emotion2vec+ ONNX export or wav2vec2 SER ONNX) on user speech segments; outputs valence, arousal, label, confidence.

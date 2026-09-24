@@ -34,6 +34,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-29 | Browser reachability is measured per endpoint; endpoints that refuse browser origins (NVIDIA) go through an allow-listed companion relay; API keys are WebCrypto-encrypted with a non-extractable key | accepted | 2026-09-14 |
 | ADR-30 | The tag protocol: `[emote:x]`/`[gesture:x]`, a closed gesture vocabulary, tags promoted onto `assistant.sentence`, never on tokens | accepted (amended) | 2026-09-21 |
 | ADR-31 | Animation clips are converted to `.vrma` in node, not retargeted in Blender; any VRM avatar plays them (retarget at load) | accepted | 2026-09-24 |
+| ADR-32 | The model reads the user with an inline `[user:x]` tag, first in its reply; `InlineTagKind` gains `user` (additive) | proposed | 2026-09-24 |
 
 ---
 
@@ -913,3 +914,30 @@ through Blender. Recommended option taken: node, with the reversal written down.
 functional — which this does not touch: a `.vrma` is retargeted onto whichever VRM loads it,
 at load time, from that model's own humanoid rest pose. Only a new *clip* source can meet the
 reversal above (an A-posed pack such as Mixamo's).
+
+## ADR-32 The model reads the user with an inline `[user:x]` tag (proposed 2026-09-24)
+
+**Context.** P3-T04 asks for the text channel's "LLM side output" (RESEARCH §5, PLAN) beside a
+surface heuristic. The heuristic cannot read situations — "my dog died this morning" has no
+surface cue — and those are a third of real emotional messages in the labelled set.
+
+**Decision.** The model states its read as a third inline tag kind, **`[user:x]`, `x` a
+`UserEmotion`**, first in its reply. `InlineTagKind` gains `'user'` and `InlineTag.known` may
+be a `UserEmotion` — additive, `PROTOCOL_VERSION` stays 1. The chunker and `TagFilter` lift
+it out like the others (never spoken), the avatar's `CuePerformer` ignores it, and
+`readingFromTag` turns it into an `AffectReading` at a fixed confidence for fusion (P3-T07).
+
+**Why a tag and not the alternatives.** ADR-30's reasoning holds unchanged: a JSON side
+channel cannot stream beside speech, a tool call is a round trip in the one place ADR-20 has
+no latency to spare, and a separate classification request doubles the calls per turn. The
+tag costs a few tokens and arrives with the first sentence.
+
+**Measured** (`pnpm live:user-affect`, same 100 messages, one turn each): `glm-5.2:cloud`
+tagged 93–97% of turns and was right on 84–90% (77–87% of the situation-only messages the
+heuristic abstains on); no tag leaked into speech. The model's label, else the heuristic's,
+scored 88–92% against the heuristic's 69% alone. Its misses lean one way: polite neutral
+("thanks!", "👍") read as happy. Fable's run was cut short by the Anthropic account's credit.
+
+**Status: proposed** — taken as recommended; Rick to accept or reverse. Reversal cost: the
+prompt's READING THEM section and one alternation in `TAG_PATTERN`; nothing downstream
+depends on the tag yet beyond `readingFromTag`.

@@ -110,6 +110,21 @@ history — including a **typed answer shown as text**, which now puts its sente
 It starts at the baseline on every visit until P4 persists it. Gesture bias and idle-clip
 choice are not used in the call yet: nothing performs gestures unprompted, and only `idle` exists.
 
+## Reading the user from text (P3-T04)
+
+`packages/core/src/affect/user-text.ts`, two readers producing `AffectReading`s for fusion:
+
+- **`readUserText`** — what shows on the surface: emoji, emoticons, laughter, `?!`, runs of
+  `!`, capitals, stretched words, a small lexicon of words that *name* a feeling (with
+  negation), sarcasm frames, and message pace (`MessagePace`: a quick burst raises arousal).
+  Instant, so a face can react before the model answers. It abstains on situations.
+- **`readingFromTag`** — the model's `[user:x]`, first in its reply (ADR-32, proposed): it
+  reads situations ("my dog died") that no surface rule can.
+
+Held to 100 labelled messages (`docs/SURFACE.md`). **Nothing consumes the readings yet** —
+P3-T07 fuses them into `UserAffect` and dispatches `affect.user.updated`, which the engine
+already catches by empathy.
+
 ## Not yet
 
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being

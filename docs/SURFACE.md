@@ -1968,3 +1968,20 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   3.24 / 3.55 / 3.75** on prompt 1 (every prompt within ±0.1 of the same ratios); **gaps
   between sentences 422 / 300 / 200 ms** (tail pause + 50 ms lead, exact). Whether that is
   *audible* is R-19.
+
+## Reading the user from text — measured 2026-09-24 (P3-T04)
+
+- **Labelled set:** 100 messages written by a separate agent that never saw the scorer
+  (`packages/core/src/affect/fixtures/user-text.labelled.ts`): 45 surface-cued, 30 only the
+  situation explains, 25 neutral; seven labels.
+- **Heuristic (`readUserText`), blind:** surface 38/45 (84%), neutral 25/25 calm, semantic
+  0/30 named (abstains, by design), no confident wrong-polarity reading. **Tuned on the same
+  set:** surface 44/45 — so 84% is the estimate for new text. Emoji-only feelings are rare in
+  the set; a separate unit test holds them.
+- **`[user:x]` from `glm-5.2:cloud`** (`pnpm live:user-affect`, persona prompt, one turn each,
+  two runs): tagged 93% / 97%; right 84% / 90% overall, surface 98% / 96%, **semantic 77% /
+  87%**, neutral 68% / 84% (polite messages — "thanks!", "👍", "not bad at all" — read as
+  happy); 0 leaks. Model else heuristic: 88% / 92%.
+- **Anthropic API: "Your credit balance is too low"** from the 47th Fable request of the
+  first run on (2026-09-24). An error reply was being scored as "no tag", which made Fable look
+  like a model that stops tagging; failed calls are now counted apart.
