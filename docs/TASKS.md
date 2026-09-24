@@ -82,27 +82,6 @@ right.
 
 ## Open — rick
 
-### R-20 · Her mood in a live call · ~15 minutes, most of it waiting (P3-T09's sign-off)
-**Why:** P3-T09's done-when is *"in a live call a run of `[emote:sadness]` answers visibly lowers
-her resting face and gaze habit and it drifts back over minutes; with the engine at baseline
-`/chat` looks as it does today"*. The Browser pane showed the prompt following her mood, but a
-face in a screenshot is not a face watched for a minute.
-```bash
-pnpm dev
-```
-1. Open `http://localhost:5173/chat`. For a minute, before saying anything, just watch her — she
-   should look and blink exactly as she did yesterday (the baseline).
-2. Turn on **Speak replies** (or use Start voice) and tell her something sad — a lost pet works —
-   and keep it going for four or five turns. Watch her face and how often she looks away while
-   she listens.
-3. Then stop talking and leave the tab visible for ~10 minutes; glance at her now and then.
-
-**Report:** (1) same as before at the start? (2) after the sad run, does her resting face and her
-gaze read as low — too little, right, too much? Do her spoken replies slow down? (3) does she
-come back towards herself over the ten minutes, and does that pace feel right? A **Mood** readout
-is not on `/chat`; if you want numbers, `/dev/avatar`'s Affect panel with Source → engine shows
-the same engine's dynamics.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -211,6 +190,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-32 · R-20: her mood in a live call** — Rick 2026-09-24: **passed on all three** — at the
+  start she was the same as before; after a sad run her resting face and gaze read as low
+  ("looks good") and her replies slowed; over ten minutes she came back towards herself and the
+  pace "seemed right". P3-T09 closed; the engine's hand-set gains and half-lives stand.
 
 - **D-31 · R-19: her mood in her voice** — Rick 2026-09-24: all the renders on one shuffled
   playlist — **"I could tell the low from the others"**, by its slower pace; beyond speed the

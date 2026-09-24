@@ -539,3 +539,4 @@ Did: `attachAffect` (core) — one engine per `/chat`, fed from the bus, read on
 Left: R-20 (live call by eye: face, gaze, drift); laptop session (R-13 laptop half, R-1, R-9); R-3; C-7.
 Next: P3-T04 user affect from text.
 Decisions: none new as ADRs. Gaze relative to the baseline; the engine starts at baseline each visit until P4; gesture bias and idle clip unused in the call. Conversation events as affect inputs (interrupted, silence) have no owning task — flagged in affect.md. Click-through: Browser pane vs glm-5.2:cloud — character downloaded with Rick's OK; after a run of sad-tagged replies the prompt read "tired and slow and unsure of yourself, and right now sad … a sentence or two"; face change slight in a screenshot; no console errors.
+Addendum: R-20 passed (D-32) — baseline unchanged; low face, gaze and slower replies after a sad run; drift back over ten minutes seemed right. P3-T09 closed.

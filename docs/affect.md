@@ -118,5 +118,5 @@ choice are not used in the call yet: nothing performs gestures unprompted, and o
 - **Not persisted anywhere yet** — `serializeAffect`/`restoreAffect` are ready for P4's
   MariaDB row.
 - **Every number is hand-set.** P3-T02's ten-state review (R-18, 2026-09-24) passed the body
-  mapping on them; the engine's own dynamics (half-lives, gains) have not met a person yet —
-  that is R-20, P3-T09's live call.
+  mapping on them; the engine's own dynamics (half-lives, gains) met a person in R-20
+  (D-32, 2026-09-24): a sad run read as low and she came back over ten minutes at a pace that "seemed right".
