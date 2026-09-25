@@ -1540,3 +1540,45 @@ kbd {
   transform: scaleX(-1);
   border-radius: var(--radius);
 }
+
+/* --- Affect debug overlay (P3-T07) ---------------------------------------------
+   `/chat?affect`: top-left over the stage, small and monospaced; it reports, it is not UI. */
+
+.affect-overlay {
+  position: absolute;
+  top: var(--gap-lg);
+  left: var(--gap-lg);
+  z-index: 4;
+  width: 320px;
+  padding: var(--gap-sm);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--scrim);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.affect-overlay-title {
+  margin: var(--gap-xs) 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.affect-overlay-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.affect-overlay-table td {
+  padding: 1px var(--gap-xs) 1px 0;
+}
+
+.affect-overlay-line {
+  margin: 2px 0;
+}
+
+.affect-overlay-copy {
+  margin-top: var(--gap-xs);
+  font-size: 11px;
+}

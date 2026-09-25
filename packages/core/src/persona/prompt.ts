@@ -5,7 +5,7 @@ import {
   type Persona,
   type PromptContextInput,
 } from '@latentpresence/protocol';
-import { describeFeeling } from '../affect/express';
+import { describeFeeling, describeUser } from '../affect/express';
 
 /**
  * The system prompt (P1-T12): a persona plus what is true right now, rendered to the
@@ -40,6 +40,7 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
   const userName = context.userName ?? null;
   const affect = context.affect ?? null;
   const feeling = affect === null ? null : describeFeeling(affect, context.now.getTime());
+  const user = describeUser(context.userAffect ?? null);
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
   const readings = USER_READINGS.join(', ');
@@ -88,6 +89,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     ...(userName === null ? [] : [`- You are talking to ${userName}.`]),
     // P3-T03: the mood as two lines, last, where a model weighs what is true right now.
     ...(feeling === null ? [] : [`- ${feeling.feeling}`, `- ${feeling.length}`]),
+    // P3-T07: how they seem, after how she feels — both are what is true right now.
+    ...(user === null ? [] : [`- ${user}`]),
   ].join('\n');
 }
 

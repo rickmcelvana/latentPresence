@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AffectStateSchema } from './affect';
+import { AffectStateSchema, UserAffectSchema } from './affect';
 import { IdSchema } from './common';
 
 /**
@@ -77,6 +77,12 @@ export const PromptContextSchema = z.object({
    * and the prompt is exactly what it was before P3.
    */
   affect: AffectStateSchema.nullable().default(null),
+  /**
+   * How the user seems, fused from their words, voice and face (P3-T07, ADR-12 amended):
+   * rendered as one line when it is confident enough to be worth saying, never as numbers.
+   * Null, or a reading too weak to say, leaves the prompt exactly as it was.
+   */
+  userAffect: UserAffectSchema.nullable().default(null),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
 /** What a caller passes: the nullable fields may be left out and mean null. */

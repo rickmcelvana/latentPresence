@@ -1,5 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
-import { asrModel, kokoroModel, sileroVadModel, smartTurnModel } from '@latentpresence/ml-web';
+import { DEFAULT_SER_MODEL, asrModel, kokoroModel, serModels, sileroVadModel, smartTurnModel } from '@latentpresence/ml-web';
 import type { Settings } from '../settings/settings';
 
 /**
@@ -27,6 +27,9 @@ export function browserModelsFor(settings: Pick<Settings, 'tts' | 'stt'>): Model
     models.push(asrModel(settings.stt.model, 'fp32'));
   }
   models.push(...voiceModelsFor(settings));
+  // How they sound (P3-T05, P3-T07): the 9.7 MB distill, whichever hearing is chosen — it
+  // reads the same turn audio the turn models already have, and no server offers it.
+  models.push(...serModels(DEFAULT_SER_MODEL));
   return dedupeById(models);
 }
 

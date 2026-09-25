@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer } from '@latentpresence/avatar';
+import { replayFusion, type FusionRecording } from '@latentpresence/core';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
@@ -177,6 +178,50 @@ describe('ChatPage — the persona', () => {
     expect(systemOf(seen[1])).toContain('and right now sad');
     // The persona part is untouched: only the last two lines move.
     expect(systemOf(seen[1]).split('\n').slice(0, -2)).toEqual(systemOf(seen[0]).split('\n').slice(0, -2));
+  });
+
+  it("tells the model how the user seems, from what they wrote, and shows it on the overlay (P3-T07)", async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const seen: LlmRequest[] = [];
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        seen.push(request);
+        yield { type: 'text-delta', text: '[user:angry] [emote:concern] That sounds maddening.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    window.history.replaceState(null, '', '/chat?affect');
+    try {
+      // StrictMode, as `main.tsx` mounts it: its mount-time cleanup once stopped the overlay's
+      // recorder for good, and the first live check copied an empty session.
+      render(
+        <StrictMode>
+          <ChatPage buildProvider={provider} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />
+        </StrictMode>,
+      );
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'this is SO frustrating, nothing works!! 😡' } });
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+      await waitFor(() => expect(seen.length).toBe(1));
+      await act(() => settle());
+
+      expect(systemOf(seen[0])).toContain('They seem frustrated (from what they wrote).');
+      expect(screen.getByTestId('affect-overlay').textContent).toContain('told her: angry');
+
+      const copied: string[] = [];
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => void copied.push(text) } });
+      fireEvent.click(screen.getByRole('button', { name: 'Copy recording' }));
+      await act(() => settle());
+      const recording = JSON.parse(copied[0] ?? '{}') as FusionRecording;
+      expect(recording.inputs.map((input) => input.kind)).toEqual(['turn', 'tag']);
+      expect(replayFusion(recording).map((affect) => affect.label)).toEqual(['angry']);
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it('names the character from the persona file rather than a constant', () => {

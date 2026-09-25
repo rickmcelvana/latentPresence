@@ -1,0 +1,108 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`a recorded session reproduces deterministically > the committed recording replays to the committed result, and so does the engine that took it in 1`] = `
+[
+  [
+    "happy",
+    0.655723,
+    0.671163,
+    0.520842,
+  ],
+  [
+    "happy",
+    0.322857,
+    0.496037,
+    0.28345,
+  ],
+  [
+    "neutral",
+    0.654799,
+    0.12236,
+    0.06992,
+  ],
+  [
+    "sad",
+    0.296519,
+    -0.33404,
+    -0.222693,
+  ],
+  [
+    "sad",
+    0.395518,
+    -0.301224,
+    0.118926,
+  ],
+  [
+    "angry",
+    0.412738,
+    -0.401075,
+    0.45697,
+  ],
+]
+`;
+
+exports[`a recorded session reproduces deterministically > the committed recording replays to the committed result, and so does the engine that took it in 2`] = `
+{
+  "energy": 0.623605887390744,
+  "events": [
+    [
+      "joy",
+      0.3278615,
+    ],
+    [
+      "joy",
+      0.1614285,
+    ],
+    [
+      "concern",
+      0.1482595,
+    ],
+    [
+      "concern",
+      0.197759,
+    ],
+    [
+      "concern",
+      0.206369,
+    ],
+  ],
+  "mood": {
+    "arousal": 0.20898715837968926,
+    "dominance": 0.09657023078390306,
+    "pleasure": 0.34044827380669934,
+  },
+}
+`;
+
+exports[`a session recorded on /chat (P3-T07, glm-5.2:cloud) > replays to the same answers every time, and they read as the conversation did 1`] = `
+[
+  [
+    "happy",
+    0.505696,
+  ],
+  [
+    "happy",
+    0.158756,
+  ],
+  [
+    "sad",
+    0.611331,
+  ],
+  [
+    "surprised",
+    0.38575,
+  ],
+  [
+    "sad",
+    0.151765,
+  ],
+  [
+    "happy",
+    0.405185,
+  ],
+  [
+    "neutral",
+    0.508132,
+  ],
+]
+`;

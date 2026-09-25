@@ -3,8 +3,8 @@ import { ConversationMachine, attachHistory } from '@latentpresence/core';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeLLMProvider, FakeTTSProvider } from '@latentpresence/providers';
 import type { AudioOutputHandle, CaptureHandle } from '@latentpresence/providers';
-import type { LLMProvider, STTProvider, SttResult } from '@latentpresence/protocol';
-import { VoiceCall, type JudgeLike, type VadLike } from './call';
+import type { AffectReading, AudioChunk, LLMProvider, STTProvider, SttResult } from '@latentpresence/protocol';
+import { VoiceCall, hearBoth, transcribeAndFeel, type JudgeLike, type VadLike } from './call';
 import type { SpeechProviders } from './providers';
 
 /**
@@ -370,5 +370,43 @@ describe('VoiceCall — stopping', () => {
     expect(judge.terminated).toEqual(['judge']);
     expect(providers.disposed).toEqual(['speech']);
     expect(audio.closed).toEqual(['audio']);
+  });
+});
+
+describe('VoiceCall — how they sound (P3-T07)', () => {
+  const sad: AffectReading = { channel: 'voice', label: 'sad', valence: -0.6, arousal: -0.4, confidence: 0.6 };
+  const turn: AudioChunk = { samples: new Float32Array([0.1, 0.2]), sampleRate: 16_000, startMs: 0 };
+  const said: SttResult = { text: '  I lost it  ', isFinal: true, confidence: null, words: null, language: null } as unknown as SttResult;
+
+  it('reads the voice from a copy of the turn, beside recognition', async () => {
+    const read = vi.fn(async (_samples: Float32Array) => sad);
+    const heard = hearBoth(async () => said, { read })(turn, { aborted: false } as never);
+    await expect(heard.voice).resolves.toEqual(sad);
+    expect(read.mock.calls[0]?.[0]).not.toBe(turn.samples);
+    expect(Array.from(read.mock.calls[0]?.[0] ?? [])).toEqual(Array.from(turn.samples));
+  });
+
+  it('a failed voice reading is no reading, and says why', async () => {
+    const log = vi.fn();
+    const heard = hearBoth(async () => said, { read: () => Promise.reject(new Error('worker died')) }, log)(turn, { aborted: false } as never);
+    await expect(heard.voice).resolves.toBeNull();
+    expect(log).toHaveBeenCalledWith('voice emotion failed: worker died');
+  });
+
+  it('hands the turn to the fusion before returning its text, trimmed, with the voice reading', async () => {
+    const order: string[] = [];
+    const spokenTurn = vi.fn(() => order.push('felt'));
+    const transcribe = transcribeAndFeel({ spokenTurn }, () => 1234);
+    const text = await transcribe({ text: Promise.resolve(said), voice: Promise.resolve(sad) });
+    order.push('returned');
+    expect(text).toBe('  I lost it  ');
+    expect(spokenTurn).toHaveBeenCalledWith('I lost it', sad, 1234);
+    expect(order).toEqual(['felt', 'returned']);
+  });
+
+  it('feels nothing when nothing was recognised', async () => {
+    const spokenTurn = vi.fn();
+    await transcribeAndFeel({ spokenTurn })({ text: Promise.resolve(null), voice: Promise.resolve(sad) });
+    expect(spokenTurn).not.toHaveBeenCalled();
   });
 });

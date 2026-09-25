@@ -1,4 +1,4 @@
-import type { AffectState, CharacterEmotion, EmotionHint, InlineTag } from '@latentpresence/protocol';
+import type { AffectReading, AffectState, CharacterEmotion, EmotionHint, InlineTag, UserAffect, UserEmotion } from '@latentpresence/protocol';
 import { eventIntensity } from './engine';
 import { DEFAULT_AFFECT_PARAMS, EMOTION_PAD, type AffectParams } from './params';
 
@@ -216,3 +216,39 @@ export function describeFeeling(
         : 'Say as much as the moment needs and no more.';
   return { feeling, length };
 }
+
+/** How a user's fused reading is said to the model: a phrase a person would use. */
+const USER_SEEMS: Readonly<Partial<Record<UserEmotion, string>>> = {
+  happy: 'in good spirits',
+  sad: 'down',
+  angry: 'frustrated',
+  fearful: 'worried',
+  disgusted: 'put off by something',
+  surprised: 'taken by surprise',
+};
+
+/** Below this confidence the fused reading is not worth telling the model (P3-T07). */
+export const USER_AFFECT_SAY_ABOVE = 0.35;
+
+/**
+ * One line for the prompt about how the user seems (P3-T07), or null when there is nothing
+ * worth saying: neutral, or not confident enough. It names where the impression comes from,
+ * so the model weighs a face-only reading as the guess it is, and asks it not to point it
+ * out — people rarely want their mood announced back to them.
+ */
+export function describeUser(affect: UserAffect | null): string | null {
+  if (affect === null || affect.confidence < USER_AFFECT_SAY_ABOVE) return null;
+  const seems = USER_SEEMS[affect.label];
+  if (seems === undefined) return null;
+  const channels = [...new Set(affect.readings.map((reading) => CHANNEL_WORDS[reading.channel]))];
+  const from = channels.length === 0 ? '' : ` (from ${list(channels)})`;
+  const degree = affect.confidence < 0.5 ? 'a little ' : '';
+  return `They seem ${degree}${seems}${from}. Let it shape how you answer; do not point it out unless they do.`;
+}
+
+const CHANNEL_WORDS: Readonly<Record<AffectReading['channel'], string>> = {
+  text: 'what they wrote',
+  voice: 'how they sound',
+  face: 'their face',
+  omni: 'how they come across',
+};

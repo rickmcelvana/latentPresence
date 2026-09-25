@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asrModel, kokoroModel, sileroVadModel, smartTurnModel } from '@latentpresence/ml-web';
+import { asrModel, kokoroModel, serModels, sileroVadModel, smartTurnModel } from '@latentpresence/ml-web';
 import type { Settings } from '../settings/settings';
 import { browserModelsFor, voiceModelsFor } from './models';
 
@@ -28,6 +28,7 @@ describe('browserModelsFor', () => {
       smartTurnModel('gpu').id,
       asrModel('moonshine-tiny', 'fp32').id,
       kokoroModel('fp32').id,
+      ...serModels('distill').map((model) => model.id),
     ]);
   });
 
@@ -41,7 +42,7 @@ describe('browserModelsFor', () => {
         stt: { kind: 'openai-compatible', baseUrl: 'http://127.0.0.1:8880/v1', model: 'whisper-1', language: null },
       }),
     );
-    expect(ids(models)).toEqual([sileroVadModel().id, smartTurnModel('gpu').id]);
+    expect(ids(models)).toEqual([sileroVadModel().id, smartTurnModel('gpu').id, ...serModels('distill').map((model) => model.id)]);
   });
 
   it('follows the model chosen in the Hearing section, not the default', () => {

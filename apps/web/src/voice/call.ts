@@ -11,11 +11,12 @@ import {
   type VadFrame,
 } from '@latentpresence/core';
 import type { ModelConsent } from '@latentpresence/ml-web/consent';
-import { createGatedSmartTurnWorker, createGatedVadWorker } from '@latentpresence/ml-web';
-import type { CancellationSignal, LLMProvider, STTProvider, SttResult, TTSProvider } from '@latentpresence/protocol';
+import { DEFAULT_SER_MODEL, createGatedSerWorker, createGatedSmartTurnWorker, createGatedVadWorker } from '@latentpresence/ml-web';
+import type { AffectReading, AudioChunk, CancellationSignal, LLMProvider, STTProvider, SttResult, TTSProvider } from '@latentpresence/protocol';
 import {
   BrowserSileroVad,
   SmartTurnJudge,
+  SpeechEmotionReader,
   createAudioOutput,
   microphoneSource,
   speculativeTranscription,
@@ -88,6 +89,63 @@ export interface JudgeLike {
   terminate(): void;
 }
 
+/** What `VoiceCall` needs of the voice-emotion reader (P3-T05); a test hands over a fake. */
+export interface SerLike {
+  load(): Promise<void>;
+  /** One 16 kHz turn. The buffer may be transferred. */
+  read(samples: Float32Array): Promise<AffectReading>;
+  terminate(): void;
+}
+
+/** Where a spoken turn goes to be felt (P3-T07): `attachUserAffect`'s `spokenTurn`. */
+export interface SpokenTurnSink {
+  spokenTurn(text: string, voice: AffectReading | null, at: number): void;
+}
+
+/** A candidate turn's two readings of the same audio, run side by side. */
+export interface Heard {
+  readonly text: Promise<SttResult | null>;
+  readonly voice: Promise<AffectReading | null>;
+}
+
+/**
+ * The same audio, read twice at once: what they said and how they sound (P3-T07). The
+ * voice model takes 23–43 ms against recognition's hundreds (ADR-33), so a turn waits for
+ * nothing new. The voice reader gets a copy, because it transfers its buffer to its worker
+ * and recognition still needs the samples; a failed reading is logged and is no reading.
+ */
+export function hearBoth(
+  recogniseText: (audio: AudioChunk, signal: CancellationSignal) => Promise<SttResult | null>,
+  ser: Pick<SerLike, 'read'> | null,
+  log?: (line: string) => void,
+): (audio: AudioChunk, signal: CancellationSignal) => Heard {
+  return (audio, signal) => ({
+    text: recogniseText(audio, signal),
+    voice:
+      ser === null || audio.sampleRate !== 16_000
+        ? Promise.resolve(null)
+        : ser.read(audio.samples.slice()).catch((error: unknown) => {
+            log?.(`voice emotion failed: ${error instanceof Error ? error.message : String(error)}`);
+            return null;
+          }),
+  });
+}
+
+/**
+ * `VoiceSession`'s `transcribe`: the text, once both readings are in — and the turn handed
+ * to the fusion **first**, because `VoiceSession` builds the model's request as soon as this
+ * returns and before it publishes the transcript (P1-T12b). So her prompt knows this turn.
+ */
+export function transcribeAndFeel(userAffect: SpokenTurnSink | undefined, now: () => number = Date.now): (heard: Heard | null) => Promise<string | null> {
+  return async (heard) => {
+    if (heard === null) return null;
+    const [result, voice] = await Promise.all([heard.text, heard.voice]);
+    const text = result?.text ?? null;
+    if (text !== null && text.trim() !== '') userAffect?.spokenTurn(text.trim(), voice, now());
+    return text;
+  };
+}
+
 export interface VoiceCallOptions {
   readonly machine: ConversationMachine;
   /** Already attached to `machine` (`attachHistory`), and the same one `/chat` keeps. */
@@ -103,6 +161,12 @@ export interface VoiceCallOptions {
   /** How each sentence should sound: her mood (P3-T09). Omitted: the voice as configured. */
   readonly voiceStyle?: ReplyDependencies['voiceStyle'];
   readonly sessionId?: string;
+  /**
+   * How the user seems (P3-T07). Given, each turn's audio is also read for how they sound,
+   * and the turn is handed to the fusion **before** its request is built, so the prompt
+   * sees it. Omitted: no voice-emotion model is loaded.
+   */
+  readonly userAffect?: SpokenTurnSink;
   /** ADR-28's clips. Off: the character never backchannels. Default on. */
   readonly backchannels?: boolean;
   readonly log?: (line: string) => void;
@@ -111,6 +175,7 @@ export interface VoiceCallOptions {
   readonly capture?: typeof startCapture;
   readonly createVad?: () => VadLike;
   readonly createJudge?: () => JudgeLike;
+  readonly createSer?: () => SerLike;
 }
 
 /** Pay the voice's load cost now rather than inside the first answer. Shared with P2-T08's speaker. */
@@ -147,7 +212,8 @@ export class VoiceCall {
   private readonly audio: AudioOutputHandle;
   private readonly vad: VadLike;
   private readonly judge: JudgeLike;
-  private readonly session: VoiceSession<Promise<SttResult | null>>;
+  private readonly session: VoiceSession<Heard>;
+  private readonly ser: SerLike | null;
   private readonly capture: CaptureHandle | null;
   /** A mutable box rather than a field the capture callback closes over `this` to read:
    * the callback is built in `start()`, before the instance exists (the constructor is
@@ -160,10 +226,12 @@ export class VoiceCall {
     audio: AudioOutputHandle,
     vad: VadLike,
     judge: JudgeLike,
-    session: VoiceSession<Promise<SttResult | null>>,
+    session: VoiceSession<Heard>,
     capture: CaptureHandle | null,
     mutedBox: { current: boolean },
+    ser: SerLike | null,
   ) {
+    this.ser = ser;
     this.options = options;
     this.audio = audio;
     this.vad = vad;
@@ -214,12 +282,17 @@ export class VoiceCall {
     const judge = (options.createJudge ??
       ((): JudgeLike => new SmartTurnJudge({ createWorker: () => createGatedSmartTurnWorker(options.consent, 'gpu') })))();
 
-    const { speech } = options;
+    const { speech, userAffect } = options;
     const { voiceId, speed } = options;
+    // How they sound (P3-T07): only when someone is listening for it.
+    const ser =
+      userAffect === undefined
+        ? null
+        : (options.createSer ?? ((): SerLike => new SpeechEmotionReader({ createWorker: () => createGatedSerWorker(options.consent, DEFAULT_SER_MODEL) })))();
     let clips: readonly BackchannelClip[] = [];
     try {
       const turnModelsAt = performance.now();
-      await Promise.all([vad.load(), judge.load()]);
+      await Promise.all([vad.load(), judge.load(), ser?.load()]);
       log?.(`turn detection ready in ${Math.round(performance.now() - turnModelsAt)} ms`);
 
       const warmAt = performance.now();
@@ -237,18 +310,20 @@ export class VoiceCall {
       // message. The caller shows it and the user can fix `/settings` and try again.
       vad.terminate();
       judge.terminate();
+      ser?.terminate();
       speech.dispose();
       await audio.close();
       throw error;
     }
 
-    const detector = new TurnDetector<Promise<SttResult | null>>({
+    const recogniseText = speculativeTranscription(speech.stt);
+    const detector = new TurnDetector<Heard>({
       now: () => performance.now(),
       judge,
-      recognise: speculativeTranscription(speech.stt),
+      recognise: hearBoth(recogniseText, ser, log),
     });
 
-    const session = new VoiceSession<Promise<SttResult | null>>({
+    const session = new VoiceSession<Heard>({
       sessionId: options.sessionId ?? 'chat',
       machine,
       detector,
@@ -258,7 +333,7 @@ export class VoiceCall {
       // A history this call did not make, already watching the bus: passing it is what
       // makes the model answer in the light of what was typed as well as what was said.
       history: options.history,
-      transcribe: async (recognition) => (await recognition)?.text ?? null,
+      transcribe: transcribeAndFeel(userAffect),
       respond: (turn, replyOptions) =>
         new Reply(
           {
@@ -307,7 +382,7 @@ export class VoiceCall {
     }
     log?.(`listening on ${capture.deviceLabel}`);
 
-    return new VoiceCall(options, audio, vad, judge, session, capture, mutedBox);
+    return new VoiceCall(options, audio, vad, judge, session, capture, mutedBox, ser);
   }
 
   /** End the call. Idempotent: a second call does nothing. */
@@ -318,6 +393,7 @@ export class VoiceCall {
     this.session.dispose();
     this.vad.terminate();
     this.judge.terminate();
+    this.ser?.terminate();
     this.options.speech.dispose();
     await this.audio.close();
   }

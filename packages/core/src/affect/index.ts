@@ -5,3 +5,4 @@ export * from './express';
 export * from './attach';
 export * from './user-text';
 export * from './user-face';
+export * from './fusion';

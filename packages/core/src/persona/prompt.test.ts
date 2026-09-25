@@ -107,6 +107,22 @@ describe('renderSystemPrompt', () => {
     expect(sad).not.toBe(calm);
   });
 
+  it('adds one line on how the user seems, last, only when it is sure enough (P3-T07)', () => {
+    const seems = (label: 'sad' | 'neutral', confidence: number) => ({
+      label,
+      confidence,
+      valence: -0.5,
+      arousal: -0.3,
+      readings: [{ channel: 'voice' as const, label, valence: -0.5, arousal: -0.3, confidence }],
+      at: at.toISOString(),
+    });
+    expect(renderSystemPrompt(persona, { now: at, userAffect: null })).toBe(prompt);
+    expect(renderSystemPrompt(persona, { now: at, userAffect: seems('sad', 0.2) })).toBe(prompt);
+    expect(renderSystemPrompt(persona, { now: at, userAffect: seems('neutral', 0.9) })).toBe(prompt);
+    const told = renderSystemPrompt(persona, { now: at, userAffect: seems('sad', 0.6) });
+    expect(told.slice(prompt.length)).toBe('\n- They seem down (from how they sound). Let it shape how you answer; do not point it out unless they do.');
+  });
+
   it('changes what it says about gestures with the expressiveness level', () => {
     const often: Persona = { ...persona, expressiveness: { gestures: 'often' } };
     expect(renderSystemPrompt(often, { now: at, userName: null })).not.toBe(prompt);

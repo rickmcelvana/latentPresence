@@ -6,6 +6,7 @@ import {
   DEFAULT_AFFECT_PARAMS,
   attachAffect,
   attachHistory,
+  attachUserAffect,
   renderSystemPrompt,
   type AttachedAffect,
   type ChatVoice,
@@ -20,6 +21,7 @@ import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
 import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
+import { AffectOverlay } from '../call/AffectOverlay';
 import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
@@ -220,7 +222,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ machine, chat, history, llm, affect, stageAffect }] = useState(() => {
+  const [{ machine, chat, history, llm, affect, userAffect, stageAffect }] = useState(() => {
     const builtMachine = new ConversationMachine({
       sessionId: SESSION_ID,
       characterId: defaultPersona.id,
@@ -231,6 +233,9 @@ function ConfiguredChatPage({
     // P3-T09: one affect engine for the page, fed by the same bus — `[emote:x]` tags now,
     // the user's affect from P3-T07. It starts at her baseline every visit until P4 persists it.
     const builtAffect = attachAffect(builtMachine, { characterId: defaultPersona.id });
+    // P3-T07: how the user seems, fused from their words, voice and face, on the same bus —
+    // what it publishes the engine above takes in by empathy, and the prompt says in a line.
+    const builtUserAffect = attachUserAffect(builtMachine, { sessionId: SESSION_ID });
     // `now` is fixed when the page mounts: it is what the model is told the time is, and a
     // clock rewritten per turn would change the prompt under a provider's prompt cache for
     // the sake of a clock nobody is watching that closely. **The mood is not fixed** — it is
@@ -241,7 +246,13 @@ function ConfiguredChatPage({
     // count every message twice. Whoever creates it owns its subscription.
     const mountedAt = new Date();
     const attached = attachHistory(builtMachine, {
-      system: () => renderSystemPrompt(defaultPersona, { now: mountedAt, userName: null, affect: builtAffect.state() }),
+      system: () =>
+        renderSystemPrompt(defaultPersona, {
+          now: mountedAt,
+          userName: null,
+          affect: builtAffect.state(),
+          userAffect: builtUserAffect.fusion.last(),
+        }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
     const builtChat = new ChatSession({
@@ -259,6 +270,7 @@ function ConfiguredChatPage({
       history: attached,
       llm: builtProvider,
       affect: builtAffect,
+      userAffect: builtUserAffect,
       stageAffect: stageAffectOf(builtAffect),
     };
   });
@@ -401,7 +413,10 @@ function ConfiguredChatPage({
         consent: deps.consent,
         video,
         onStatus: (status) => {
-          if (current()) setFaceStatus(status);
+          if (!current()) return;
+          setFaceStatus(status);
+          // P3-T07: the face is one witness among the fusion's four.
+          if (status.reading !== null) userAffect.face(status.reading, Date.now());
         },
         onError: (message) => {
           if (!current()) return;
@@ -422,7 +437,7 @@ function ConfiguredChatPage({
         stopFace();
         setFaceError(error instanceof Error ? error.message : String(error));
       });
-  }, [deps.consent, face, faceLoader, stopFace, userCamera.stream]);
+  }, [deps.consent, face, faceLoader, stopFace, userAffect, userCamera.stream]);
 
   // The PiP `<video>` takes a `MediaStream` through `srcObject`, which has no JSX prop —
   // it has to be set imperatively once the element exists and again whenever the stream
@@ -575,6 +590,8 @@ function ConfiguredChatPage({
   // Lip sync follows whichever voice exists; a test call with no audio graph has none.
   const voiceOutput = call?.output ?? speaker?.output ?? null;
   // The two centred cards shift left of an open drawer rather than sliding under it (R-14).
+  // `/chat?affect`: the fused state, for a person checking what she thinks they feel (P3-T07).
+  const showAffectOverlay = new URLSearchParams(window.location.search).has('affect');
   const pageClass = drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
   return (
     <main className={pageClass}>
@@ -587,6 +604,8 @@ function ConfiguredChatPage({
           voice={voiceOutput}
         />
       </Suspense>
+
+      {showAffectOverlay && <AffectOverlay affect={affect} userAffect={userAffect} />}
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
         <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
@@ -628,6 +647,7 @@ function ConfiguredChatPage({
               onEnd={onVoiceEnd}
               settings={settings}
               temperature={temperature}
+              userAffect={userAffect}
               voiceStyle={affect.voiceStyle}
             />
           </Suspense>
