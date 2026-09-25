@@ -238,7 +238,7 @@ SER worker (emotion2vec+ ONNX export or wav2vec2 SER ONNX) on user speech segmen
 Done when: inference under 150 ms per segment in a worker; documented model licence.
 **Met:** default (emotion2vec+ web distill, wasm) 23–43 ms median, p90 ≤ 54, at 1–6 s in a browser worker (`/dev/ser`); the base option capped at 1.5 s is 61–108 ms. Licence: FunASR Model Open Source Licence 1.1, on every consent line and in ADR-33 with attribution.
 
-### P3-T06 User affect from face (opt-in) — owner: main (done 2026-09-25; `packages/ml-web/src/face`, `core/affect/user-face.ts`, ADR-34 proposed)
+### P3-T06 User affect from face (opt-in) — owner: main (done 2026-09-25; `packages/ml-web/src/face`, `core/affect/user-face.ts`, ADR-34 accepted)
 MediaPipe Face Landmarker in a worker on the user camera; blendshapes to valence/arousal heuristics; explicit consent; no frames stored; indicator light while active.
 Done when: Playwright verifies no camera access before consent; heuristics documented.
 **Met:** `e2e/face.spec.ts` on `/chat` — no `getUserMedia({ video })` and no request before Agree (nor after Not now); after it one camera call and one request, the model; never MediaPipe's metrics endpoint. Mutation-checked; passes on the production build. Heuristics in `docs/affect.md`. **Found:** tasks-vision 1.x ships always-on telemetry, so it is pinned to 0.10.35 (ADR-34). On 42 generated faces: blind 20/42, tuned 23/42, no negative face read as pleasant; ~24 ms a frame on either delegate.

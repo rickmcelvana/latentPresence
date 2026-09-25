@@ -171,7 +171,6 @@ passes with 2× margin.**
 
 ### R-23 · Make faces at it · ~10 minutes · optional
 **Why:** P3-T06's heuristic was tuned on generated faces, which are posed; yours are not.
-And ADR-34 is `proposed` — accept it, or say otherwise.
 1. `pnpm dev`, open `http://localhost:5173/dev/face`, click **Load** (agree to the 3.8 MB
    model if asked), then **Camera** and allow it.
 2. Hold each for ~3 s, starting relaxed: neutral, a real smile, sad, annoyed/angry,
@@ -202,6 +201,10 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-35 · ADR-34 accepted** — Rick 2026-09-25: MediaPipe stays pinned to tasks-vision
+  0.10.35, below the telemetry 1.x added, with the worker's request guard and the bundle test.
+  R-23 (making faces at `/dev/face`) stays open and optional.
 
 - **D-34 · R-22: does it hear you?** — Rick 2026-09-25, speaking in five tones on `/dev/ser`:
   **one take read "happy" at a high percentage; most of the others looked like** *"neutral
