@@ -134,6 +134,37 @@ emotion2vec+ base on WebGPU, last 1.5 s (61–108 ms) — ADR-33. `other`/`unkno
 is the model not knowing: it lowers confidence, and below half the mass the reading is
 neutral at zero confidence. Not in the call yet — P3-T07 fuses it.
 
+## Reading the user's face (P3-T06)
+
+Opt-in on `/chat` (**Read my face**), off on every visit. The first time, a card says what it
+does and asks; agreeing turns the camera on and fetches the 3.8 MB landmarker; a light on the
+user's picture shows while frames are read; turning it off turns off the camera it turned on.
+MediaPipe Face Landmarker runs in a worker (`packages/ml-web/src/face`, ADR-34 on the pinned
+version); `/chat` sends it ten frames a second as transferred `ImageBitmap`s, which the worker
+closes once read, and nothing else keeps a pixel.
+
+`FaceAffectReader` (`packages/core/src/affect/user-face.ts`) turns the 52 blendshapes into an
+`AffectReading` on the `face` channel:
+
+1. **Against the person's own resting face.** Each feature has a baseline that follows it
+   down in ~1.5 s and up over a minute; only the rise above it counts. So low brows at rest
+   are not anger, and a smile held for a minute is still a smile. It settles from the first
+   frames it sees; confidence ramps up over the first 3 s.
+2. **FACS patterns.** Happy: smile, with cheeks raised only alongside it. Sad: frown, the
+   oblique brow (inner raised more than outer), and the chin raise (AU17) — because MediaPipe
+   hardly reports the frown itself. Angry: brows down, lips pressed, sneer. Surprised: needs
+   the brows; an open jaw alone is speech. Fear: wide eyes with raised inner brows, lip
+   stretch. Disgust: sneer and upper lip. A smile holds back the negative ones.
+3. **Smoothed** over ~0.5 s, and gone a second after the face is.
+
+Confidence is capped at 0.7 and a neutral face is believed calm at up to 0.4 × that. **What it
+can and cannot do**, from 42 generated faces (`docs/SURFACE.md`): happy and surprise
+reliably; anger and sadness sometimes; **fear reads as surprise and disgust not at all**;
+never a negative face as pleasant. So in fusion (P3-T07) it is good for arousal and for
+"smiling or not", and valence beyond that should lean on text. Talking moves the mouth, so
+readings while the user speaks deserve less weight — P3-T07 knows when that is. `/dev/face`
+scores the set, times both delegates and reads a live camera for making faces at.
+
 ## Not yet
 
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being

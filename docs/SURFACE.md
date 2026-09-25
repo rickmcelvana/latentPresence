@@ -2010,3 +2010,39 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   WebGPU uncapped 63, 108, 171, 349, 1289 ms; **capped at 1.5 s** 61 (66), 108 (175), 107, 108,
   107 ms. Load with warm-up: distill < 1 s cached. A reload of Vite's dev server mid-click
   (new dependency optimised) lost the first click; the consent had been stored.
+
+## MediaPipe Face Landmarker — read and measured 2026-09-25 (P3-T06)
+
+- **`@mediapipe/tasks-vision` on npm:** latest 1.0.1 (2026-07-31); **1.0.0 and 1.0.1 carry a
+  metrics logger** (`odml.pa.googleapis.com/v1/log`, POST every 60 s, key from the wasm, no
+  opt-out; README privacy notice dated 2026-06-05). 0.10.21, 0.10.32 and **0.10.35** carry none
+  (grep of each `vision_bundle.mjs`). 0.10.35's only `fetch` calls are for `modelAssetPath`
+  and graph files; pinned (ADR-34). Apache-2.0.
+- **Loading in a module worker works with the ES-module build**
+  (`vision_wasm_module_internal.js/.wasm`): the loader tries `importScripts`, catches the
+  `TypeError` a module worker throws, and falls back to `import()`; the module sets
+  `globalThis.ModuleFactory`. Served through Vite `?url` in dev and as emitted assets in a build
+  (both checked with Playwright). No SIMD-less module build exists.
+- **Model:** `storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+  3,758,596 B, ETag `b0e7274907a1644404fef66b28dd6d85`, `Access-Control-Allow-Origin: *`;
+  `…/latest/…` is the same object today. Model cards (BlazeFace SR, Face Mesh V2,
+  Blendshape V2): Apache-2.0; Blendshape V2 intended for AR avatars, "not intended for human
+  life-critical decisions".
+- **Timing, `/dev/face` (Browser pane, RTX 5060 Ti), 768² stills, 126 frames:** GPU delegate
+  median 24.2 ms (p90 27.9), CPU delegate 24.8 ms (p90 31.4). Load 1.4 s cold, ~160 ms cached.
+  `/chat` uses CPU first. Headless Chromium in Playwright loads it too (the blendshape graph
+  runs on XNNPACK either way).
+- **What the blendshapes see, on 42 generated faces** (`pnpm live:face-set`: flux1-schnell on
+  local ComfyUI, six people × seven expressions, one seed per person). Plainly sad and angry
+  faces moved `mouthFrown` ≤ 0.08 and `noseSneer` ≤ 0.02 over the person's neutral picture;
+  sadness showed instead as `mouthShrugLower` (chin raise, AU17, up to 0.67); fear and surprise
+  gave the same brows-up, eyes-wide, jaw-open pattern. One "neutral" picture was smiling (0.46).
+- **The heuristic on that set** (`core/affect/user-face.ts`, each face against its own
+  person's neutral): **blind 20/42** — neutral, happy, surprised 6/6 each, angry 2/6, sad,
+  disgusted, fearful 0/6 (fear all read as surprise). **Tuned 23/42** (chin raise added to
+  sadness: sad 3/6). **No negative face read as pleasant**: happy valence +0.37 to +0.67,
+  every other face ≤ +0.05. Generated faces are posed; real ones are subtler.
+- **`e2e/face.spec.ts`**: 8.7–13 s on the dev server, 9.6 s on `vite preview`. Mutation:
+  opening the camera on the first click fails it ("the camera was opened before consent").
+  Two runs failed together (face and voice) when `pnpm e2e` reinstalled a package against an
+  already-running dev server; five runs since are green.

@@ -169,6 +169,18 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-23 · Make faces at it · ~10 minutes · optional
+**Why:** P3-T06's heuristic was tuned on generated faces, which are posed; yours are not.
+And ADR-34 is `proposed` — accept it, or say otherwise.
+1. `pnpm dev`, open `http://localhost:5173/dev/face`, click **Load** (agree to the 3.8 MB
+   model if asked), then **Camera** and allow it.
+2. Hold each for ~3 s, starting relaxed: neutral, a real smile, sad, annoyed/angry,
+   surprised, a disgusted face, and simply talking.
+3. Tell me the label line for each (it reads like `happy (confidence 0.62, v 0.61, a 0.35)`),
+   and whether talking alone ever read as a feeling.
+4. Optional: on `/chat`, **Read my face** — check the card's words, the light on your picture,
+   and that turning it off turns the camera off.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

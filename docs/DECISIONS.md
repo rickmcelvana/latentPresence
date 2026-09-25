@@ -36,6 +36,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-31 | Animation clips are converted to `.vrma` in node, not retargeted in Blender; any VRM avatar plays them (retarget at load) | accepted | 2026-09-24 |
 | ADR-32 | The model reads the user with an inline `[user:x]` tag, first in its reply; `InlineTagKind` gains `user` (additive) | accepted | 2026-09-24 |
 | ADR-33 | Voice emotion: the emotion2vec+ web distill (9.7 MB, wasm) by default, emotion2vec+ base (373 MB, WebGPU, last 1.5 s) as the accurate option; FunASR Model Licence 1.1 | accepted | 2026-09-24 |
+| ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | proposed | 2026-09-25 |
 
 ---
 
@@ -969,3 +970,31 @@ carry the rest in fusion (P3-T07).
 
 **Attribution** is on every consent line (model name, source, licence) and here: emotion2vec
 (Ma et al., ACL 2024, arXiv:2312.15185), FunASR (Gao et al., INTERSPEECH 2023), Alibaba Group.
+
+## ADR-34 Face reading: MediaPipe pinned below its telemetry (proposed 2026-09-25)
+
+**Context.** P3-T06 names MediaPipe Face Landmarker. Reading the package on 2026-09-25:
+`@mediapipe/tasks-vision` **1.0.0 (2026-07-28) added a usage logger that is on by default
+and has no switch** — every task builds one, and it POSTs protobuf metrics to
+`https://odml.pa.googleapis.com/v1/log` every 60 s with an API key read out of the wasm
+(`_mediapipeLoggerGetEncodedApiKey`). The README's new privacy notice (June 2026) says the
+app must get users' consent to it. CLAUDE.md: no telemetry, ever. 0.10.35 (2026-04-27) has no
+logger and already ships the ES-module wasm build a module worker needs; 0.10.21 and 0.10.32
+had none either.
+
+**Options.** (a) Pin 0.10.35. (b) Take 1.x and block the request (fetch guard or CSP) —
+works, but ships code whose whole job is to report on the user, and a blocked request is
+one refactor away from an unblocked one. (c) Another landmarker — nothing else in the
+browser gives ARKit blendshapes with a documented licence.
+
+**Decision (recommended option taken, flagged for Rick): (a), with (b)'s guard as well.**
+The version is pinned exactly; the worker refuses any request but its own origin and the one
+model file (`allowedRequest`); a test fails if the installed bundle is not 0.10.35 or carries
+the logger's endpoint or key getter; `e2e/face.spec.ts` asserts no request to the endpoint.
+**Upgrading means re-reading the package**, not bumping the number.
+
+**Model.** `face_landmarker.task` float16 **version 1** (3,758,596 B, the same ETag as
+`latest` today), fetched through `cachedModelFetch` and handed over as bytes. Its three model
+cards (BlazeFace short range, Face Mesh V2, Blendshape V2) say **Apache-2.0**; the Blendshape
+card's intended use is AR avatars, and it says the output is not identification and stores no
+face representation. The wasm (11.2 MB) is ours, served with the app, and not a model.
