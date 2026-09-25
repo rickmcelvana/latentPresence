@@ -165,6 +165,45 @@ never a negative face as pleasant. So in fusion (P3-T07) it is good for arousal 
 readings while the user speaks deserve less weight — P3-T07 knows when that is. `/dev/face`
 scores the set, times both delegates and reads a live camera for making faces at.
 
+## Fusion: how the user seems, all at once (P3-T07)
+
+`packages/core/src/affect/fusion.ts`. Each of four sources keeps **its latest reading**:
+the text heuristic, the model's `[user:x]`, the voice and the face. At any moment each
+weighs *channel × its own confidence × ½^(age / half-life)*:
+
+| source | weight | half-life | why |
+|---|---|---|---|
+| `tag` (model) | 1.0 | 90 s | it reads situations no surface rule can (P3-T04: 84–90% right) |
+| `text` | 0.8 | 90 s | surface cues are clear when present, and abstain otherwise |
+| `face` | 0.6 | 4 s | live, but reliable only for smiling and arousal (P3-T06) |
+| `voice` | 0.35 | 45 s | the default model mostly hears "neutral, a bit happy" (D-34) |
+
+Three rules on top: the face counts **half while the user is speaking**; a voice `neutral`
+below 0.5 is **no evidence** rather than calm (D-34); and once a new message arrives, the
+model's read of the *previous* one counts a quarter — it was about something else.
+Valence and arousal are the weighted mean; the label the weighted vote; confidence the
+winner's share times the evidence in all (1 − Π(1 − wᵢ)). Nothing to go on is `null`.
+
+**When it speaks up:** once per user turn — a typed `user.message`, or a spoken turn the
+call hands over *before* `VoiceSession` builds its request, so the prompt sees it — and a
+second time only if the model's `[user:x]` changes the label. That goes on the bus as
+`affect.user.updated`, which the engine takes in by empathy (happy → joy, the negative ones →
+concern). The prompt says it in one line (`describeUser`) at confidence ≥ 0.35: *"They seem
+down (from what they wrote and how they sound). Let it shape how you answer; do not point it
+out unless they do."*
+
+**Replay.** Every input is recordable (`recordFusion`); `replayFusion` publishes exactly
+what the live session did — no clock, no randomness. Two fixtures hold it: a scripted
+session with every input kind, and one copied from `/chat?affect` against glm-5.2:cloud.
+**`/chat?affect`** is the overlay: each source's reading and current weight, the fused
+state, what she was last told, her mood, and **Copy recording**.
+
+Seen live: before the model reads a message with no surface cue, the last read carries over
+at 0.15–0.16 — too weak to be said, a small push to the engine — and the model's read then
+corrects it. **The engine lags:** a joy felt in the first turn keeps lifting her pleasure for
+~40 s, so in a quick exchange her mood trails the user's by a turn or two (P3-T01's
+half-lives, which R-20 passed; P3-T08 may want the faster events rather than the mood).
+
 ## Not yet
 
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being

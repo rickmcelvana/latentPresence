@@ -243,9 +243,10 @@ MediaPipe Face Landmarker in a worker on the user camera; blendshapes to valence
 Done when: Playwright verifies no camera access before consent; heuristics documented.
 **Met:** `e2e/face.spec.ts` on `/chat` — no `getUserMedia({ video })` and no request before Agree (nor after Not now); after it one camera call and one request, the model; never MediaPipe's metrics endpoint. Mutation-checked; passes on the production build. Heuristics in `docs/affect.md`. **Found:** tasks-vision 1.x ships always-on telemetry, so it is pinned to 0.10.35 (ADR-34). On 42 generated faces: blind 20/42, tuned 23/42, no negative face read as pleasant; ~24 ms a frame on either delegate.
 
-### P3-T07 Affect fusion and injection — owner: main
+### P3-T07 Affect fusion and injection — owner: main (done 2026-09-25; `packages/core/src/affect/fusion.ts`, ADR-12 amended)
 Depends: P3-T04..06. Fuse channels with confidence weighting into `UserAffect`; feed affect engine and LLM context.
 Done when: the debug overlay shows fused state; a recorded session reproduces deterministically.
+**Met:** `/chat?affect` shows each source, the fused state, what she was told and her mood (checked live against glm-5.2:cloud). `replayFusion` reproduces a recording exactly — equal to what the live bus published in a test, and two fixtures (one scripted, one copied from `/chat`) replay to golden values. The engine takes `affect.user.updated` once per turn; the prompt gets `PromptContext.userAffect` as one line at ≥ 0.35. The call reads voice beside recognition on the same audio.
 
 ### P3-T08 Reactive listening — owner: main
 Depends: P3-T07, P1-T09. Expressions and backchannels during user speech keyed to user affect and prosody.

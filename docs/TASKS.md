@@ -180,6 +180,18 @@ passes with 2× margin.**
 4. Optional: on `/chat`, **Read my face** — check the card's words, the light on your picture,
    and that turning it off turns the camera off.
 
+### R-24 · Does she read you, in a real call? · ~10 minutes
+**Why:** P3-T07 was checked live with typing only — the Browser pane has no microphone or
+camera — so the voice and face channels have never been fused on a person.
+1. `pnpm dev`, open `http://localhost:5173/chat?affect` (the overlay is top-left).
+2. **Read my face** (agree), then **Start voice** — the consent screen now also lists the
+   9.7 MB voice-emotion model.
+3. Talk for a few minutes: something good, something annoying, something sad. Watch the
+   overlay's `face` and `voice` rows and the `fused` line.
+4. Tell me: did `fused` follow you? Did talking alone move the face row? Did she answer as if
+   she noticed? Then **Copy recording** and paste it to me (it holds your words — skip it if
+   you would rather not).
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

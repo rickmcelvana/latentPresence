@@ -2046,3 +2046,21 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   opening the camera on the first click fails it ("the camera was opened before consent").
   Two runs failed together (face and voice) when `pnpm e2e` reinstalled a package against an
   already-running dev server; five runs since are green.
+
+## Affect fusion in `/chat` — measured 2026-09-25 (P3-T07)
+
+- **Typed, Browser pane, glm-5.2:cloud, `/chat?affect`** (text channel only: the pane has no
+  camera or microphone). Five messages: "hey! finally friday 😄" → happy 0.51; the landlord
+  selling the flat → happy 0.16 carried over, then the model's `[user:sad]` → sad 0.61; "and he
+  KNEW when we signed. unbelievable!!" → surprised 0.39 (glm wrote no tag that time; in an
+  earlier run it wrote `[user:angry]` and the fusion said angry 0.51); "sorry. I just really
+  liked living there" → sad 0.15 carried over, model agreed; "thanks for listening, it helps
+  :)" → happy 0.41, then the model's neutral 0.51. glm tagged 4 of 5 in that run.
+- **Before `previousTag` was lowered to 0.25**, the first run published happy 0.31 on the
+  landlord message: the previous turn's tag at half weight outvoted a no-cue message.
+- **Her mood lagged:** pleasure +0.23 → +0.34 across the angry and sad turns (40 s). In node,
+  joy at 3 s then concern, frustration and sadness at 20–60 s: pleasure peaks +0.51 at 40 s and
+  is −0.33 at 120 s — the engine's integration, not the fusion.
+- **Found by the live check:** the overlay's recorder was stopped by StrictMode's mount-time
+  cleanup and never restarted — **Copy recording** gave `{"inputs":[]}`. Fixed; the fixture
+  `fusion-live-session.ts` is the recording from the rerun.
