@@ -82,22 +82,6 @@ right.
 
 ## Open — rick
 
-### R-22 · Does it hear you? · ~10 minutes, optional before P3-T07
-**Why:** P3-T05's done-when is met on speed and licence, but nothing has checked the voice
-models against a real person — only TTS, which has no feeling in it. The default (the distill)
-says of itself that it misses most feeling in natural speech; this is how much.
-```bash
-pnpm dev
-```
-1. Open `http://localhost:5173/dev/ser`, leave **distill** selected, **Load and time** (agree
-   to 9.7 MB the first time), wait for the table.
-2. **Record 3 s** and say a sentence in a clearly **happy** voice; read the *Heard* line. Then
-   **sad**, **angry**, **scared**, and one flat and **neutral**. Exaggerate — it is acted anyway.
-3. Switch to **emotion2vec+ base** (373 MB, agree once), **Load and time**, and repeat the five.
-
-**Report:** the five *Heard* lines for each model. My guess to beat: the distill says neutral
-or happy for most of them; base gets three or four of five.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -206,6 +190,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-34 · R-22: does it hear you?** — Rick 2026-09-25, speaking in five tones on `/dev/ser`:
+  **one take read "happy" at a high percentage; most of the others looked like** *"neutral
+  (confidence 0.43, 23 ms) — neutral 0.43, happy 0.26, surprised 0.12"*. The 23 ms says the
+  default distill; whether base was tried was not reported. So the voice channel mostly
+  hears "neutral, a bit happy" — as its own card warned. **For P3-T07: weight the voice
+  reading low, and treat a sub-0.5 neutral from it as no evidence**, not as "calm".
 
 - **D-33 · R-21: ADR-32 and P3-T04's thresholds** — Rick 2026-09-24: **both accepted** as
   proposed. The Anthropic account's credit (Fable live checks) is still his to top up.

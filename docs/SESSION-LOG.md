@@ -553,3 +553,9 @@ Did: read the SER candidates on the HF API (wav2vec2 ONNX export rejected — no
 Left: R-22 (optional: speak to /dev/ser in five tones); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: P3-T06 user affect from face (opt-in), then P3-T07 fusion.
 Decisions: **ADR-33 accepted** (distill default, base opt-in capped at the last 1.5 s; FunASR licence, attribution on consent lines). `other`/`unknown` = the model not knowing. Click-through: /dev/ser in the Browser pane — consent screen listed both base files with licence; timings above; build guard needle mutation-checked.
+
+## 2026-09-25 claude — hand-off (R-22 recorded)
+Did: R-22 recorded (D-34): the default distill heard one clearly happy take; most others read neutral ~0.43 / happy ~0.26 at 23 ms. Docs caught up for a fresh session; tree clean and pushed state checked.
+Left: laptop session (R-13 laptop half, R-1, R-9); R-3; C-7; Anthropic API credit (Fable live checks fail until topped up).
+Next: **P3-T06 user affect from face (opt-in)** — MediaPipe Face Landmarker in a worker on the user camera, blendshapes → valence/arousal heuristics, explicit consent, no frames stored, indicator while active; done when Playwright proves no camera access before consent. Read `docs/affect.md` and `useUserCamera` (P2-T06) first; the licence and model files are facts to read, not remember (SURFACE). Then **P3-T07 fusion**: inputs ready are `readUserText` + `readingFromTag` (text, core) and `SpeechEmotionReader` (voice, providers) — weight voice low per D-34.
+Decisions: none new. Click-through: n/a.
