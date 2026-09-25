@@ -21,6 +21,7 @@ import { defaultPersona } from '../persona/default-persona';
 import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
 import type { ActiveCall } from '../voice/VoicePanel';
+import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { hostTimers } from './host-timers';
 
@@ -83,6 +84,26 @@ async function loadDefaultSpeaker(): Promise<SpeakerLoader> {
 
 type SpeakPhase = 'off' | 'consent' | 'starting' | 'on';
 
+/** The face-reading module (P3-T06), loaded on the first click of *Read my face*. */
+export interface FaceReadingLoader {
+  faceReadingModels(): ModelDescriptor[];
+  startFaceReading(options: FaceReadingOptions): Promise<FaceReadingHandle>;
+}
+
+/** `lazy()`'s reasoning again: `call/face-reading.ts` imports MediaPipe's worker. */
+async function loadDefaultFaceReading(): Promise<FaceReadingLoader> {
+  const module = await import('../call/face-reading');
+  return { faceReadingModels: module.faceReadingModels, startFaceReading: module.startFaceReading };
+}
+
+type FacePhase = 'off' | 'consent' | 'starting' | 'on';
+
+/** What the light on the user's picture says while face reading runs. */
+function faceIndicatorText(face: FacePhase, status: FaceReadingStatus | null): string {
+  if (face === 'starting' || status === null) return 'Starting face reading…';
+  return status.reading === null ? 'Reading your face · no face seen' : `Reading your face · ${status.reading.label}`;
+}
+
 /** The body's view of the page's affect engine (P3-T09): what `affectToBody` reads, now, and her baseline. */
 function stageAffectOf(affect: AttachedAffect): CallStageAffect {
   const { baseline } = DEFAULT_AFFECT_PARAMS;
@@ -110,6 +131,8 @@ export interface ChatPageProps {
   readonly camera?: UseUserCameraDeps | undefined;
   /** Test seam: the speaker module (P2-T08). Production never passes it. */
   readonly loadSpeaker?: () => Promise<SpeakerLoader>;
+  /** Test seam: the face-reading module (P3-T06). Production never passes it. */
+  readonly loadFaceReading?: () => Promise<FaceReadingLoader>;
 }
 
 /**
@@ -126,6 +149,7 @@ export function ChatPage({
   createRenderer,
   camera,
   loadSpeaker = loadDefaultSpeaker,
+  loadFaceReading = loadDefaultFaceReading,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
@@ -153,6 +177,7 @@ export function ChatPage({
       createRenderer={createRenderer}
       deps={deps}
       endpoint={llm.endpoint}
+      loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
       settings={settings}
@@ -173,6 +198,7 @@ interface ConfiguredChatPageProps {
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
   readonly camera?: UseUserCameraDeps | undefined;
   readonly loadSpeaker: () => Promise<SpeakerLoader>;
+  readonly loadFaceReading: () => Promise<FaceReadingLoader>;
 }
 
 function ConfiguredChatPage({
@@ -187,6 +213,7 @@ function ConfiguredChatPage({
   createRenderer,
   camera: cameraDeps,
   loadSpeaker,
+  loadFaceReading,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
@@ -284,6 +311,118 @@ function ConfiguredChatPage({
   }, [chat]);
 
   useEffect(() => machine.subscribe(() => setBusy(chat.busy)), [machine, chat]);
+
+  // Reading the user's face (P3-T06). Opt-in, off on every visit: nothing here touches the
+  // camera or fetches the model until the person has clicked *Read my face* and — the first
+  // time — agreed on the card that says what it does. The reading goes nowhere yet; P3-T07
+  // fuses it with text and voice.
+  const [face, setFace] = useState<FacePhase>('off');
+  const [faceConsent, setFaceConsent] = useState<{ loader: FaceReadingLoader; models: ModelDescriptor[] } | null>(null);
+  const [faceLoader, setFaceLoader] = useState<FaceReadingLoader | null>(null);
+  const [faceStatus, setFaceStatus] = useState<FaceReadingStatus | null>(null);
+  const [faceError, setFaceError] = useState<string | null>(null);
+  const faceHandleRef = useRef<FaceReadingHandle | null>(null);
+  // True when face reading is what turned the camera on, so turning it off turns the camera
+  // off too; a camera the person had on already stays on.
+  const faceOwnsCameraRef = useRef(false);
+  // The run being started or running, if any (see the effect below).
+  const faceRunRef = useRef<object | null>(null);
+
+  const stopFace = useCallback(() => {
+    faceRunRef.current = null;
+    faceHandleRef.current?.stop();
+    faceHandleRef.current = null;
+    if (faceOwnsCameraRef.current) userCamera.stop();
+    faceOwnsCameraRef.current = false;
+    setFaceLoader(null);
+    setFaceStatus(null);
+    setFace('off');
+  }, [userCamera]);
+
+  useEffect(
+    () => () => {
+      // A run still loading when the page goes finds itself stale and stops itself.
+      faceRunRef.current = null;
+      faceHandleRef.current?.stop();
+    },
+    [],
+  );
+
+  /** Agreed: the camera comes on (if it was off), and the effect below starts reading once its video exists. */
+  const beginFace = useCallback(
+    (loader: FaceReadingLoader) => {
+      setFaceConsent(null);
+      setFaceError(null);
+      setFaceLoader(loader);
+      setFace('starting');
+      if (userCamera.active) return;
+      faceOwnsCameraRef.current = true;
+      // A refused camera ends it here; its reason is already on screen where the PiP would be.
+      void userCamera.start().then((started) => {
+        if (started) return;
+        faceOwnsCameraRef.current = false;
+        stopFace();
+      });
+    },
+    [stopFace, userCamera],
+  );
+
+  const toggleFace = useCallback(async () => {
+    if (face === 'on' || face === 'starting') {
+      stopFace();
+      return;
+    }
+    if (face !== 'off') return;
+    setFaceError(null);
+    const loader = await loadFaceReading();
+    const models = loader.faceReadingModels();
+    if (deps.consent.has(models)) {
+      beginFace(loader);
+    } else {
+      setFaceConsent({ loader, models });
+      setFace('consent');
+    }
+  }, [beginFace, deps.consent, face, loadFaceReading, stopFace]);
+
+  // Starts reading once there is a camera picture to read. (A refused camera and a camera
+  // turned off are handled where they happen, in `beginFace` and `toggleCamera`.)
+  // **A run is a token, not an effect's lifetime.** This effect re-runs when `face` itself
+  // flips to `on`, so a cleanup that cancelled the run would drop every reading the run
+  // ever made — which is exactly what the first version did. Stopping clears the token;
+  // a run that finds itself no longer current stops itself.
+  useEffect(() => {
+    const video = pipVideoRef.current;
+    if (face !== 'starting' || faceLoader === null || userCamera.stream === null || video === null || faceRunRef.current !== null) return;
+    const run = {};
+    faceRunRef.current = run;
+    const current = (): boolean => faceRunRef.current === run;
+    faceLoader
+      .startFaceReading({
+        consent: deps.consent,
+        video,
+        onStatus: (status) => {
+          if (current()) setFaceStatus(status);
+        },
+        onError: (message) => {
+          if (!current()) return;
+          stopFace();
+          setFaceError(message);
+        },
+      })
+      .then((handle) => {
+        if (!current()) {
+          handle.stop();
+          return;
+        }
+        faceHandleRef.current = handle;
+        setFace('on');
+      })
+      .catch((error: unknown) => {
+        if (!current()) return;
+        stopFace();
+        setFaceError(error instanceof Error ? error.message : String(error));
+      });
+  }, [deps.consent, face, faceLoader, stopFace, userCamera.stream]);
 
   // The PiP `<video>` takes a `MediaStream` through `srcObject`, which has no JSX prop —
   // it has to be set imperatively once the element exists and again whenever the stream
@@ -398,9 +537,15 @@ function ConfiguredChatPage({
   }, [call]);
 
   const toggleCamera = useCallback(() => {
-    if (userCamera.active) userCamera.stop();
-    else void userCamera.start();
-  }, [userCamera]);
+    if (userCamera.active) {
+      // No camera, nothing to read: face reading goes with it.
+      faceOwnsCameraRef.current = false;
+      stopFace();
+      userCamera.stop();
+    } else {
+      void userCamera.start();
+    }
+  }, [stopFace, userCamera]);
 
   function send(): void {
     if (draft.trim() === '') return;
@@ -426,7 +571,7 @@ function ConfiguredChatPage({
   // box covered the consent card entirely (R-14, 2026-09-23): Start voice looked like it did
   // nothing. Typing is blocked for the call anyway.
   // The speaker's consent card takes the same place, for the same reason.
-  const showTextBox = textOpen && !voiceOpen && speakConsent === null;
+  const showTextBox = textOpen && !voiceOpen && speakConsent === null && faceConsent === null;
   // Lip sync follows whichever voice exists; a test call with no audio graph has none.
   const voiceOutput = call?.output ?? speaker?.output ?? null;
   // The two centred cards shift left of an open drawer rather than sliding under it (R-14).
@@ -453,8 +598,16 @@ function ConfiguredChatPage({
               recorder. It is a live view of the stream for the person on this end, mirrored
               like a mirror rather than like a camera, and nothing else. */}
           <video autoPlay className="call-pip-video" muted playsInline ref={pipVideoRef} />
+          {/* The light (P3-T06): on for exactly as long as frames are being read. */}
+          {(face === 'on' || face === 'starting') && (
+            <div className="call-pip-indicator" data-testid="face-indicator" role="status">
+              <span className="call-pip-light" />
+              {faceIndicatorText(face, faceStatus)}
+            </div>
+          )}
         </div>
       )}
+      {faceError !== null && face === 'off' && <p className="call-face-error">Face reading: {faceError}</p>}
       {!userCamera.active && userCamera.error !== null && (
         <div className="call-pip call-pip-error">
           <p>Camera: {userCamera.error}</p>
@@ -497,6 +650,26 @@ function ConfiguredChatPage({
         </div>
       )}
 
+      {faceConsent !== null && (
+        <div className="call-voice-card">
+          <ConsentScreen
+            agreeLabel="Turn on face reading"
+            cancelLabel="Not now"
+            descriptors={faceConsent.models}
+            heading="Read your expression from the camera?"
+            intro={`${CHAT_CHARACTER_NAME} can watch your expression through your camera to tell how you seem. A model running in this browser reads each frame and drops it at once: no frame is saved or sent anywhere, and only a mood estimate is kept. It is off until you turn it on, and a light on your picture shows while it runs. Agreeing turns on the camera and downloads this model:`}
+            onAgree={() => {
+              deps.consent.grant(faceConsent.models);
+              beginFace(faceConsent.loader);
+            }}
+            onCancel={() => {
+              setFaceConsent(null);
+              setFace('off');
+            }}
+          />
+        </div>
+      )}
+
       {showTextBox && (
         <div className="call-text-dock">
           <textarea
@@ -533,6 +706,16 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={userCamera.active} className="btn call-control-btn" onClick={toggleCamera} type="button">
           Camera
+        </button>
+        <button
+          aria-pressed={face === 'on' || face === 'starting'}
+          className="btn call-control-btn"
+          disabled={face === 'consent'}
+          onClick={() => void toggleFace()}
+          title="Let her read your expression from the camera (opt-in, stays on this computer)"
+          type="button"
+        >
+          Read my face
         </button>
         <button aria-pressed={showTextBox} className="btn call-control-btn" disabled={voiceOpen} onClick={() => setTextOpen((open) => !open)} type="button">
           Text

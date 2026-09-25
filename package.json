@@ -39,6 +39,7 @@
     "live:cues": "pnpm --filter @latentpresence/ml-web exec vite-node live/cues.ts",
     "live:ser": "pnpm --filter @latentpresence/ml-web exec vite-node live/ser.ts",
     "live:affect-voice": "pnpm --filter @latentpresence/ml-web exec vite-node live/affect-voice.ts",
+    "live:face-set": "pnpm --filter @latentpresence/ml-web exec vite-node live/face-set.ts",
     "clean": "tsc -b --clean"
   },
   "devDependencies": {

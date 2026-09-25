@@ -28,6 +28,9 @@ export const DEV_AVATAR_PATH = '/dev/avatar';
 /** The dev-only voice-emotion timing page (P3-T05): a model in its real worker, timed per segment. */
 export const DEV_SER_PATH = '/dev/ser';
 
+/** The dev-only face-reading page (P3-T06): the landmarker in its real worker, timed, and the heuristic scored. */
+export const DEV_FACE_PATH = '/dev/face';
+
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
@@ -90,6 +93,13 @@ const SerBench = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./dev/SerBench');
   return { default: module.SerBench };
+});
+
+/** P3-T06's face bench, behind the same guard: it makes the MediaPipe worker. */
+const FaceBench = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./dev/FaceBench');
+  return { default: module.FaceBench };
 });
 
 /**
@@ -166,6 +176,14 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
+  if (import.meta.env.DEV && path === DEV_FACE_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading the face bench…</p>}>
+        <FaceBench />
+      </Suspense>
+    );
+  }
+
   if (import.meta.env.DEV && path === SPIKE_AVATAR_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
@@ -220,6 +238,7 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
             [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
             [DEV_AVATAR_PATH, 'Avatar — VRM renderer debug panel (P2-T01)'],
             [DEV_SER_PATH, 'Voice emotion — worker timing (P3-T05)'],
+            [DEV_FACE_PATH, 'Face reading — worker and heuristic (P3-T06)'],
             [SPIKE_AVATAR_PATH, 'Spike B — avatar frame rate and lip sync'],
           ].map(([href, label]) => (
             <li key={href}>

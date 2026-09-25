@@ -22,7 +22,8 @@ export interface UseUserCameraResult {
   /** Set on a refusal (denied permission, no camera, …); cleared on the next `start()`. */
   readonly error: string | null;
   readonly active: boolean;
-  start(): Promise<void>;
+  /** Resolves true once the camera is on, false if it was refused. */
+  start(): Promise<boolean>;
   stop(): void;
 }
 
@@ -47,15 +48,17 @@ export function useUserCamera(deps: UseUserCameraDeps = {}): UseUserCameraResult
     setStream(null);
   }, []);
 
-  const start = useCallback(async (): Promise<void> => {
+  const start = useCallback(async (): Promise<boolean> => {
     try {
       const media = await getUserMedia({ video: true, audio: false });
       streamRef.current = media;
       setStream(media);
       setError(null);
+      return true;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setStream(null);
+      return false;
     }
   }, [getUserMedia]);
 

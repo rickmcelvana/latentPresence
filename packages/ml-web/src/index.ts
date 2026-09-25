@@ -10,9 +10,11 @@ export * from './asr';
 export * from './kokoro';
 export * from './turn';
 export * from './ser';
+export * from './face';
 export * from './consent';
 export {
   createGatedAsrWorker,
+  createGatedFaceWorker,
   createGatedKokoroWorker,
   createGatedSerWorker,
   createGatedSmartTurnWorker,

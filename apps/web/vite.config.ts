@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 
@@ -42,6 +43,8 @@ function assertSpikeExcludedFromBuild(): Plugin {
     'e2eHandle',
     // `/dev/ser` (P3-T05): the handle that page hangs on `globalThis`, as above.
     'serBench',
+    // `/dev/face` (P3-T06): the same.
+    'faceBench',
     // `/spike/avatar` (Spike B) and `/dev/avatar` (P2-T01), per the comment above.
     '@react-three/fiber',
     'avatar-debug-canvas',
@@ -68,6 +71,11 @@ function assertSpikeExcludedFromBuild(): Plugin {
 
 export default defineConfig({
   plugins: [react(), assertSpikeExcludedFromBuild()],
+  // `/dev/face` (P3-T06) reads the generated face set from `live/out/faces` through Vite's
+  // `/@fs/` route; this is where that folder is on this machine. Only that page names it.
+  define: {
+    FACE_SET_DIR: JSON.stringify(fileURLToPath(new URL('../../packages/ml-web/live/out/faces/', import.meta.url)).replaceAll('\\', '/')),
+  },
   test: {
     name: 'web',
     environment: 'jsdom',

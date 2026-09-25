@@ -1491,3 +1491,52 @@ kbd {
     --call-ui-zoom: 1.8;
   }
 }
+
+/* --- Face reading (P3-T06) ---------------------------------------------------
+   The light on the user's own picture: on for exactly as long as frames are read. */
+
+.call-pip-indicator {
+  position: absolute;
+  left: var(--gap-xs);
+  bottom: var(--gap-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  padding: 2px var(--gap-sm);
+  border-radius: 999px;
+  background: var(--scrim);
+  color: var(--text);
+  font-size: 11px;
+}
+
+.call-pip-light {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow-strong);
+}
+
+.call-face-error {
+  position: absolute;
+  left: var(--gap-lg);
+  bottom: calc(var(--call-bar-height) + var(--gap-lg));
+  max-width: clamp(160px, 20vw, 480px);
+  margin: 0;
+  padding: var(--gap-xs) var(--gap-sm);
+  border-radius: var(--radius);
+  border: 1px solid var(--danger);
+  background: var(--panel);
+  color: var(--danger);
+  font-size: 12px;
+  z-index: 3;
+}
+
+/* `/dev/face` (P3-T06): the live camera the bench reads, small and mirrored like the PiP. */
+
+.face-bench-video {
+  width: 320px;
+  max-width: 100%;
+  transform: scaleX(-1);
+  border-radius: var(--radius);
+}

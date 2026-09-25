@@ -12,6 +12,8 @@ import {
 import { createSmartTurnWorker, createVadWorker } from '../turn/create-worker';
 import { serModels, type SerModelKey, type SerWorkerPort } from '../ser';
 import { createSerWorker } from '../ser/create-worker';
+import { faceModels, type FaceWorkerPort } from '../face';
+import { createFaceWorker } from '../face/create-worker';
 import { requireConsent, type ModelConsent } from './consent';
 
 /**
@@ -61,4 +63,10 @@ export function createGatedKokoroWorker(consent: ModelConsent, dtype: KokoroSize
 export function createGatedSerWorker(consent: ModelConsent, model: SerModelKey): SerWorkerPort {
   requireConsent(consent, serModels(model));
   return createSerWorker();
+}
+
+/** The user's face (P3-T06): the one landmarker bundle. Opt-in on `/chat`; the camera is the caller's. */
+export function createGatedFaceWorker(consent: ModelConsent): FaceWorkerPort {
+  requireConsent(consent, faceModels());
+  return createFaceWorker();
 }

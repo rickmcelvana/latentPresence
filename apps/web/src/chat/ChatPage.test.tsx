@@ -1,10 +1,10 @@
 import { StrictMode } from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer } from '@latentpresence/avatar';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
-import { kokoroModel } from '@latentpresence/ml-web';
+import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
@@ -13,7 +13,8 @@ import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { SETTINGS_STORAGE_KEY } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
-import { CHAT_CHARACTER_NAME, ChatPage, type SpeakerLoader } from './ChatPage';
+import { CHAT_CHARACTER_NAME, ChatPage, type FaceReadingLoader, type SpeakerLoader } from './ChatPage';
+import type { FaceReadingOptions } from '../call/face-reading';
 import type { ChatLlmOptions } from './chat-llm';
 
 afterEach(cleanup);
@@ -549,5 +550,121 @@ describe('ChatPage — Speak replies (P2-T08)', () => {
     await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
     r.view.unmount();
     expect(r.log).toEqual(['start', 'stop']);
+  });
+});
+
+/**
+ * Face reading (P3-T06), with a fake camera and a fake face module: what the page does
+ * before and after consent, and what turning it off turns off. The real worker, the real
+ * camera and the network are `e2e/face.spec.ts`'s.
+ */
+function faceButton(): HTMLElement {
+  return screen.getByRole('button', { name: 'Read my face' });
+}
+
+function faceRig({ agreed = false }: { agreed?: boolean } = {}) {
+  const storage = memoryStorage();
+  seedConfigured(storage);
+  const consent = new ModelConsent(memoryStorage());
+  if (agreed) consent.grant(faceModels());
+  const track = { stop: vi.fn() };
+  const getUserMedia = vi.fn(async () => ({ getTracks: () => [track] }) as unknown as MediaStream);
+  const runs: FaceReadingOptions[] = [];
+  const handle = { stop: vi.fn() };
+  const loader: FaceReadingLoader = {
+    faceReadingModels: () => faceModels(),
+    startFaceReading: async (options) => {
+      runs.push(options);
+      return handle;
+    },
+  };
+  const view = render(
+    <ChatPage
+      camera={{ getUserMedia }}
+      createRenderer={fakeCreateRenderer}
+      deps={testDeps({ storage, consent })}
+      loadFaceReading={async () => loader}
+    />,
+  );
+  return { view, button: faceButton, getUserMedia, runs, handle, track };
+}
+
+describe('ChatPage — face reading (P3-T06)', () => {
+  it('asks first, and asking touches neither the camera nor the model', async () => {
+    const r = faceRig();
+    fireEvent.click(r.button());
+    await screen.findByText('Read your expression from the camera?');
+    expect(screen.getByText(/no frame is saved or sent anywhere/u)).toBeTruthy();
+    expect(r.getUserMedia).not.toHaveBeenCalled();
+    expect(r.runs).toHaveLength(0);
+
+    // The character's own card has a "Not now" too; this is the face card's.
+    const card = screen.getByText('Read your expression from the camera?').closest('section');
+    fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Not now' }));
+    await act(() => settle());
+    expect(screen.queryByText('Read your expression from the camera?')).toBeNull();
+    expect(r.getUserMedia).not.toHaveBeenCalled();
+    expect(r.button().getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('agreed, turns the camera on, reads its picture, and shows the light', async () => {
+    const r = faceRig();
+    fireEvent.click(r.button());
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on face reading' }));
+    await waitFor(() => expect(r.runs).toHaveLength(1));
+    expect(r.getUserMedia).toHaveBeenCalledWith({ video: true, audio: false });
+    expect(r.runs[0]?.video).toBeInstanceOf(HTMLVideoElement);
+
+    act(() => r.runs[0]?.onStatus({ reading: null, delegate: 'CPU', inferenceMs: 20 }));
+    expect(screen.getByTestId('face-indicator').textContent).toContain('no face seen');
+  });
+
+  it('off turns off the camera it turned on', async () => {
+    const r = faceRig({ agreed: true });
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.button().getAttribute('aria-pressed')).toBe('true'));
+    await waitFor(() => expect(r.runs).toHaveLength(1));
+    fireEvent.click(r.button());
+    await act(() => settle());
+    expect(r.handle.stop).toHaveBeenCalled();
+    expect(r.track.stop).toHaveBeenCalled();
+    expect(screen.queryByTestId('face-indicator')).toBeNull();
+  });
+
+  it('leaves on a camera that was already on', async () => {
+    const r = faceRig({ agreed: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Camera' }));
+    await waitFor(() => expect(r.getUserMedia).toHaveBeenCalledTimes(1));
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.runs).toHaveLength(1));
+    fireEvent.click(r.button());
+    await act(() => settle());
+    expect(r.handle.stop).toHaveBeenCalled();
+    expect(r.track.stop).not.toHaveBeenCalled();
+    expect(r.getUserMedia).toHaveBeenCalledTimes(1);
+  });
+
+  it('turning the camera off stops the reading, and the page going stops it too', async () => {
+    const r = faceRig({ agreed: true });
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.runs).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Camera' }));
+    await act(() => settle());
+    expect(r.handle.stop).toHaveBeenCalledTimes(1);
+    expect(r.button().getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(r.button());
+    await waitFor(() => expect(r.runs).toHaveLength(2));
+    r.view.unmount();
+    expect(r.handle.stop).toHaveBeenCalledTimes(2);
+  });
+
+  it('a refused camera ends it, with the reason where the picture would be', async () => {
+    const r = faceRig({ agreed: true });
+    r.getUserMedia.mockRejectedValueOnce(new Error('Permission denied'));
+    fireEvent.click(r.button());
+    await screen.findByText('Camera: Permission denied');
+    expect(r.button().getAttribute('aria-pressed')).toBe('false');
+    expect(r.runs).toHaveLength(0);
   });
 });

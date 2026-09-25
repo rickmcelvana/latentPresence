@@ -1,9 +1,10 @@
 import { asrModel } from '../asr';
 import { kokoroModel } from '../kokoro';
 import { sileroVadModel, smartTurnModel } from '../turn';
+import { faceModels } from '../face';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConsentRequiredError, ModelConsent } from './consent';
-import { createGatedAsrWorker, createGatedKokoroWorker, createGatedSmartTurnWorker, createGatedVadWorker } from './gated-workers';
+import { createGatedAsrWorker, createGatedFaceWorker, createGatedKokoroWorker, createGatedSmartTurnWorker, createGatedVadWorker } from './gated-workers';
 
 /**
  * The structural gate, which is P1-T13's done-when: with no consent recorded, each of the
@@ -49,6 +50,11 @@ vi.mock('../asr/create-worker', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../asr/create-worker')>();
   return { ...actual, createAsrWorker: createAsrWorkerSpy };
 });
+const { facePort, createFaceWorkerSpy } = vi.hoisted(() => {
+  const fakeFacePort = { post: vi.fn(), onMessage: vi.fn(), terminate: vi.fn() };
+  return { facePort: fakeFacePort, createFaceWorkerSpy: vi.fn(() => fakeFacePort) };
+});
+vi.mock('../face/create-worker', () => ({ createFaceWorker: createFaceWorkerSpy }));
 vi.mock('../kokoro/create-worker', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../kokoro/create-worker')>();
   return { ...actual, createKokoroWorker: createKokoroWorkerSpy };
@@ -70,7 +76,7 @@ function memoryStorage(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
 let fetchSpy: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  for (const spy of [createVadWorkerSpy, createSmartTurnWorkerSpy, createAsrWorkerSpy, createKokoroWorkerSpy]) spy.mockClear();
+  for (const spy of [createVadWorkerSpy, createSmartTurnWorkerSpy, createAsrWorkerSpy, createKokoroWorkerSpy, createFaceWorkerSpy]) spy.mockClear();
   fetchSpy = vi.fn();
   vi.stubGlobal('fetch', fetchSpy);
 });
@@ -150,5 +156,21 @@ describe('createGatedKokoroWorker', () => {
     consent.grant([kokoroModel('fp32')]);
     expect(createGatedKokoroWorker(consent, 'fp32')).toBe(kokoroPort);
     expect(createKokoroWorkerSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createGatedFaceWorker (P3-T06)', () => {
+  it('refuses before constructing anything when consent is missing', () => {
+    const consent = new ModelConsent(memoryStorage());
+    expect(() => createGatedFaceWorker(consent)).toThrow(ConsentRequiredError);
+    expect(createFaceWorkerSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('builds the worker once the landmarker is granted', () => {
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant(faceModels());
+    expect(createGatedFaceWorker(consent)).toBe(facePort);
+    expect(createFaceWorkerSpy).toHaveBeenCalledTimes(1);
   });
 });
