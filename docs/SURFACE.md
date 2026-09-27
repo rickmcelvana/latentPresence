@@ -2064,3 +2064,25 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
 - **Found by the live check:** the overlay's recorder was stopped by StrictMode's mount-time
   cleanup and never restarted — **Copy recording** gave `{"inputs":[]}`. Fixed; the fixture
   `fusion-live-session.ts` is the recording from the rerun.
+
+## Vite and worker-only dependencies — found 2026-09-27 (R-24)
+
+- **Vite's dependency scan starts at `index.html` and does not follow
+  `new Worker(new URL(...))`**, so `@huggingface/transformers`, `onnxruntime-web`, `kokoro-js`
+  and `@mediapipe/tasks-vision` were discovered when a worker first loaded. Each discovery
+  re-bundles them together (they share onnxruntime-web's code). After the face worker's first
+  use re-bundled them mid-session, the Smart Turn worker loaded a transformers.js chunk that
+  imported `t` from an onnxruntime chunk that no longer exported it: *"does not provide an
+  export named 't'"*. Chrome then fires the Worker's `error` event **with an empty message**
+  and the worker never runs a line.
+- **Fix:** `optimizeDeps.include`, in the nested form `@latentpresence/ml-web > dep` — the
+  plain name fails for a dependency the app does not declare itself ("Failed to resolve
+  dependency: @mediapipe/tasks-vision"). Checked on a second server with its own `cacheDir`
+  (sharing `node_modules/.vite` with a running server would have clobbered its cache): all
+  four in `_metadata.json` at start; face 414 ms → Smart Turn 3.5 s → SER 1.4 s. On `/chat`,
+  Start voice then loaded every model in 15 s and stopped at the microphone the Browser pane
+  blocks.
+- **Worker ports listened to `message` only**, so a worker that failed to load was a silent
+  hang; `workerPort` now turns `error` into each protocol's load error.
+- **Headless Chromium in Playwright has no WebGPU adapter** ("No available adapters"), so
+  `/chat`'s voice cannot be driven there; it says so in a sentence (P1-T15's `kokoroSupport`).

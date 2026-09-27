@@ -571,3 +571,9 @@ Did: ADR-34 accepted (D-35, 844c846). `core/affect/fusion.ts` (`fuseReadings`, `
 Left: R-24 (a real call with voice and face on `/chat?affect`); R-23 (optional); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: **P3-T08 reactive listening** — expressions and backchannels during user speech keyed to user affect and prosody; `UserAffectFusion.current(now)` is the live estimate (the face is live; published estimates are per turn).
 Decisions: ADR-12 amended (userAffect in the prompt, one line at >= 0.35). Weights tag 1 / text 0.8 / face 0.6 / voice 0.35; previous-turn tag 0.25 (from 0.5, after the live run). Her mood lags a quick exchange by a turn or two — engine inertia, left as R-20 passed it. Click-through: `/chat?affect` in the Browser pane vs glm-5.2:cloud, five typed turns twice; overlay screenshot; e2e green.
+
+## 2026-09-27 claude — R-24 blocker: Start voice hung on "loading models"
+Did: R-23 recorded (D-36: passed; sad reads as angry most times). Traced Rick's hang in the Browser pane: Silero ready, Smart Turn's worker module failed to load — Vite had re-bundled the worker-only deps mid-session when the face worker first pulled in `@mediapipe/tasks-vision`, leaving transformers.js importing an export onnxruntime's new chunk lacked; the port ignored the Worker `error` event, so `load()` never settled. Fix: `optimizeDeps.include` (nested form) and `workerPort` turning `error` into a load error. 417de44, 1267 tests.
+Left: R-24 (restart `vite --force`, hard reload, then the call); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
+Next: R-24's result, then **P3-T08 reactive listening**.
+Decisions: none new. Face "angry" is weak evidence (D-36) — a note for P3-T08, no weight change without a person's data. Click-through: `/chat` Start voice on 5173 after the server re-bundled: all models loaded in 15 s, stopped at the pane's blocked microphone.

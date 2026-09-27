@@ -169,21 +169,13 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-23 · Make faces at it · ~10 minutes · optional
-**Why:** P3-T06's heuristic was tuned on generated faces, which are posed; yours are not.
-1. `pnpm dev`, open `http://localhost:5173/dev/face`, click **Load** (agree to the 3.8 MB
-   model if asked), then **Camera** and allow it.
-2. Hold each for ~3 s, starting relaxed: neutral, a real smile, sad, annoyed/angry,
-   surprised, a disgusted face, and simply talking.
-3. Tell me the label line for each (it reads like `happy (confidence 0.62, v 0.61, a 0.35)`),
-   and whether talking alone ever read as a feeling.
-4. Optional: on `/chat`, **Read my face** — check the card's words, the light on your picture,
-   and that turning it off turns the camera off.
-
 ### R-24 · Does she read you, in a real call? · ~10 minutes
 **Why:** P3-T07 was checked live with typing only — the Browser pane has no microphone or
 camera — so the voice and face channels have never been fused on a person.
-1. `pnpm dev`, open `http://localhost:5173/chat?affect` (the overlay is top-left).
+1. **Restart the dev server with a fresh dependency cache** (the fix for the hang,
+   417de44, changes what it pre-bundles): stop `pnpm dev`, then
+   `pnpm --filter @latentpresence/web exec vite --force`, and hard-reload the page
+   (Ctrl+Shift+R). Open `http://localhost:5173/chat?affect` (the overlay is top-left).
 2. **Read my face** (agree), then **Start voice** — the consent screen now also lists the
    9.7 MB voice-emotion model.
 3. Talk for a few minutes: something good, something annoying, something sad. Watch the
@@ -213,6 +205,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
+
+- **D-36 · R-23: making faces at `/dev/face`** — Rick 2026-09-27: **passed** — "pretty on
+  point", except that **what he means as sad reads as angry most times**. The generated set
+  showed the same pull (one sad face read angry on lowered brows): MediaPipe reports the
+  brow-lowering of a sad face and barely the frown, and anger is scored on the brows. For
+  P3-T08 and the fusion: a face "angry" is weak evidence of anger; the text and the model's
+  read decide between the two.
 
 - **D-35 · ADR-34 accepted** — Rick 2026-09-25: MediaPipe stays pinned to tasks-vision
   0.10.35, below the telemetry 1.x added, with the worker's request guard and the bundle test.
