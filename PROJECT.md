@@ -70,7 +70,7 @@
 
 ## Tasks needing a human or a live endpoint
 
-**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **5 open for Rick** — three of them one **laptop session** (a setup block, then **R-13: stage frame rate on an integrated GPU**, **R-1: the bare-avatar reading on the same GPU**, and **R-9: the five-minute conversation**, Phase 1's exit criterion), the character pipeline (blocked on a doc I owe), and **R-24** (a real call on `/chat?affect`). R-2, R-4, R-5, R-6, R-7, R-8, R-10, R-11, R-12, R-14, R-15, R-16, R-17, R-18 to R-22 are done (D-17–D-34). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
+**Moved to `docs/TASKS.md`** (2026-09-12), so each task can carry the command that runs it. **5 open for Rick** — three of them one **laptop session** (a setup block, then **R-13: stage frame rate on an integrated GPU**, **R-1: the bare-avatar reading on the same GPU**, and **R-9: the five-minute conversation**, Phase 1's exit criterion), the character pipeline (blocked on a doc I owe), and **R-24** (a real call on `/chat?affect`). R-2, R-4, R-5, R-6, R-7, R-8, R-10, R-11, R-12, R-14, R-15, R-16, R-17, R-18 to R-23 are done (D-17–D-36). **One for me, needs Ollama running**: C-7, proving an aborted answer stops the model server-side.
 
 ## Backlog (architect)
 
