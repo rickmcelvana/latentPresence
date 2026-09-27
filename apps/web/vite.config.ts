@@ -71,6 +71,17 @@ function assertSpikeExcludedFromBuild(): Plugin {
 
 export default defineConfig({
   plugins: [react(), assertSpikeExcludedFromBuild()],
+  // **Every dependency only a worker imports, pre-bundled when the server starts.** Vite's
+  // scan starts from `index.html` and does not follow `new Worker(new URL(...))`, so these
+  // were discovered the first time a worker loaded, and each discovery re-bundles them
+  // together — they share onnxruntime-web. On 2026-09-27 the face worker's first use
+  // (`@mediapipe/tasks-vision`, added in P3-T06) did that mid-session, the Smart Turn
+  // worker got a transformers.js chunk asking the new onnxruntime chunk for an export it
+  // no longer had, and `/chat`'s Start voice hung. Named here, they are bundled once.
+  optimizeDeps: {
+    // The nested form: they are `ml-web`'s dependencies, not the app's, and pnpm keeps them there.
+    include: ['@huggingface/transformers', 'onnxruntime-web', 'kokoro-js', '@mediapipe/tasks-vision'].map((dep) => `@latentpresence/ml-web > ${dep}`),
+  },
   // `/dev/face` (P3-T06) reads the generated face set from `live/out/faces` through Vite's
   // `/@fs/` route; this is where that folder is on this machine. Only that page names it.
   define: {

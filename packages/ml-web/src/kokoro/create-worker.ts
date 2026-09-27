@@ -1,4 +1,5 @@
 import type { KokoroRequest, KokoroResponse, KokoroWorkerPort } from './messages';
+import { workerPort } from '../worker-port';
 
 /**
  * A real Kokoro worker, wrapped in the port the provider talks to (P1-T05).
@@ -15,17 +16,5 @@ import type { KokoroRequest, KokoroResponse, KokoroWorkerPort } from './messages
  */
 export function createKokoroWorker(): KokoroWorkerPort {
   const worker = new Worker(new URL('./kokoro.worker.ts', import.meta.url), { type: 'module' });
-  return {
-    post(message: KokoroRequest, transfer: readonly Transferable[] = []): void {
-      worker.postMessage(message, [...transfer]);
-    },
-    onMessage(listener: (message: KokoroResponse) => void): () => void {
-      const handler = (event: MessageEvent<KokoroResponse>): void => listener(event.data);
-      worker.addEventListener('message', handler);
-      return () => worker.removeEventListener('message', handler);
-    },
-    terminate(): void {
-      worker.terminate();
-    },
-  };
+  return workerPort<KokoroRequest, KokoroResponse>(worker, 'Kokoro', (message) => ({ type: 'error', requestId: null, message }));
 }

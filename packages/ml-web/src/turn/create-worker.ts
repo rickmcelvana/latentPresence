@@ -6,6 +6,7 @@ import type {
   VadResponse,
   VadWorkerPort,
 } from './messages';
+import { workerPort } from '../worker-port';
 
 /**
  * Real turn-detection workers, wrapped in the ports the drivers talk to (P1-T07).
@@ -17,34 +18,10 @@ import type {
 
 export function createVadWorker(): VadWorkerPort {
   const worker = new Worker(new URL('./vad.worker.ts', import.meta.url), { type: 'module' });
-  return {
-    post(message: VadRequest, transfer: readonly Transferable[] = []): void {
-      worker.postMessage(message, [...transfer]);
-    },
-    onMessage(listener: (message: VadResponse) => void): () => void {
-      const handler = (event: MessageEvent<VadResponse>): void => listener(event.data);
-      worker.addEventListener('message', handler);
-      return () => worker.removeEventListener('message', handler);
-    },
-    terminate(): void {
-      worker.terminate();
-    },
-  };
+  return workerPort<VadRequest, VadResponse>(worker, 'Silero VAD', (message) => ({ type: 'error', message }));
 }
 
 export function createSmartTurnWorker(): SmartTurnWorkerPort {
   const worker = new Worker(new URL('./smart-turn.worker.ts', import.meta.url), { type: 'module' });
-  return {
-    post(message: SmartTurnRequest, transfer: readonly Transferable[] = []): void {
-      worker.postMessage(message, [...transfer]);
-    },
-    onMessage(listener: (message: SmartTurnResponse) => void): () => void {
-      const handler = (event: MessageEvent<SmartTurnResponse>): void => listener(event.data);
-      worker.addEventListener('message', handler);
-      return () => worker.removeEventListener('message', handler);
-    },
-    terminate(): void {
-      worker.terminate();
-    },
-  };
+  return workerPort<SmartTurnRequest, SmartTurnResponse>(worker, 'Smart Turn', (message) => ({ type: 'error', requestId: null, message }));
 }

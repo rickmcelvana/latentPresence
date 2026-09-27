@@ -1,4 +1,5 @@
 import type { SerRequest, SerResponse, SerWorkerPort } from './messages';
+import { workerPort } from '../worker-port';
 
 /**
  * The real voice-emotion worker behind the port its driver talks to (P3-T05). Not
@@ -7,17 +8,5 @@ import type { SerRequest, SerResponse, SerWorkerPort } from './messages';
  */
 export function createSerWorker(): SerWorkerPort {
   const worker = new Worker(new URL('./ser.worker.ts', import.meta.url), { type: 'module' });
-  return {
-    post(message: SerRequest, transfer: readonly Transferable[] = []): void {
-      worker.postMessage(message, [...transfer]);
-    },
-    onMessage(listener: (message: SerResponse) => void): () => void {
-      const handler = (event: MessageEvent<SerResponse>): void => listener(event.data);
-      worker.addEventListener('message', handler);
-      return () => worker.removeEventListener('message', handler);
-    },
-    terminate(): void {
-      worker.terminate();
-    },
-  };
+  return workerPort<SerRequest, SerResponse>(worker, 'voice-emotion', (message) => ({ type: 'error', requestId: null, message }));
 }
