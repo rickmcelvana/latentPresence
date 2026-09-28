@@ -32,6 +32,13 @@ export const LlmRequestSchema = z.object({
   /** null leaves it to the backend, which is not the same as 0. */
   temperature: z.number().min(0).max(2).nullable(),
   maxOutputTokens: z.number().int().positive().nullable(),
+  /**
+   * `off` asks the backend not to reason first (ADR-37, additive): for a background call
+   * that wants a plain answer fast. Omitted is the backend's default. Found necessary on
+   * 2026-09-28: glm-5.2:cloud through Ollama sometimes drops the first characters of its
+   * answer where reasoning ends — fatal for JSON — and never does with reasoning off.
+   */
+  reasoning: z.enum(['default', 'off']).optional(),
 });
 export type LlmRequest = z.infer<typeof LlmRequestSchema>;
 

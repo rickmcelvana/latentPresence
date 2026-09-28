@@ -1,0 +1,35 @@
+// Recorded by `pnpm live:memory` (MEMORY_RECORD=glm, glm-5.2:cloud) on 2026-09-28.
+// Every extraction reply, verbatim and in order; `memory.test.ts` replays them with no model.
+export const RECORDED_MODEL = "glm-5.2:cloud";
+export const RECORDED_REPLIES: readonly string[] = [
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"name\",\"object\":\"Jordan\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}\n```",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"lives_in\",\"object\":\"Toronto near Kensington Market\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"job\",\"object\":\"nurse\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"user\",\"predicate\":\"works_at\",\"object\":\"St. Michael's Hospital\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"user\",\"predicate\":\"work_schedule\",\"object\":\"mostly night shifts\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "{\"facts\":[],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"has_pet\",\"object\":\"cat named Miso\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"miso\",\"predicate\":\"species\",\"object\":\"cat\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"miso\",\"predicate\":\"age\",\"object\":\"12\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"sister\",\"predicate\":\"name\",\"object\":\"Priya\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"sister\",\"predicate\":\"lives_in\",\"object\":\"Vancouver\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"user\",\"predicate\":\"plans_to\",\"object\":\"video call with Priya on Sundays\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "{\"facts\":[],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"allergic_to\",\"object\":\"peanuts\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"likes\",\"object\":\"Thai food\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"user\",\"predicate\":\"favorite_food\",\"object\":\"green curry\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"works_at\",\"object\":\"Toronto General\",\"confidence\":0.9,\"validFrom\":\"2026-10-01\",\"replaces\":\"fact-4\"},{\"subject\":\"user\",\"predicate\":\"work_schedule\",\"object\":\"day shifts\",\"confidence\":0.9,\"validFrom\":\"2026-10-01\",\"replaces\":\"fact-5\"}],\"ended\":[]}\n```",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"work_schedule\",\"object\":\"day shifts\",\"confidence\":0.9,\"validFrom\":\"2026-09-10\",\"replaces\":\"fact-5\"}],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"partner\",\"object\":\"Alex\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "```json\n{\"facts\":[],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"hobby\",\"object\":\"running\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null},{\"subject\":\"user\",\"predicate\":\"plans_to\",\"object\":\"run a half marathon in November 2026\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"health_issue\",\"object\":\"sore knee after long runs\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}\n```",
+  "{\"facts\":[],\"ended\":[]}",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"likes\",\"object\":\"true crime podcasts\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}\n```",
+  "{\"facts\":[{\"subject\":\"sister\",\"predicate\":\"visiting\",\"object\":\"user next weekend\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[]}",
+  "```json\n{\"facts\":[],\"ended\":[]}\n```",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"lives_in\",\"object\":\"Halifax\",\"confidence\":0.9,\"validFrom\":\"2026-09-24\",\"replaces\":\"fact-2\"}],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"works_at\",\"object\":\"QEII Health Sciences Centre\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":\"fact-4\"}],\"ended\":[\"fact-15\"]}",
+  "```json\n{\"facts\":[{\"subject\":\"miso\",\"predicate\":\"traveled_by_plane\",\"object\":\"recently\",\"confidence\":0.8,\"validFrom\":\"2026-09-24\",\"replaces\":null}],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"allergic_to\",\"object\":\"tree nuts\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":\"fact-12\"}],\"ended\":[\"fact-12\"]}\n```",
+  "{\"facts\":[],\"ended\":[\"fact-19\"]}",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"hobby\",\"object\":\"knitting\",\"confidence\":0.9,\"validFrom\":\"2026-09-24\",\"replaces\":\"fact-18\"}],\"ended\":[\"fact-18\"]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"user\",\"predicate\":\"engaged_to\",\"object\":\"Alex\",\"confidence\":0.9,\"validFrom\":\"2026-09-23\",\"replaces\":null}],\"ended\":[]}\n```",
+  "```json\n{\"facts\":[{\"subject\":\"sister\",\"predicate\":\"plans_to_attend\",\"object\":\"user's engagement party in December\",\"confidence\":0.9,\"validFrom\":null,\"replaces\":null}],\"ended\":[{\"id\":\"fact-22\"}]}\n```",
+  "{\"facts\":[],\"ended\":[]}",
+  "{\"facts\":[{\"subject\":\"user\",\"predicate\":\"plans_to\",\"object\":\"knit a scarf for Alex\"}],\"ended\":[]}"
+];

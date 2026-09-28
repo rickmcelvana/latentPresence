@@ -68,6 +68,9 @@ export const ActivateCollectionRequestSchema = z.object({
 });
 
 export const BlocksQuerySchema = z.object({ characterId: IdSchema });
+export const ExpireFactRequestSchema = z.object({ id: IdSchema, at: TimestampSchema });
+export const FactsQuerySchema = z.object({ characterId: IdSchema });
+export const FactsResponseSchema = z.object({ facts: z.array(SemanticFactSchema) });
 export const BlocksResponseSchema = z.object({ blocks: z.array(SelfModelBlockSchema) });
 export const PlansResponseSchema = z.object({ plans: z.array(PlanDocumentSchema) });
 
@@ -199,6 +202,22 @@ export const companionRoutes = {
     query: null,
     request: ActivateCollectionRequestSchema,
     response: okSchema,
+  },
+  dbExpireFact: {
+    method: 'POST',
+    path: '/db/facts/expire',
+    params: null,
+    query: null,
+    request: ExpireFactRequestSchema,
+    response: okSchema,
+  },
+  dbCurrentFacts: {
+    method: 'GET',
+    path: '/db/facts',
+    params: null,
+    query: FactsQuerySchema,
+    request: null,
+    response: FactsResponseSchema,
   },
   dbReadBlocks: {
     method: 'GET',

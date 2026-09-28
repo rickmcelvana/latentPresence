@@ -194,6 +194,18 @@ export interface MemoryStore {
   upsertFact(fact: SemanticFact): Promise<void>;
   /** Closes a fact at a moment rather than deleting it, keeping the history readable. */
   supersedeFact(id: string, validTo: string): Promise<void>;
+  /**
+   * The store stops believing a fact — a duplicate, or one forgotten (ADR-37) — which is
+   * the other time axis from `supersedeFact`: the world did not change, the record did.
+   * Nothing is deleted; retrieval no longer returns it.
+   */
+  expireFact(id: string, at: string): Promise<void>;
+  /**
+   * A character's facts the store still believes and that still hold (`expired` unset,
+   * `validTo` unset or in the future). The memory kernel caches these to reinforce rather
+   * than duplicate what it hears again, and consolidation reads them (ADR-37).
+   */
+  currentFacts(characterId: string): Promise<SemanticFact[]>;
 
   readBlocks(characterId: string): Promise<SelfModelBlock[]>;
   writeBlock(block: SelfModelBlock): Promise<void>;

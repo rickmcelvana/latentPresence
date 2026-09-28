@@ -234,6 +234,9 @@ importers:
       '@latentpresence/protocol':
         specifier: workspace:*
         version: link:../protocol
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
 
   packages/ml-web:
     dependencies:

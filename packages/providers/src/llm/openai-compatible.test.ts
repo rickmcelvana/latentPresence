@@ -33,4 +33,22 @@ describe('OpenAICompatibleLLMProvider', () => {
       { role: 'user', content: 'hi' },
     ]);
   });
+
+  it('asks for no reasoning when the request says so, and says nothing otherwise (ADR-37)', async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const provider = new OpenAICompatibleLLMProvider({
+      id: 'ollama',
+      baseUrl: 'http://127.0.0.1:1/v1',
+      fetch: async (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response('data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
+      },
+    });
+    const request: LlmRequest = { modelId: 'm', messages: [{ role: 'user', content: 'hi' }], tools: [], temperature: null, maxOutputTokens: null };
+    for await (const chunk of provider.stream({ ...request, reasoning: 'off' })) void chunk;
+    for await (const chunk of provider.stream(request)) void chunk;
+
+    expect(bodies[0]?.reasoning_effort).toBe('none');
+    expect(bodies[1]).not.toHaveProperty('reasoning_effort');
+  });
 });

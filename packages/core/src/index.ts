@@ -18,4 +18,5 @@ export * from './transcript';
 export * from './history';
 export * from './persona';
 export * from './affect';
+export * from './memory';
 export { Cancellation } from './cancellation';

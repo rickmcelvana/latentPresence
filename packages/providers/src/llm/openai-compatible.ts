@@ -71,6 +71,10 @@ export class OpenAICompatibleLLMProvider implements LLMProvider {
         abortSignal: controller.signal,
         ...(request.temperature !== null ? { temperature: request.temperature } : {}),
         ...(request.maxOutputTokens !== null ? { maxOutputTokens: request.maxOutputTokens } : {}),
+        // `reasoning_effort: "none"` (ADR-37): Ollama honours it for its thinking models,
+        // and it is the OpenAI API's own word. `openaiCompatible` is the AI SDK's key for
+        // options every compatible endpoint receives.
+        ...(request.reasoning === 'off' ? { providerOptions: { openaiCompatible: { reasoningEffort: 'none' } } } : {}),
       });
       for await (const part of result.fullStream) {
         const chunk = mapStreamPart(part, this.now);
