@@ -38,7 +38,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-33 | Voice emotion: the emotion2vec+ web distill (9.7 MB, wasm) by default, emotion2vec+ base (373 MB, WebGPU, last 1.5 s) as the accurate option; FunASR Model Licence 1.1 | accepted | 2026-09-24 |
 | ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | accepted | 2026-09-25 |
 | ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
-| ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | proposed | 2026-09-27 |
+| ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
 
 ---
 
@@ -1045,7 +1045,7 @@ the documents' chunks can take the name; memory is namespaced by `character_id` 
 times are `DATETIME(3)` UTC written by the companion; facts are bi-temporal (`valid_from`/
 `valid_to` in the world, `recorded_at`/`expired_at` in the store, `supersedes`).
 
-## ADR-36 The companion's memory contract meets the schema (proposed 2026-09-27)
+## ADR-36 The companion's memory contract meets the schema (accepted 2026-09-27)
 
 **Context.** `packages/protocol`'s memory shapes and route table were written in P0-T02,
 before any store existed. P4-T02 implements them over P4-T01's schema, and they disagreed on

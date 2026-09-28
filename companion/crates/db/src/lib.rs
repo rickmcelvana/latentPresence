@@ -18,6 +18,8 @@ use sqlx::{Executor, Row};
 
 pub mod bench;
 pub mod memory;
+pub mod store;
+pub mod time;
 pub mod vector;
 
 pub use bench::{

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO sessions (uid, character_id, started_at) VALUES (?, ?, ?)\n         ON DUPLICATE KEY UPDATE id = id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ca10e38fc14e905db857a7eabf0e839782ee362909d2d464a82b68935a985141"
+}

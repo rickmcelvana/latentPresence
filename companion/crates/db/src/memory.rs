@@ -87,6 +87,15 @@ impl CollectionStatus {
             ))),
         }
     }
+
+    /// The `VectorCollectionStatusSchema.status` value (P4-T02).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Building => "building",
+            Self::Active => "active",
+            Self::Retired => "retired",
+        }
+    }
 }
 
 /// An embedding model, as the user configured it.

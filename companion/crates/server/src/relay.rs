@@ -135,7 +135,8 @@ pub async fn cors(request: Request, next: Next) -> Response {
         headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, allow_origin);
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_METHODS,
-            HeaderValue::from_static("GET, POST"),
+            // PUT is P4-T02's: `dbRegisterEmbeddingModel` and `dbWriteBlock` are PUT.
+            HeaderValue::from_static("GET, POST, PUT"),
         );
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_HEADERS,

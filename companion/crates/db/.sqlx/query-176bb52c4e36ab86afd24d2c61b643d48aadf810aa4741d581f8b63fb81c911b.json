@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO turns (uid, session_id, character_id, seq, role, text, interrupted, user_affect, created_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "176bb52c4e36ab86afd24d2c61b643d48aadf810aa4741d581f8b63fb81c911b"
+}

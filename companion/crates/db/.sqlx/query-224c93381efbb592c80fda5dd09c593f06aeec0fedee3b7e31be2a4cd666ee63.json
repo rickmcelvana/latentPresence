@@ -1,0 +1,26 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT MAX(seq) FROM turns WHERE session_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "MAX(seq)",
+        "type_info": {
+          "type": "Long",
+          "flags": "UNSIGNED | BINARY",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "224c93381efbb592c80fda5dd09c593f06aeec0fedee3b7e31be2a4cd666ee63"
+}

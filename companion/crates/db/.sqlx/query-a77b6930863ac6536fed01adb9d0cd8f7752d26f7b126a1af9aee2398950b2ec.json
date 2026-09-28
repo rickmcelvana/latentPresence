@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO facts (uid, character_id, subject, predicate, object, confidence,\n               valid_from, valid_to, recorded_at, source_turn)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "a77b6930863ac6536fed01adb9d0cd8f7752d26f7b126a1af9aee2398950b2ec"
+}

@@ -19,10 +19,17 @@ serde_json = "1.0"
 # `SQLX_OFFLINE=true` from the repo's `.cargo/config.toml`, so no build ever needs a database.
 # CI's `vector` job checks that cache against a real MariaDB. No TLS feature - the dev server
 # accepts plaintext on the LAN, and the remote path is inside a tunnel that provides its own.
-sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "mysql", "migrate", "macros"] }
+# `chrono` (P4-T02): DATETIME(3) columns need a calendar type in `query!`'s checked rows, and
+# the protocol's ISO-8601 timestamps parse straight into it. `json` (P4-T02): the retrieval
+# union and `turns.user_affect` carry `serde_json::Value` through the driver directly.
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "mysql", "migrate", "macros", "chrono", "json"] }
 tokio = { version = "1.53", features = ["macros", "net", "rt-multi-thread", "signal"] }
 tower = "0.5.3"
 # ADR-29: the relay for endpoints that refuse browser origins. rustls with aws-lc-rs is the
 # 0.13 default TLS; no system proxy lookup, no cookies, no decompression - bytes pass through.
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "stream", "http2"] }
 futures-util = "0.3.34"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+# P4-T02 integration tests validate every response against the committed OpenAPI file.
+jsonschema = "0.35"
+rand = "0.9"

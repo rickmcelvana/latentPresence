@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM plan_items WHERE plan_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f4d7580e98e08bcc5b4329bd0e5afab8d2df3916552de355992a55a59c9adea2"
+}

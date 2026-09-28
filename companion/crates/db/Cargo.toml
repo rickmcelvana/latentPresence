@@ -8,3 +8,6 @@ description = "latentPresence's MariaDB store: migrations, the memory schema and
 
 [dependencies]
 sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true

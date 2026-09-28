@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO plan_items (uid, plan_id, parent_id, position, kind, title, body, status, updated_at)\n                 VALUES (?, ?, ?, ?, 'task', ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "6625e921a09472a43503dd1c4f363ec19611d6ec64ad8995756fffe912cda369"
+}

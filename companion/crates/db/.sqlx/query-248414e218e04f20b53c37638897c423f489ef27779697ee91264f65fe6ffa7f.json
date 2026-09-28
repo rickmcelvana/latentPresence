@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE plans SET title = ?, goal = ?, status = ?, version = ?, updated_at = ?\n                 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "248414e218e04f20b53c37638897c423f489ef27779697ee91264f65fe6ffa7f"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE facts SET character_id = ?, subject = ?, predicate = ?, object = ?,\n               confidence = ?, valid_from = ?, valid_to = ?, recorded_at = ?, source_turn = ?\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "0a85d59dc9490af69b58d18c6a9fe7aade29ec85a9d59f90af98ca9dce00d857"
+}

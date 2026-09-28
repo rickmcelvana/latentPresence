@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE facts SET valid_to = ? WHERE uid = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "9aac26fad68431e1dd1faccd9846f5cadf3afde926d74365fc9d741f146ede32"
+}

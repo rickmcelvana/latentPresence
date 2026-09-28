@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT char_limit FROM self_blocks WHERE character_id = ? AND label = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "char_limit",
+        "type_info": {
+          "type": "Long",
+          "flags": "NOT_NULL | UNSIGNED",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.self_blocks",
+            "name": "char_limit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cdea9d914122a01ca4d038cd30b9b7baba47659081642f0f4b8c4bd6e711fc6e"
+}
