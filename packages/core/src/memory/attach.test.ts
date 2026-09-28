@@ -137,6 +137,64 @@ describe('attachMemory (P4-T04b)', () => {
     expect(memory.context()?.facts.map((row) => row.object)).toEqual(['marmalade']);
   });
 
+  it('a fact the person deletes is gone from the next retrieval and the next prompt (P4-T05 done-when)', async () => {
+    const store = new FakeMemoryStore({ now: NOW });
+    await store.upsertFact(fact('f1', 'marmalade on toast'));
+    await store.upsertFact(fact('f2', 'marmalade cake'));
+    const { machine, memory } = setup({ store });
+    machine.send({ type: 'user.message', text: 'marmalade' });
+    await memory.settled();
+    expect(memory.context()?.facts.map((row) => row.id).toSorted()).toEqual(['f1', 'f2']);
+
+    await memory.deleteFact('f1');
+    expect(memory.context()?.facts.map((row) => row.id)).toEqual(['f2']);
+    const next = await memory.kernel.recall({ sessionId: 'visit-3', query: 'marmalade' });
+    expect(next.facts.map((row) => row.id)).toEqual(['f2']);
+    expect(store.rows.facts.map((row) => row.fact.id)).toEqual(['f2']);
+  });
+
+  it('a corrected fact is written in place, certain, and is what the prompt carries', async () => {
+    const store = new FakeMemoryStore({ now: NOW });
+    await store.upsertFact(fact('f1', 'lives in Toronto', { predicate: 'lives_in', object: 'Toronto', confidence: 0.6 }));
+    const { memory } = setup({ store });
+    await memory.settled();
+    await memory.correctFact({ ...fact('f1', ''), predicate: 'lives_in', object: 'Halifax' });
+    expect(memory.context()?.facts.map((row) => [row.object, row.confidence])).toEqual([['Halifax', 1]]);
+    expect((await store.currentFacts('alice')).map((row) => row.object)).toEqual(['Halifax']);
+  });
+
+  it('a turn the person deletes leaves the note and the store', async () => {
+    const store = new FakeMemoryStore({ now: NOW });
+    await store.appendEpisode({ id: 'e1', sessionId: 'visit-1', characterId: 'alice', role: 'user', text: 'The allotment flooded', interrupted: false, at: '2026-09-20T10:00:00.000Z', embedding: null, affect: null });
+    const { machine, memory } = setup({ store });
+    machine.send({ type: 'user.message', text: 'allotment' });
+    await memory.settled();
+    expect(memory.context()?.episodes.map((row) => row.id)).toEqual(['e1']);
+    await memory.deleteEpisode('e1');
+    expect(memory.context()).toBeNull();
+    expect(await memory.kernel.listEpisodes(null)).toEqual(expect.not.arrayContaining([expect.objectContaining({ id: 'e1' })]));
+  });
+
+  it('says what the last request was given, and when', async () => {
+    const store = new FakeMemoryStore({ now: NOW });
+    await store.upsertFact(fact('f1', 'marmalade'));
+    const { memory } = setup({ store });
+    expect(memory.lastInjected()).toBeNull();
+    await memory.settled();
+    const given = memory.context();
+    expect(memory.lastInjected()?.memory).toEqual(given);
+  });
+
+  it('lists and searches turns across every session for the browser', async () => {
+    const store = new FakeMemoryStore({ now: NOW });
+    await store.appendEpisode({ id: 'e1', sessionId: 'visit-1', characterId: 'alice', role: 'user', text: 'The allotment flooded', interrupted: false, at: '2026-09-20T10:00:00.000Z', embedding: null, affect: null });
+    const { machine, memory } = setup({ store });
+    machine.send({ type: 'user.message', text: 'Talking about the allotment now' });
+    await memory.settled();
+    expect((await memory.kernel.listEpisodes(null)).map((row) => row.text)).toEqual(['Talking about the allotment now', 'The allotment flooded']);
+    expect((await memory.kernel.searchEpisodes('allotment')).map((row) => row.sessionId).toSorted()).toEqual(['visit-1', 'visit-2']);
+  });
+
   it('stops listening when detached', () => {
     const { machine, memory } = setup();
     expect(machine.size).toBe(1);

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM facts WHERE uid = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a11ce10106d7b2a83ea39fc56f93138cd4abadf90c765681f31701ba8e84d776"
+}

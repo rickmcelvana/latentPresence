@@ -629,6 +629,159 @@ async fn current_facts_leave_out_the_expired_and_the_ended() {
     cleanup(&pool, &other_character).await;
 }
 
+/// P4-T05, ADR-39: turns list newest first, a page at a time, and the person's deletes are
+/// real deletes — row and vector — while a fact read from a deleted turn stays, unlinked.
+#[tokio::test]
+async fn episodes_list_newest_first_and_deletes_are_deletes() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let session_id = random_id("session");
+    let model = json!({ "provider": "memory-api-test", "model": "delete-check", "dimensions": 3 });
+    let mut ids = Vec::new();
+    for (i, text) in ["first words", "second words", "third words"]
+        .iter()
+        .enumerate()
+    {
+        let id = random_id("ep");
+        let episode = json!({
+            "id": id,
+            "sessionId": session_id,
+            "characterId": character_id,
+            "role": "user",
+            "text": text,
+            "interrupted": false,
+            "at": format!("2026-09-2{}T10:00:00.000Z", i + 1),
+            "embedding": { "model": model, "vector": [1.0, 0.0, i as f32] },
+            "affect": null,
+        });
+        let (status, body) = call(&router, Method::POST, "/db/episodes", Some(episode)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        ids.push(id);
+    }
+
+    let (status, body) = call(
+        &router,
+        Method::GET,
+        &format!("/db/episodes?characterId={character_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbListEpisodesResponse", &body);
+    let listed: Vec<&str> = body["episodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        listed,
+        vec![ids[2].as_str(), ids[1].as_str(), ids[0].as_str()]
+    );
+
+    let (status, body) = call(
+        &router,
+        Method::GET,
+        &format!("/db/episodes?characterId={character_id}&before=2026-09-22T10:00:00.000Z"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["episodes"].as_array().unwrap().len(), 1);
+    assert_eq!(body["episodes"][0]["id"], json!(ids[0]));
+
+    // A fact read from the second turn, then the turn deleted.
+    let fact_id = random_id("fact");
+    let fact = json!({
+        "id": fact_id,
+        "characterId": character_id,
+        "subject": "user",
+        "predicate": "said",
+        "object": "second words",
+        "confidence": 0.8,
+        "validFrom": "2026-09-22T10:00:00.000Z",
+        "validTo": null,
+        "recordedAt": "2026-09-22T10:00:00.000Z",
+        "sourceEpisodeId": ids[1],
+        "embedding": { "model": model, "vector": [0.0, 1.0, 0.0] },
+    });
+    let (status, body) = call(&router, Method::POST, "/db/facts", Some(fact)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
+    let (status, body) = call(
+        &router,
+        Method::DELETE,
+        &format!("/db/episodes/{}", ids[1]),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbDeleteEpisodeResponse", &body);
+    let (_, body) = call(
+        &router,
+        Method::GET,
+        &format!("/db/episodes?characterId={character_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(body["episodes"].as_array().unwrap().len(), 2);
+    let (_, body) = call(
+        &router,
+        Method::GET,
+        &format!("/db/facts?characterId={character_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(body["facts"][0]["id"], json!(fact_id));
+    assert_eq!(body["facts"][0]["sourceEpisodeId"], Value::Null);
+
+    let (status, body) = call(
+        &router,
+        Method::DELETE,
+        &format!("/db/facts/{fact_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbDeleteFactResponse", &body);
+    let rows: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM facts WHERE uid = ?")
+        .bind(&fact_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(rows, 0, "a deleted fact is gone, not expired");
+    // And its vector with it: no row in any fact vector table points at a missing fact.
+    let tables: Vec<String> = sqlx::query_scalar(
+        "SELECT c.table_name FROM vector_collections c JOIN model_registry m ON m.id = c.model_id
+         WHERE m.provider = 'memory-api-test' AND c.collection = 'facts'",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    for table in tables {
+        let orphans: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
+            "SELECT COUNT(*) FROM {table} v LEFT JOIN facts f ON f.id = v.item_id WHERE f.id IS NULL"
+        )))
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(orphans, 0);
+    }
+
+    for path in [
+        format!("/db/facts/{fact_id}"),
+        format!("/db/episodes/{}", ids[1]),
+    ] {
+        let (status, body) = call(&router, Method::DELETE, &path, None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+        assert_matches_error_schema(&body);
+    }
+
+    cleanup(&pool, &character_id).await;
+}
+
 #[tokio::test]
 async fn a_fact_naming_an_unknown_episode_is_a_bad_request() {
     let Some((router, pool, _serial)) = setup().await else {

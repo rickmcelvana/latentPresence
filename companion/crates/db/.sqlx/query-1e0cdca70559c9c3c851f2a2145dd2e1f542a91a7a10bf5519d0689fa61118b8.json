@@ -1,0 +1,150 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT t.uid, s.uid AS session_uid, t.character_id, t.role, t.text, t.interrupted,\n                t.created_at, t.user_affect\n         FROM turns t JOIN sessions s ON s.id = t.session_id\n         WHERE t.character_id = ? AND (? IS NULL OR t.created_at < ?)\n         ORDER BY t.created_at DESC, t.id DESC\n         LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uid",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 512
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "uid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "session_uid",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 512
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.sessions",
+            "name": "uid"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "character_id",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | MULTIPLE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 256
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "character_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | ENUM | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 36
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "text",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BLOB | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 67108860
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "text"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "interrupted",
+        "type_info": {
+          "type": "Tiny",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 1
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "interrupted"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 23
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "user_affect",
+        "type_info": {
+          "type": "Blob",
+          "flags": "BLOB | BINARY",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "user_affect"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1e0cdca70559c9c3c851f2a2145dd2e1f542a91a7a10bf5519d0689fa61118b8"
+}

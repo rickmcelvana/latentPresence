@@ -70,6 +70,10 @@ export const ActivateCollectionRequestSchema = z.object({
 export const BlocksQuerySchema = z.object({ characterId: IdSchema });
 export const ExpireFactRequestSchema = z.object({ id: IdSchema, at: TimestampSchema });
 export const FactsQuerySchema = z.object({ characterId: IdSchema });
+/** P4-T05: one page of a character's turns, newest first, older than `before` when given. */
+export const EpisodesQuerySchema = z.object({ characterId: IdSchema, before: TimestampSchema.optional() });
+export const EpisodesResponseSchema = z.object({ episodes: z.array(MemoryEpisodeSchema) });
+export const ItemParamsSchema = z.object({ id: IdSchema });
 export const FactsResponseSchema = z.object({ facts: z.array(SemanticFactSchema) });
 export const BlocksResponseSchema = z.object({ blocks: z.array(SelfModelBlockSchema) });
 export const PlansResponseSchema = z.object({ plans: z.array(PlanDocumentSchema) });
@@ -218,6 +222,30 @@ export const companionRoutes = {
     query: FactsQuerySchema,
     request: null,
     response: FactsResponseSchema,
+  },
+  dbDeleteFact: {
+    method: 'DELETE',
+    path: '/db/facts/:id',
+    params: ItemParamsSchema,
+    query: null,
+    request: null,
+    response: okSchema,
+  },
+  dbListEpisodes: {
+    method: 'GET',
+    path: '/db/episodes',
+    params: null,
+    query: EpisodesQuerySchema,
+    request: null,
+    response: EpisodesResponseSchema,
+  },
+  dbDeleteEpisode: {
+    method: 'DELETE',
+    path: '/db/episodes/:id',
+    params: ItemParamsSchema,
+    query: null,
+    request: null,
+    response: okSchema,
   },
   dbReadBlocks: {
     method: 'GET',

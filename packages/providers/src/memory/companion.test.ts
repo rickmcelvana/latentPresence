@@ -143,6 +143,30 @@ describe('CompanionMemoryStore', () => {
     expect(requests[0]?.url.searchParams.get('characterId')).toBe('char-1');
   });
 
+  it('deleteFact and deleteEpisode call their DELETE routes with the id in the path, encoded', async () => {
+    const { fetch, requests } = fakeFetch(() => ok({ ok: true }));
+    const store = new CompanionMemoryStore({ baseUrl: BASE_URL, fetch });
+    await store.deleteFact('fact/1');
+    await store.deleteEpisode('ep 1');
+    expect(requests.map((request) => request.method)).toEqual([companionRoutes.dbDeleteFact.method, companionRoutes.dbDeleteEpisode.method]);
+    expect(requests.map((request) => request.url.pathname)).toEqual([
+      companionRoutes.dbDeleteFact.path.replace(':id', 'fact%2F1'),
+      companionRoutes.dbDeleteEpisode.path.replace(':id', 'ep%201'),
+    ]);
+  });
+
+  it('listEpisodes calls dbListEpisodes with the character, and before only when given', async () => {
+    const { fetch, requests } = fakeFetch(() => ok({ episodes: [episode] }));
+    const store = new CompanionMemoryStore({ baseUrl: BASE_URL, fetch });
+    expect(await store.listEpisodes('char-1', null)).toEqual([episode]);
+    await store.listEpisodes('char-1', '2026-01-02T00:00:00.000Z');
+    expect(requests[0]?.method).toBe(companionRoutes.dbListEpisodes.method);
+    expect(requests[0]?.url.pathname).toBe(companionRoutes.dbListEpisodes.path);
+    expect(requests[0]?.url.searchParams.has('before')).toBe(false);
+    expect(requests[1]?.url.searchParams.get('before')).toBe('2026-01-02T00:00:00.000Z');
+    expect(requests[1]?.url.searchParams.get('characterId')).toBe('char-1');
+  });
+
   it('readBlocks calls dbReadBlocks with the character as a query param and returns .blocks', async () => {
     const { fetch, requests } = fakeFetch(() => ok({ blocks: [block] }));
     const store = new CompanionMemoryStore({ baseUrl: BASE_URL, fetch });

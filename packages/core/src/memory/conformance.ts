@@ -1,4 +1,5 @@
 import {
+  EPISODE_PAGE_SIZE,
   MemoryCapabilitiesSchema,
   RetrievalBundleSchema,
   type EmbeddingModelRef,
@@ -33,6 +34,9 @@ import { MemoryStoreError, type MemoryStoreErrorCode } from './errors';
  * - **facts**: upsert by id; `supersedeFact` ends one (in the past, it stops being current;
  *   in the future, it is current until then); `expireFact` retracts one and a second expiry
  *   is harmless; unknown ids are `not_found`; an interval cannot end before it began;
+ * - **browsing and deleting** (P4-T05, ADR-39): turns list newest first a page at a time;
+ *   a deleted turn or fact is gone from every read, and a fact read from a deleted turn
+ *   stays, unlinked;
  * - **blocks**: one per name, sorted by name, returned by `retrieve`;
  * - **plans**: saved whole, version 1 first and one more each save, else `conflict`; listed
  *   newest first;
@@ -281,6 +285,50 @@ export function describeMemoryStoreConformance(target: ConformanceTarget): void 
         await store.upsertFact(fact(mine, 'persimmon'));
         expect(await store.currentFacts(theirs)).toEqual([]);
         expect((await store.retrieve(request(theirs, 'persimmon'))).facts).toEqual([]);
+      });
+    });
+
+    describe('browsing and deleting (P4-T05, ADR-39)', () => {
+      it('lists turns newest first, a page at a time, without their vectors', async () => {
+        const characterId = random('conformance');
+        const sessionId = random('session');
+        const written = [5, 4, 3, 2, 1].map((ago) => episode(characterId, sessionId, `turn from ${ago} days ago`, { at: days(-ago) }));
+        for (const row of written) await store.appendEpisode(row);
+        const page = await store.listEpisodes(characterId, null);
+        expect(ids(page)).toEqual(ids(written).toReversed());
+        expect(page.every((row) => row.embedding === null)).toBe(true);
+        expect(ids(await store.listEpisodes(characterId, written[2]!.at))).toEqual([written[1]!.id, written[0]!.id]);
+        expect(await store.listEpisodes(random('conformance'), null)).toEqual([]);
+        expect(EPISODE_PAGE_SIZE).toBe(50);
+      });
+
+      it('deletes a turn from every read, keeping the fact read from it, unlinked', async () => {
+        const characterId = random('conformance');
+        const doomed = episode(characterId, random('session'), 'The pomegranix secret');
+        const kept = episode(characterId, doomed.sessionId, 'The pomegranix story');
+        await store.appendEpisode(doomed);
+        await store.appendEpisode(kept);
+        const learned = fact(characterId, 'pomegranix', { sourceEpisodeId: doomed.id });
+        await store.upsertFact(learned);
+        await store.deleteEpisode(doomed.id);
+        expect(ids(await store.listEpisodes(characterId, null))).toEqual([kept.id]);
+        expect(ids((await store.retrieve(request(characterId, 'pomegranix'))).episodes)).toEqual([kept.id]);
+        const [still] = await store.currentFacts(characterId);
+        expect(still?.id).toBe(learned.id);
+        expect(still?.sourceEpisodeId).toBeNull();
+        expect(await refusal(store.deleteEpisode(doomed.id))).toBe('not_found');
+      });
+
+      it('deletes a fact from every read', async () => {
+        const characterId = random('conformance');
+        const doomed = fact(characterId, 'quincebloom tea');
+        const kept = fact(characterId, 'quincebloom jam');
+        await store.upsertFact(doomed);
+        await store.upsertFact(kept);
+        await store.deleteFact(doomed.id);
+        expect(ids(await store.currentFacts(characterId))).toEqual([kept.id]);
+        expect(ids((await store.retrieve(request(characterId, 'quincebloom'))).facts)).toEqual([kept.id]);
+        expect(await refusal(store.deleteFact(doomed.id))).toBe('not_found');
       });
     });
 

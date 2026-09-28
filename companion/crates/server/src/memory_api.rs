@@ -5,10 +5,10 @@
 //! validate every response against the generated OpenAPI file, so a drift here is a test
 //! failure there, not a silent mismatch.
 
-use axum::extract::{FromRequest, Query, Request, State};
+use axum::extract::{FromRequest, Path, Query, Request, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{Json, Router, routing::get, routing::post, routing::put};
+use axum::{Json, Router, routing::delete, routing::get, routing::post, routing::put};
 use chrono::NaiveDateTime;
 use latentpresence_db::memory::{Collection, EmbeddingModel};
 use latentpresence_db::store::{self, StoreError};
@@ -420,6 +420,52 @@ async fn current_facts(
 }
 
 // ---------------------------------------------------------------------------------------
+// dbDeleteFact / dbListEpisodes / dbDeleteEpisode (P4-T05, ADR-39)
+// ---------------------------------------------------------------------------------------
+
+async fn delete_fact(
+    State(state): State<MemoryState>,
+    Path(id): Path<String>,
+) -> Result<Json<OkResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    store::delete_fact(pool, &id).await?;
+    Ok(Json(OkResponse::ok()))
+}
+
+#[derive(Debug, Deserialize)]
+struct EpisodesQuery {
+    #[serde(rename = "characterId")]
+    character_id: String,
+    before: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct EpisodesResponse {
+    episodes: Vec<EpisodeDto>,
+}
+
+async fn list_episodes(
+    State(state): State<MemoryState>,
+    Query(query): Query<EpisodesQuery>,
+) -> Result<Json<EpisodesResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    let before = query.before.as_deref().map(parse_time).transpose()?;
+    let episodes = store::list_episodes(pool, &query.character_id, before).await?;
+    Ok(Json(EpisodesResponse {
+        episodes: episodes.into_iter().map(EpisodeDto::from).collect(),
+    }))
+}
+
+async fn delete_episode(
+    State(state): State<MemoryState>,
+    Path(id): Path<String>,
+) -> Result<Json<OkResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    store::delete_episode(pool, &id).await?;
+    Ok(Json(OkResponse::ok()))
+}
+
+// ---------------------------------------------------------------------------------------
 // dbReadBlocks / dbWriteBlock
 // ---------------------------------------------------------------------------------------
 
@@ -764,10 +810,12 @@ pub fn router(state: MemoryState, has_database_url: bool) -> Router {
         .merge(
             Router::new()
                 .route("/db/retrieve", post(retrieve))
-                .route("/db/episodes", post(append_episode))
+                .route("/db/episodes", get(list_episodes).post(append_episode))
+                .route("/db/episodes/{id}", delete(delete_episode))
                 .route("/db/facts", get(current_facts).post(upsert_fact))
                 .route("/db/facts/supersede", post(supersede_fact))
                 .route("/db/facts/expire", post(expire_fact))
+                .route("/db/facts/{id}", delete(delete_fact))
                 .route("/db/embedding-models", put(register_embedding_model))
                 .route("/db/collections/activate", post(activate_collection))
                 .route("/db/blocks", get(read_blocks).put(write_block))

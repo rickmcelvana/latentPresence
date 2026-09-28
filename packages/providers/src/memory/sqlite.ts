@@ -48,6 +48,18 @@ export class SqliteMemoryStore implements MemoryStore {
     throw SqliteMemoryStore.unavailable();
   }
 
+  async deleteFact(_id: string): Promise<void> {
+    throw SqliteMemoryStore.unavailable();
+  }
+
+  async listEpisodes(_characterId: string, _before: string | null): Promise<MemoryEpisode[]> {
+    throw SqliteMemoryStore.unavailable();
+  }
+
+  async deleteEpisode(_id: string): Promise<void> {
+    throw SqliteMemoryStore.unavailable();
+  }
+
   async readBlocks(_characterId: string): Promise<SelfModelBlock[]> {
     throw SqliteMemoryStore.unavailable();
   }

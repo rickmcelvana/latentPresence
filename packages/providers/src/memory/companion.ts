@@ -35,6 +35,8 @@ export interface CompanionMemoryStoreConfig {
 }
 
 interface CallOptions {
+  /** `:name` path segments, filled URL-encoded. */
+  readonly params?: Readonly<Record<string, string>>;
   readonly query?: Readonly<Record<string, string>>;
   readonly body?: unknown;
 }
@@ -77,6 +79,19 @@ export class CompanionMemoryStore implements MemoryStore {
   async currentFacts(characterId: string): Promise<SemanticFact[]> {
     const { facts } = await this.call('dbCurrentFacts', { query: { characterId } });
     return facts;
+  }
+
+  async deleteFact(id: string): Promise<void> {
+    await this.call('dbDeleteFact', { params: { id } });
+  }
+
+  async listEpisodes(characterId: string, before: string | null): Promise<MemoryEpisode[]> {
+    const { episodes } = await this.call('dbListEpisodes', { query: before === null ? { characterId } : { characterId, before } });
+    return episodes;
+  }
+
+  async deleteEpisode(id: string): Promise<void> {
+    await this.call('dbDeleteEpisode', { params: { id } });
   }
 
   async readBlocks(characterId: string): Promise<SelfModelBlock[]> {
@@ -122,7 +137,8 @@ export class CompanionMemoryStore implements MemoryStore {
    */
   private async call<Name extends CompanionRouteName>(routeName: Name, options: CallOptions): Promise<z.infer<(typeof companionRoutes)[Name]['response']>> {
     const route = companionRoutes[routeName];
-    const url = new URL(`${this.baseUrl}${route.path}`);
+    const path = route.path.replaceAll(/:(\w+)/g, (_match, name: string) => encodeURIComponent(options.params?.[name] ?? ''));
+    const url = new URL(`${this.baseUrl}${path}`);
     if (options.query) for (const [key, value] of Object.entries(options.query)) url.searchParams.set(key, value);
 
     const init: RequestInit = options.body === undefined ? { method: route.method } : { method: route.method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(options.body) };

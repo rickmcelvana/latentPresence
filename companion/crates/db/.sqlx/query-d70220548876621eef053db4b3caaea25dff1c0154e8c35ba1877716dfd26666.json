@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM turns WHERE uid = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d70220548876621eef053db4b3caaea25dff1c0154e8c35ba1877716dfd26666"
+}

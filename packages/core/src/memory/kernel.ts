@@ -143,6 +143,63 @@ export class MemoryKernel {
     return [...(await this.loadKnown()).values()];
   }
 
+  /**
+   * The person removes a fact (P4-T05, ADR-39): deleted from the store, gone from the cache,
+   * queued behind any writes so an extraction in flight cannot write it back from a stale view.
+   */
+  deleteFact(id: string): Promise<void> {
+    return this.enqueueResult(async () => {
+      await this.options.store.deleteFact(id);
+      (await this.loadKnown()).delete(id);
+    });
+  }
+
+  /**
+   * The person corrects a fact (P4-T05): written in place, same id, re-embedded, and taken as
+   * certain — they said so. Its record time is now; when it was true is theirs to set.
+   */
+  correctFact(fact: SemanticFact): Promise<void> {
+    return this.enqueueResult(async () => {
+      const corrected: SemanticFact = { ...fact, characterId: this.characterId, confidence: 1, recordedAt: this.now().toISOString(), embedding: null };
+      const [embedding = null] = await this.embed([`${corrected.subject} ${corrected.predicate} ${corrected.object}`.replaceAll('_', ' ')]);
+      await this.options.store.upsertFact({ ...corrected, embedding });
+      (await this.loadKnown()).set(corrected.id, corrected);
+    });
+  }
+
+  /** The person removes a turn (ADR-39). A fact read from it stays; delete that separately. */
+  deleteEpisode(id: string): Promise<void> {
+    return this.enqueueResult(async () => {
+      await this.options.store.deleteEpisode(id);
+      this.pending = this.pending.filter((line) => line.id !== id);
+    });
+  }
+
+  /** One page of this character's turns, newest first (the memory browser). */
+  listEpisodes(before: string | null): Promise<MemoryEpisode[]> {
+    return this.options.store.listEpisodes(this.characterId, before);
+  }
+
+  /** Turns found by their words (or meaning, with an embedder), from every session — the browser's search. */
+  async searchEpisodes(query: string): Promise<MemoryEpisode[]> {
+    let queryEmbedding: Embedding | null = null;
+    const embedder = this.options.embedder;
+    if (embedder !== null && embedder !== undefined && query.trim() !== '') {
+      const [vector] = await this.embed([query]);
+      queryEmbedding = vector ?? null;
+    }
+    const bundle = await this.options.store.retrieve({
+      characterId: this.characterId,
+      // No real session is called this, so none is left out.
+      sessionId: 'memory-browser',
+      query,
+      queryEmbedding,
+      limits: { episodes: 50, facts: 0, documents: 0 },
+      since: null,
+    });
+    return bundle.episodes;
+  }
+
   /** The "sleep" pass (`consolidate.ts`), queued behind any writes; returns what it changed. */
   consolidate(): Promise<ConsolidationPlan> {
     return new Promise((resolve, reject) => {
@@ -155,6 +212,20 @@ export class MemoryKernel {
           resolve(plan);
         } catch (error) {
           this.report(error, 'consolidate');
+          reject(asError(error));
+        }
+      });
+    });
+  }
+
+  /** A queued job whose outcome the caller awaits — the person is waiting on it, so it rejects rather than only reporting. */
+  private enqueueResult(job: () => Promise<void>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.enqueue(async () => {
+        try {
+          await job();
+          resolve();
+        } catch (error) {
           reject(asError(error));
         }
       });

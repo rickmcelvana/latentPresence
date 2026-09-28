@@ -605,6 +605,86 @@ pub async fn current_facts(pool: &MySqlPool, character_id: &str) -> Result<Vec<F
         .collect())
 }
 
+/// `dbDeleteFact` (P4-T05, ADR-39): the person removes a fact — the row goes, and its vectors
+/// with it (`ON DELETE CASCADE`); a fact it superseded forgets the link (`SET NULL`). Not the
+/// kernel's expiry: what someone asks to be forgotten is not kept. `not_found` if unknown.
+pub async fn delete_fact(pool: &MySqlPool, uid: &str) -> Result<(), StoreError> {
+    let result = sqlx::query!("DELETE FROM facts WHERE uid = ?", uid)
+        .execute(pool)
+        .await
+        .map_err(DbError::from)?;
+    if result.rows_affected() == 0 {
+        return Err(StoreError::NotFound(format!("no fact with id {uid:?}")));
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------------------
+// Browsing turns (P4-T05)
+// ---------------------------------------------------------------------------------------
+
+/// Turns per `dbListEpisodes` page — `EPISODE_PAGE_SIZE` in the protocol.
+pub const EPISODE_PAGE_SIZE: u32 = 50;
+
+/// `dbListEpisodes`: a character's turns, newest first, strictly older than `before` when
+/// given, one page. On the `turns_character_time` index.
+pub async fn list_episodes(
+    pool: &MySqlPool,
+    character_id: &str,
+    before: Option<NaiveDateTime>,
+) -> Result<Vec<Episode>, StoreError> {
+    let rows = sqlx::query!(
+        "SELECT t.uid, s.uid AS session_uid, t.character_id, t.role, t.text, t.interrupted,
+                t.created_at, t.user_affect
+         FROM turns t JOIN sessions s ON s.id = t.session_id
+         WHERE t.character_id = ? AND (? IS NULL OR t.created_at < ?)
+         ORDER BY t.created_at DESC, t.id DESC
+         LIMIT ?",
+        character_id,
+        before,
+        before,
+        EPISODE_PAGE_SIZE,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DbError::from)?;
+    rows.into_iter()
+        .map(|row| {
+            let affect = match row.user_affect {
+                Some(raw) => Some(serde_json::from_str(&raw).map_err(|error| {
+                    DbError::Backend(format!("a stored turn's affect is not JSON: {error}"))
+                })?),
+                None => None,
+            };
+            Ok(Episode {
+                uid: row.uid,
+                session_uid: row.session_uid,
+                character_id: row.character_id,
+                role: Role::parse(&row.role)?,
+                text: row.text,
+                interrupted: row.interrupted != 0,
+                at: row.created_at,
+                embedding: None,
+                affect,
+            })
+        })
+        .collect()
+}
+
+/// `dbDeleteEpisode` (ADR-39): the turn goes, with its vectors; facts read from it stay,
+/// their `source_turn` set to null. The session row stays, even if now empty. `not_found`
+/// if unknown.
+pub async fn delete_episode(pool: &MySqlPool, uid: &str) -> Result<(), StoreError> {
+    let result = sqlx::query!("DELETE FROM turns WHERE uid = ?", uid)
+        .execute(pool)
+        .await
+        .map_err(DbError::from)?;
+    if result.rows_affected() == 0 {
+        return Err(StoreError::NotFound(format!("no episode with id {uid:?}")));
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------------------
 // Self-model blocks
 // ---------------------------------------------------------------------------------------

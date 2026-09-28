@@ -1,15 +1,16 @@
-import type {
-  Embedding,
-  EmbeddingModelRef,
-  MemoryCapabilities,
-  MemoryEpisode,
-  MemoryStore,
-  PlanDocument,
-  RetrievalBundle,
-  RetrievalRequest,
-  Schedule,
-  SelfModelBlock,
-  SemanticFact,
+import {
+  EPISODE_PAGE_SIZE,
+  type Embedding,
+  type EmbeddingModelRef,
+  type MemoryCapabilities,
+  type MemoryEpisode,
+  type MemoryStore,
+  type PlanDocument,
+  type RetrievalBundle,
+  type RetrievalRequest,
+  type Schedule,
+  type SelfModelBlock,
+  type SemanticFact,
 } from '@latentpresence/protocol';
 import { MemoryStoreError } from './errors';
 import { episodeText, factText, isCurrentFact, rankHits, sameModel, vectorSearchOutcome, words } from './local-search';
@@ -94,6 +95,27 @@ export class FakeMemoryStore implements MemoryStore {
     const stored = this.facts.get(id);
     if (stored === undefined) throw new MemoryStoreError('not_found', `no fact with id ${id}`);
     stored.expiredAt ??= at; // a retry cannot move the first expiry, as in the companion
+  }
+
+  async deleteFact(id: string): Promise<void> {
+    this.calls.push('deleteFact');
+    if (!this.facts.delete(id)) throw new MemoryStoreError('not_found', `no fact with id ${id}`);
+  }
+
+  async listEpisodes(characterId: string, before: string | null): Promise<MemoryEpisode[]> {
+    this.calls.push('listEpisodes');
+    return [...this.episodes.values()]
+      .map(({ episode }) => episode)
+      .filter((episode) => episode.characterId === characterId && (before === null || Date.parse(episode.at) < Date.parse(before)))
+      .toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+      .slice(0, EPISODE_PAGE_SIZE);
+  }
+
+  async deleteEpisode(id: string): Promise<void> {
+    this.calls.push('deleteEpisode');
+    if (!this.episodes.delete(id)) throw new MemoryStoreError('not_found', `no episode with id ${id}`);
+    // As the companion's `ON DELETE SET NULL`: a fact read from the turn stays, unlinked.
+    for (const stored of this.facts.values()) if (stored.fact.sourceEpisodeId === id) stored.fact = { ...stored.fact, sourceEpisodeId: null };
   }
 
   async currentFacts(characterId: string): Promise<SemanticFact[]> {

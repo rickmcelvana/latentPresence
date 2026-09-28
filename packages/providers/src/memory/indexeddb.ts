@@ -8,18 +8,19 @@ import {
   vectorSearchOutcome,
   words,
 } from '@latentpresence/core';
-import type {
-  Embedding,
-  EmbeddingModelRef,
-  MemoryCapabilities,
-  MemoryEpisode,
-  MemoryStore,
-  PlanDocument,
-  RetrievalBundle,
-  RetrievalRequest,
-  Schedule,
-  SelfModelBlock,
-  SemanticFact,
+import {
+  EPISODE_PAGE_SIZE,
+  type Embedding,
+  type EmbeddingModelRef,
+  type MemoryCapabilities,
+  type MemoryEpisode,
+  type MemoryStore,
+  type PlanDocument,
+  type RetrievalBundle,
+  type RetrievalRequest,
+  type Schedule,
+  type SelfModelBlock,
+  type SemanticFact,
 } from '@latentpresence/protocol';
 
 /**
@@ -159,6 +160,50 @@ export class IndexedDbMemoryStore implements MemoryStore {
     await txDone(tx);
     const now = this.now().getTime();
     return rows.filter((row) => isCurrentFact(row.expiredAt, row.validTo, now)).map(toFact);
+  }
+
+  /** The person removes a fact (ADR-39): the record goes, vector and all. */
+  async deleteFact(id: string): Promise<void> {
+    const db = await this.open();
+    const tx = db.transaction('facts', 'readwrite');
+    const store = tx.objectStore('facts');
+    if ((await requestToPromise(store.count(id))) === 0) {
+      tx.abort();
+      throw new MemoryStoreError('not_found', `no fact with id ${id}`);
+    }
+    store.delete(id);
+    await txDone(tx);
+  }
+
+  async listEpisodes(characterId: string, before: string | null): Promise<MemoryEpisode[]> {
+    const db = await this.open();
+    const tx = db.transaction('episodes', 'readonly');
+    const rows = await this.episodesByCharacter(tx, characterId);
+    await txDone(tx);
+    const cutoff = before === null ? Number.POSITIVE_INFINITY : Date.parse(before);
+    return rows
+      .filter((row) => Date.parse(row.at) < cutoff)
+      .toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+      .slice(0, EPISODE_PAGE_SIZE)
+      .map(toEpisode);
+  }
+
+  /** The turn goes (ADR-39); a fact read from it stays, unlinked, as the companion's `SET NULL`. */
+  async deleteEpisode(id: string): Promise<void> {
+    const db = await this.open();
+    const tx = db.transaction(['episodes', 'facts'], 'readwrite');
+    const episodes = tx.objectStore('episodes');
+    const existing = await requestToPromise<MemoryEpisode | undefined>(episodes.get(id));
+    if (existing === undefined) {
+      tx.abort();
+      throw new MemoryStoreError('not_found', `no episode with id ${id}`);
+    }
+    episodes.delete(id);
+    const facts = tx.objectStore('facts');
+    for (const fact of await this.factsByCharacter(tx, existing.characterId)) {
+      if (fact.sourceEpisodeId === id) facts.put({ ...fact, sourceEpisodeId: null });
+    }
+    await txDone(tx);
   }
 
   async retrieve(request: RetrievalRequest): Promise<RetrievalBundle> {

@@ -176,6 +176,9 @@ export const RetrievalBundleSchema = z.object({
 });
 export type RetrievalBundle = z.infer<typeof RetrievalBundleSchema>;
 
+/** How many turns `listEpisodes` returns at a time. */
+export const EPISODE_PAGE_SIZE = 50;
+
 /**
  * The memory store behind the kernel. Adapters: `mariadb` through the companion,
  * `sqlite` with sqlite-vec, and `indexeddb` for the browser on its own (ADR-05).
@@ -206,6 +209,19 @@ export interface MemoryStore {
    * than duplicate what it hears again, and consolidation reads them (ADR-37).
    */
   currentFacts(characterId: string): Promise<SemanticFact[]>;
+  /**
+   * The person removes a fact (P4-T05, ADR-39): **gone**, row and vector — not closed, not
+   * expired. What someone asks to be forgotten is not kept. `not_found` if unknown.
+   */
+  deleteFact(id: string): Promise<void>;
+
+  /**
+   * A character's turns, newest first, `EPISODE_PAGE_SIZE` at a time, strictly older than
+   * `before` when given — the memory browser's list (P4-T05). Without their vectors.
+   */
+  listEpisodes(characterId: string, before: string | null): Promise<MemoryEpisode[]>;
+  /** The person removes a turn (ADR-39): gone, with its vector. Facts read from it stay, unlinked. */
+  deleteEpisode(id: string): Promise<void>;
 
   readBlocks(characterId: string): Promise<SelfModelBlock[]>;
   writeBlock(block: SelfModelBlock): Promise<void>;

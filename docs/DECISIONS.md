@@ -41,6 +41,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
 | ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
 | ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
+| ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | proposed | 2026-09-28 |
 
 ---
 
@@ -1156,3 +1157,33 @@ possibly across a LAN. Waiting for it would put the database on the path to firs
 
 **Cost.** A recalled turn arrives one message late; a fact never does. The first message of a
 visit carries facts but no recalled turns.
+
+## ADR-39 What the person deletes is deleted (proposed 2026-09-28)
+
+**Context.** P4-T05 gives the person a memory browser: list, search, edit and delete what she
+remembers. Until now nothing was ever deleted — the kernel closes facts (`supersedeFact`, the
+world changed) or expires them (`expireFact`, the record changed), so what she believed on any
+day stays answerable (ADR-37). A person asking her to forget something is a different act.
+
+**Decisions.**
+
+1. **`deleteFact(id)` and `deleteEpisode(id)` are hard deletes** — the row, and its vectors by
+   the tables' `ON DELETE CASCADE` (ADR-35). Not an expiry with a flag: something a person asks
+   to be forgotten must not be recoverable from their own disk by the next feature that reads
+   history. `not_found` for an unknown id, like every other write.
+2. **A fact read from a deleted turn stays**, unlinked (`source_turn` → null, `SET NULL`).
+   Deleting what was said is not deleting what was learned; the browser shows both, and the
+   person deletes each on purpose.
+3. **`listEpisodes(characterId, before)`**: turns newest first, 50 a page, strictly older than
+   `before`. Search is `retrieve` from a session id no real session has, so nothing is left out.
+4. **Edits go through the kernel** (`MemoryKernel.deleteFact`, `correctFact`, `deleteEpisode`),
+   queued behind its writes — an extraction in flight cannot write back a fact from a view
+   older than the delete — and `attachMemory` brings the prompt note in step. A corrected fact
+   keeps its id, is taken as certain (confidence 1: the person said so) and is re-embedded.
+5. **`attachMemory.lastInjected()`** records what the last request was given, so the browser
+   can show exactly what she was told, not a re-derivation of it.
+
+**Held by** the conformance suite (18 cases, three new: newest-first pages, a deleted turn gone
+from every read with its fact kept unlinked, a deleted fact gone from every read) on the fake,
+IndexedDB and the companion over MariaDB; the companion's integration test checks no vector row
+outlives its fact.

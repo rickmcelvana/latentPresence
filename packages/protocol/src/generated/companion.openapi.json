@@ -108,6 +108,53 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "dbListEpisodes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbListEpisodesResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "characterId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            }
+          }
+        ]
       }
     },
     "/db/facts": {
@@ -330,6 +377,84 @@
             }
           }
         }
+      }
+    },
+    "/db/facts/{id}": {
+      "delete": {
+        "operationId": "dbDeleteFact",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbDeleteFactResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ]
+      }
+    },
+    "/db/episodes/{id}": {
+      "delete": {
+        "operationId": "dbDeleteEpisode",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbDeleteEpisodeResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ]
       }
     },
     "/db/blocks": {
@@ -2181,6 +2306,252 @@
         },
         "required": [
           "facts"
+        ],
+        "additionalProperties": false
+      },
+      "DbDeleteFactResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "DbListEpisodesResponse": {
+        "type": "object",
+        "properties": {
+          "episodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "sessionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "characterId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                },
+                "interrupted": {
+                  "type": "boolean"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "embedding": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "model": {
+                          "type": "object",
+                          "properties": {
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 128
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 255
+                            },
+                            "dimensions": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 16383
+                            }
+                          },
+                          "required": [
+                            "provider",
+                            "model",
+                            "dimensions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "vector": {
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        }
+                      },
+                      "required": [
+                        "model",
+                        "vector"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "affect": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "valence": {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        "arousal": {
+                          "type": "number",
+                          "minimum": -1,
+                          "maximum": 1
+                        },
+                        "confidence": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "label": {
+                          "type": "string",
+                          "enum": [
+                            "neutral",
+                            "happy",
+                            "sad",
+                            "angry",
+                            "fearful",
+                            "disgusted",
+                            "surprised",
+                            "other",
+                            "unknown"
+                          ]
+                        },
+                        "readings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "text",
+                                  "voice",
+                                  "face",
+                                  "omni"
+                                ]
+                              },
+                              "valence": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "arousal": {
+                                "type": "number",
+                                "minimum": -1,
+                                "maximum": 1
+                              },
+                              "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "label": {
+                                "type": "string",
+                                "enum": [
+                                  "neutral",
+                                  "happy",
+                                  "sad",
+                                  "angry",
+                                  "fearful",
+                                  "disgusted",
+                                  "surprised",
+                                  "other",
+                                  "unknown"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "channel",
+                              "valence",
+                              "arousal",
+                              "confidence",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        }
+                      },
+                      "required": [
+                        "valence",
+                        "arousal",
+                        "confidence",
+                        "label",
+                        "readings",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "characterId",
+                "role",
+                "text",
+                "interrupted",
+                "at",
+                "embedding",
+                "affect"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "episodes"
+        ],
+        "additionalProperties": false
+      },
+      "DbDeleteEpisodeResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
         ],
         "additionalProperties": false
       },

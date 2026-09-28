@@ -36,6 +36,14 @@ export interface AttachMemoryOptions {
 export interface AttachedMemory {
   /** The note for the next request, or null while there is nothing to say. Never waits. */
   context(): PromptMemory | null;
+  /** What the last request was actually given — the memory browser's "what she was told" (P4-T05). */
+  lastInjected(): { readonly memory: PromptMemory | null; readonly at: string } | null;
+  /** The kernel, for the memory browser's reads (`knownFacts`, `listEpisodes`, `searchEpisodes`). */
+  readonly kernel: MemoryKernel;
+  /** The person's edits (P4-T05, ADR-39), through the kernel, and the note brought in step. */
+  deleteFact(id: string): Promise<void>;
+  correctFact(fact: SemanticFact): Promise<void>;
+  deleteEpisode(id: string): Promise<void>;
   /** Resolves once every write queued so far and the refresh after it are done. For tests and shutdown. */
   settled(): Promise<void>;
   detach(): void;
@@ -137,10 +145,30 @@ export function attachMemory(
 
   refresh(null);
 
+  let last: { readonly memory: PromptMemory | null; readonly at: string } | null = null;
+
   return {
+    kernel,
     context() {
       const facts = promptFacts(recalledFacts, known, maxFacts);
-      return facts.length === 0 && episodes.length === 0 ? null : { facts, episodes: [...episodes] };
+      const memory = facts.length === 0 && episodes.length === 0 ? null : { facts, episodes: [...episodes] };
+      last = { memory, at: new Date().toISOString() };
+      return memory;
+    },
+    lastInjected: () => last,
+    async deleteFact(id) {
+      await kernel.deleteFact(id);
+      known = known.filter((fact) => fact.id !== id);
+      recalledFacts = recalledFacts.filter((fact) => fact.id !== id);
+    },
+    async correctFact(fact) {
+      await kernel.correctFact(fact);
+      refresh(null);
+      await pending;
+    },
+    async deleteEpisode(id) {
+      await kernel.deleteEpisode(id);
+      episodes = episodes.filter((episode) => episode.id !== id);
     },
     settled: () => pending,
     detach: unsubscribe,
