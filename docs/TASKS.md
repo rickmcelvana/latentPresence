@@ -169,20 +169,20 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-24 · Does she read you, in a real call? · ~10 minutes
-**Why:** P3-T07 was checked live with typing only — the Browser pane has no microphone or
-camera — so the voice and face channels have never been fused on a person.
-1. **Restart the dev server with a fresh dependency cache** (the fix for the hang,
-   417de44, changes what it pre-bundles): stop `pnpm dev`, then
-   `pnpm --filter @latentpresence/web exec vite --force`, and hard-reload the page
-   (Ctrl+Shift+R). Open `http://localhost:5173/chat?affect` (the overlay is top-left).
-2. **Read my face** (agree), then **Start voice** — the consent screen now also lists the
-   9.7 MB voice-emotion model.
-3. Talk for a few minutes: something good, something annoying, something sad. Watch the
-   overlay's `face` and `voice` rows and the `fused` line.
-4. Tell me: did `fused` follow you? Did talking alone move the face row? Did she answer as if
-   she noticed? Then **Copy recording** and paste it to me (it holds your words — skip it if
-   you would rather not).
+### R-25 · Does she listen like she means it? · ~10 minutes
+**Why:** P3-T08's done-when — "a reviewer cannot spot a reaction that contradicts the user's
+tone in a five-minute test". The Browser pane has no microphone or camera, so only you can.
+1. Your dev server picks the change up by itself; if Start voice hangs, restart it with
+   `pnpm --filter @latentpresence/web exec vite --force` and hard-reload (Ctrl+Shift+R).
+   Open `http://localhost:5173/chat?affect`.
+2. **Read my face** (agree), then **Start voice**.
+3. Talk for about five minutes, with pauses mid-thought: something good, something annoying,
+   something sad. **Watch her while you talk**, not while she answers: her face, her nods and
+   head tilts, and which word she says when she backchannels. The overlay's new line,
+   `listening: …`, says what she thinks she is reacting to.
+4. Tell me: **did any reaction contradict your tone?** (a smile while you were upset, a frown
+   or an "Oh." that sounded wrong while you were happy, a nod at the wrong moment). Also:
+   too much, too little, or about right?
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
@@ -206,8 +206,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-37 · R-24: does she read you, in a real call?** — Rick 2026-09-27: **passed** — after
+  the restart with `--force` (417de44). **`fused` followed Rick's expressions; talking alone
+  kept the face row neutral** (the speaking half-weight does its job); **she kept up while
+  Rick talked and answered**. No recording pasted. P3-T07's voice and face channels are now
+  checked on a person.
 - **D-36 · R-23: making faces at `/dev/face`** — Rick 2026-09-27: **passed** — "pretty on
-  point", except that **what he means as sad reads as angry most times**. The generated set
+  point", except that **what Rick means as sad reads as angry most times**. The generated set
   showed the same pull (one sad face read angry on lowered brows): MediaPipe reports the
   brow-lowering of a sad face and barely the frown, and anger is scored on the brows. For
   P3-T08 and the fusion: a face "angry" is weak evidence of anger; the text and the model's

@@ -577,3 +577,9 @@ Did: R-23 recorded (D-36: passed; sad reads as angry most times). Traced Rick's 
 Left: R-24 (restart `vite --force`, hard reload, then the call); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: R-24's result, then **P3-T08 reactive listening**.
 Decisions: none new. Face "angry" is weak evidence (D-36) — a note for P3-T08, no weight change without a person's data. Click-through: `/chat` Start voice on 5173 after the server re-bundled: all models loaded in 15 s, stopped at the pane's blocked microphone.
+
+## 2026-09-27 claude — R-24 recorded; P3-T08 reactive listening
+Did: R-24 passed (D-37). `ListeningReactor` (avatar, pure): listening face from the fusion's live estimate, contradicting mood damped, nods/tilts at unfinished pauses and with backchannels, loudness as emphasis; `BackchannelScheduler.prefer`; `VoiceCall` `listening` sink (levels, judged pauses); `CallStage` applies it; `/chat?affect` line. fbc7409, 1286 tests. Property test mutation-checked.
+Left: R-25 (P3-T08's done-when); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
+Next: R-25, then P4-T01.
+Decisions: angry/disgusted get concern, not a mirrored face (D-36); confidence 0.1 floor, full at 0.4; settle 600 ms; nod interval 3.5 s; emphasis 4–10 dB over an 8 s baseline. D-36's "he" corrected to Rick. Browser pane drew 0 frames (window minimized): only the fused input (sad 0.60) was checked live.

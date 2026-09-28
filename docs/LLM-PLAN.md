@@ -248,9 +248,10 @@ Depends: P3-T04..06. Fuse channels with confidence weighting into `UserAffect`; 
 Done when: the debug overlay shows fused state; a recorded session reproduces deterministically.
 **Met:** `/chat?affect` shows each source, the fused state, what she was told and her mood (checked live against glm-5.2:cloud). `replayFusion` reproduces a recording exactly — equal to what the live bus published in a test, and two fixtures (one scripted, one copied from `/chat`) replay to golden values. The engine takes `affect.user.updated` once per turn; the prompt gets `PromptContext.userAffect` as one line at ≥ 0.35. The call reads voice beside recognition on the same audio.
 
-### P3-T08 Reactive listening — owner: main
+### P3-T08 Reactive listening — owner: main (built 2026-09-27; `packages/avatar/src/listening`; the done-when is R-25)
 Depends: P3-T07, P1-T09. Expressions and backchannels during user speech keyed to user affect and prosody.
 Done when: reviewer cannot spot a reaction that contradicts the user's tone in a 5-minute test.
+**Built:** `ListeningReactor` — her face while the user holds the floor from the fusion's live estimate (warm / surprised / concern / serious, never a smile at someone upset or anger back), her own mood's contradicting parts damped; nods at pauses Smart Turn judged unfinished (a tilt for someone sad) and with every backchannel; loudness against the speaker's level as emphasis; backchannel words chosen to fit (`BackchannelScheduler.prefer`). A seeded property test holds the done-when's rule on 300 random runs (mutation-checked). **The reviewer is Rick: R-25.**
 
 ---
 

@@ -204,6 +204,42 @@ corrects it. **The engine lags:** a joy felt in the first turn keeps lifting her
 ~40 s, so in a quick exchange her mood trails the user's by a turn or two (P3-T01's
 half-lives, which R-20 passed; P3-T08 may want the faster events rather than the mood).
 
+## Listening: her face while the user talks (P3-T08)
+
+`ListeningReactor` (`packages/avatar/src/listening`) reads the fusion's **live** estimate
+(`current(now)`, where the face is 4 s fresh) every frame, so it answers faster than the
+engine, which only hears once per turn. It acts only while the floor is the user's
+(`listening`), and it follows the user's tone rather than mirroring it:
+
+| The user seems | She shows | Her own face, damped |
+|---|---|---|
+| happy (valence > 0) | a soft smile (`happy` ≤ 0.35) | frown, anger, sadness |
+| surprised | raised brows | anger |
+| sad, fearful (valence < 0) | concern (`sad` 0.3, inner brows up) | smile, most of `relaxed`, anger |
+| angry, disgusted (valence < 0) | a quieter concern (`sad` 0.15) | smile, most of `relaxed`, anger |
+| neutral, or unsure | nothing: attentive | nothing |
+
+**Never anger back, never a smile at someone upset.** Angry gets the same family as sad on
+purpose: D-36 found sad faces reading as angry, and a misread between the two still lands on
+concern. **Doubt is neutral:** below a fused confidence of 0.1 she is only attentive, full at
+0.4; a label whose valence points the other way is doubt. **A read must hold 600 ms**, and while
+a new one proves itself the old reaction lets go, so a smile does not linger at someone who has
+just turned sad. Faces ease in over 400 ms and out over 900.
+
+**Prosody.** A pause Smart Turn judged *unfinished* (under 0.7), after 1.5 s of the turn, gets
+a nod — a head tilt for someone clearly sad — at most one per 3.5 s; a spoken backchannel
+always brings a nod (one per pause). The microphone's level against the speaker's own running
+level (8 s) is **emphasis** (4–10 dB over): it strengthens the reaction up to a third and lifts
+her brows for good news. **The backchannel word fits** (`LISTENING_PHRASES`): "Yeah." "Yes."
+"Right." for good news, "Oh." for news, "Oh." or "Yeah." for someone sad, "Right." or "Yeah."
+for someone angry.
+
+**Held by** a seeded property test: 300 runs of a moody character listening to a user whose
+read changes at random; wherever the read has been steadily one polarity long enough to
+settle, her face never shows the other (> 10,000 settled frames checked; mutation-checked by
+switching off the damping). `CallStage`'s test: a bright mood's smile is gone under a sad user.
+`/chat?affect` shows `listening: <reaction> <strength> · emphasis <n>`.
+
 ## Not yet
 
 - **Nothing feeds it but tags and user affect.** The conversation's own events (being
