@@ -2115,3 +2115,19 @@ Against the development server (**MariaDB 11.8.8**, LAN), by a throwaway probe a
   `prepare`.
 - The migration moved from `crates/server` to `crates/db` unchanged; sqlx matched its
   checksum (`migrate info`: 1 installed, 2 pending) and applied 0002 in 4.7 s.
+
+## The memory API on MariaDB — found 2026-09-28 (P4-T02)
+
+On the development server (MariaDB 11.8.8):
+
+- **`JSON_OBJECT()` renders a `DATETIME(3)` as `"YYYY-MM-DD HH:MM:SS.fff"`**, space-separated,
+  no offset — not ISO-8601. The retrieval statement's rows parse it with its own format
+  (`crates/db/src/time.rs`); the protocol's timestamps are converted at the edge.
+- **`INSERT … ON DUPLICATE KEY UPDATE` locks the duplicate row exclusively until commit**, new
+  or existing: twelve concurrent appends to one session each got their own `seq` with no
+  `FOR UPDATE` (the code carries one anyway, to say so).
+- **A `FLOAT` column comes out of `JSON_OBJECT` at double precision** (`0.9` → `0.8999999761…`);
+  harmless for a confidence, worth knowing before comparing one for equality.
+- **DDL is slow on this box: ~0.5 s per `CREATE TABLE`** (0002: 9 tables in 4.7 s; registering
+  a model creates three vector tables). Reads are not: a retrieval with vectors, keyword
+  branches and blocks took 8 ms. Its buffer pool is 4 GB and `mhnsw_max_cache_size` 2 GB.

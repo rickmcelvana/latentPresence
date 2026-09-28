@@ -589,3 +589,9 @@ Did: R-25 passed (D-38), Phase 3's tasks all done. `companion/crates/db` (latent
 Left: ADR-35 (proposed) for Rick; CI's new steps unrun until a push; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: P4-T02 companion memory API (sub; write the brief), then P4-T03.
 Decisions: ADR-35 proposed — vectors per collection and model, created from `model_registry`; retrieval nearest-first in a subquery (a filtered join skips the index, measured); `query!` offline. `chunks` renamed `bench_chunks`. sqlx-cli 0.9.0 installed on this machine.
+
+## 2026-09-28 claude — ADR-35/36 accepted; P4-T02 companion memory API
+Did: contract reconciled (ADR-36, migration 0003, `companionOpenApi()` + committed OpenAPI, 4988441); Rust routes by a Sonnet subagent from `docs/briefs/P4-T02.md`, reviewed and fixed (registry cache for one-round-trip retrieval, relevance-ranked keyword hits, serial non-leaking integration tests, concurrent-append test), 54d4dc7. Dev DB: 14/14, memory-check, sqlx cache check.
+Left: push so CI runs the new vector-job steps; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
+Next: P4-T03 memory kernel (main).
+Decisions: ADR-35 and ADR-36 accepted by Rick. The subagent reverted my ADR-36 acceptance thinking it unsanctioned; re-applied. Dev server judged adequate (reads fast; DDL ~0.5 s a table) — Rick offered a bigger one if needed.

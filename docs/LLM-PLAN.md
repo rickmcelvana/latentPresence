@@ -263,14 +263,15 @@ Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` run
 Done when: in a live call a run of `[emote:sadness]` answers visibly lowers her resting face and gaze habit and it drifts back over minutes; with the engine at baseline `/chat` looks as it does today.
 **Built:** `attachAffect` (core); the prompt rendered per request; `voiceStyle` on Speak replies and the call; `CallStage` face and gaze relative to the baseline (a test proves the baseline frames are identical to no affect). Typed text answers now put sentences on the bus, so their tags count. Browser pane vs glm-5.2:cloud: after a run of sad-tagged replies the prompt said *"tired and slow and unsure of yourself, and right now sad … a sentence or two"*; the face change in a screenshot was slight. **R-20 passed** (D-32): same at baseline, low face and gaze after a sad run, replies slower, back towards herself over ten minutes.
 
-### P4-T01 Companion db crate and migrations — owner: main (done 2026-09-27; `companion/crates/db`, ADR-35 proposed)
+### P4-T01 Companion db crate and migrations — owner: main (done 2026-09-27; `companion/crates/db`, ADR-35 accepted)
 Tables: `sessions`, `turns`, `turn_embeddings`, `facts` (subject, predicate, object, valid_from, valid_to, confidence, source_turn), `self_blocks`, `plans`, `plan_items`, `documents`, `chunks`, `model_registry`. Vector columns with dimension per collection; HNSW indexes.
 Done when: migrations apply on MariaDB 11.8; sqlx offline checks pass in CI.
 **Met locally, CI on the next push:** 0002 applied to the dev MariaDB 11.8.8 (4.7 s); `memory-check` passes there (a model's vector table, nearest-first retrieval on the index, cascades, nothing left behind). Vectors live in a table per collection and model from `model_registry` (ADR-35), because MariaDB fixes a vector's width per table. Static SQL is `query!` against the committed `.sqlx`; every build is offline (`.cargo/config.toml`) and an edited query fails until the cache is refreshed; CI's `vector` job runs `memory-check` and `cargo sqlx prepare --check` against MariaDB 11.8.8.
 
-### P4-T02 Companion memory API — owner: sub
+### P4-T02 Companion memory API — owner: sub (done 2026-09-28; `companion/crates/db/src/store.rs`, `crates/server/src/memory_api.rs`, ADR-36 accepted)
 Depends: P4-T01. REST and WS endpoints for turns, facts (with supersede), self blocks, plans, search (hybrid: vector plus keyword).
 Done when: OpenAPI generated from the zod schema matches; integration tests pass in CI with a MariaDB service container.
+**Met locally, CI on the next push:** `companionOpenApi()` generates OpenAPI 3.1 from `companionRoutes` (committed, drift-tested); the companion's 14 integration tests validate every response body against it and pass against the dev MariaDB; CI's `vector` job runs them against MariaDB 11.8.8. The contract was reconciled with the schema first (ADR-36, migration 0003); the routes were built by a Sonnet subagent from `docs/briefs/P4-T02.md`, and review made retrieval one round trip (a registry cache), ranked keyword hits, and made the tests stop racing and leaking on the global model registry.
 
 ### P4-T03 Memory kernel — owner: main
 `packages/core/memory`: extract facts after a turn (LLM structured output), retrieve before a turn (hybrid search, recency, importance), consolidation job, forgetting policy, memory namespaces per character.
