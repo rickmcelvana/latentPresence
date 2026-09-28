@@ -595,3 +595,9 @@ Did: contract reconciled (ADR-36, migration 0003, `companionOpenApi()` + committ
 Left: push so CI runs the new vector-job steps; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: P4-T03 memory kernel (main).
 Decisions: ADR-35 and ADR-36 accepted by Rick. The subagent reverted my ADR-36 acceptance thinking it unsanctioned; re-applied. Dev server judged adequate (reads fast; DDL ~0.5 s a table) — Rick offered a bigger one if needed.
+
+## 2026-09-28 claude — P4-T03 memory kernel
+Did: `packages/core/src/memory` — kernel, extraction (JSON, known ids, `replaces`/`ended`), `planFactWrites`, recall ranking and rendering, consolidation, `FakeMemoryStore`; thirty-exchange fixture, `pnpm live:memory`, recorded replay; protocol `expireFact`/`currentFacts` (+ routes), `LlmRequest.reasoning`; adapter maps `off` to `reasoning_effort: "none"`. 339bf39, 1339 tests.
+Left: ADR-37 for Rick; push for CI; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit; does glm's cut reach `/chat`?
+Next: P4-T04 adapters (sub; brief) with the companion's two new routes and memory in `/chat`'s prompt.
+Decisions: ADR-37 proposed. Live glm: 6/12 → (reasoning off) 11/12 → (prompt: only what was said; `ended`) 12/12 and 5/5, three runs of three. Single-valued set gained `work_schedule` variants. The replay's matcher accepts "sister name Priya" for "user has_sibling Priya".

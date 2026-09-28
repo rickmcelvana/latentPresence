@@ -39,6 +39,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | accepted | 2026-09-25 |
 | ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
+| ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | proposed | 2026-09-28 |
 
 ---
 
@@ -1080,3 +1081,40 @@ response body against its component schema.
 
 **Not changed yet:** `IngestRequest`'s `embeddingModelId` and `dimensions` (P5 moves them to
 `EmbeddingModelRef`), and schedules (P6-T07).
+
+## ADR-37 The memory kernel: JSON extraction with reasoning off, facts cached in process, expiry beside supersession (proposed 2026-09-28)
+
+**Context.** P4-T03 writes what she learns after each exchange and reads it before each turn.
+Three things had to be decided that the contract did not say.
+
+**Decisions.**
+
+1. **Extraction is one model call per exchange that answers in JSON**, shown the facts already
+   believed with their ids, so it can say which one a new fact `replaces` and which it `ended`
+   ("the half marathon is off") — not a tool call, which is the least uniform thing across the
+   endpoints this project speaks to. The parser takes the first balanced object and drops
+   entries that do not fit, one by one. The kernel, not the model, decides what a fact does:
+   heard again, it is **reinforced** (`1 − (1 − a)(1 − b)`); a new value of a single-valued
+   predicate (`lives_in`, `works_at`, `work_schedule`, …) **supersedes** the old one where it
+   starts; a fact replaced before it ever began ("starting October", then a move in September)
+   is **expired**; one restated as true now moves its start earlier and ends its rival then.
+2. **`LlmRequest.reasoning: 'off'`** (additive, optional), mapped by the OpenAI-compatible
+   adapter to `reasoning_effort: "none"`. Measured 2026-09-28: glm-5.2:cloud through Ollama cut
+   the start off its answer where its reasoning ended in 6–8 of 30 extractions (`{"facts":` →
+   `facts":`), which leaves nothing to parse; with reasoning off, 0 of 30 in three runs, and the
+   thirty-turn check took 23 s instead of 82. Background calls that want a plain answer use it.
+3. **`MemoryStore` gains `expireFact` and `currentFacts`** (routes `dbExpireFact`,
+   `dbCurrentFacts`; the companion serves them from P4-T04). Expiry is the *record* axis of the
+   bi-temporal model — the store stops believing a duplicate, a forgotten fact, a plan that never
+   began — beside `supersedeFact`, the *world* axis. Nothing is ever deleted by the kernel. The
+   kernel caches a character's current facts (ADR-17's in-process cache), loaded once, kept in
+   step by its own writes: one kernel per character per store.
+
+**Recall** asks the store once and re-ranks by relevance (the store's order), recency (turns
+halve in 14 days, facts in a year) and importance (a fact's confidence; a turn's emotional
+salience from the stored `UserAffect`). **Consolidation** merges duplicates, keeps one value per
+single-valued predicate, and expires facts under 0.35 confidence recorded more than 30 days ago.
+
+**Held by** the thirty-turn replay: recorded from glm-5.2:cloud and played back, it yields the
+expected set — 12 of 12 facts believed, 5 of 5 replaced ones closed — and removing the
+single-valued rule, the `ended` handling or the never-began expiry each fails it.

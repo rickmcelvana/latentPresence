@@ -2131,3 +2131,19 @@ On the development server (MariaDB 11.8.8):
 - **DDL is slow on this box: ~0.5 s per `CREATE TABLE`** (0002: 9 tables in 4.7 s; registering
   a model creates three vector tables). Reads are not: a retrieval with vectors, keyword
   branches and blocks took 8 ms. Its buffer pool is 4 GB and `mhnsw_max_cache_size` 2 GB.
+
+## glm-5.2:cloud through Ollama, and reasoning — measured 2026-09-28 (P4-T03)
+
+- **With reasoning on, the answer sometimes loses its first characters.** Ollama's
+  OpenAI-compatible stream for `glm-5.2:cloud` switches from `reasoning` deltas to `content`
+  deltas, and the first content delta can begin mid-answer: asked for `{"facts":[{"a":1}]}`,
+  runs returned `":1}]}`, `facts":[{"a":1}]}` and `}]}` — the raw SSE, not our adapter. In the
+  memory extraction 6–8 of 30 replies were cut this way. The lost text is not in the reasoning
+  deltas either. It seems likeliest when the reasoning ends by rehearsing the answer.
+- **`reasoning_effort: "none"` turns reasoning off** on Ollama's `/v1/chat/completions`: 6 of 6
+  probes and 90 of 90 extractions whole, no `reasoning` deltas, and faster. **`think: false` is
+  ignored** on that path (still reasons, still cuts). The AI SDK's
+  `providerOptions.openaiCompatible.reasoningEffort` sends it (`@ai-sdk/openai-compatible`
+  3.0.47).
+- **Not yet known:** whether the cut reaches `/chat`, where glm answers with reasoning on and a
+  reply often starts with an `[emote:x]` tag.

@@ -273,11 +273,12 @@ Depends: P4-T01. REST and WS endpoints for turns, facts (with supersede), self b
 Done when: OpenAPI generated from the zod schema matches; integration tests pass in CI with a MariaDB service container.
 **Met locally, CI on the next push:** `companionOpenApi()` generates OpenAPI 3.1 from `companionRoutes` (committed, drift-tested); the companion's 14 integration tests validate every response body against it and pass against the dev MariaDB; CI's `vector` job runs them against MariaDB 11.8.8. The contract was reconciled with the schema first (ADR-36, migration 0003); the routes were built by a Sonnet subagent from `docs/briefs/P4-T02.md`, and review made retrieval one round trip (a registry cache), ranked keyword hits, and made the tests stop racing and leaking on the global model registry.
 
-### P4-T03 Memory kernel — owner: main
+### P4-T03 Memory kernel — owner: main (done 2026-09-28; `packages/core/src/memory`, ADR-37 proposed, `docs/memory.md`)
 `packages/core/memory`: extract facts after a turn (LLM structured output), retrieve before a turn (hybrid search, recency, importance), consolidation job, forgetting policy, memory namespaces per character.
 Done when: unit tests with `FakeMemoryStore`; a replay of 30 turns yields the expected fact set.
+**Met:** 46 unit tests over `FakeMemoryStore`; the thirty-exchange replay (replies recorded from glm-5.2:cloud by `pnpm live:memory`) yields 12/12 expected facts and 5/5 replaced ones closed, mutation-checked three ways; live, three runs of three met it. Found on the way: glm through Ollama cutting the start off its answers with reasoning on — `LlmRequest.reasoning: 'off'` (ADR-37). The companion's `dbExpireFact`/`dbCurrentFacts` and wiring into `/chat` go to P4-T04.
 
-### P4-T04 MemoryStore adapters — owner: sub
+### P4-T04 MemoryStore adapters — owner: sub (from P4-T03: the companion must also serve `dbExpireFact` and `dbCurrentFacts`)
 Depends: P4-T02. `mariadb` (companion client), `indexeddb` (web-only, brute-force cosine), `sqlite` (desktop later; stub now).
 Done when: the adapter conformance test suite passes for both implemented stores.
 
