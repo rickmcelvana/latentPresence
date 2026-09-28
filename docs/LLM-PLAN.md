@@ -278,9 +278,10 @@ Done when: OpenAPI generated from the zod schema matches; integration tests pass
 Done when: unit tests with `FakeMemoryStore`; a replay of 30 turns yields the expected fact set.
 **Met:** 46 unit tests over `FakeMemoryStore`; the thirty-exchange replay (replies recorded from glm-5.2:cloud by `pnpm live:memory`) yields 12/12 expected facts and 5/5 replaced ones closed, mutation-checked three ways; live, three runs of three met it. Found on the way: glm through Ollama cutting the start off its answers with reasoning on — `LlmRequest.reasoning: 'off'` (ADR-37). The companion's `dbExpireFact`/`dbCurrentFacts` and wiring into `/chat` go to P4-T04.
 
-### P4-T04 MemoryStore adapters — owner: sub (from P4-T03: the companion must also serve `dbExpireFact` and `dbCurrentFacts`)
+### P4-T04 MemoryStore adapters — owner: sub (done 2026-09-28; `packages/providers/src/memory`, `docs/briefs/P4-T04.md`)
 Depends: P4-T02. `mariadb` (companion client), `indexeddb` (web-only, brute-force cosine), `sqlite` (desktop later; stub now).
 Done when: the adapter conformance test suite passes for both implemented stores.
+**Met:** the conformance suite (`@latentpresence/core/memory-conformance`, 16 cases: namespaces, idempotent episodes, the asking session left out, `since` and limits, facts upserted, superseded, expired, `not_found`, blocks, versioned plans with `conflict`, schedules where kept, vectors nearest first and `vectorSearch`'s reasons) passes on `FakeMemoryStore`, `IndexedDbMemoryStore` (fake-indexeddb) and `CompanionMemoryStore` against a running companion on the dev MariaDB 11.8.8 — twice, over the first run's leftovers; CI's `vector` job runs it too. The companion gained `dbExpireFact` (a second expiry keeps the first) and `dbCurrentFacts`; every refusal is a `MemoryStoreError` with the contract's code. Local ranking moved to `local-search.ts`, shared by the fake and IndexedDB. Adapters by a Sonnet subagent from the brief; the architect wrote the routes, the suite and the errors.
 
 ### P4-T05 Memory browser UI — owner: sub
 List, search, edit, delete facts and turns; show what was injected into the last prompt.

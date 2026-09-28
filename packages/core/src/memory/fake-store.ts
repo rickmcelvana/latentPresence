@@ -11,6 +11,8 @@ import type {
   SelfModelBlock,
   SemanticFact,
 } from '@latentpresence/protocol';
+import { MemoryStoreError } from './errors';
+import { episodeText, factText, isCurrentFact, rankHits, sameModel, vectorSearchOutcome, words } from './local-search';
 
 /**
  * `MemoryStore` in memory (P4-T03), for the kernel's tests and the replay. It keeps the
@@ -37,37 +39,6 @@ interface StoredFact {
 interface StoredEpisode {
   episode: MemoryEpisode;
   embedding: Embedding | null;
-}
-
-function sameModel(a: EmbeddingModelRef, b: EmbeddingModelRef): boolean {
-  return a.provider === b.provider && a.model === b.model && a.dimensions === b.dimensions;
-}
-
-function cosine(a: readonly number[], b: readonly number[]): number {
-  let dot = 0;
-  let na = 0;
-  let nb = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    dot += (a[i] ?? 0) * (b[i] ?? 0);
-    na += (a[i] ?? 0) ** 2;
-    nb += (b[i] ?? 0) ** 2;
-  }
-  return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb);
-}
-
-function words(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((word) => word.length > 2),
-  );
-}
-
-function overlap(query: Set<string>, text: string): number {
-  let hits = 0;
-  for (const word of words(text)) if (query.has(word)) hits += 1;
-  return hits;
 }
 
 export class FakeMemoryStore implements MemoryStore {
@@ -104,7 +75,7 @@ export class FakeMemoryStore implements MemoryStore {
   async upsertFact(fact: SemanticFact): Promise<void> {
     this.calls.push('upsertFact');
     const existing = this.facts.get(fact.id);
-    if (fact.validTo !== null && fact.validTo < fact.validFrom) throw new Error(`fact ${fact.id} cannot end before it began`);
+    if (fact.validTo !== null && Date.parse(fact.validTo) < Date.parse(fact.validFrom)) throw new MemoryStoreError('bad_request', `fact ${fact.id} cannot end before it began`);
     this.claim('facts', fact.embedding);
     this.facts.set(fact.id, { fact: { ...fact, embedding: null }, embedding: fact.embedding ?? existing?.embedding ?? null, expiredAt: existing?.expiredAt ?? null });
   }
@@ -112,17 +83,17 @@ export class FakeMemoryStore implements MemoryStore {
   async supersedeFact(id: string, validTo: string): Promise<void> {
     this.calls.push('supersedeFact');
     const stored = this.facts.get(id);
-    if (stored === undefined) throw new Error(`no fact with id ${id}`);
+    if (stored === undefined) throw new MemoryStoreError('not_found', `no fact with id ${id}`);
     // The table's own CHECK (`facts_validity`, migration 0002): an interval cannot end before it starts.
-    if (validTo < stored.fact.validFrom) throw new Error(`fact ${id} cannot end (${validTo}) before it began (${stored.fact.validFrom})`);
+    if (Date.parse(validTo) < Date.parse(stored.fact.validFrom)) throw new MemoryStoreError('bad_request', `fact ${id} cannot end (${validTo}) before it began (${stored.fact.validFrom})`);
     stored.fact = { ...stored.fact, validTo };
   }
 
   async expireFact(id: string, at: string): Promise<void> {
     this.calls.push('expireFact');
     const stored = this.facts.get(id);
-    if (stored === undefined) throw new Error(`no fact with id ${id}`);
-    stored.expiredAt = at;
+    if (stored === undefined) throw new MemoryStoreError('not_found', `no fact with id ${id}`);
+    stored.expiredAt ??= at; // a retry cannot move the first expiry, as in the companion
   }
 
   async currentFacts(characterId: string): Promise<SemanticFact[]> {
@@ -134,48 +105,22 @@ export class FakeMemoryStore implements MemoryStore {
     this.calls.push('retrieve');
     const query = words(request.query);
     const probe = request.queryEmbedding;
-    const activeTurns = this.active.get('turns');
-    const vectorSearch: RetrievalBundle['vectorSearch'] =
-      probe === null ? 'no-query-embedding' : activeTurns === undefined ? 'no-active-model' : sameModel(activeTurns, probe.model) ? 'used' : 'other-model';
+    const vectorSearch = vectorSearchOutcome(probe, this.active.get('turns'));
+    const queryVector = vectorSearch === 'used' ? probe : null;
 
-    const episodes = [...this.episodes.values()].filter(
-      ({ episode }) => episode.characterId === request.characterId && episode.sessionId !== request.sessionId && (request.since === null || episode.at >= request.since),
-    );
-    const byVector =
-      vectorSearch === 'used' && probe !== null
-        ? episodes
-            .filter(({ embedding }) => embedding !== null && sameModel(embedding.model, probe.model))
-            .map((row) => ({ row, score: cosine(row.embedding?.vector ?? [], probe.vector) }))
-            .toSorted((a, b) => b.score - a.score)
-            .map(({ row }) => row)
-        : [];
-    const byWords = episodes
-      .map((row) => ({ row, score: overlap(query, row.episode.text) }))
-      .filter(({ score }) => score > 0)
-      .toSorted((a, b) => b.score - a.score)
-      .map(({ row }) => row);
-    const episodeHits = [...new Set([...byVector.slice(0, request.limits.episodes), ...byWords])].slice(0, request.limits.episodes);
+    const episodes = [...this.episodes.values()]
+      .filter(({ episode }) => episode.characterId === request.characterId && episode.sessionId !== request.sessionId && (request.since === null || Date.parse(episode.at) >= Date.parse(request.since)))
+      .map(({ episode, embedding }) => ({ row: episode, embedding }));
+    const episodeHits = rankHits(episodes, query, episodeText, queryVector, request.limits.episodes);
 
-    const facts = this.current(request.characterId);
     const activeFacts = this.active.get('facts');
-    const factsByVector =
-      vectorSearch === 'used' && probe !== null && activeFacts !== undefined && sameModel(activeFacts, probe.model)
-        ? facts
-            .filter(({ embedding }) => embedding !== null && sameModel(embedding.model, probe.model))
-            .map((row) => ({ row, score: cosine(row.embedding?.vector ?? [], probe.vector) }))
-            .toSorted((a, b) => b.score - a.score)
-            .map(({ row }) => row)
-        : [];
-    const factsByWords = facts
-      .map((row) => ({ row, score: overlap(query, `${row.fact.subject} ${row.fact.predicate} ${row.fact.object}`.replaceAll('_', ' ')) }))
-      .filter(({ score }) => score > 0)
-      .toSorted((a, b) => b.score - a.score)
-      .map(({ row }) => row);
-    const factHits = [...new Set([...factsByVector.slice(0, request.limits.facts), ...factsByWords])].slice(0, request.limits.facts);
+    const factQueryVector = queryVector !== null && activeFacts !== undefined && sameModel(activeFacts, queryVector.model) ? queryVector : null;
+    const facts = this.current(request.characterId).map(({ fact, embedding }) => ({ row: fact, embedding }));
+    const factHits = rankHits(facts, query, factText, factQueryVector, request.limits.facts);
 
     return {
-      episodes: episodeHits.map(({ episode }) => ({ ...episode, embedding: null })),
-      facts: factHits.map(({ fact }) => ({ ...fact, embedding: null })),
+      episodes: episodeHits.map((episode) => ({ ...episode, embedding: null })),
+      facts: factHits.map((fact) => ({ ...fact, embedding: null })),
       blocks: [...this.blocks.values()].filter((block) => block.characterId === request.characterId).toSorted((a, b) => a.name.localeCompare(b.name)),
       documents: [],
       vectorSearch,
@@ -184,7 +129,7 @@ export class FakeMemoryStore implements MemoryStore {
   }
 
   async readBlocks(characterId: string): Promise<SelfModelBlock[]> {
-    return [...this.blocks.values()].filter((block) => block.characterId === characterId);
+    return [...this.blocks.values()].filter((block) => block.characterId === characterId).toSorted((a, b) => a.name.localeCompare(b.name));
   }
 
   async writeBlock(block: SelfModelBlock): Promise<void> {
@@ -194,12 +139,12 @@ export class FakeMemoryStore implements MemoryStore {
   async savePlan(plan: PlanDocument): Promise<void> {
     const stored = this.plans.get(plan.id);
     const expected = stored === undefined ? 1 : stored.version + 1;
-    if (plan.version !== expected) throw new Error(`conflict: plan ${plan.id} must be saved at version ${expected}`);
+    if (plan.version !== expected) throw new MemoryStoreError('conflict', `plan ${plan.id} must be saved at version ${expected}`);
     this.plans.set(plan.id, plan);
   }
 
   async listPlans(characterId: string): Promise<PlanDocument[]> {
-    return [...this.plans.values()].filter((plan) => plan.characterId === characterId);
+    return [...this.plans.values()].filter((plan) => plan.characterId === characterId).toSorted((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
   }
 
   async listSchedules(characterId: string): Promise<Schedule[]> {
@@ -215,8 +160,8 @@ export class FakeMemoryStore implements MemoryStore {
   }
 
   private current(characterId: string): StoredFact[] {
-    const now = this.now().toISOString();
-    return [...this.facts.values()].filter(({ fact, expiredAt }) => fact.characterId === characterId && expiredAt === null && (fact.validTo === null || fact.validTo > now));
+    const now = this.now().getTime();
+    return [...this.facts.values()].filter(({ fact, expiredAt }) => fact.characterId === characterId && isCurrentFact(expiredAt, fact.validTo, now));
   }
 
   /** The first model to write a collection becomes its active one (ADR-36). */

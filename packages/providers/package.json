@@ -16,6 +16,10 @@
     "@latentpresence/core": "workspace:*",
     "@latentpresence/ml-web": "workspace:*",
     "@latentpresence/protocol": "workspace:*",
-    "ai": "^7.0.97"
+    "ai": "^7.0.97",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5"
   }
 }

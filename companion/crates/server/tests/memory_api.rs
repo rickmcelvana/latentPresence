@@ -505,6 +505,130 @@ async fn facts_upsert_supersede_and_leave_retrieval_once_closed() {
     cleanup(&pool, &character_id).await;
 }
 
+/// `dbCurrentFacts` and `dbExpireFact` (ADR-37): current means not expired and `validTo` unset
+/// or still ahead; expiring hides a fact from both reads, keeps its row, and a second expiry
+/// does not move the first.
+#[tokio::test]
+async fn current_facts_leave_out_the_expired_and_the_ended() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let other_character = random_id("test");
+    let fact = |id: &str, character: &str, object: &str, valid_to: Value| {
+        json!({
+            "id": id,
+            "characterId": character,
+            "subject": "user",
+            "predicate": "likes",
+            "object": object,
+            "confidence": 0.8,
+            "validFrom": "2026-01-01T00:00:00.000Z",
+            "validTo": valid_to,
+            "recordedAt": "2026-09-27T00:00:00.000Z",
+            "sourceEpisodeId": null,
+            "embedding": null,
+        })
+    };
+    let holding = random_id("fact");
+    let ending_later = random_id("fact");
+    let ended = random_id("fact");
+    let expired = random_id("fact");
+    let elsewhere = random_id("fact");
+    for body in [
+        fact(&holding, &character_id, "marmalade", Value::Null),
+        fact(
+            &ending_later,
+            &character_id,
+            "the lease",
+            json!("2999-01-01T00:00:00.000Z"),
+        ),
+        fact(
+            &ended,
+            &character_id,
+            "the old job",
+            json!("2026-02-01T00:00:00.000Z"),
+        ),
+        fact(&expired, &character_id, "a duplicate", Value::Null),
+        fact(
+            &elsewhere,
+            &other_character,
+            "another character's secret",
+            Value::Null,
+        ),
+    ] {
+        let (status, body) = call(&router, Method::POST, "/db/facts", Some(body)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+    }
+
+    let expire = json!({ "id": expired, "at": "2026-09-28T10:00:00.000Z" });
+    let (status, body) = call(&router, Method::POST, "/db/facts/expire", Some(expire)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbExpireFactResponse", &body);
+    // Again, later: idempotent, and the first moment stands.
+    let again = json!({ "id": expired, "at": "2026-09-30T10:00:00.000Z" });
+    let (status, body) = call(&router, Method::POST, "/db/facts/expire", Some(again)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let expired_at: Option<chrono::NaiveDateTime> =
+        sqlx::query_scalar("SELECT expired_at FROM facts WHERE uid = ?")
+            .bind(&expired)
+            .fetch_one(&pool)
+            .await
+            .expect("the expired row is kept");
+    assert_eq!(
+        expired_at.map(|at| at.to_string()),
+        Some("2026-09-28 10:00:00".to_owned())
+    );
+
+    let (status, body) = call(
+        &router,
+        Method::GET,
+        &format!("/db/facts?characterId={character_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbCurrentFactsResponse", &body);
+    let ids: Vec<&str> = body["facts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids.len(), 2, "{ids:?}");
+    assert!(
+        ids.contains(&holding.as_str()) && ids.contains(&ending_later.as_str()),
+        "{ids:?}"
+    );
+    assert_eq!(body["facts"][0]["embedding"], Value::Null);
+
+    // Retrieval agrees: the expired fact is not found by its words.
+    let retrieval = json!({
+        "characterId": character_id,
+        "sessionId": random_id("session"),
+        "query": "duplicate",
+        "queryEmbedding": null,
+        "limits": { "episodes": 5, "facts": 5, "documents": 0 },
+        "since": null,
+    });
+    let (status, body) = call(&router, Method::POST, "/db/retrieve", Some(retrieval)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["facts"], json!([]), "{body}");
+
+    let (status, body) = call(
+        &router,
+        Method::POST,
+        "/db/facts/expire",
+        Some(json!({ "id": random_id("nope"), "at": "2026-09-28T10:00:00.000Z" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND, "{body}");
+    assert_matches_error_schema(&body);
+
+    cleanup(&pool, &character_id).await;
+    cleanup(&pool, &other_character).await;
+}
+
 #[tokio::test]
 async fn a_fact_naming_an_unknown_episode_is_a_bad_request() {
     let Some((router, pool, _serial)) = setup().await else {
@@ -894,4 +1018,25 @@ async fn episodes_appended_at_once_to_one_session_all_get_their_own_seq() {
     assert_eq!(seqs, (0..12).collect::<Vec<u32>>());
 
     cleanup(&pool, &character_id).await;
+}
+
+/// Not a test: removes what the TypeScript `MemoryStore` conformance suite leaves on a shared
+/// database (P4-T04) — its `conformance-` characters and the `memory-api-test` model's vector
+/// tables. Run after `LP_TEST_COMPANION_URL=… pnpm vitest run companion.conformance`:
+/// `cargo test --manifest-path companion/Cargo.toml --test memory_api -- --ignored remove_conformance_data`.
+#[tokio::test]
+#[ignore = "cleanup for the TypeScript conformance run, not a test"]
+async fn remove_conformance_data() {
+    let Some((_router, pool, _serial)) = setup().await else {
+        return;
+    };
+    for table in ["sessions", "facts", "self_blocks", "plans"] {
+        sqlx::query(AssertSqlSafe(format!(
+            "DELETE FROM {table} WHERE character_id LIKE 'conformance-%'"
+        )))
+        .execute(&pool)
+        .await
+        .expect("delete conformance rows");
+    }
+    remove_test_models(&pool).await;
 }

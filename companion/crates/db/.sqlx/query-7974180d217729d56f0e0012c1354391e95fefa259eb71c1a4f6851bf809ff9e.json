@@ -1,0 +1,184 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT f.uid, f.character_id, f.subject, f.predicate, f.object, f.confidence,\n                f.valid_from, f.valid_to, f.recorded_at, st.uid AS `source_uid?`\n         FROM facts f LEFT JOIN turns st ON st.id = f.source_turn\n         WHERE f.character_id = ? AND f.expired_at IS NULL\n           AND (f.valid_to IS NULL OR f.valid_to > UTC_TIMESTAMP(3))\n         ORDER BY f.recorded_at, f.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uid",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 512
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "uid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "character_id",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | MULTIPLE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 256
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "character_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "subject",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | MULTIPLE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "subject"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "predicate",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 1020
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "predicate"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "object",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 262140
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "object"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "confidence",
+        "type_info": {
+          "type": "Float",
+          "flags": "NOT_NULL",
+          "collation": 63,
+          "max_size": 12
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "confidence"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "valid_from",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 23
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "valid_from"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "valid_to",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 23
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "valid_to"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "recorded_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "NOT_NULL | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 23
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.facts",
+            "name": "recorded_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "source_uid?",
+        "type_info": {
+          "type": "VarString",
+          "flags": "UNIQUE_KEY | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 512
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.turns",
+            "name": "uid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7974180d217729d56f0e0012c1354391e95fefa259eb71c1a4f6851bf809ff9e"
+}

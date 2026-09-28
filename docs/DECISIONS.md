@@ -39,7 +39,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | accepted | 2026-09-25 |
 | ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
-| ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | proposed | 2026-09-28 |
+| ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
 
 ---
 
@@ -1082,7 +1082,7 @@ response body against its component schema.
 **Not changed yet:** `IngestRequest`'s `embeddingModelId` and `dimensions` (P5 moves them to
 `EmbeddingModelRef`), and schedules (P6-T07).
 
-## ADR-37 The memory kernel: JSON extraction with reasoning off, facts cached in process, expiry beside supersession (proposed 2026-09-28)
+## ADR-37 The memory kernel: JSON extraction with reasoning off, facts cached in process, expiry beside supersession (accepted 2026-09-28)
 
 **Context.** P4-T03 writes what she learns after each exchange and reads it before each turn.
 Three things had to be decided that the contract did not say.

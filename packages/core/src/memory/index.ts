@@ -14,7 +14,20 @@ export {
   type FactWrites,
   type PlanFactsOptions,
 } from './facts';
+export { MemoryStoreError, type MemoryStoreErrorCode } from './errors';
 export { FakeMemoryStore } from './fake-store';
+export {
+  cosine,
+  episodeText,
+  factText,
+  isCurrentFact,
+  overlap,
+  rankHits,
+  sameModel,
+  vectorSearchOutcome,
+  words,
+  type Ranked,
+} from './local-search';
 export {
   MemoryKernel,
   type ExtractionRecord,

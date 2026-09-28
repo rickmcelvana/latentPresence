@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE facts SET expired_at = COALESCE(expired_at, ?) WHERE uid = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6e657781a2211e8283bf59fbcb90df29348fa249d1ea806e716ef30cf149bb04"
+}

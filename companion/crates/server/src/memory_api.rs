@@ -384,6 +384,42 @@ async fn supersede_fact(
 }
 
 // ---------------------------------------------------------------------------------------
+// dbExpireFact / dbCurrentFacts (ADR-37)
+// ---------------------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+struct ExpireFactRequest {
+    id: String,
+    at: String,
+}
+
+async fn expire_fact(
+    State(state): State<MemoryState>,
+    ApiJson(body): ApiJson<ExpireFactRequest>,
+) -> Result<Json<OkResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    let at = parse_time(&body.at)?;
+    store::expire_fact(pool, &body.id, at).await?;
+    Ok(Json(OkResponse::ok()))
+}
+
+#[derive(Debug, Serialize)]
+struct FactsResponse {
+    facts: Vec<FactDto>,
+}
+
+async fn current_facts(
+    State(state): State<MemoryState>,
+    Query(query): Query<CharacterQuery>,
+) -> Result<Json<FactsResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    let facts = store::current_facts(pool, &query.character_id).await?;
+    Ok(Json(FactsResponse {
+        facts: facts.into_iter().map(FactDto::from).collect(),
+    }))
+}
+
+// ---------------------------------------------------------------------------------------
 // dbReadBlocks / dbWriteBlock
 // ---------------------------------------------------------------------------------------
 
@@ -729,8 +765,9 @@ pub fn router(state: MemoryState, has_database_url: bool) -> Router {
             Router::new()
                 .route("/db/retrieve", post(retrieve))
                 .route("/db/episodes", post(append_episode))
-                .route("/db/facts", post(upsert_fact))
+                .route("/db/facts", get(current_facts).post(upsert_fact))
                 .route("/db/facts/supersede", post(supersede_fact))
+                .route("/db/facts/expire", post(expire_fact))
                 .route("/db/embedding-models", put(register_embedding_model))
                 .route("/db/collections/activate", post(activate_collection))
                 .route("/db/blocks", get(read_blocks).put(write_block))

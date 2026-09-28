@@ -9,5 +9,6 @@
  */
 export * from './access';
 export * from './llm';
+export * from './memory';
 export { OpenAICompatibleTTSProvider, type OpenAICompatibleTtsConfig } from './tts/openai-compatible-tts';
 export { OpenAICompatibleSTTProvider, type OpenAICompatibleSttConfig } from './stt/openai-compatible-stt';

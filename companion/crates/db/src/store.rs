@@ -552,6 +552,59 @@ pub async fn supersede_fact(
     Ok(())
 }
 
+/// `dbExpireFact` (ADR-37): the store stops believing a fact — the record axis, beside
+/// `supersede_fact`'s world axis. Nothing is deleted. Expiring twice keeps the first moment,
+/// so a retry cannot move it; `not_found` if the uid is unknown (the connection reports
+/// matched rows, so an unchanged row still counts).
+pub async fn expire_fact(pool: &MySqlPool, uid: &str, at: NaiveDateTime) -> Result<(), StoreError> {
+    let result = sqlx::query!(
+        "UPDATE facts SET expired_at = COALESCE(expired_at, ?) WHERE uid = ?",
+        at,
+        uid
+    )
+    .execute(pool)
+    .await
+    .map_err(DbError::from)?;
+    if result.rows_affected() == 0 {
+        return Err(StoreError::NotFound(format!("no fact with id {uid:?}")));
+    }
+    Ok(())
+}
+
+/// `dbCurrentFacts` (ADR-37): a character's facts the store still believes and that still
+/// hold — not expired, `valid_to` unset or in the future, the same test retrieval applies —
+/// oldest recorded first. Read on the `facts_current` index.
+pub async fn current_facts(pool: &MySqlPool, character_id: &str) -> Result<Vec<Fact>, StoreError> {
+    let rows = sqlx::query!(
+        "SELECT f.uid, f.character_id, f.subject, f.predicate, f.object, f.confidence,
+                f.valid_from, f.valid_to, f.recorded_at, st.uid AS `source_uid?`
+         FROM facts f LEFT JOIN turns st ON st.id = f.source_turn
+         WHERE f.character_id = ? AND f.expired_at IS NULL
+           AND (f.valid_to IS NULL OR f.valid_to > UTC_TIMESTAMP(3))
+         ORDER BY f.recorded_at, f.id",
+        character_id
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DbError::from)?;
+    Ok(rows
+        .into_iter()
+        .map(|row| Fact {
+            uid: row.uid,
+            character_id: row.character_id,
+            subject: row.subject,
+            predicate: row.predicate,
+            object: row.object,
+            confidence: row.confidence,
+            valid_from: row.valid_from,
+            valid_to: row.valid_to,
+            recorded_at: row.recorded_at,
+            source_episode_uid: row.source_uid,
+            embedding: None,
+        })
+        .collect())
+}
+
 // ---------------------------------------------------------------------------------------
 // Self-model blocks
 // ---------------------------------------------------------------------------------------

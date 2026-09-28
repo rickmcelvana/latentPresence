@@ -8,6 +8,7 @@ export const packageInfo = {
 
 export * from './access';
 export * from './llm';
+export * from './memory';
 export * from './stt';
 export * from './tts';
 export * from './turn';

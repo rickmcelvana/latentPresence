@@ -120,6 +120,29 @@ jobs:
           LP_TEST_DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
         run: cargo test --manifest-path companion/Cargo.toml --workspace
 
+      # P4-T04. The TypeScript `MemoryStore` conformance suite through `CompanionMemoryStore`
+      # against a running companion on the same server — the rules every store keeps, checked
+      # end to end. Skipped in `pnpm gate`, which has no companion.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: MemoryStore conformance through a running companion
+        env:
+          DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
+          COMPANION_PORT: "8799"
+          LP_TEST_COMPANION_URL: http://127.0.0.1:8799
+        run: |
+          cargo build --release --manifest-path companion/Cargo.toml --bin latentpresence-companion
+          ./companion/target/release/latentpresence-companion &
+          for i in $(seq 1 30); do curl -sf "$LP_TEST_COMPANION_URL/health" && break; sleep 1; done
+          pnpm vitest run packages/providers/src/memory/companion.conformance.test.ts
+
   # P1-T14. The Phase 1 end-to-end test: a real Chromium, a fake microphone, and the voice
   # pipeline from `getUserMedia` to barge-in.
   #

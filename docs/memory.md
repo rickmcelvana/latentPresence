@@ -56,4 +56,6 @@ A kernel belongs to one character; every read and write carries its `characterId
 
 - **Time-bound facts do not expire by themselves**: "Priya is visiting next weekend" stays
   current after the weekend. Extraction could give such facts a `validTo`.
-- **Not wired into `/chat`**: the MariaDB adapter is P4-T04, the prompt line comes with it.
+- **Not wired into `/chat`** yet. The stores exist (P4-T04): `CompanionMemoryStore` (MariaDB through the
+  companion), `IndexedDbMemoryStore` (the browser alone), `SqliteMemoryStore` (a stub until the desktop
+  app); all keep the rules in `@latentpresence/core/memory-conformance`.
