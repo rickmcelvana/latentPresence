@@ -1200,6 +1200,194 @@ kbd {
   }
 }
 
+/* --- Memory browser (P4-T05, ADR-39) ---------------------------------------
+   A `.panel` like the transcript it sits beside in the drawer, with its own
+   scrolling body (`memory-log`) so the header and the "kept in" line stay put
+   while the three sections underneath scroll as one. */
+
+.memory-panel {
+  min-height: 0;
+}
+
+.memory-where {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.memory-off {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.memory-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  max-height: 480px;
+  padding-right: var(--gap-xs);
+  overflow-y: auto;
+}
+
+.memory-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.memory-section-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.memory-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.memory-error {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.memory-fact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--gap-md);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.memory-fact-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-fact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.memory-fact-line {
+  font-size: 13px;
+}
+
+.memory-fact-actions {
+  display: flex;
+  flex: none;
+  gap: var(--gap-xs);
+}
+
+.memory-fact-edit {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.memory-fact-subject {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.memory-fact-edit .input {
+  flex: 1;
+}
+
+.memory-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.memory-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.memory-search .input {
+  flex: 1;
+  min-width: 120px;
+}
+
+.memory-episode-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.memory-episode-heading {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.memory-episode-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.memory-episode-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.memory-episode-speaker {
+  font-weight: 600;
+}
+
+.memory-episode-time {
+  font-family: var(--font-mono);
+}
+
+.memory-episode-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.memory-load-more {
+  align-self: center;
+}
+
+.call-drawer .memory-panel {
+  flex: 1;
+  min-height: 0;
+}
+
+.call-drawer .memory-log {
+  flex: 1;
+  max-height: none;
+}
+
 /* --- Chat (P1-T11) ----------------------------------------------------------
    `/chat`: the transcript above, this box below. Ships in production. */
 

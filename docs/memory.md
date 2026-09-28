@@ -61,3 +61,6 @@ A kernel belongs to one character; every read and write carries its `characterId
   one message behind — so no request waits on a store. Settings → Memory chooses where: this browser
   (the default), automatic (the companion when it has a database, else this browser), the companion, or off.
   The stores (P4-T04) all keep the rules in `@latentpresence/core/memory-conformance`.
+- **The person can see and change it (P4-T05, ADR-39):** `/chat` → Memory shows what the last
+  request was given, every fact (edit, delete) and every turn (search, delete). Deletes are real
+  deletes, row and vector; a fact read from a deleted turn stays until deleted itself.

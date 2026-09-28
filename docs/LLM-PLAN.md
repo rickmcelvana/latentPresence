@@ -288,9 +288,10 @@ Added 2026-09-28 (proposed; flagged in the session note): the stores and the ker
 Done when: in `/chat`, a fact told in one visit ("my sister is Priya") is used in the next visit's answer, on both stores, with no change to time-to-first-audio.
 **Met (Browser pane, glm-5.2:cloud, 2026-09-28):** this browser — told "my sister Priya is coming to visit next month, and I just adopted a grey cat called Pixel", then after a reload asked: *"Pixel's your cat — the grey one. And your sister Priya's planning to visit next month."* The companion on the dev MariaDB (chosen by *Automatic*) — Tomas, Lisbon and the tortoise Biscuit: *"Lisbon, and the tortoise is called Biscuit."* Enter → the chat request leaving: 3–7 ms with memory on and off alike (nothing waits); first byte 1.4–2.0 s on, 2.8–6.0 s off — glm's own variance. Found: `/chat` used one fixed session id, which would have hidden every earlier visit from recall. R-26 asks Rick whether it feels like being remembered.
 
-### P4-T05 Memory browser UI — owner: sub
+### P4-T05 Memory browser UI — owner: sub (done 2026-09-28; `apps/web/src/memory/MemoryPanel.tsx`, `docs/briefs/P4-T05.md`, ADR-39 proposed)
 List, search, edit, delete facts and turns; show what was injected into the last prompt.
 Done when: deleting a fact removes it from the next retrieval.
+**Met:** the contract first (architect, a0135f8): `listEpisodes`, and `deleteFact`/`deleteEpisode` as hard deletes (ADR-39), in the companion and all three stores — conformance 18/18 on the dev MariaDB — with edits through the kernel so its cache and the prompt note follow. The panel by a Sonnet subagent: a **Memory** button beside Transcript; what she was told last, what she knows (edit, delete with an in-place confirm), conversations by visit with search and older pages. Tested through the UI (deleting a fact, then `kernel.recall` without it) and live in the Browser pane with glm-5.2:cloud: "I'm learning the cello…", deleted the cello fact from the panel, and the next request carried only the risotto.
 
 ### P4-T06 Self-model blocks and mood persistence — owner: main
 Depends: P3-T01, P4-T03. Agent tools `self.read_block`, `self.write_block`; mood snapshot on session end and load on start with elapsed-time decay.

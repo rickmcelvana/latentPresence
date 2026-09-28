@@ -20,6 +20,7 @@ import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
 import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
+import { MemoryPanel } from '../memory/MemoryPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
@@ -302,9 +303,13 @@ function ConfiguredChatPage({
     };
   });
 
-  // Memory (P4-T04b, ADR-38): the store is chosen once per visit — the companion if it has a
-  // database, else this browser — and a kernel fed by the bus fills the prompt's memory note.
+  // Memory (P4-T04b, ADR-38): the store is chosen once per visit from Settings → Memory — this
+  // browser by default — and a kernel fed by the bus fills the prompt's memory note.
   // Extraction runs on the page's own model with reasoning off (ADR-37), off the speaking path.
+  // `memoryHolder` (a plain ref, read during system-prompt render) and this state (read by the
+  // memory browser, P4-T05) are kept in step — one attach, two readers with different needs.
+  const [memory, setMemory] = useState<AttachedMemory | null>(null);
+  const [memoryWhere, setMemoryWhere] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
@@ -319,11 +324,15 @@ function ConfiguredChatPage({
       const kernel = new MemoryKernel({ store: choice.store, characterId: defaultPersona.id, extractor: { llm, modelId }, onError: warn });
       attached = attachMemory(machine, { kernel, sessionId, userAffect: () => userAffect.fusion.last(), onError: (error) => warn(error, 'recall') });
       memoryHolder.current = attached;
+      setMemory(attached);
+      setMemoryWhere(choice.reason);
     });
     return () => {
       live = false;
       attached?.detach();
       memoryHolder.current = null;
+      setMemory(null);
+      setMemoryWhere(null);
     };
   }, [chooseMemory, companionUrl, deps.fetch, llm, machine, memoryHolder, modelId, sessionId, settings.memory, userAffect]);
 
@@ -349,6 +358,22 @@ function ConfiguredChatPage({
   // Read once: only the *starting* width decides the drawer's default (decision 9). A
   // window resized mid-session keeps whatever the person set with the Transcript button.
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
+  // Which of the two views the drawer shows (P4-T05). Always transcript at first, per the
+  // rule above — Memory only opens the drawer when a person asks it to.
+  const [drawerView, setDrawerView] = useState<'transcript' | 'memory'>('transcript');
+  /** The Transcript and Memory buttons share this: pressing the view already showing
+   * closes the drawer, pressing the other switches to it (opening the drawer if closed). */
+  const toggleDrawerView = useCallback(
+    (view: 'transcript' | 'memory') => {
+      if (drawerOpen && drawerView === view) {
+        setDrawerOpen(false);
+        return;
+      }
+      setDrawerView(view);
+      setDrawerOpen(true);
+    },
+    [drawerOpen, drawerView],
+  );
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const userCamera = useUserCamera(cameraDeps);
@@ -661,7 +686,11 @@ function ConfiguredChatPage({
       {showAffectOverlay && <AffectOverlay affect={affect} listening={listening.reactor} userAffect={userAffect} />}
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
-        <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
+        {drawerView === 'memory' ? (
+          <MemoryPanel characterName={CHAT_CHARACTER_NAME} memory={memory} subscribe={subscribe} where={memoryWhere} />
+        ) : (
+          <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
+        )}
       </aside>
 
       {userCamera.active && (
@@ -804,8 +833,11 @@ function ConfiguredChatPage({
         >
           {speak === 'starting' ? 'Loading voice…' : 'Speak replies'}
         </button>
-        <button aria-pressed={drawerOpen} className="btn call-control-btn" onClick={() => setDrawerOpen((open) => !open)} type="button">
+        <button aria-pressed={drawerOpen && drawerView === 'transcript'} className="btn call-control-btn" onClick={() => toggleDrawerView('transcript')} type="button">
           Transcript
+        </button>
+        <button aria-pressed={drawerOpen && drawerView === 'memory'} className="btn call-control-btn" onClick={() => toggleDrawerView('memory')} type="button">
+          Memory
         </button>
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings

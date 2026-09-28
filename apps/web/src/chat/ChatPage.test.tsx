@@ -466,6 +466,40 @@ describe('ChatPage — the call layout (P2-T06)', () => {
     expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
   });
 
+  it('Memory and Transcript switch the drawer between views, each pressed only while its own view shows (P4-T05)', () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const transcriptBtn = screen.getByRole('button', { name: 'Transcript' });
+    const memoryBtn = screen.getByRole('button', { name: 'Memory' });
+
+    // Closed at the start (below 1440 px): neither button is pressed.
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+    expect(transcriptBtn.getAttribute('aria-pressed')).toBe('false');
+    expect(memoryBtn.getAttribute('aria-pressed')).toBe('false');
+
+    // Memory opens the drawer on the memory view.
+    fireEvent.click(memoryBtn);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+    expect(container.querySelector('.memory-panel')).toBeTruthy();
+    expect(memoryBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(transcriptBtn.getAttribute('aria-pressed')).toBe('false');
+
+    // Transcript switches the open drawer to the transcript view rather than closing it.
+    fireEvent.click(transcriptBtn);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+    expect(container.querySelector('.transcript-panel')).toBeTruthy();
+    expect(container.querySelector('.memory-panel')).toBeNull();
+    expect(transcriptBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(memoryBtn.getAttribute('aria-pressed')).toBe('false');
+
+    // Pressing the button of the view already showing closes the drawer.
+    fireEvent.click(transcriptBtn);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+    expect(transcriptBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('the Text button hides and shows the text box', () => {
     const storage = memoryStorage();
     seedConfigured(storage);
