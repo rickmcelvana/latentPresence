@@ -601,3 +601,9 @@ Did: `packages/core/src/memory` — kernel, extraction (JSON, known ids, `replac
 Left: ADR-37 for Rick; push for CI; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit; does glm's cut reach `/chat`?
 Next: P4-T04 adapters (sub; brief) with the companion's two new routes and memory in `/chat`'s prompt.
 Decisions: ADR-37 proposed. Live glm: 6/12 → (reasoning off) 11/12 → (prompt: only what was said; `ended`) 12/12 and 5/5, three runs of three. Single-valued set gained `work_schedule` variants. The replay's matcher accepts "sister name Priya" for "user has_sibling Priya".
+
+## 2026-09-28 claude — does glm's reasoning cut reach /chat?
+Did: `pnpm live:chat-cut` — 40 messages × 2 runs, real persona prompt, raw SSE, reasoning on and off. 0/80 cut on, 0/80 off; every reply opened with a whole tag. SURFACE updated.
+Left: nothing new.
+Next: P4-T04 as before.
+Decisions: no change to /chat. Reasoning off was ~540 ms faster to first character (1771 vs 2310 ms median) with similar answers — offered to Rick as a latency option, not adopted.

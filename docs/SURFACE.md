@@ -2145,5 +2145,15 @@ On the development server (MariaDB 11.8.8):
   ignored** on that path (still reasons, still cuts). The AI SDK's
   `providerOptions.openaiCompatible.reasoningEffort` sends it (`@ai-sdk/openai-compatible`
   3.0.47).
-- **Not yet known:** whether the cut reaches `/chat`, where glm answers with reasoning on and a
-  reply often starts with an `[emote:x]` tag.
+- **It does not reach `/chat`** (`pnpm live:chat-cut`, 2026-09-28): forty varied messages, one
+  turn each, with the real persona prompt, twice — **0 of 80 cut with reasoning on, 0 of 80
+  off**, read from the raw SSE; the adapter's own stream agreed on ten. Every reply opened with a
+  complete tag (`[user:x]` first, then `[emote:x]`), so a cut would have shown as a fragment, and
+  a cut that swallowed a whole tag as a reply opening without one — there were none. 0 in 80 puts
+  the rate under ~4% at 95% confidence, not at zero. The cut seems specific to prompts whose
+  answer the reasoning rehearses verbatim (the extraction's JSON). **No change to `/chat`.**
+- **Reasoning off is faster on `/chat` too:** first answer character median **1771 ms off against
+  2310 ms on** (worst 6.0 s against 10.5 s), whole reply 2559 against 3220 ms, replies about as
+  long (20 words against 22), with the same tags and, read side by side, answers of the same
+  kind. Not adopted here: which way `/chat` should run is a product call on quality, and ADR-20's
+  latency budget is where it belongs.
