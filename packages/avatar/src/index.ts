@@ -32,6 +32,7 @@ export * from './life';
 export * from './lipsync';
 export * from './clips';
 export * from './cues';
+export * from './listening';
 export { FakeAvatarRenderer, MOUTH_SHAPES, applyViseme, type MouthShape } from './fake';
 
 /** Keeps the workspace wiring under test. The renderer itself is `@latentpresence/avatar/vrm`. */

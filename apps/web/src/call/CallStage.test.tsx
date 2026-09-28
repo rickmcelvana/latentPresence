@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
-import type { ConversationEvent, ConversationState } from '@latentpresence/protocol';
-import { FakeAvatarRenderer, type AffectInputs } from '@latentpresence/avatar';
+import type { ConversationEvent, ConversationState, UserAffect } from '@latentpresence/protocol';
+import { FakeAvatarRenderer, ListeningReactor, type AffectInputs } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR_DESCRIPTOR } from './character-asset';
 import { CallStage } from './CallStage';
@@ -231,5 +231,55 @@ describe('CallStage — her mood on her face (P3-T09)', () => {
   it('shows a low mood as a resting face', async () => {
     const faces = await stageWith({ inputs: () => low, baseline });
     expect(Object.values(faces.at(-1) ?? {}).some((weight) => weight > 0.1)).toBe(true);
+  });
+});
+
+describe('CallStage — how she listens (P3-T08)', () => {
+  const bright: AffectInputs = {
+    mood: { pleasure: 0.8, arousal: 0.5, dominance: 0.4 },
+    energy: 0.8,
+    stance: { warmth: 0.4, formality: -0.3, engagement: 0.3 },
+    feeling: { label: 'neutral', intensity: 0 },
+  };
+  const sadUser: UserAffect = { label: 'sad', valence: -0.7, arousal: -0.3, confidence: 0.6, readings: [], at: new Date(0).toISOString() };
+
+  async function brightFace(listening: { reactor: ListeningReactor; userAffect: () => UserAffect | null } | null) {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new FaceRenderer();
+    render(
+      <CallStage
+        affect={{ inputs: () => bright, baseline: bright }}
+        consent={consent}
+        createRenderer={() => renderer}
+        fetchModel={async () => new Uint8Array([1])}
+        listening={listening}
+        machine={machine()}
+        voice={null}
+      />,
+    );
+    await waitFor(() => expect(renderer.character).not.toBeNull());
+    await settle();
+    // The floor is the user's: what a voice call's state.changed would have said.
+    listening?.reactor.setState('listening');
+    let now = 0;
+    // Five seconds of frames: long enough for a read to settle and her face to ease.
+    for (let i = 0; i < 300; i += 1) {
+      now += 1000 / 60;
+      for (const frame of frames.splice(0)) frame(now);
+    }
+    return renderer.faces.at(-1) ?? {};
+  }
+
+  it('does not smile her bright mood at someone who is upset: concern instead', async () => {
+    const without = await brightFace(null);
+    cleanup();
+    const heard = await brightFace({ reactor: new ListeningReactor(), userAffect: () => sadUser });
+    expect(without.happy).toBeGreaterThan(0.2);
+    expect(heard.happy ?? 0).toBeLessThan(0.02);
+    expect(heard.sad).toBeGreaterThan(0.2);
   });
 });

@@ -11,6 +11,7 @@ import {
   type AttachedAffect,
   type ChatVoice,
 } from '@latentpresence/core';
+import { ListeningReactor } from '@latentpresence/avatar';
 import type { ConversationEvent, LLMProvider, ModelDescriptor } from '@latentpresence/protocol';
 import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
@@ -222,7 +223,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ machine, chat, history, llm, affect, userAffect, stageAffect }] = useState(() => {
+  const [{ machine, chat, history, llm, affect, userAffect, stageAffect, listening }] = useState(() => {
     const builtMachine = new ConversationMachine({
       sessionId: SESSION_ID,
       characterId: defaultPersona.id,
@@ -272,6 +273,9 @@ function ConfiguredChatPage({
       affect: builtAffect,
       userAffect: builtUserAffect,
       stageAffect: stageAffectOf(builtAffect),
+      // P3-T08: how she listens — the call tells it where the user pauses and how loud they
+      // are, the stage reads it every frame against the user's live fused estimate.
+      listening: { reactor: new ListeningReactor(), userAffect: () => builtUserAffect.fusion.current(Date.now()) },
     };
   });
 
@@ -600,12 +604,13 @@ function ConfiguredChatPage({
           affect={stageAffect}
           consent={deps.consent}
           createRenderer={createRenderer}
+          listening={listening}
           machine={machine}
           voice={voiceOutput}
         />
       </Suspense>
 
-      {showAffectOverlay && <AffectOverlay affect={affect} userAffect={userAffect} />}
+      {showAffectOverlay && <AffectOverlay affect={affect} listening={listening.reactor} userAffect={userAffect} />}
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
         <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
@@ -639,6 +644,7 @@ function ConfiguredChatPage({
             <VoicePanel
               deps={deps}
               history={history}
+              listening={listening.reactor}
               llm={llm}
               machine={machine}
               modelId={modelId}

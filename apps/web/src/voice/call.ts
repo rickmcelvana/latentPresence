@@ -102,6 +102,26 @@ export interface SpokenTurnSink {
   spokenTurn(text: string, voice: AffectReading | null, at: number): void;
 }
 
+/**
+ * How she listens (P3-T08): `ListeningReactor` satisfies it. The call tells it where the user
+ * paused and how loud they are, and asks it which backchannel words fit. Times are
+ * `performance.now()`, the stage's frame clock.
+ */
+export interface ListeningSink {
+  /** Smart Turn's answer on a pause, while it is still silent. */
+  pause(probability: number, at: number): void;
+  /** One microphone frame's RMS. */
+  level(rms: number, at: number): void;
+  phrases(): readonly string[] | null;
+}
+
+/** Root mean square of a frame. */
+export function rms(samples: Float32Array): number {
+  let sum = 0;
+  for (const sample of samples) sum += sample * sample;
+  return samples.length === 0 ? 0 : Math.sqrt(sum / samples.length);
+}
+
 /** A candidate turn's two readings of the same audio, run side by side. */
 export interface Heard {
   readonly text: Promise<SttResult | null>;
@@ -169,6 +189,8 @@ export interface VoiceCallOptions {
   readonly userAffect?: SpokenTurnSink;
   /** ADR-28's clips. Off: the character never backchannels. Default on. */
   readonly backchannels?: boolean;
+  /** How she listens (P3-T08). Omitted: she backchannels with any word and the stage hears no pauses. */
+  readonly listening?: ListeningSink;
   readonly log?: (line: string) => void;
   /** Test seams. Production never passes any of them — the defaults are the real ones. */
   readonly createAudio?: () => Promise<AudioOutputHandle>;
@@ -282,7 +304,7 @@ export class VoiceCall {
     const judge = (options.createJudge ??
       ((): JudgeLike => new SmartTurnJudge({ createWorker: () => createGatedSmartTurnWorker(options.consent, 'gpu') })))();
 
-    const { speech, userAffect } = options;
+    const { speech, userAffect, listening } = options;
     const { voiceId, speed } = options;
     // How they sound (P3-T07): only when someone is listening for it.
     const ser =
@@ -329,7 +351,7 @@ export class VoiceCall {
       detector,
       sink,
       bargeIn: { bargeInMs: BARGE_IN_MS },
-      ...(clips.length === 0 ? {} : { backchannel: { clips, overlap: 'duck' as const } }),
+      ...(clips.length === 0 ? {} : { backchannel: { clips, overlap: 'duck' as const, ...(listening === undefined ? {} : { prefer: () => listening.phrases() }) } }),
       // A history this call did not make, already watching the bus: passing it is what
       // makes the model answer in the light of what was typed as well as what was said.
       history: options.history,
@@ -355,6 +377,13 @@ export class VoiceCall {
           replyOptions,
         ),
     });
+    // Where the user paused, for her nods (P3-T08). Subscribed after the session, so a pause
+    // that also gets a spoken backchannel has already put it on the bus.
+    if (listening !== undefined) {
+      detector.subscribe((event) => {
+        if (event.type === 'judged') listening.pause(event.probability, event.at);
+      });
+    }
     vad.onFrame((frame) => session.push(frame));
     vad.onError((error) => log?.(`hearing failed: ${error.message}`));
 
@@ -368,6 +397,8 @@ export class VoiceCall {
       // of letting the hangover close it. A fresh array each time, since the VAD may
       // transfer the buffer to its worker.
       capture = await captureWith(microphoneSource, (samples, at) => {
+        // Before the push, which may transfer the buffer; a muted frame is silence to her too.
+        listening?.level(mutedBox.current ? 0 : rms(samples), at);
         vad.push(mutedBox.current ? new Float32Array(samples.length) : samples, at);
       });
     } catch (error) {

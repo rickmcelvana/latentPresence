@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationMachine } from '@latentpresence/core';
 import type { ConversationState } from '@latentpresence/protocol';
-import type { CharacterSource, ExpressionWeights, ModelDescriptor, Viseme } from '@latentpresence/protocol';
+import type { CharacterSource, ExpressionWeights, ModelDescriptor, UserAffect, Viseme } from '@latentpresence/protocol';
 import {
   BaseClipGraph,
   CuePerformer,
   LifeLayer,
   TagBridge,
   affectToBody,
+  applyListening,
   mergeExpressionsMax,
   relativeGaze,
   withGesture,
@@ -19,6 +20,7 @@ import {
   type CameraPreset,
   type GazeModulation,
   type LifePose,
+  type ListeningReactor,
 } from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/consent';
@@ -77,6 +79,16 @@ export interface CallStageAffect {
   readonly baseline: AffectInputs;
 }
 
+/**
+ * How she listens (P3-T08): the reactor the call tells about pauses and loudness, and the
+ * user's live fused estimate, read every frame. Her listening face goes over her own, damping
+ * whatever in it would contradict the user; her nods go through the tag performer.
+ */
+export interface CallStageListening {
+  readonly reactor: ListeningReactor;
+  userAffect(): UserAffect | null;
+}
+
 export interface CallStageProps {
   readonly machine: ConversationMachine;
   /** The shared consent book (`deps.consent` — the same object `/settings` and the voice
@@ -86,6 +98,8 @@ export interface CallStageProps {
   readonly voice: AudioOutputHandle | null;
   /** Her mood, read every frame; omitted or null, the stage shows tags alone, as before P3-T09. */
   readonly affect?: CallStageAffect | null;
+  /** How she listens; omitted or null, she keeps the face she has while the user talks, as before P3-T08. */
+  readonly listening?: CallStageListening | null;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -110,6 +124,7 @@ export function CallStage({
   consent,
   voice,
   affect = null,
+  listening = null,
   createRenderer = defaultCreateRenderer,
   fetchModel = cachedModelFetch,
 }: CallStageProps): ReactElement {
@@ -125,6 +140,7 @@ export function CallStage({
   const graphRef = useRef(new BaseClipGraph());
   /** The mood the frame loop reads, with its baseline's gaze worked out once. */
   const affectRef = useRef<{ source: CallStageAffect; baselineGaze: GazeModulation } | null>(null);
+  const listeningRef = useRef<CallStageListening | null>(null);
 
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
@@ -140,6 +156,11 @@ export function CallStage({
   useEffect(() => {
     affectRef.current = affect === null ? null : { source: affect, baselineGaze: affectToBody(affect.baseline).gaze };
   }, [affect]);
+
+  useEffect(() => {
+    listeningRef.current = listening;
+    listening?.reactor.setState(machine.getState());
+  }, [listening, machine]);
 
   // One renderer for the stage's life: mounts the canvas and starts the frame loop right
   // away (the room and its lighting need no consent), and follows the conversation state
@@ -159,6 +180,7 @@ export function CallStage({
     const bridge = new TagBridge(performer);
     const unsubscribe = machine.subscribe((event) => {
       bridge.handle(event, performance.now());
+      listeningRef.current?.reactor.onEvent(event, performance.now());
       if (event.type !== 'state.changed') return;
       life.setState(event.to);
       if (clipsReadyRef.current) playBaseClip(avatar, graphRef.current, event.to);
@@ -175,6 +197,10 @@ export function CallStage({
       last = now;
       bridge.update(now);
       if (readyRef.current) {
+        // P3-T08: her reaction to the user, first, so a nod it starts moves this frame.
+        const listen = listeningRef.current;
+        const reaction = listen === null ? null : listen.reactor.update(now, listen.userAffect());
+        for (const gesture of reaction?.gestures ?? []) performer.perform({ kind: 'gesture', value: gesture, known: gesture, offset: 0 });
         const cues = performer.update(delta);
         // P3-T09: the mood's resting face under the tags' faces, and its gaze habit on the
         // life layer — both before `life.update`, which reads the modulation this frame.
@@ -187,6 +213,7 @@ export function CallStage({
         } else {
           life.setModulation(null);
         }
+        if (reaction !== null) face = applyListening(face, reaction);
         avatar.setLifePose?.(withGesture(life.update(delta), cues.additive));
         avatar.setExpression(face);
         const lipSync = lipSyncRef.current;

@@ -107,6 +107,18 @@ describe('BackchannelScheduler — where a clip goes', () => {
     expect(r.scheduler.onTurn(judged(2, 0.1, 11_200), 'listening')).toBeNull();
   });
 
+  it('picks among the words that fit how the user seems, and any when none of them is in the bank (P3-T08)', () => {
+    let wanted: readonly string[] | null = ['Right.'];
+    const r = rig({ prefer: () => wanted, intervalMs: 0 });
+    expect(r.pause(1, 0, 3000)).toMatchObject({ text: 'Right.' });
+    r.sink.end(100);
+    // One fitting word: said again rather than swapped for one that does not fit.
+    expect(r.pause(2, 3500, 3000)).toMatchObject({ text: 'Right.' });
+    r.sink.end(101);
+    wanted = ['Oh.'];
+    expect(r.pause(3, 7000, 3000)).toMatchObject({ text: 'Yeah.' });
+  });
+
   it('never plays with no clips', () => {
     expect(rig({}, []).pause(1, 0, 5000)).toBeNull();
   });

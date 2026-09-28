@@ -57,6 +57,11 @@ export interface BackchannelOptions {
   readonly speechOff?: number;
   /** In [0, 1). Picks the clip; injected so tests are deterministic. */
   readonly random?: () => number;
+  /**
+   * The words that fit how the user seems right now (P3-T08's `ListeningReactor.phrases`),
+   * or null for any. Clips are picked among those; if none of them is in the set, any.
+   */
+  readonly prefer?: () => readonly string[] | null;
 }
 
 export type BackchannelEvent =
@@ -81,6 +86,7 @@ export class BackchannelScheduler {
   private readonly speechOn: number;
   private readonly speechOff: number;
   private readonly random: () => number;
+  private readonly prefer: (() => readonly string[] | null) | undefined;
   private readonly detach: () => void;
 
   private turn: { readonly speechStartAt: number; open: boolean } | null = null;
@@ -101,6 +107,7 @@ export class BackchannelScheduler {
     this.speechOn = options.speechOn ?? DEFAULT_SPEECH_ON;
     this.speechOff = options.speechOff ?? DEFAULT_SPEECH_OFF;
     this.random = options.random ?? Math.random;
+    this.prefer = options.prefer;
     if (!(this.intervalMs >= 0)) throw new RangeError(`intervalMs ${this.intervalMs} must be 0 or more`);
     if (!(this.minSpeechMs >= 0)) throw new RangeError(`minSpeechMs ${this.minSpeechMs} must be 0 or more`);
     if (!(this.cutMs > 0)) throw new RangeError(`cutMs ${this.cutMs} must be positive`);
@@ -188,11 +195,13 @@ export class BackchannelScheduler {
     return { type: 'played', text: clip.text, at };
   }
 
-  /** Any clip but the last one, when there is a choice. */
+  /** A clip that fits, and any but the last one, when there is a choice. */
   private pick(): number {
-    const count = this.clips.length;
-    if (count === 1 || this.lastClip < 0) return Math.min(count - 1, Math.floor(this.random() * count));
-    const index = Math.min(count - 2, Math.floor(this.random() * (count - 1)));
-    return index >= this.lastClip ? index + 1 : index;
+    const all = this.clips.map((_, index) => index);
+    const wanted = this.prefer?.() ?? null;
+    const fitting = wanted === null ? all : all.filter((index) => wanted.includes(this.clips[index]?.text ?? ''));
+    const pool = fitting.length === 0 ? all : fitting;
+    const fresh = pool.length > 1 ? pool.filter((index) => index !== this.lastClip) : pool;
+    return fresh[Math.min(fresh.length - 1, Math.floor(this.random() * fresh.length))] ?? 0;
   }
 }

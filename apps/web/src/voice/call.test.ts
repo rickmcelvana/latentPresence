@@ -4,7 +4,8 @@ import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeLLMProvider, FakeTTSProvider } from '@latentpresence/providers';
 import type { AudioOutputHandle, CaptureHandle } from '@latentpresence/providers';
 import type { AffectReading, AudioChunk, LLMProvider, STTProvider, SttResult } from '@latentpresence/protocol';
-import { VoiceCall, hearBoth, transcribeAndFeel, type JudgeLike, type VadLike } from './call';
+import type { VadFrame } from '@latentpresence/core';
+import { VoiceCall, hearBoth, rms, transcribeAndFeel, type JudgeLike, type VadLike } from './call';
 import type { SpeechProviders } from './providers';
 
 /**
@@ -253,6 +254,70 @@ describe('VoiceCall — mute (P2-T06)', () => {
       { peak: 0.5, at: 74 },
     ]);
     await call.stop();
+  });
+});
+
+describe('VoiceCall — how she listens (P3-T08)', () => {
+  it('tells the listener every frame’s level — silence while muted — and every pause Smart Turn judged', async () => {
+    const { machine, history } = baseOptions();
+    let onVadFrame: ((frame: VadFrame) => void) | null = null;
+    const vad = fakeVad({
+      onFrame: (listener) => {
+        onVadFrame = listener;
+        return () => undefined;
+      },
+    });
+    const levels: { rms: number; at: number }[] = [];
+    const pauses: number[] = [];
+    let deliver: ((samples: Float32Array, at: number) => void) | null = null;
+    const call = await VoiceCall.start({
+      machine,
+      history,
+      llm: llm(),
+      modelId: 'test',
+      temperature: null,
+      speech: speech(),
+      consent: new ModelConsent(memoryStorage()),
+      voiceId: 'af_heart',
+      speed: 1,
+      backchannels: false,
+      listening: {
+        level: (value, at) => levels.push({ rms: value, at }),
+        pause: (probability) => pauses.push(probability),
+        phrases: () => null,
+      },
+      createAudio: async () => fakeAudio().handle,
+      createVad: () => vad.port,
+      createJudge: () => fakeJudge().port,
+      capture: async (_source, onFrame) => {
+        deliver = onFrame;
+        return mic();
+      },
+    });
+
+    const send = deliver as ((samples: Float32Array, at: number) => void) | null;
+    if (send === null) throw new Error('the call never opened the microphone');
+    send(new Float32Array(512).fill(0.5), 10);
+    call.setMuted(true);
+    send(new Float32Array(512).fill(0.5), 42);
+    expect(levels).toEqual([
+      { rms: 0.5, at: 10 },
+      { rms: 0, at: 42 },
+    ]);
+
+    // Speech, then a pause long enough for a candidate: the judge's answer reaches her too.
+    const push = onVadFrame as ((frame: VadFrame) => void) | null;
+    if (push === null) throw new Error('the call never listened to the VAD');
+    let at = 0;
+    for (; at < 1000; at += 32) push({ samples: new Float32Array(512), probability: 0.95, at });
+    for (const end = at + 300; at < end; at += 32) push({ samples: new Float32Array(512), probability: 0.01, at });
+    await vi.waitFor(() => expect(pauses).toEqual([0.95]));
+    await call.stop();
+  });
+
+  it('measures a frame’s level as its RMS', () => {
+    expect(rms(new Float32Array([0.5, -0.5, 0.5, -0.5]))).toBeCloseTo(0.5);
+    expect(rms(new Float32Array(0))).toBe(0);
   });
 });
 

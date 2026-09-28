@@ -59,6 +59,8 @@ export interface VoicePanelProps {
   readonly voiceStyle?: VoiceCallOptions['voiceStyle'];
   /** Where each spoken turn is felt (P3-T07). Should be a stable identity. */
   readonly userAffect?: VoiceCallOptions['userAffect'];
+  /** How she listens (P3-T08): pauses, loudness and the backchannel words. Should be a stable identity. */
+  readonly listening?: VoiceCallOptions['listening'];
   /** Whether a call is running, so `/chat` can put the keyboard away while it is. */
   readonly onActive: (active: boolean) => void;
   /** Leave voice and go back to typing. The panel is unmounted by the caller. */
@@ -85,6 +87,7 @@ export function VoicePanel({
   deps,
   voiceStyle,
   userAffect,
+  listening,
   onActive,
   onEnd,
   onCallStarted,
@@ -161,6 +164,7 @@ export function VoicePanel({
         speed: settings.tts.speed,
         ...(voiceStyle === undefined ? {} : { voiceStyle }),
         ...(userAffect === undefined ? {} : { userAffect }),
+        ...(listening === undefined ? {} : { listening }),
         log: (line) => setStatus(line),
       });
       call.current = active;
@@ -172,7 +176,7 @@ export function VoicePanel({
       setStatus(error instanceof Error ? error.message : String(error));
       setPhase('idle');
     }
-  }, [buildSpeech, consent, deps, history, llm, machine, modelId, onActive, settings, startCall, temperature, userAffect, voiceStyle]);
+  }, [buildSpeech, consent, deps, history, llm, machine, modelId, onActive, settings, startCall, temperature, userAffect, listening, voiceStyle]);
 
   async function end(): Promise<void> {
     await call.current?.stop();
