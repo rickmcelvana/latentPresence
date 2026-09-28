@@ -177,7 +177,7 @@ being *remembered*, rather than recited at, needs you.
    ```bash
    pnpm companion
    ```
-2. `/settings` → **Memory** shows *Automatic*. Open `/chat` and talk for a few minutes about real
+2. `/settings` → **Memory** → *Automatic* (it starts on *This browser*). Open `/chat` and talk for a few minutes about real
    things — people, plans, something that changed ("I used to…, now…").
 3. Close the tab. Come back later (an hour, or tomorrow), open `/chat` and carry on as you would
    with a friend. Don't quiz her; see what she brings up.

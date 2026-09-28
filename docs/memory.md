@@ -58,6 +58,6 @@ A kernel belongs to one character; every read and write carries its `characterId
   current after the weekend. Extraction could give such facts a `validTo`.
 - **In `/chat` since P4-T04b (ADR-38):** `attachMemory` feeds the kernel from the bus and keeps a
   note ready for the prompt — facts from the kernel's cache, past turns recalled in the background
-  one message behind — so no request waits on a store. Settings → Memory chooses where: automatic
-  (the companion when it has a database, else this browser), this browser, the companion, or off.
+  one message behind — so no request waits on a store. Settings → Memory chooses where: this browser
+  (the default), automatic (the companion when it has a database, else this browser), the companion, or off.
   The stores (P4-T04) all keep the rules in `@latentpresence/core/memory-conformance`.

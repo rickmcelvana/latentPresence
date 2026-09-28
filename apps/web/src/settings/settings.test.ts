@@ -62,12 +62,12 @@ describe('loadSettings', () => {
     expect(loadSettings(storage)).toEqual(settings);
   });
 
-  it('loads a document saved before memory existed, remembering automatically (P4-T04b)', () => {
+  it('loads a document saved before memory existed, remembering in this browser (P4-T04b)', () => {
     const settings: Settings = { ...DEFAULT_SETTINGS, companionUrl: 'http://127.0.0.1:9999' };
     const { memory: _memory, ...beforeP4 } = settings;
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP4) });
     expect(loadSettings(storage)).toEqual(settings);
-    expect(settings.memory).toBe('auto');
+    expect(settings.memory).toBe('browser');
   });
 
   it('defaults the companion URL to the documented default', () => {

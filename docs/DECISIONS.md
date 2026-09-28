@@ -40,7 +40,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
 | ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
-| ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store chosen per visit (companion with a database, else IndexedDB); a session per visit | proposed | 2026-09-28 |
+| ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
 
 ---
 
@@ -1120,7 +1120,7 @@ single-valued predicate, and expires facts under 0.35 confidence recorded more t
 expected set — 12 of 12 facts believed, 5 of 5 replaced ones closed — and removing the
 single-valued rule, the `ended` handling or the never-began expiry each fails it.
 
-## ADR-38 Memory in the call: a note kept ready, never awaited (proposed 2026-09-28)
+## ADR-38 Memory in the call: a note kept ready, never awaited (accepted 2026-09-28)
 
 **Context.** P4-T04b puts the memory kernel (ADR-37) into `/chat`. A request is built the moment
 a turn ends — on the spoken path before the turn is even confirmed (ADR-25) — and the system
@@ -1144,10 +1144,13 @@ possibly across a LAN. Waiting for it would put the database on the path to firs
    moment (P3-T07); each answer as **heard** (its spoken prefix when interrupted, marked
    `interrupted`, P1-T12b); no backchannels. Extraction runs on the page's model with
    reasoning off (ADR-37).
-4. **Where:** a setting — automatic (default), this browser, the companion, off. Automatic
+4. **Where:** a setting — this browser (**default**), automatic, the companion, off. Automatic
    asks the companion's `/health` once per visit (1.5 s timeout): a connected database means
    MariaDB through the companion, anything else IndexedDB. A settings document saved before
-   P4 loads as automatic.
+   P4 loads as this browser. *Amended on acceptance, 2026-09-28:* the draft defaulted to
+   automatic; CI's face e2e test caught that as a request to `127.0.0.1:8787/health` before
+   anything was agreed — nothing leaves the page unless the person pointed it somewhere, and
+   a hosted page probing localhost also meets Chrome's local-network rules.
 5. **A session per visit.** `/chat` used the fixed id `chat`; recall leaves the asking session
    out (the history already carries it), so a fixed id would hide every earlier visit.
 

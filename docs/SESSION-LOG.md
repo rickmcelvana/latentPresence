@@ -620,3 +620,9 @@ Left: push (confirm CI green); ADR-38 for Rick; R-26; laptop session (R-13, R-1,
 Next: P4-T05 memory browser.
 Decisions: ADR-38 proposed (note kept ready, recall one turn behind, never awaited; store per visit; session per visit). Live-check rows removed from the dev DB (6 facts, 2 sessions) and the pane's IndexedDB.
 
+## 2026-09-28 claude — ADR-38 accepted; CI's last red
+Did: CI after the LFS fix: gate green on both OSes, voice e2e passes; the face e2e caught `/chat` probing the companion's `/health` before consent. Memory now defaults to this browser; the companion is asked only when chosen. Both e2e pass locally.
+Left: R-26 (Rick, in progress); laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T05 memory browser.
+Decisions: ADR-38 accepted, amended on acceptance (default: this browser, not automatic).
+

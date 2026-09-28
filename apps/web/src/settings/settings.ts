@@ -79,7 +79,10 @@ export type SttSettings = z.infer<typeof SttSettingsSchema>;
 /**
  * Where she remembers (P4-T04b, ADR-38). `auto` uses the companion when its `/health` says a
  * database is connected, and this browser's own storage otherwise; `off` remembers nothing.
- * Defaulted, so a settings document saved before P4 still loads.
+ * **The default is `browser`**: `auto` asks the companion on every visit, and a request the
+ * person never asked for is exactly what the face e2e test's "nothing off-origin before
+ * consent" refuses (CI, 2026-09-28) — a hosted page probing `127.0.0.1` would also meet
+ * Chrome's local-network rules. Defaulted, so a settings document saved before P4 still loads.
  */
 export const MemorySettingSchema = z.enum(['auto', 'browser', 'companion', 'off']);
 export type MemorySetting = z.infer<typeof MemorySettingSchema>;
@@ -87,7 +90,7 @@ export type MemorySetting = z.infer<typeof MemorySettingSchema>;
 export const SettingsSchema = z.object({
   version: z.literal(1),
   companionUrl: z.string(),
-  memory: MemorySettingSchema.default('auto'),
+  memory: MemorySettingSchema.default('browser'),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -99,7 +102,7 @@ export type Settings = z.infer<typeof SettingsSchema>;
 export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   companionUrl: DEFAULT_COMPANION_URL,
-  memory: 'auto',
+  memory: 'browser',
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
