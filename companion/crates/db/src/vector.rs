@@ -64,6 +64,18 @@ pub fn encode(embedding: &[f32]) -> Result<Vec<u8>, VectorError> {
     Ok(encode_unchecked(embedding))
 }
 
+/// Pack an embedding for a column of dimensions — a memory collection's vector table,
+/// whose width is its model's (ADR-35).
+pub fn encode_width(embedding: &[f32], dimensions: usize) -> Result<Vec<u8>, VectorError> {
+    if embedding.len() != dimensions {
+        return Err(VectorError::Dimensions {
+            expected: dimensions,
+            found: embedding.len(),
+        });
+    }
+    Ok(encode_unchecked(embedding))
+}
+
 /// The same packing without the width check, for fixtures and for benchmarks that build
 /// vectors of a deliberately different size.
 pub fn encode_unchecked(embedding: &[f32]) -> Vec<u8> {

@@ -90,6 +90,28 @@ jobs:
           cargo run --release --manifest-path companion/Cargo.toml
           --bin latentpresence-companion -- bench 2000
 
+      # P4-T01. The memory schema on the same server: a model's vector table, the retrieval
+      # shape on its index, the cascades. Leaves nothing behind.
+      - name: memory schema against a real MariaDB
+        env:
+          DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
+        run: >-
+          cargo run --release --manifest-path companion/Cargo.toml
+          --bin latentpresence-companion -- memory-check
+
+      # ADR-35. Every build compiles the `query!` macros offline from the committed
+      # `companion/crates/db/.sqlx`; this is where that cache is checked against the schema
+      # the migrations above produced. `SQLX_OFFLINE=false` overrides `.cargo/config.toml`.
+      - name: install sqlx-cli
+        run: cargo install sqlx-cli --version 0.9.0 --locked --no-default-features --features mysql,rustls
+
+      - name: the committed query cache matches the schema
+        working-directory: companion/crates/db
+        env:
+          DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
+          SQLX_OFFLINE: "false"
+        run: cargo sqlx prepare --check
+
   # P1-T14. The Phase 1 end-to-end test: a real Chromium, a fake microphone, and the voice
   # pipeline from `getUserMedia` to barge-in.
   #

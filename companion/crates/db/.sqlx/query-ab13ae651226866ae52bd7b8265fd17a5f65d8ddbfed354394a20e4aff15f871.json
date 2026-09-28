@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM vector_collections WHERE model_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "ab13ae651226866ae52bd7b8265fd17a5f65d8ddbfed354394a20e4aff15f871"
+}

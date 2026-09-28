@@ -1,0 +1,10 @@
+[package]
+name = "latentpresence-db"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "latentPresence's MariaDB store: migrations, the memory schema and the embedding model registry."
+
+[dependencies]
+sqlx.workspace = true

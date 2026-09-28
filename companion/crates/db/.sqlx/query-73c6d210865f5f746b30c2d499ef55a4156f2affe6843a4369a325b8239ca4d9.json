@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT dimensions FROM model_registry WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dimensions",
+        "type_info": {
+          "type": "Short",
+          "flags": "NOT_NULL | UNSIGNED | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 5
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.model_registry",
+            "name": "dimensions"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "73c6d210865f5f746b30c2d499ef55a4156f2affe6843a4369a325b8239ca4d9"
+}

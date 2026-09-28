@@ -11,7 +11,7 @@
 
 use std::time::{Duration, Instant};
 
-use crate::db::{self, NewChunk};
+use latentpresence_db::{self as db, NewChunk};
 
 /// Rows per `INSERT`. Large enough that the round trip is amortised, small enough that the
 /// packet stays under MariaDB's default `max_allowed_packet` — 500 rows of 3 KB vectors is
@@ -53,7 +53,7 @@ fn summarise(mut times: Vec<Duration>) -> (f64, f64, f64) {
 /// The value is returned and never printed. Errors from here name the file, never the
 /// contents: a benchmark that echoes a password into a terminal has leaked it into scroll
 /// buffers, screenshots and whatever recorded the session.
-fn database_url() -> Result<String, String> {
+pub fn database_url() -> Result<String, String> {
     if let Ok(url) = std::env::var("DATABASE_URL")
         && !url.is_empty()
     {
@@ -173,7 +173,9 @@ async fn measure(pool: &sqlx::MySqlPool, label: &str) -> Result<(), db::DbError>
 async fn verify_storage_round_trip(
     pool: &sqlx::MySqlPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    sqlx::query("TRUNCATE TABLE chunks").execute(pool).await?;
+    sqlx::query("TRUNCATE TABLE bench_chunks")
+        .execute(pool)
+        .await?;
 
     let written = db::synthetic_embedding(4_242);
     db::insert_chunks(
@@ -233,7 +235,9 @@ pub async fn run(target_rows: usize) -> Result<(), Box<dyn std::error::Error>> {
     // Start from empty so a re-run measures the same thing twice. The benchmark owns this
     // table while it runs and empties it afterwards; it is the product's real schema
     // rather than a copy, so P4 inherits something that has been exercised.
-    sqlx::query("TRUNCATE TABLE chunks").execute(&pool).await?;
+    sqlx::query("TRUNCATE TABLE bench_chunks")
+        .execute(&pool)
+        .await?;
 
     // The row counts P0-T06 asks for, or whatever was requested if it is smaller than the
     // first. CI runs a couple of thousand rows against a service container: that proves
@@ -258,7 +262,9 @@ pub async fn run(target_rows: usize) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("\ncleaning up…");
-    sqlx::query("TRUNCATE TABLE chunks").execute(&pool).await?;
+    sqlx::query("TRUNCATE TABLE bench_chunks")
+        .execute(&pool)
+        .await?;
     pool.close().await;
     Ok(())
 }

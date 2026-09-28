@@ -10,9 +10,7 @@ use axum::{Json, Router, middleware, routing::get};
 use serde::Serialize;
 
 mod bench;
-mod db;
 mod relay;
-mod vector;
 
 const DEFAULT_PORT: u16 = 8787;
 
@@ -90,6 +88,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .and_then(|value| value.parse::<usize>().ok())
             .unwrap_or(100_000);
         return bench::run(rows).await;
+    }
+    // P4-T01: proves the memory schema on the server DATABASE_URL names - migrations, a
+    // model's vector table, the retrieval shape on its index, the cascades - and leaves
+    // nothing behind. CI runs it against a fresh MariaDB.
+    if args.get(1).map(String::as_str) == Some("memory-check") {
+        let pool = latentpresence_db::connect(&bench::database_url()?).await?;
+        for line in latentpresence_db::memory::self_check(&pool).await? {
+            println!("{line}");
+        }
+        return Ok(());
     }
 
     let address = bind_address();

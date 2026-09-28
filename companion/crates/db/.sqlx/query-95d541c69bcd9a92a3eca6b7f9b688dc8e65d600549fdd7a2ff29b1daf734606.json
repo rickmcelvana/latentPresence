@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE vector_collections SET status = 'retired'\n         WHERE collection = ? AND status = 'active' AND model_id <> ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "95d541c69bcd9a92a3eca6b7f9b688dc8e65d600549fdd7a2ff29b1daf734606"
+}

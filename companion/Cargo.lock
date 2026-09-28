@@ -958,12 +958,20 @@ dependencies = [
  "axum",
  "futures-util",
  "http-body-util",
+ "latentpresence-db",
  "reqwest",
  "serde",
  "serde_json",
  "sqlx",
  "tokio",
  "tower",
+]
+
+[[package]]
+name = "latentpresence-db"
+version = "0.0.0"
+dependencies = [
+ "sqlx",
 ]
 
 [[package]]

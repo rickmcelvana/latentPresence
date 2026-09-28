@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO vector_collections (collection, model_id, table_name, created_at)\n         VALUES (?, ?, ?, UTC_TIMESTAMP(3))\n         ON DUPLICATE KEY UPDATE id = id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "0e362452b973e06f0629c5f5fbaff19d5b758f7661de2b78e145b8da6ca3ae93"
+}

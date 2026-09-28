@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO model_registry (purpose, provider, model, dimensions, created_at)\n         VALUES ('embedding', ?, ?, ?, UTC_TIMESTAMP(3))\n         ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "653bd53583096c57fe6d15fa7f7ccdc0fd346d16a298fa3b720431678aee91be"
+}

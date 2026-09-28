@@ -1,56 +1,13 @@
-//! The MariaDB side of the companion (ADR-05, ADR-17).
-//!
-//! Everything here is optional. A user without a database gets a companion that still
-//! answers `/health` and says so, because the web app decides whether to offer memory
-//! from that answer.
-//!
-//! The connection string is read from `DATABASE_URL` and **never printed**. sqlx's own
-//! errors are careful about this, but a `{:?}` on a `MySqlConnectOptions` is not, so
-//! errors out of this module are reduced to a message of our own before they go anywhere
-//! a log or an HTTP body might see them.
+//! P0-T06's measurement table, `bench_chunks` (`VECTOR(768)`, renamed from `chunks` by
+//! migration 0002 so the product's own `chunks` can take the name). `latentpresence-companion
+//! bench` is the only caller: it measures the index and the binary encoding against a real
+//! server, and CI runs it against every schema change.
 
-use std::time::{Duration, Instant};
+use sqlx::Row;
+use sqlx::mysql::MySqlPool;
 
-use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
-use sqlx::{Executor, Row};
-
-use crate::vector::{self, EMBEDDING_DIMENSIONS, VectorError};
-
-/// Migrations are compiled in, so a release binary carries its own schema and there is no
-/// "did you run the migrations" step for anyone to forget.
-static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
-
-#[derive(Debug)]
-pub enum DbError {
-    /// Connecting, migrating or querying failed. The message is sqlx's, which does not
-    /// contain credentials; the URL is never interpolated into it here.
-    Backend(String),
-    /// An embedding was the wrong shape. Caught before the round trip.
-    Vector(VectorError),
-}
-
-impl std::fmt::Display for DbError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Backend(message) => write!(f, "database error: {message}"),
-            Self::Vector(error) => write!(f, "{error}"),
-        }
-    }
-}
-
-impl std::error::Error for DbError {}
-
-impl From<sqlx::Error> for DbError {
-    fn from(error: sqlx::Error) -> Self {
-        Self::Backend(error.to_string())
-    }
-}
-
-impl From<VectorError> for DbError {
-    fn from(error: VectorError) -> Self {
-        Self::Vector(error)
-    }
-}
+use crate::DbError;
+use crate::vector::{self, EMBEDDING_DIMENSIONS};
 
 /// One row on the way in. `text` is kept beside the vector so retrieval is one statement:
 /// ADR-17 allows one round trip per turn, and a query that returns ids and then fetches
@@ -70,38 +27,6 @@ pub struct Hit {
     pub text: String,
     /// Cosine distance: smaller is nearer, 0 is identical.
     pub distance: f64,
-}
-
-/// Open the pool and bring the schema up to date.
-///
-/// The pool is small on purpose. The companion serves one person, and a large pool against
-/// a remote server buys nothing but connections to time out.
-pub async fn connect(url: &str) -> Result<MySqlPool, DbError> {
-    let pool = MySqlPoolOptions::new()
-        .max_connections(4)
-        .acquire_timeout(Duration::from_secs(10))
-        .connect(url)
-        .await?;
-    MIGRATOR
-        .run(&pool)
-        .await
-        .map_err(|error| DbError::Backend(error.to_string()))?;
-    Ok(pool)
-}
-
-/// Round-trip time, measured on its own so it can be subtracted from everything else.
-///
-/// `SELECT 1` is protocol and network and nothing else. It is measured separately because
-/// the interesting question in ADR-17 is how much of a retrieval is the wire — 0.43 ms on
-/// the LAN against 39.8 over the tunnel — and a single end-to-end figure cannot say.
-pub async fn round_trip(pool: &MySqlPool, samples: usize) -> Result<Vec<Duration>, DbError> {
-    let mut times = Vec::with_capacity(samples);
-    for _ in 0..samples {
-        let started = Instant::now();
-        pool.execute("SELECT 1").await?;
-        times.push(started.elapsed());
-    }
-    Ok(times)
 }
 
 /// Insert a batch in one statement.
@@ -126,8 +51,9 @@ pub async fn insert_chunks(pool: &MySqlPool, chunks: &[NewChunk]) -> Result<u64,
     // SQL unless it is wrapped in `AssertSqlSafe`, and an assertion that a string is safe
     // is exactly the thing that stops being true when someone edits it later. Nothing here
     // interpolates a value - `push_values` emits placeholders and binds.
-    let mut builder =
-        sqlx::QueryBuilder::<sqlx::MySql>::new("INSERT INTO chunks (doc_id, text, embedding) ");
+    let mut builder = sqlx::QueryBuilder::<sqlx::MySql>::new(
+        "INSERT INTO bench_chunks (doc_id, text, embedding) ",
+    );
     builder.push_values(
         chunks.iter().zip(encoded.iter()),
         |mut row, (chunk, bytes)| {
@@ -151,7 +77,7 @@ pub async fn nearest(pool: &MySqlPool, embedding: &[f32], k: u32) -> Result<Vec<
 
     let rows = sqlx::query(
         "SELECT id, doc_id, text, VEC_DISTANCE_COSINE(embedding, ?) AS distance
-         FROM chunks
+         FROM bench_chunks
          ORDER BY distance
          LIMIT ?",
     )
@@ -186,7 +112,7 @@ pub async fn explain_nearest(
 
     let rows = sqlx::query(
         "EXPLAIN SELECT id, doc_id, text, VEC_DISTANCE_COSINE(embedding, ?) AS distance
-         FROM chunks
+         FROM bench_chunks
          ORDER BY distance
          LIMIT ?",
     )
@@ -218,7 +144,7 @@ pub async fn explain_nearest(
 /// a storage-side surprise here would corrupt every embedding while every timing stayed
 /// beautiful.
 pub async fn fetch_embedding(pool: &MySqlPool, id: u64) -> Result<Vec<f32>, DbError> {
-    let row = sqlx::query("SELECT embedding FROM chunks WHERE id = ?")
+    let row = sqlx::query("SELECT embedding FROM bench_chunks WHERE id = ?")
         .bind(id)
         .fetch_one(pool)
         .await?;
@@ -229,7 +155,7 @@ pub async fn fetch_embedding(pool: &MySqlPool, id: u64) -> Result<Vec<f32>, DbEr
 /// The id of any row, so a caller has something to read back without assuming ids start
 /// at one — `TRUNCATE` resets `AUTO_INCREMENT`, but a shared database might not have.
 pub async fn any_id(pool: &MySqlPool) -> Result<Option<u64>, DbError> {
-    let row = sqlx::query("SELECT id FROM chunks LIMIT 1")
+    let row = sqlx::query("SELECT id FROM bench_chunks LIMIT 1")
         .fetch_optional(pool)
         .await?;
     match row {
@@ -238,27 +164,9 @@ pub async fn any_id(pool: &MySqlPool) -> Result<Option<u64>, DbError> {
     }
 }
 
-/// The MHNSW tuning the server is actually running, as `name=value` pairs.
-///
-/// Reported beside every latency. `mhnsw_ef_search` trades recall for speed at query time,
-/// so a fast number at a low `ef_search` is a fast number for a worse answer, and a
-/// latency quoted without it cannot be compared with anyone else's.
-pub async fn mhnsw_settings(pool: &MySqlPool) -> Result<String, DbError> {
-    let rows = sqlx::query("SHOW VARIABLES LIKE 'mhnsw%'")
-        .fetch_all(pool)
-        .await?;
-    let mut pairs = Vec::with_capacity(rows.len());
-    for row in &rows {
-        let name: String = row.try_get("Variable_name")?;
-        let value: String = row.try_get("Value")?;
-        pairs.push(format!("{name}={value}"));
-    }
-    Ok(pairs.join(", "))
-}
-
 /// How many rows are in the table, for the benchmark's own bookkeeping.
 pub async fn count(pool: &MySqlPool) -> Result<i64, DbError> {
-    let row = sqlx::query("SELECT COUNT(*) AS n FROM chunks")
+    let row = sqlx::query("SELECT COUNT(*) AS n FROM bench_chunks")
         .fetch_one(pool)
         .await?;
     Ok(row.try_get("n")?)
@@ -360,19 +268,5 @@ mod tests {
         let similarity = cosine_similarity(&synthetic_embedding(99), &synthetic_embedding(99));
 
         assert!((similarity - 1.0).abs() < 1e-5, "{similarity}");
-    }
-
-    #[test]
-    fn errors_never_carry_the_connection_string() {
-        // The one thing this module must not leak. `DbError` is built from sqlx's message
-        // and from our own; neither has ever seen the URL.
-        let error = DbError::from(VectorError::Dimensions {
-            expected: 768,
-            found: 3,
-        });
-
-        let rendered = error.to_string();
-        assert!(!rendered.contains("mysql://"), "{rendered}");
-        assert!(rendered.contains("768"), "{rendered}");
     }
 }
