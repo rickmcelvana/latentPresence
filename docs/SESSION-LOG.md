@@ -626,3 +626,9 @@ Left: R-26 (Rick, in progress); laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P4-T05 memory browser.
 Decisions: ADR-38 accepted, amended on acceptance (default: this browser, not automatic).
 
+## 2026-09-28 claude — P4-T05 memory browser
+Did: contract (a0135f8): `listEpisodes`, hard `deleteFact`/`deleteEpisode` in protocol, companion routes (+ test), all stores, conformance 18/18 on MariaDB; kernel `deleteFact`/`correctFact`/`deleteEpisode`/`listEpisodes`/`searchEpisodes`; `attachMemory.lastInjected`. Panel by a Sonnet subagent (c6b6acf); checked live in the Browser pane. 1440 tests.
+Left: push (61525ab onward unconfirmed on CI); ADR-39 for Rick; R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T06 self-model blocks and mood persistence.
+Decisions: ADR-39 proposed (deletes are deletes; a fact outlives its deleted turn; edits through the kernel). Panel state resets when the drawer switches view — accepted as is.
+
