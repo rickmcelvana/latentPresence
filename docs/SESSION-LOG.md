@@ -607,3 +607,9 @@ Did: `pnpm live:chat-cut` — 40 messages × 2 runs, real persona prompt, raw SS
 Left: nothing new.
 Next: P4-T04 as before.
 Decisions: no change to /chat. Reasoning off was ~540 ms faster to first character (1771 vs 2310 ms median) with similar answers — offered to Rick as a latency option, not adopted.
+
+## 2026-09-28 claude — P4-T04 MemoryStore adapters
+Did: ADR-37 accepted. Companion `dbExpireFact`/`dbCurrentFacts` (+ test, sqlx cache); conformance suite (16 cases) and `MemoryStoreError`; brief; Sonnet subagent built `CompanionMemoryStore`, `IndexedDbMemoryStore`, `SqliteMemoryStore` stub, `local-search.ts`. All pass the suite; companion against the dev MariaDB twice; CI vector job runs it. e54a726, 1400 tests.
+Left: push for CI (3 commits ahead); laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T04b memory in `/chat` (proposed; ADR first), then P4-T05.
+Decisions: a second expiry keeps the first (all stores). Suite data cleaned by `cargo test … -- --ignored remove_conformance_data`. P4-T04b proposed: facts from the kernel cache, episodes recalled one turn behind, nothing awaited on the speaking path.

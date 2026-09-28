@@ -283,6 +283,10 @@ Depends: P4-T02. `mariadb` (companion client), `indexeddb` (web-only, brute-forc
 Done when: the adapter conformance test suite passes for both implemented stores.
 **Met:** the conformance suite (`@latentpresence/core/memory-conformance`, 16 cases: namespaces, idempotent episodes, the asking session left out, `since` and limits, facts upserted, superseded, expired, `not_found`, blocks, versioned plans with `conflict`, schedules where kept, vectors nearest first and `vectorSearch`'s reasons) passes on `FakeMemoryStore`, `IndexedDbMemoryStore` (fake-indexeddb) and `CompanionMemoryStore` against a running companion on the dev MariaDB 11.8.8 — twice, over the first run's leftovers; CI's `vector` job runs it too. The companion gained `dbExpireFact` (a second expiry keeps the first) and `dbCurrentFacts`; every refusal is a `MemoryStoreError` with the contract's code. Local ranking moved to `local-search.ts`, shared by the fake and IndexedDB. Adapters by a Sonnet subagent from the brief; the architect wrote the routes, the suite and the errors.
 
+### P4-T04b Memory in the call — owner: main
+Added 2026-09-28 (proposed; flagged in the session note): the stores and the kernel exist but nothing in `/chat` remembers. One `MemoryKernel` per `/chat` page over the store settings choose (IndexedDB by default; the companion when its `/health` says a database is connected), fed by the bus (the user's turn; the assistant's **heard** text, P1-T12b), extraction on the page's model with reasoning off (ADR-37). The prompt gains a memory section: known facts from the kernel's cache (no round trip), and past turns recalled in the background after each user message — one turn behind, never awaited on the speaking path (ADR-17, ADR-25). Needs an ADR (the prompt field is protocol).
+Done when: in `/chat`, a fact told in one visit ("my sister is Priya") is used in the next visit's answer, on both stores, with no change to time-to-first-audio.
+
 ### P4-T05 Memory browser UI — owner: sub
 List, search, edit, delete facts and turns; show what was injected into the last prompt.
 Done when: deleting a fact removes it from the next retrieval.
