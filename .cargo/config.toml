@@ -1,8 +1,8 @@
-# The companion's query! macros check SQL against the committed cache in
-# companion/crates/db/.sqlx (ADR-35), never a live database: the repo's .env carries a
-# DATABASE_URL for the running companion, and without this every build on a machine that
+# The companion's `query!` macros check SQL against the committed cache in
+# `companion/crates/db/.sqlx` (ADR-35), never a live database: the repo's `.env` carries a
+# `DATABASE_URL` for the running companion, and without this every build on a machine that
 # can reach it would compile against it (and fail on one that cannot). Not forced, so
-# SQLX_OFFLINE=false in the environment wins - which is how the cache is refreshed and
+# `SQLX_OFFLINE=false` in the environment wins - which is how the cache is refreshed and
 # how CI checks it.
 [env]
 SQLX_OFFLINE = "true"

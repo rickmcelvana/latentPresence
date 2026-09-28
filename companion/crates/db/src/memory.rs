@@ -362,7 +362,7 @@ fn check(condition: bool, what: &str) -> Result<(), DbError> {
 async fn exercise(pool: &MySqlPool, table: &str) -> Result<Vec<String>, DbError> {
     let mut report = Vec::new();
     let session = sqlx::query(
-        "INSERT INTO sessions (character_id, started_at) VALUES ('memory-check', UTC_TIMESTAMP(3))",
+        "INSERT INTO sessions (uid, character_id, started_at) VALUES ('memory-check-session', 'memory-check', UTC_TIMESTAMP(3))",
     )
     .execute(pool)
     .await?
@@ -377,9 +377,10 @@ async fn exercise(pool: &MySqlPool, table: &str) -> Result<Vec<String>, DbError>
     .enumerate()
     {
         let turn = sqlx::query(
-            "INSERT INTO turns (session_id, character_id, seq, role, text, created_at)
-             VALUES (?, 'memory-check', ?, 'user', ?, UTC_TIMESTAMP(3))",
+            "INSERT INTO turns (uid, session_id, character_id, seq, role, text, created_at)
+             VALUES (?, ?, 'memory-check', ?, 'user', ?, UTC_TIMESTAMP(3))",
         )
+        .bind(format!("memory-check-turn-{seq}"))
         .bind(session)
         .bind(seq as u32)
         .bind(format!("turn {seq}"))

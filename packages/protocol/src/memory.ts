@@ -4,16 +4,51 @@ import type { MemoryCapabilities } from './capabilities';
 import { DurationMsSchema, IdSchema, TimestampSchema, UnitIntervalSchema } from './common';
 import type { Schedule } from './schedule';
 
-/** One turn of one conversation, the raw material everything else is distilled from. */
+/**
+ * An embedding model as the store knows it (ADR-35): where it runs, its name, its width. The
+ * same name from two providers is two models — they may quantise differently. 16383 is
+ * MariaDB's `VECTOR` limit.
+ */
+export const EmbeddingModelRefSchema = z.object({
+  /** An endpoint preset (`ollama`, `openai`, …) or `browser`. */
+  provider: z.string().min(1).max(128),
+  model: z.string().min(1).max(255),
+  dimensions: z.number().int().min(1).max(16_383),
+});
+export type EmbeddingModelRef = z.infer<typeof EmbeddingModelRefSchema>;
+
+/**
+ * A vector and the model that made it (ADR-36). A bare array cannot say which space it lives
+ * in, and a store keeps one vector table per model (ADR-35), so every vector travels with its
+ * model.
+ */
+export const EmbeddingSchema = z
+  .object({
+    model: EmbeddingModelRefSchema,
+    vector: z.array(z.number()),
+  })
+  .refine((embedding) => embedding.vector.length === embedding.model.dimensions, {
+    message: 'the vector must have exactly the model’s dimensions',
+    path: ['vector'],
+  });
+export type Embedding = z.infer<typeof EmbeddingSchema>;
+
+/**
+ * One turn of one conversation, the raw material everything else is distilled from. Ids are
+ * made by the caller (ADR-36), so a write never has to be awaited to be referred to.
+ */
 export const MemoryEpisodeSchema = z.object({
   id: IdSchema,
   sessionId: IdSchema,
   characterId: IdSchema,
-  role: z.enum(['user', 'assistant', 'system']),
+  role: z.enum(['user', 'assistant']),
+  /** For the assistant, what the user **heard** (P1-T12b): an interrupted answer's spoken prefix. */
   text: z.string(),
+  /** The answer was cut off by the user; `text` is what reached them. */
+  interrupted: z.boolean(),
   at: TimestampSchema,
   /** Omitted on the way out: vectors are large and nothing in the UI reads them. */
-  embedding: z.array(z.number()).nullable(),
+  embedding: EmbeddingSchema.nullable(),
   /** How the user seemed when they said it, for the episodes where we measured. */
   affect: UserAffectSchema.nullable(),
 });
@@ -38,6 +73,8 @@ export const SemanticFactSchema = z.object({
   /** When we recorded it, which is a different question from when it was true. */
   recordedAt: TimestampSchema,
   sourceEpisodeId: IdSchema.nullable(),
+  /** As on an episode: in on the way in, null on the way out. */
+  embedding: EmbeddingSchema.nullable(),
 });
 export type SemanticFact = z.infer<typeof SemanticFactSchema>;
 
@@ -106,7 +143,8 @@ export const RetrievalRequestSchema = z.object({
   characterId: IdSchema,
   sessionId: IdSchema,
   query: z.string(),
-  queryEmbedding: z.array(z.number()).nullable(),
+  /** Searched only if its model is the active one for the collection (ADR-35). */
+  queryEmbedding: EmbeddingSchema.nullable(),
   limits: z.object({
     episodes: z.number().int().min(0).max(100),
     facts: z.number().int().min(0).max(100),
@@ -127,6 +165,12 @@ export const RetrievalBundleSchema = z.object({
   facts: z.array(SemanticFactSchema),
   blocks: z.array(SelfModelBlockSchema),
   documents: z.array(DocumentHitSchema),
+  /**
+   * Whether the vectors took part, and if not why: the keyword half always does. `other-model`
+   * means the query was embedded with a model that is not the active one — re-embed it, or
+   * finish the re-index (ADR-35).
+   */
+  vectorSearch: z.enum(['used', 'no-query-embedding', 'no-active-model', 'other-model']),
   /** Measured at the store, so the round trip can be told apart from the query. */
   elapsedMs: DurationMsSchema,
 });

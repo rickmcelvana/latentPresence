@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { IdSchema, JsonObjectSchema, TimestampSchema } from './common';
 import { ToolResultSchema } from './conversation';
 import {
+  EmbeddingModelRefSchema,
   MemoryEpisodeSchema,
   PlanDocumentSchema,
   RetrievalBundleSchema,
@@ -21,7 +22,8 @@ import { ScheduleRunSchema, ScheduleSchema } from './schedule';
 /** One error shape for every route, so the client has one thing to handle. */
 export const CompanionErrorSchema = z.object({
   error: z.object({
-    code: z.enum(['bad_request', 'not_found', 'unavailable', 'database', 'internal']),
+    /** `conflict`: a plan saved over a newer version (ADR-36). `unavailable`: no database. */
+    code: z.enum(['bad_request', 'not_found', 'conflict', 'unavailable', 'database', 'internal']),
     message: z.string().min(1),
     details: JsonObjectSchema.nullable(),
   }),
@@ -44,6 +46,25 @@ export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 export const SupersedeFactRequestSchema = z.object({
   id: IdSchema,
   validTo: TimestampSchema,
+});
+
+/**
+ * The embedding model the kernel writes with (ADR-35, ADR-36). Registering creates each
+ * collection's vector table for it; a collection with no active model makes this one active,
+ * and one that has another stays on it until `dbActivateCollection` — a re-index fills the new
+ * table first.
+ */
+export const VectorCollectionStatusSchema = z.object({
+  collection: z.enum(['turns', 'facts', 'chunks']),
+  status: z.enum(['building', 'active', 'retired']),
+});
+export const RegisterEmbeddingModelResponseSchema = z.object({
+  modelId: IdSchema,
+  collections: z.array(VectorCollectionStatusSchema),
+});
+export const ActivateCollectionRequestSchema = z.object({
+  collection: z.enum(['turns', 'facts', 'chunks']),
+  model: EmbeddingModelRefSchema,
 });
 
 export const BlocksQuerySchema = z.object({ characterId: IdSchema });
@@ -161,6 +182,22 @@ export const companionRoutes = {
     params: null,
     query: null,
     request: SupersedeFactRequestSchema,
+    response: okSchema,
+  },
+  dbRegisterEmbeddingModel: {
+    method: 'PUT',
+    path: '/db/embedding-models',
+    params: null,
+    query: null,
+    request: EmbeddingModelRefSchema,
+    response: RegisterEmbeddingModelResponseSchema,
+  },
+  dbActivateCollection: {
+    method: 'POST',
+    path: '/db/collections/activate',
+    params: null,
+    query: null,
+    request: ActivateCollectionRequestSchema,
     response: okSchema,
   },
   dbReadBlocks: {

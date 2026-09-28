@@ -192,7 +192,7 @@ Newest first. Each line is the outcome, not the instructions — the detail is i
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
 - **D-38 · R-25: does she listen like she means it?** — Rick 2026-09-27: **passed** — **no
-  reaction contradicted Rick's tone**; the amount \"seems right". P3-T08's done-when is met with
+  reaction contradicted Rick's tone**; the amount "seems right". P3-T08's done-when is met with
   the parameters unchanged.
 - **D-37 · R-24: does she read you, in a real call?** — Rick 2026-09-27: **passed** — after
   the restart with `--force` (417de44). **`fused` followed Rick's expressions; talking alone

@@ -37,7 +37,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-32 | The model reads the user with an inline `[user:x]` tag, first in its reply; `InlineTagKind` gains `user` (additive) | accepted | 2026-09-24 |
 | ADR-33 | Voice emotion: the emotion2vec+ web distill (9.7 MB, wasm) by default, emotion2vec+ base (373 MB, WebGPU, last 1.5 s) as the accurate option; FunASR Model Licence 1.1 | accepted | 2026-09-24 |
 | ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | accepted | 2026-09-25 |
-| ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | proposed | 2026-09-27 |
+| ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
+| ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | proposed | 2026-09-27 |
 
 ---
 
@@ -1002,7 +1003,7 @@ cards (BlazeFace short range, Face Mesh V2, Blendshape V2) say **Apache-2.0**; t
 card's intended use is AR avatars, and it says the output is not identification and stores no
 face representation. The wasm (11.2 MB) is ours, served with the app, and not a model.
 
-## ADR-35 Memory schema: a vector table per collection and embedding model; `query!` checked offline (proposed 2026-09-27)
+## ADR-35 Memory schema: a vector table per collection and embedding model; `query!` checked offline (accepted 2026-09-27)
 
 **Context.** P4-T01 asks for "vector columns with dimension per collection; HNSW indexes".
 Embeddings are bring-your-own (RESEARCH §6): 768 wide for nomic-embed-text, 1024 for bge-m3,
@@ -1043,3 +1044,39 @@ migrated `DATABASE_URL`. The vector tables' statements stay dynamic because thei
 the documents' chunks can take the name; memory is namespaced by `character_id` on every row;
 times are `DATETIME(3)` UTC written by the companion; facts are bi-temporal (`valid_from`/
 `valid_to` in the world, `recorded_at`/`expired_at` in the store, `supersedes`).
+
+## ADR-36 The companion's memory contract meets the schema (proposed 2026-09-27)
+
+**Context.** `packages/protocol`'s memory shapes and route table were written in P0-T02,
+before any store existed. P4-T02 implements them over P4-T01's schema, and they disagreed on
+four things. Nothing produced or consumed these routes yet, so the changes break no running
+code and `PROTOCOL_VERSION` stays 1.
+
+**Decisions.**
+
+1. **Ids are the caller's.** `IdSchema` stays an opaque string; the store keeps it as `uid`
+   beside an integer primary key the vector tables' foreign keys use and nothing outside the
+   companion sees (migration 0003). Writes never block the speaking path (ADR-17), and the
+   kernel still has to say "this fact came from that turn" — so it must know the id without
+   waiting for an insert.
+2. **A vector travels with its model**: `EmbeddingSchema` is `{ model: { provider, model,
+   dimensions }, vector }`, the length checked against `dimensions`. A bare array cannot say
+   which space it is in, and a store keeps one vector table per model (ADR-35). Episodes,
+   facts and the retrieval query carry one; `PUT /db/embedding-models` registers a model (the
+   first for a collection becomes active), `POST /db/collections/activate` switches after a
+   re-index. `RetrievalBundle.vectorSearch` says whether the vectors took part and why not
+   (`no-query-embedding`, `no-active-model`, `other-model`); the keyword half always runs.
+3. **An episode is a user or assistant turn, with `interrupted`.** `system` is gone — the
+   system prompt is rebuilt every turn and is not memory — and an assistant turn's text is what
+   the user heard (P1-T12b), so the store needs to know when that was a cut-off answer.
+4. **Plans save whole, versioned**: a save must carry the stored version plus one, or it fails
+   with the new error code `conflict` — "an edit made in the panel cannot silently lose one",
+   as the schema already promised. Blocks gain `editable_by_character` in the table.
+
+**The contract is checked in both languages.** `companionOpenApi()` generates OpenAPI 3.1 from
+`companionRoutes`; the committed `generated/companion.openapi.json` fails a test when it
+drifts (`pnpm openapi` rewrites it), and the companion's integration tests validate every
+response body against its component schema.
+
+**Not changed yet:** `IngestRequest`'s `embeddingModelId` and `dimensions` (P5 moves them to
+`EmbeddingModelRef`), and schedules (P6-T07).

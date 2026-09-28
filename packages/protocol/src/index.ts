@@ -23,6 +23,7 @@ export * from './capabilities';
 export * from './memory';
 export * from './avatar';
 export * from './companion';
+export * from './openapi';
 
 export * from './providers/shared';
 export * from './providers/llm';

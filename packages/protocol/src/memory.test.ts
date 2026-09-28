@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EmbeddingSchema,
   MemoryEpisodeSchema,
   PlanDocumentSchema,
   RetrievalBundleSchema,
@@ -16,6 +17,7 @@ describe('MemoryEpisodeSchema', () => {
       characterId: 'alice',
       role: 'user',
       text: 'I moved to Halifax last month.',
+      interrupted: false,
       at: '2026-09-08T10:00:00Z',
       embedding: null,
       affect: null,
@@ -52,6 +54,7 @@ describe('SemanticFactSchema', () => {
     validTo: null,
     recordedAt: '2026-09-08T10:00:00Z',
     sourceEpisodeId: 'ep-1',
+    embedding: null,
   };
 
   it('keeps both time axes apart', () => {
@@ -150,10 +153,28 @@ describe('retrieval', () => {
           source: '/home/rick/notes/lease.md',
         },
       ],
+      vectorSearch: 'used',
       elapsedMs: 42,
     };
     expect(RetrievalBundleSchema.parse(bundle)).toEqual(bundle);
     const { elapsedMs: _dropped, ...withoutElapsed } = bundle;
     expect(RetrievalBundleSchema.safeParse(withoutElapsed).success).toBe(false);
+  });
+});
+
+describe('EmbeddingSchema (ADR-36)', () => {
+  const model = { provider: 'ollama', model: 'nomic-embed-text', dimensions: 3 };
+
+  it('carries the model that made the vector', () => {
+    const embedding = { model, vector: [0.1, 0.2, 0.3] };
+    expect(EmbeddingSchema.parse(embedding)).toEqual(embedding);
+  });
+
+  it('refuses a vector that is not the model’s width, before it reaches a store', () => {
+    expect(EmbeddingSchema.safeParse({ model, vector: [0.1, 0.2] }).success).toBe(false);
+  });
+
+  it('refuses a width MariaDB cannot index', () => {
+    expect(EmbeddingSchema.safeParse({ model: { ...model, dimensions: 16_384 }, vector: [] }).success).toBe(false);
   });
 });
