@@ -613,3 +613,10 @@ Did: ADR-37 accepted. Companion `dbExpireFact`/`dbCurrentFacts` (+ test, sqlx ca
 Left: push for CI (3 commits ahead); laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P4-T04b memory in `/chat` (proposed; ADR first), then P4-T05.
 Decisions: a second expiry keeps the first (all stores). Suite data cleaned by `cargo test … -- --ignored remove_conformance_data`. P4-T04b proposed: facts from the kernel cache, episodes recalled one turn behind, nothing awaited on the speaking path.
+
+## 2026-09-28 claude — P4-T04b memory in the call; CI red since 09-22
+Did: CI's gate and e2e checkouts fetch LFS (5bf4ad3; clips and e2e fixture were pointers since 09-22). `PromptContext.memory`, `attachMemory`, Settings → Memory, `chooseMemoryStore`, session per visit; live on IndexedDB and companion/MariaDB with glm-5.2:cloud. 9dc964d, 1418 tests.
+Left: push (confirm CI green); ADR-38 for Rick; R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T05 memory browser.
+Decisions: ADR-38 proposed (note kept ready, recall one turn behind, never awaited; store per visit; session per visit). Live-check rows removed from the dev DB (6 facts, 2 sessions) and the pane's IndexedDB.
+
