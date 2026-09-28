@@ -583,3 +583,9 @@ Did: R-24 passed (D-37). `ListeningReactor` (avatar, pure): listening face from 
 Left: R-25 (P3-T08's done-when); laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
 Next: R-25, then P4-T01.
 Decisions: angry/disgusted get concern, not a mirrored face (D-36); confidence 0.1 floor, full at 0.4; settle 600 ms; nod interval 3.5 s; emphasis 4–10 dB over an 8 s baseline. D-36's "he" corrected to Rick. Browser pane drew 0 frames (window minimized): only the fused input (sad 0.60) was checked live.
+
+## 2026-09-27 claude — R-25 recorded; P4-T01 memory schema
+Did: R-25 passed (D-38), Phase 3's tasks all done. `companion/crates/db` (latentpresence-db): migrations moved, 0002 memory schema, `memory` (model registry, per-collection-per-model vector tables, `self_check`); `memory-check` subcommand; `query!` + committed `.sqlx`, `.cargo/config.toml` SQLX_OFFLINE; CI vector job runs memory-check and `sqlx prepare --check`. Applied to the dev MariaDB. c900e09.
+Left: ADR-35 (proposed) for Rick; CI's new steps unrun until a push; laptop session (R-13, R-1, R-9); R-3; C-7; Anthropic credit.
+Next: P4-T02 companion memory API (sub; write the brief), then P4-T03.
+Decisions: ADR-35 proposed — vectors per collection and model, created from `model_registry`; retrieval nearest-first in a subquery (a filtered join skips the index, measured); `query!` offline. `chunks` renamed `bench_chunks`. sqlx-cli 0.9.0 installed on this machine.

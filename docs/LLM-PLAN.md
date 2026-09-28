@@ -248,10 +248,10 @@ Depends: P3-T04..06. Fuse channels with confidence weighting into `UserAffect`; 
 Done when: the debug overlay shows fused state; a recorded session reproduces deterministically.
 **Met:** `/chat?affect` shows each source, the fused state, what she was told and her mood (checked live against glm-5.2:cloud). `replayFusion` reproduces a recording exactly — equal to what the live bus published in a test, and two fixtures (one scripted, one copied from `/chat`) replay to golden values. The engine takes `affect.user.updated` once per turn; the prompt gets `PromptContext.userAffect` as one line at ≥ 0.35. The call reads voice beside recognition on the same audio.
 
-### P3-T08 Reactive listening — owner: main (built 2026-09-27; `packages/avatar/src/listening`; the done-when is R-25)
+### P3-T08 Reactive listening — owner: main (done 2026-09-27; `packages/avatar/src/listening`; R-25 passed, D-38)
 Depends: P3-T07, P1-T09. Expressions and backchannels during user speech keyed to user affect and prosody.
 Done when: reviewer cannot spot a reaction that contradicts the user's tone in a 5-minute test.
-**Built:** `ListeningReactor` — her face while the user holds the floor from the fusion's live estimate (warm / surprised / concern / serious, never a smile at someone upset or anger back), her own mood's contradicting parts damped; nods at pauses Smart Turn judged unfinished (a tilt for someone sad) and with every backchannel; loudness against the speaker's level as emphasis; backchannel words chosen to fit (`BackchannelScheduler.prefer`). A seeded property test holds the done-when's rule on 300 random runs (mutation-checked). **The reviewer is Rick: R-25.**
+**Built:** `ListeningReactor` — her face while the user holds the floor from the fusion's live estimate (warm / surprised / concern / serious, never a smile at someone upset or anger back), her own mood's contradicting parts damped; nods at pauses Smart Turn judged unfinished (a tilt for someone sad) and with every backchannel; loudness against the speaker's level as emphasis; backchannel words chosen to fit (`BackchannelScheduler.prefer`). A seeded property test holds the done-when's rule on 300 random runs (mutation-checked). **R-25 passed** (D-38): no reaction contradicted Rick's tone; the amount "seems right".
 
 ---
 
@@ -263,9 +263,10 @@ Added 2026-09-24 (proposed; flagged in the session note): nothing in `/chat` run
 Done when: in a live call a run of `[emote:sadness]` answers visibly lowers her resting face and gaze habit and it drifts back over minutes; with the engine at baseline `/chat` looks as it does today.
 **Built:** `attachAffect` (core); the prompt rendered per request; `voiceStyle` on Speak replies and the call; `CallStage` face and gaze relative to the baseline (a test proves the baseline frames are identical to no affect). Typed text answers now put sentences on the bus, so their tags count. Browser pane vs glm-5.2:cloud: after a run of sad-tagged replies the prompt said *"tired and slow and unsure of yourself, and right now sad … a sentence or two"*; the face change in a screenshot was slight. **R-20 passed** (D-32): same at baseline, low face and gaze after a sad run, replies slower, back towards herself over ten minutes.
 
-### P4-T01 Companion db crate and migrations — owner: main
+### P4-T01 Companion db crate and migrations — owner: main (done 2026-09-27; `companion/crates/db`, ADR-35 proposed)
 Tables: `sessions`, `turns`, `turn_embeddings`, `facts` (subject, predicate, object, valid_from, valid_to, confidence, source_turn), `self_blocks`, `plans`, `plan_items`, `documents`, `chunks`, `model_registry`. Vector columns with dimension per collection; HNSW indexes.
 Done when: migrations apply on MariaDB 11.8; sqlx offline checks pass in CI.
+**Met locally, CI on the next push:** 0002 applied to the dev MariaDB 11.8.8 (4.7 s); `memory-check` passes there (a model's vector table, nearest-first retrieval on the index, cascades, nothing left behind). Vectors live in a table per collection and model from `model_registry` (ADR-35), because MariaDB fixes a vector's width per table. Static SQL is `query!` against the committed `.sqlx`; every build is offline (`.cargo/config.toml`) and an edited query fails until the cache is refreshed; CI's `vector` job runs `memory-check` and `cargo sqlx prepare --check` against MariaDB 11.8.8.
 
 ### P4-T02 Companion memory API — owner: sub
 Depends: P4-T01. REST and WS endpoints for turns, facts (with supersede), self blocks, plans, search (hybrid: vector plus keyword).

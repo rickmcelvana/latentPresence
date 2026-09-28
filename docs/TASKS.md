@@ -169,21 +169,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-25 · Does she listen like she means it? · ~10 minutes
-**Why:** P3-T08's done-when — "a reviewer cannot spot a reaction that contradicts the user's
-tone in a five-minute test". The Browser pane has no microphone or camera, so only you can.
-1. Your dev server picks the change up by itself; if Start voice hangs, restart it with
-   `pnpm --filter @latentpresence/web exec vite --force` and hard-reload (Ctrl+Shift+R).
-   Open `http://localhost:5173/chat?affect`.
-2. **Read my face** (agree), then **Start voice**.
-3. Talk for about five minutes, with pauses mid-thought: something good, something annoying,
-   something sad. **Watch her while you talk**, not while she answers: her face, her nods and
-   head tilts, and which word she says when she backchannels. The overlay's new line,
-   `listening: …`, says what she thinks she is reacting to.
-4. Tell me: **did any reaction contradict your tone?** (a smile while you were upset, a frown
-   or an "Oh." that sounded wrong while you were happy, a nod at the wrong moment). Also:
-   too much, too little, or about right?
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -206,6 +191,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-38 · R-25: does she listen like she means it?** — Rick 2026-09-27: **passed** — **no
+  reaction contradicted Rick's tone**; the amount \"seems right". P3-T08's done-when is met with
+  the parameters unchanged.
 - **D-37 · R-24: does she read you, in a real call?** — Rick 2026-09-27: **passed** — after
   the restart with `--force` (417de44). **`fused` followed Rick's expressions; talking alone
   kept the face row neutral** (the speaking half-weight does its job); **she kept up while

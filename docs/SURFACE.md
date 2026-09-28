@@ -2086,3 +2086,32 @@ the package ships no LICENSE file). Measured offline in the Browser pane with
   hang; `workerPort` now turns `error` into each protocol's load error.
 - **Headless Chromium in Playwright has no WebGPU adapter** ("No available adapters"), so
   `/chat`'s voice cannot be driven there; it says so in a sentence (P1-T15's `kokoroSupport`).
+
+## MariaDB for the memory schema — verified 2026-09-27 (P4-T01)
+
+Against the development server (**MariaDB 11.8.8**, LAN), by a throwaway probe and then by
+`latentpresence-companion memory-check`:
+
+- **A vector table can carry a foreign key with `ON DELETE CASCADE`** to the table its rows
+  index; deleting the parent removed the vectors from an 8-wide and a 16-wide table at once.
+  An insert with no parent is refused (1452).
+- **A join filtered on the parent does not use the vector index.** `SELECT … FROM vec v JOIN
+  items i … WHERE i.character_id = ? ORDER BY VEC_DISTANCE_COSINE(v.embedding, ?) LIMIT 8`
+  plans `i` by `character_idx` with *Using temporary; Using filesort* and `v` by primary
+  key: every distance computed. **Nearest first in a derived table** — `FROM (SELECT item_id,
+  VEC_DISTANCE_COSINE(…) AS d FROM vec ORDER BY d LIMIT k) k JOIN items …` — plans the derived
+  table with `key=embedding`. Same answers either way on 3000 rows; only one of them scales.
+- **`RENAME TABLE` keeps a vector index working** (`EXPLAIN` still names `embedding`), and
+  the foreign key keeps its original constraint name.
+- **Vector and `FULLTEXT` hits in one statement** (`UNION ALL` of the derived-table search
+  and a `MATCH … AGAINST`) run as one round trip — ADR-17's one-call rule holds for hybrid
+  search.
+- **sqlx 0.9.0's macros** compile MySQL `query!` against a `.sqlx` cache written by
+  `cargo sqlx prepare` (sqlx-cli 0.9.0, `--features mysql,rustls`) in the crate directory;
+  with `SQLX_OFFLINE=true` a build with an unreachable `DATABASE_URL` succeeds, and an edited
+  query fails with *no cached data for this query*. `SMALLINT UNSIGNED` maps to `u16`, `INT
+  UNSIGNED` to `u32`, `ENUM` to `String`. Cargo's `[env]` does not override a variable
+  already in the environment unless `force = true`, so `SQLX_OFFLINE=false` wins for
+  `prepare`.
+- The migration moved from `crates/server` to `crates/db` unchanged; sqlx matched its
+  checksum (`migrate info`: 1 installed, 2 pending) and applied 0002 in 4.7 s.

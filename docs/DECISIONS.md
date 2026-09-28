@@ -37,6 +37,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-32 | The model reads the user with an inline `[user:x]` tag, first in its reply; `InlineTagKind` gains `user` (additive) | accepted | 2026-09-24 |
 | ADR-33 | Voice emotion: the emotion2vec+ web distill (9.7 MB, wasm) by default, emotion2vec+ base (373 MB, WebGPU, last 1.5 s) as the accurate option; FunASR Model Licence 1.1 | accepted | 2026-09-24 |
 | ADR-34 | Face reading: MediaPipe Face Landmarker pinned to tasks-vision 0.10.35, the last release without telemetry; a request guard in the worker and a test on the installed bundle | accepted | 2026-09-25 |
+| ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | proposed | 2026-09-27 |
 
 ---
 
@@ -1000,3 +1001,45 @@ the logger's endpoint or key getter; `e2e/face.spec.ts` asserts no request to th
 cards (BlazeFace short range, Face Mesh V2, Blendshape V2) say **Apache-2.0**; the Blendshape
 card's intended use is AR avatars, and it says the output is not identification and stores no
 face representation. The wasm (11.2 MB) is ours, served with the app, and not a model.
+
+## ADR-35 Memory schema: a vector table per collection and embedding model; `query!` checked offline (proposed 2026-09-27)
+
+**Context.** P4-T01 asks for "vector columns with dimension per collection; HNSW indexes".
+Embeddings are bring-your-own (RESEARCH §6): 768 wide for nomic-embed-text, 1024 for bge-m3,
+1536 or 3072 for OpenAI's. MariaDB fixes a `VECTOR(N)` column's width when the table is
+created, requires it `NOT NULL` when indexed, and allows **one vector index per table**. The
+plan's done-when also asks for "sqlx offline checks", while `companion/Cargo.toml` had ruled
+the `query!` macros out because they wanted a database at build time.
+
+**Options for the vectors.** (a) A vector column on `turns`/`facts`/`chunks` at a fixed
+width — every user must pick a model of that width, and a model change is an `ALTER` of the
+live table. (b) One padded width for all — cosine is unchanged by zero padding, but one index
+would mix models whose spaces mean different things, and every row pays for the widest. (c)
+**A vector table per collection and model** — `turn_embeddings_<model id>` (`item_id`,
+`embedding VECTOR(width)`, its HNSW index, a foreign key cascading from the row), created
+when the model is registered in `model_registry`; `vector_collections` records each table as
+`building`, `active` or `retired`.
+
+**Decision: (c).** A new model builds its table beside the old one and is switched to
+`active` in one transaction when it is full, so a re-index never takes memory away; deleting a
+turn, fact or chunk takes its vectors with it in every width (verified live 2026-09-27). Table
+names come from integer ids, never user text. **Retrieval must search in a subquery and join
+outside it:** measured on 11.8.8, a join filtered by `character_id` with the distance order
+outside plans from the filter's index and computes every distance — correct and unindexed
+(`docs/SURFACE.md`). Filtering after the nearest-k therefore over-fetches; with many
+characters sharing one store, recall per character falls, and P4-T03 sets the over-fetch.
+
+**Options for the checks.** (a) Keep `sqlx::query` strings, checked only by running them. (b)
+**`query!` on the static tables, against a committed `.sqlx` cache**, with
+`SQLX_OFFLINE=true` in `.cargo/config.toml` — the repo's `.env` has a `DATABASE_URL`, and
+without it every build that could reach the server would compile against it and every one
+that could not would fail. **Decision: (b).** The gate needs no database on either OS; CI's
+`vector` job runs `cargo sqlx prepare --check` against MariaDB 11.8.8 after the migrations, so
+a schema change the cache has not seen fails there. Refreshing the cache after a query or
+schema change: `cargo sqlx prepare` in `companion/crates/db` with `SQLX_OFFLINE=false` and a
+migrated `DATABASE_URL`. The vector tables' statements stay dynamic because their names are.
+
+**Also decided:** P0-T06's `chunks` is renamed `bench_chunks` (its data and index intact) so
+the documents' chunks can take the name; memory is namespaced by `character_id` on every row;
+times are `DATETIME(3)` UTC written by the companion; facts are bi-temporal (`valid_from`/
+`valid_to` in the world, `recorded_at`/`expired_at` in the store, `supersedes`).
