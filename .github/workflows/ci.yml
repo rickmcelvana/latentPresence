@@ -20,6 +20,10 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
+        # The clips (P2-T03) and the e2e microphone fixture (P1-T14) are in LFS; without
+        # this they check out as 130-byte pointers, which failed every run from 2026-09-22.
+        with:
+          lfs: true
 
       - uses: pnpm/action-setup@v6
 
@@ -160,6 +164,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        # The clips (P2-T03) and the e2e microphone fixture (P1-T14) are in LFS; without
+        # this they check out as 130-byte pointers, which failed every run from 2026-09-22.
+        with:
+          lfs: true
 
       - uses: pnpm/action-setup@v6
 
