@@ -4,6 +4,7 @@ import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { LanguageModelSection } from './LanguageModelSection';
+import { MemorySection } from './MemorySection';
 import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
 
@@ -49,6 +50,8 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
       <VoiceSection deps={deps} onChange={(tts: TtsSettings) => setSettings((prev) => ({ ...prev, tts }))} tts={settings.tts} />
 
       <HearingSection deps={deps} onChange={(stt: SttSettings) => setSettings((prev) => ({ ...prev, stt }))} stt={settings.stt} />
+
+      <MemorySection memory={settings.memory} onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))} />
 
       <DownloadedModelsSection caches={deps.caches} consent={deps.consent} />
     </div>

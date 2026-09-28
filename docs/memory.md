@@ -56,6 +56,8 @@ A kernel belongs to one character; every read and write carries its `characterId
 
 - **Time-bound facts do not expire by themselves**: "Priya is visiting next weekend" stays
   current after the weekend. Extraction could give such facts a `validTo`.
-- **Not wired into `/chat`** yet. The stores exist (P4-T04): `CompanionMemoryStore` (MariaDB through the
-  companion), `IndexedDbMemoryStore` (the browser alone), `SqliteMemoryStore` (a stub until the desktop
-  app); all keep the rules in `@latentpresence/core/memory-conformance`.
+- **In `/chat` since P4-T04b (ADR-38):** `attachMemory` feeds the kernel from the bus and keeps a
+  note ready for the prompt — facts from the kernel's cache, past turns recalled in the background
+  one message behind — so no request waits on a store. Settings → Memory chooses where: automatic
+  (the companion when it has a database, else this browser), this browser, the companion, or off.
+  The stores (P4-T04) all keep the rules in `@latentpresence/core/memory-conformance`.

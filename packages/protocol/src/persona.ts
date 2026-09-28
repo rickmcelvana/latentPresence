@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { AffectStateSchema, UserAffectSchema } from './affect';
 import { IdSchema } from './common';
+import { MemoryEpisodeSchema, SemanticFactSchema } from './memory';
 
 /**
  * Who the character is, as a file (P1-T12).
@@ -83,6 +84,18 @@ export const PromptContextSchema = z.object({
    * Null, or a reading too weak to say, leaves the prompt exactly as it was.
    */
   userAffect: UserAffectSchema.nullable().default(null),
+  /**
+   * What she remembers of them (P4-T04b, ADR-38): the facts she believes and the earlier
+   * turns recalled for this one, rendered by core as two short lists. Null, or both empty,
+   * leaves the prompt exactly as it was before P4.
+   */
+  memory: z
+    .object({
+      facts: z.array(SemanticFactSchema),
+      episodes: z.array(MemoryEpisodeSchema),
+    })
+    .nullable()
+    .default(null),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
 /** What a caller passes: the nullable fields may be left out and mean null. */

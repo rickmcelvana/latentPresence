@@ -40,6 +40,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-35 | Memory schema: a vector table per collection and embedding model, created from a model registry; retrieval searches in a subquery; `query!` checked offline against a committed cache | accepted | 2026-09-27 |
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
 | ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
+| ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store chosen per visit (companion with a database, else IndexedDB); a session per visit | proposed | 2026-09-28 |
 
 ---
 
@@ -1118,3 +1119,37 @@ single-valued predicate, and expires facts under 0.35 confidence recorded more t
 **Held by** the thirty-turn replay: recorded from glm-5.2:cloud and played back, it yields the
 expected set — 12 of 12 facts believed, 5 of 5 replaced ones closed — and removing the
 single-valued rule, the `ended` handling or the never-began expiry each fails it.
+
+## ADR-38 Memory in the call: a note kept ready, never awaited (proposed 2026-09-28)
+
+**Context.** P4-T04b puts the memory kernel (ADR-37) into `/chat`. A request is built the moment
+a turn ends — on the spoken path before the turn is even confirmed (ADR-25) — and the system
+prompt is rendered by a pure function (P1-T12). A recall is a round trip to a store (ADR-17),
+possibly across a LAN. Waiting for it would put the database on the path to first audio.
+
+**Decisions.**
+
+1. **`PromptContext.memory`** (protocol, additive, nullable): `{ facts, episodes }` as the
+   protocol's own shapes; `renderSystemPrompt` renders them as a "WHAT YOU REMEMBER ABOUT THEM"
+   section before "RIGHT NOW", with one line of how to use it (as a friend would, not recited;
+   believe what they say now). Null or empty leaves the prompt byte-for-byte as before.
+2. **The note is kept ready, never awaited** (`attachMemory`, core). Facts come from the
+   kernel's in-process cache (ADR-37), re-read after every write — all of them are there from
+   the first turn, the recalled ones first, then the surest, up to 24. Past turns are recalled
+   in the background after each user message, so an answer uses the recall made for the
+   message before it: **one turn behind**. A recalled fact the kernel has since closed is left
+   out. Facts and recall refresh independently, so re-reading facts after an answer cannot
+   drop a recall still in flight.
+3. **What is written is what happened:** each user message with the fused affect of the
+   moment (P3-T07); each answer as **heard** (its spoken prefix when interrupted, marked
+   `interrupted`, P1-T12b); no backchannels. Extraction runs on the page's model with
+   reasoning off (ADR-37).
+4. **Where:** a setting — automatic (default), this browser, the companion, off. Automatic
+   asks the companion's `/health` once per visit (1.5 s timeout): a connected database means
+   MariaDB through the companion, anything else IndexedDB. A settings document saved before
+   P4 loads as automatic.
+5. **A session per visit.** `/chat` used the fixed id `chat`; recall leaves the asking session
+   out (the history already carries it), so a fixed id would hide every earlier visit.
+
+**Cost.** A recalled turn arrives one message late; a fact never does. The first message of a
+visit carries facts but no recalled turns.

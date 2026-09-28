@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer } from '@latentpresence/avatar';
-import { replayFusion, type FusionRecording } from '@latentpresence/core';
+import { FakeMemoryStore, replayFusion, type FusionRecording } from '@latentpresence/core';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
@@ -222,6 +222,61 @@ describe('ChatPage — the persona', () => {
     } finally {
       window.history.replaceState(null, '', '/');
     }
+  });
+
+  it('tells the model what she remembers, and remembers the exchange under a session of its own (P4-T04b)', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    await store.upsertFact({
+      id: 'f1',
+      characterId: defaultPersona.id,
+      subject: 'user',
+      predicate: 'sister_name',
+      object: 'Priya',
+      confidence: 0.9,
+      validFrom: '2026-09-01T00:00:00.000Z',
+      validTo: null,
+      recordedAt: '2026-09-01T00:00:00.000Z',
+      sourceEpisodeId: null,
+      embedding: null,
+    });
+    const chats: LlmRequest[] = [];
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        // The same model reads facts out of each exchange (ADR-37); only the chat is asserted on.
+        if (systemOf(request).includes('You are Alice.')) chats.push(request);
+        yield { type: 'text-delta', text: request.reasoning === 'off' ? '{"facts":[],"ended":[]}' : 'Hi.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    const visit = async () => {
+      const page = render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+      await waitFor(() => expect(store.calls).toContain('currentFacts'));
+      await act(() => settle());
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello again' } });
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+      await waitFor(() => expect(store.rows.episodes.filter(({ episode }) => episode.role === 'assistant')).toHaveLength(chats.length));
+      page.unmount();
+    };
+    await visit();
+    await visit();
+
+    expect(systemOf(chats[0])).toContain('WHAT YOU REMEMBER ABOUT THEM');
+    expect(systemOf(chats[0])).toContain('user sister name Priya');
+    const sessions = new Set(store.rows.episodes.map(({ episode }) => episode.sessionId));
+    expect(store.rows.episodes.map(({ episode }) => [episode.role, episode.text])).toEqual([
+      ['user', 'hello again'],
+      ['assistant', 'Hi.'],
+      ['user', 'hello again'],
+      ['assistant', 'Hi.'],
+    ]);
+    expect(sessions.size).toBe(2);
   });
 
   it('names the character from the persona file rather than a constant', () => {

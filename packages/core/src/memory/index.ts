@@ -1,3 +1,4 @@
+export { DEFAULT_PROMPT_FACTS, attachMemory, promptFacts, type AttachMemoryOptions, type AttachedMemory, type PromptMemory } from './attach';
 export {
   DEFAULT_FORGETTING,
   consolidateFacts,

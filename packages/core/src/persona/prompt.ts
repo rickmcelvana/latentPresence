@@ -6,6 +6,7 @@ import {
   type PromptContextInput,
 } from '@latentpresence/protocol';
 import { describeFeeling, describeUser } from '../affect/express';
+import { renderMemory } from '../memory/recall';
 
 /**
  * The system prompt (P1-T12): a persona plus what is true right now, rendered to the
@@ -44,6 +45,7 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
   const readings = USER_READINGS.join(', ');
+  const memory = context.memory ? renderMemory({ ...context.memory, blocks: [], vectorSearch: 'no-query-embedding', elapsedMs: 0 }, context.now) : '';
 
   return [
     `You are ${persona.name}.`,
@@ -84,6 +86,16 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     'WHAT YOU WILL NOT DO',
     ...persona.boundaries.map((line) => `- ${line}`),
     '',
+    // P4-T04b (ADR-38): what she remembers, before "right now" so the mood stays last.
+    ...(memory === ''
+      ? []
+      : [
+          'WHAT YOU REMEMBER ABOUT THEM',
+          '- Use it the way a friend would: when it fits, without reciting it, and without',
+          '  mentioning that you have a memory. If they say something different now, believe them.',
+          memory,
+          '',
+        ]),
     'RIGHT NOW',
     `- It is ${formatNow(context.now)}.`,
     ...(userName === null ? [] : [`- You are talking to ${userName}.`]),

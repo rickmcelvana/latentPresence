@@ -59,6 +59,46 @@ describe('renderSystemPrompt', () => {
     expect(prompt).toMatchSnapshot();
   });
 
+  describe('memory (P4-T04b, ADR-38)', () => {
+    const fact = {
+      id: 'f1',
+      characterId: 'alice',
+      subject: 'user',
+      predicate: 'sister_name',
+      object: 'Priya',
+      confidence: 0.9,
+      validFrom: at.toISOString(),
+      validTo: null,
+      recordedAt: at.toISOString(),
+      sourceEpisodeId: null,
+      embedding: null,
+    };
+    const episode = {
+      id: 'e1',
+      sessionId: 'visit-1',
+      characterId: 'alice',
+      role: 'user' as const,
+      text: 'The allotment flooded again',
+      interrupted: false,
+      at: new Date(at.getTime() - 3 * 86_400_000).toISOString(),
+      embedding: null,
+      affect: null,
+    };
+
+    it('leaves the prompt exactly as it was with nothing remembered', () => {
+      expect(renderSystemPrompt(persona, { now: at, userName: null, memory: null })).toBe(prompt);
+      expect(renderSystemPrompt(persona, { now: at, userName: null, memory: { facts: [], episodes: [] } })).toBe(prompt);
+    });
+
+    it('says what she knows and what was said before, ahead of right now', () => {
+      const withMemory = renderSystemPrompt(persona, { now: at, userName: null, memory: { facts: [fact], episodes: [episode] } });
+      const section = withMemory.slice(withMemory.indexOf('WHAT YOU REMEMBER ABOUT THEM'), withMemory.indexOf('RIGHT NOW'));
+      expect(section).toContain('- user sister name Priya');
+      expect(section).toContain('- 3 days ago, they said: "The allotment flooded again"');
+      expect(withMemory.indexOf('WHAT YOU REMEMBER ABOUT THEM')).toBeGreaterThan(withMemory.indexOf('WHAT YOU WILL NOT DO'));
+    });
+  });
+
   it('lists every emote and every gesture the model may use', () => {
     // A label the prompt omits is a label the avatar can play and never will.
     for (const label of CharacterEmotionSchema.options) expect(prompt).toContain(label);

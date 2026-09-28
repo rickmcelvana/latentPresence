@@ -53,12 +53,21 @@ describe('loadSettings', () => {
     const settings: Settings = {
       version: 1,
       companionUrl: 'http://127.0.0.1:9999',
+      memory: 'browser',
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
+  });
+
+  it('loads a document saved before memory existed, remembering automatically (P4-T04b)', () => {
+    const settings: Settings = { ...DEFAULT_SETTINGS, companionUrl: 'http://127.0.0.1:9999' };
+    const { memory: _memory, ...beforeP4 } = settings;
+    const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP4) });
+    expect(loadSettings(storage)).toEqual(settings);
+    expect(settings.memory).toBe('auto');
   });
 
   it('defaults the companion URL to the documented default', () => {

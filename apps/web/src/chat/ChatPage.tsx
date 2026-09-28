@@ -4,11 +4,14 @@ import {
   ChatSession,
   ConversationMachine,
   DEFAULT_AFFECT_PARAMS,
+  MemoryKernel,
   attachAffect,
   attachHistory,
+  attachMemory,
   attachUserAffect,
   renderSystemPrompt,
   type AttachedAffect,
+  type AttachedMemory,
   type ChatVoice,
 } from '@latentpresence/core';
 import { ListeningReactor } from '@latentpresence/avatar';
@@ -26,11 +29,18 @@ import { AffectOverlay } from '../call/AffectOverlay';
 import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
+import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
 import { hostTimers } from './host-timers';
 
 /** The character's name comes from the persona file now (P1-T12), not a constant. */
 export const CHAT_CHARACTER_NAME = defaultPersona.name;
-const SESSION_ID = 'chat';
+/**
+ * One session per visit (P4-T04b): memory recall leaves out the asking session, because the
+ * history already carries it — so a fixed id would hide every earlier visit from her.
+ */
+function newSessionId(): string {
+  return `chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 /** Below this viewport width the transcript drawer starts closed (decision 9, P2-T06);
  * at or above it, open. A 1024 px column has no room for a 26vw drawer beside the stage. */
@@ -136,6 +146,8 @@ export interface ChatPageProps {
   readonly loadSpeaker?: () => Promise<SpeakerLoader>;
   /** Test seam: the face-reading module (P3-T06). Production never passes it. */
   readonly loadFaceReading?: () => Promise<FaceReadingLoader>;
+  /** Test seam: where memory lives (P4-T04b). Production never passes it. */
+  readonly chooseMemory?: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
 }
 
 /**
@@ -153,6 +165,7 @@ export function ChatPage({
   camera,
   loadSpeaker = loadDefaultSpeaker,
   loadFaceReading = loadDefaultFaceReading,
+  chooseMemory = chooseMemoryStore,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
@@ -180,6 +193,7 @@ export function ChatPage({
       createRenderer={createRenderer}
       deps={deps}
       endpoint={llm.endpoint}
+      chooseMemory={chooseMemory}
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
@@ -202,6 +216,7 @@ interface ConfiguredChatPageProps {
   readonly camera?: UseUserCameraDeps | undefined;
   readonly loadSpeaker: () => Promise<SpeakerLoader>;
   readonly loadFaceReading: () => Promise<FaceReadingLoader>;
+  readonly chooseMemory: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
 }
 
 function ConfiguredChatPage({
@@ -217,15 +232,19 @@ function ConfiguredChatPage({
   camera: cameraDeps,
   loadSpeaker,
   loadFaceReading,
+  chooseMemory,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ machine, chat, history, llm, affect, userAffect, stageAffect, listening }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, affect, userAffect, stageAffect, listening, memoryHolder }] = useState(() => {
+    const builtSessionId = newSessionId();
+    // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
+    const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
     const builtMachine = new ConversationMachine({
-      sessionId: SESSION_ID,
+      sessionId: builtSessionId,
       characterId: defaultPersona.id,
       // P1-T15. Without this the machine sticks on `interrupted` after a barge-in or a
       // typed Stop — see `host-timers.ts`, which is a comment about exactly this trap.
@@ -236,7 +255,7 @@ function ConfiguredChatPage({
     const builtAffect = attachAffect(builtMachine, { characterId: defaultPersona.id });
     // P3-T07: how the user seems, fused from their words, voice and face, on the same bus —
     // what it publishes the engine above takes in by empathy, and the prompt says in a line.
-    const builtUserAffect = attachUserAffect(builtMachine, { sessionId: SESSION_ID });
+    const builtUserAffect = attachUserAffect(builtMachine, { sessionId: builtSessionId });
     // `now` is fixed when the page mounts: it is what the model is told the time is, and a
     // clock rewritten per turn would change the prompt under a provider's prompt cache for
     // the sake of a clock nobody is watching that closely. **The mood is not fixed** — it is
@@ -253,11 +272,13 @@ function ConfiguredChatPage({
           userName: null,
           affect: builtAffect.state(),
           userAffect: builtUserAffect.fusion.last(),
+          // P4-T04b (ADR-38): ready before the request, never awaited by it.
+          memory: builtMemoryHolder.current?.context() ?? null,
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
     const builtChat = new ChatSession({
-      sessionId: SESSION_ID,
+      sessionId: builtSessionId,
       machine: builtMachine,
       llm: builtProvider,
       modelId,
@@ -266,6 +287,8 @@ function ConfiguredChatPage({
     });
     builtMachine.start();
     return {
+      sessionId: builtSessionId,
+      memoryHolder: builtMemoryHolder,
       machine: builtMachine,
       chat: builtChat,
       history: attached,
@@ -278,6 +301,31 @@ function ConfiguredChatPage({
       listening: { reactor: new ListeningReactor(), userAffect: () => builtUserAffect.fusion.current(Date.now()) },
     };
   });
+
+  // Memory (P4-T04b, ADR-38): the store is chosen once per visit — the companion if it has a
+  // database, else this browser — and a kernel fed by the bus fills the prompt's memory note.
+  // Extraction runs on the page's own model with reasoning off (ADR-37), off the speaking path.
+  useEffect(() => {
+    let live = true;
+    let attached: AttachedMemory | null = null;
+    void chooseMemory({
+      setting: settings.memory,
+      companionUrl,
+      fetch: deps.fetch,
+      indexedDB: typeof indexedDB === 'undefined' ? undefined : indexedDB,
+    }).then((choice) => {
+      if (!live || choice === null) return;
+      const warn = (error: Error, stage: string): void => console.warn(`memory (${stage}, ${choice.kind}): ${error.message}`);
+      const kernel = new MemoryKernel({ store: choice.store, characterId: defaultPersona.id, extractor: { llm, modelId }, onError: warn });
+      attached = attachMemory(machine, { kernel, sessionId, userAffect: () => userAffect.fusion.last(), onError: (error) => warn(error, 'recall') });
+      memoryHolder.current = attached;
+    });
+    return () => {
+      live = false;
+      attached?.detach();
+      memoryHolder.current = null;
+    };
+  }, [chooseMemory, companionUrl, deps.fetch, llm, machine, memoryHolder, modelId, sessionId, settings.memory, userAffect]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.
