@@ -632,3 +632,9 @@ Left: push (61525ab onward unconfirmed on CI); ADR-39 for Rick; R-26; laptop ses
 Next: P4-T06 self-model blocks and mood persistence.
 Decisions: ADR-39 proposed (deletes are deletes; a fact outlives its deleted turn; edits through the kernel). Panel state resets when the drawer switches view — accepted as is.
 
+## 2026-09-28 claude — P4-T06 mood and self-model blocks
+Did: `AffectEngine.restore`; `self/` — `SelfNotes`, `attachMood` (`_mood`), `selfNoteTools`, `withLocalTools`; `PromptContext.notes`; companion `_` blocks at 16000 chars (+ test); `/chat` wired (extraction keeps the bare provider). glm tool calling verified (SURFACE). Live: a note written unprompted, mood kept over a reload. 0fdf12c, 1455 tests.
+Left: push; ADR-39, ADR-40 for Rick; R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T07 planning studio v1.
+Decisions: ADR-40 proposed (mood as the system block `_mood`, saved per answer; notes as blocks; tools in a provider wrapper; `self_write_block` not `self.write_block`).
+
