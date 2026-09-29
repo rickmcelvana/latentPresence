@@ -833,6 +833,26 @@ describe('ChatPage — face reading (P3-T06)', () => {
     expect(r.getUserMedia).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves on a camera the person was still turning on when face reading began (CI, 2026-09-29)', async () => {
+    const r = faceRig({ agreed: true });
+    let answer: (() => void) | null = null;
+    const camera = { getTracks: () => [r.track] } as unknown as MediaStream;
+    r.getUserMedia.mockImplementationOnce(() => new Promise<MediaStream>((resolve) => (answer = () => resolve(camera))));
+    fireEvent.click(screen.getByRole('button', { name: 'Camera' }));
+    await waitFor(() => expect(r.getUserMedia).toHaveBeenCalledTimes(1));
+    fireEvent.click(r.button()); // the camera has not answered yet
+    await act(async () => {
+      answer?.();
+      await settle();
+    });
+    await waitFor(() => expect(r.runs).toHaveLength(1));
+    fireEvent.click(r.button());
+    await act(() => settle());
+    expect(r.handle.stop).toHaveBeenCalled();
+    expect(r.track.stop).not.toHaveBeenCalled();
+    expect(r.getUserMedia).toHaveBeenCalledTimes(1);
+  });
+
   it('turning the camera off stops the reading, and the page going stops it too', async () => {
     const r = faceRig({ agreed: true });
     fireEvent.click(r.button());

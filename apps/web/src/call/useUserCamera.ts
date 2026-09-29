@@ -22,7 +22,13 @@ export interface UseUserCameraResult {
   /** Set on a refusal (denied permission, no camera, …); cleared on the next `start()`. */
   readonly error: string | null;
   readonly active: boolean;
-  /** Resolves true once the camera is on, false if it was refused. */
+  /**
+   * Asked for and not yet answered. A camera starting is not a camera off: something that
+   * turns it on "only if it was off" must not claim one the person is already turning on
+   * (CI, 2026-09-29 — face reading turned off a camera it had not started).
+   */
+  readonly starting: boolean;
+  /** Resolves true once the camera is on, false if it was refused. A call while one is pending joins it. */
   start(): Promise<boolean>;
   stop(): void;
 }
@@ -40,6 +46,8 @@ export function useUserCamera(deps: UseUserCameraDeps = {}): UseUserCameraResult
   // own identity happened to change, which `getUserMedia` never does mid-stream, but
   // nothing here should rely on that staying true.
   const streamRef = useRef<MediaStream | null>(null);
+  const pendingRef = useRef<Promise<boolean> | null>(null);
+  const [starting, setStarting] = useState(false);
 
   const stop = useCallback((): void => {
     const current = streamRef.current;
@@ -48,23 +56,32 @@ export function useUserCamera(deps: UseUserCameraDeps = {}): UseUserCameraResult
     setStream(null);
   }, []);
 
-  const start = useCallback(async (): Promise<boolean> => {
-    try {
-      const media = await getUserMedia({ video: true, audio: false });
-      streamRef.current = media;
-      setStream(media);
-      setError(null);
-      return true;
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
-      setStream(null);
-      return false;
-    }
+  const start = useCallback((): Promise<boolean> => {
+    if (pendingRef.current !== null) return pendingRef.current;
+    setStarting(true);
+    const pending = (async (): Promise<boolean> => {
+      try {
+        const media = await getUserMedia({ video: true, audio: false });
+        streamRef.current = media;
+        setStream(media);
+        setError(null);
+        return true;
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : String(caught));
+        setStream(null);
+        return false;
+      } finally {
+        pendingRef.current = null;
+        setStarting(false);
+      }
+    })();
+    pendingRef.current = pending;
+    return pending;
   }, [getUserMedia]);
 
   // Stops every track on unmount — a PiP toggled off by leaving the page must not leave
   // the camera's light on.
   useEffect(() => stop, [stop]);
 
-  return { stream, error, active: stream !== null, start, stop };
+  return { stream, error, active: stream !== null, starting, start, stop };
 }

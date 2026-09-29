@@ -478,7 +478,8 @@ function ConfiguredChatPage({
       setFaceLoader(loader);
       setFace('starting');
       if (userCamera.active) return;
-      faceOwnsCameraRef.current = true;
+      // A camera the person is already turning on is theirs, not face reading's to turn off.
+      faceOwnsCameraRef.current = !userCamera.starting;
       // A refused camera ends it here; its reason is already on screen where the PiP would be.
       void userCamera.start().then((started) => {
         if (started) return;

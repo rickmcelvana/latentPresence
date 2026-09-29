@@ -34,6 +34,32 @@ describe('useUserCamera', () => {
     expect(getUserMedia).toHaveBeenCalledWith({ video: true, audio: false });
   });
 
+  it('says it is starting until getUserMedia answers, and a second start() joins the first', async () => {
+    const { stream } = fakeStream();
+    let answer: ((value: MediaStream) => void) | null = null;
+    const getUserMedia = vi.fn(() => new Promise<MediaStream>((resolve) => (answer = resolve)));
+    const { result } = renderHook(() => useUserCamera({ getUserMedia }));
+
+    let first: Promise<boolean> = Promise.resolve(false);
+    let second: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      first = result.current.start();
+    });
+    expect(result.current.starting).toBe(true);
+    expect(result.current.active).toBe(false);
+    act(() => {
+      second = result.current.start();
+    });
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      answer?.(stream);
+      await first;
+    });
+    expect(await second).toBe(true);
+    expect(result.current.starting).toBe(false);
+    expect(result.current.active).toBe(true);
+  });
+
   it('stop() stops every track and clears the stream', async () => {
     const { stream, tracks } = fakeStream(3);
     const getUserMedia = vi.fn(async () => stream);
