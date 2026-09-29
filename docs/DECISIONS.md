@@ -41,8 +41,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-36 | The companion's memory contract meets the schema: caller-made ids kept as `uid`, a vector travels with its model, episodes are user/assistant with `interrupted`, plans save whole and versioned (`conflict`); OpenAPI generated from zod and checked by the companion's tests | accepted | 2026-09-27 |
 | ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
 | ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
-| ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | proposed | 2026-09-28 |
-| ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | proposed | 2026-09-28 |
+| ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | accepted | 2026-09-29 |
+| ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
 
 ---
 
@@ -1159,7 +1159,7 @@ possibly across a LAN. Waiting for it would put the database on the path to firs
 **Cost.** A recalled turn arrives one message late; a fact never does. The first message of a
 visit carries facts but no recalled turns.
 
-## ADR-39 What the person deletes is deleted (proposed 2026-09-28)
+## ADR-39 What the person deletes is deleted (accepted 2026-09-29)
 
 **Context.** P4-T05 gives the person a memory browser: list, search, edit and delete what she
 remembers. Until now nothing was ever deleted — the kernel closes facts (`supersedeFact`, the
@@ -1189,7 +1189,7 @@ from every read with its fact kept unlinked, a deleted fact gone from every read
 IndexedDB and the companion over MariaDB; the companion's integration test checks no vector row
 outlives its fact.
 
-## ADR-40 Her mood and her own notes persist as self-model blocks (proposed 2026-09-28)
+## ADR-40 Her mood and her own notes persist as self-model blocks (accepted 2026-09-29)
 
 **Context.** P4-T06: the mood carries across a restart, and she keeps self-model blocks with
 tools (`self.read_block`, `self.write_block`). P3-T01 already made the mood serialisable and

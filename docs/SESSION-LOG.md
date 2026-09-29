@@ -638,3 +638,9 @@ Left: push; ADR-39, ADR-40 for Rick; R-26; laptop session (R-13, R-1, R-9); R-3;
 Next: P4-T07 planning studio v1.
 Decisions: ADR-40 proposed (mood as the system block `_mood`, saved per answer; notes as blocks; tools in a provider wrapper; `self_write_block` not `self.write_block`).
 
+## 2026-09-29 claude — ADR-39/40 accepted; a camera race CI found
+Did: CI's ubuntu gate failed "leaves on a camera that was already on": face reading clicked while the camera was still starting read it as off, claimed it, and turned it off on stop. `useUserCamera.starting`, a second `start()` joins the first; face reading claims only a camera it started. Deterministic tests for both, the page one mutation-checked.
+Left: push; R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T07 planning studio v1.
+Decisions: ADR-39 and ADR-40 accepted by Rick.
+
