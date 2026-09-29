@@ -45,6 +45,7 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
   const emotes = CharacterEmotionSchema.options.join(', ');
   const gestures = CharacterGestureSchema.options.join(', ');
   const readings = USER_READINGS.join(', ');
+  const notes = (context.notes ?? []).filter((note) => note.content.trim() !== '');
   const memory = context.memory ? renderMemory({ ...context.memory, blocks: [], vectorSearch: 'no-query-embedding', elapsedMs: 0 }, context.now) : '';
 
   return [
@@ -86,6 +87,15 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     'WHAT YOU WILL NOT DO',
     ...persona.boundaries.map((line) => `- ${line}`),
     '',
+    // P4-T06 (ADR-40): her own notes, what she has made of things — before what she remembers.
+    ...(notes.length === 0
+      ? []
+      : [
+          'YOUR OWN NOTES',
+          '- You keep these yourself with self_write_block. They are for you, not to read out.',
+          ...notes.map((note) => `- ${note.name.replaceAll('_', ' ')}: ${note.content}`),
+          '',
+        ]),
     // P4-T04b (ADR-38): what she remembers, before "right now" so the mood stays last.
     ...(memory === ''
       ? []

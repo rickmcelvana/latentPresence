@@ -279,6 +279,61 @@ describe('ChatPage — the persona', () => {
     expect(sessions.size).toBe(2);
   });
 
+  it('carries her mood to the next visit, and a note she writes into her next prompt (P4-T06)', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    const chats: LlmRequest[] = [];
+    let wroteNote = false;
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        if (request.reasoning === 'off') {
+          yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+          yield { type: 'finish', reason: 'stop', usage: null };
+          return;
+        }
+        chats.push(request);
+        if (!wroteNote && request.tools.some((tool) => tool.name === 'self_write_block')) {
+          wroteNote = true;
+          yield { type: 'tool-call', call: { id: 'c1', name: 'self_write_block', arguments: { name: 'how_they_talk', content: 'Short answers, please.' }, source: 'llm', requestedAt: '2026-09-28T00:00:00.000Z' } };
+          yield { type: 'finish', reason: 'tool-calls', usage: null };
+          return;
+        }
+        yield { type: 'text-delta', text: '[emote:sadness] Oh no. [emote:sadness] That is hard. [emote:sadness] I am sorry.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    const visit = async (messages: readonly string[]) => {
+      const page = render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+      await waitFor(() => expect(store.calls).toContain('currentFacts'));
+      await act(() => settle());
+      for (const text of messages) {
+        const before = chats.length;
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: text } });
+        fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+        await waitFor(() => expect(chats.length).toBeGreaterThan(before));
+        await act(() => settle());
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      await waitFor(async () => expect((await store.readBlocks(defaultPersona.id)).some((block) => block.name === '_mood')).toBe(true));
+      page.unmount();
+      await act(() => settle());
+    };
+    await visit(['my cat died', 'she was nineteen']);
+    const firstOfSecondVisit = chats.length;
+    await visit(['hello again']);
+
+    const second = systemOf(chats[firstOfSecondVisit]);
+    expect(second).toContain('right now sad');
+    expect(second).toContain('YOUR OWN NOTES');
+    expect(second).toContain('how they talk: Short answers, please.');
+  });
+
   it('names the character from the persona file rather than a constant', () => {
     expect(CHAT_CHARACTER_NAME).toBe(defaultPersona.name);
   });

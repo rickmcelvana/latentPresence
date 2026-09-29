@@ -2157,3 +2157,14 @@ On the development server (MariaDB 11.8.8):
   long (20 words against 22), with the same tags and, read side by side, answers of the same
   kind. Not adopted here: which way `/chat` should run is a product call on quality, and ADR-20's
   latency budget is where it belongs.
+
+## glm-5.2:cloud through Ollama calls tools — verified 2026-09-28 (P4-T06)
+
+- `/v1/chat/completions` with `tools` (OpenAI function format): offered `self_write_block`, told
+  "call me Captain, and I hate small talk", it answered `finish_reason: "tool_calls"` with one
+  call, arguments a JSON string (`{"name":"user_preferences","content":"…"}`), and no content.
+- Through the app's adapter (AI SDK `openai-compatible`) and `withLocalTools`, in the Browser
+  pane: it wrote a note unprompted when told a preference, and answered after the tool result
+  came back. Tool names with a dot are not allowed by the OpenAI function-name pattern, so the
+  plan's `self.write_block` is `self_write_block`.
+

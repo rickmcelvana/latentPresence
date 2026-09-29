@@ -64,3 +64,6 @@ A kernel belongs to one character; every read and write carries its `characterId
 - **The person can see and change it (P4-T05, ADR-39):** `/chat` → Memory shows what the last
   request was given, every fact (edit, delete) and every turn (search, delete). Deletes are real
   deletes, row and vector; a fact read from a deleted turn stays until deleted itself.
+- **Her mood and her notes (P4-T06, ADR-40)** are self-model blocks in the same store: `_mood`
+  (the system's, saved after every answer, restored aged by the time away) and up to eight notes
+  she writes herself with `self_write_block`, shown in her prompt as "YOUR OWN NOTES".

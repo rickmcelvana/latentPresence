@@ -42,6 +42,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-37 | The memory kernel: facts read as JSON with reasoning off (`LlmRequest.reasoning`), reinforced, superseded or expired by the kernel; `MemoryStore.expireFact` and `currentFacts`; current facts cached in process | accepted | 2026-09-28 |
 | ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
 | ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | proposed | 2026-09-28 |
+| ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | proposed | 2026-09-28 |
 
 ---
 
@@ -1187,3 +1188,40 @@ day stays answerable (ADR-37). A person asking her to forget something is a diff
 from every read with its fact kept unlinked, a deleted fact gone from every read) on the fake,
 IndexedDB and the companion over MariaDB; the companion's integration test checks no vector row
 outlives its fact.
+
+## ADR-40 Her mood and her own notes persist as self-model blocks (proposed 2026-09-28)
+
+**Context.** P4-T06: the mood carries across a restart, and she keeps self-model blocks with
+tools (`self.read_block`, `self.write_block`). P3-T01 already made the mood serialisable and
+its restore age the state by the time away (`restoreAffect`). What was open: where it lives,
+when it is saved, and how a tool runs when nothing in `/chat` runs tools yet (P5-T01 builds
+MCP, permissions and the tool log).
+
+**Decisions.**
+
+1. **The mood is a self-model block, `_mood`**, in whatever store memory uses (ADR-38) — no new
+   table, route or store method. **Blocks named `_…` are the system's**: never rendered into
+   her prompt, never offered to her tools, never writable by them. The companion creates them
+   with a 16 000-character limit (a mood with its sixteen live events outgrows the prose 2000).
+2. **Saved after every answer**, not "at session end": a tab gets no reliable end, and a closing
+   one may not wait for IndexedDB, let alone the companion. `pagehide` saves once more, best
+   effort. **Restored once, only before anything is felt** (`AffectEngine.restore`): a message
+   that beats the store keeps the live state; nothing is saved until the restore has answered,
+   so a baseline never overwrites the mood it was about to restore. The restored state is
+   exactly where an engine left running would be — the gap is lived, not skipped.
+3. **Her notes** are the other blocks: rendered as "YOUR OWN NOTES" before what she remembers;
+   at most eight, 2000 characters each, lowercase names; one only the person may change
+   (`editableByCharacter: false`) is refused with a reason she can read.
+4. **Tools run in a provider wrapper, `withLocalTools(llm, tools)`**: it offers the tools on
+   every request, runs a local call, hands back the result and streams the continuation. The
+   typed path, the spoken reply and the call all call `llm.stream`, so all get the tools with
+   no session changed. At most two tool rounds; the last request offers none, so an answer
+   always ends in words. Calls for tools it does not own pass through untouched (P5-T01's).
+   Named `self_read_block`/`self_write_block`: OpenAI-compatible function names allow no dots.
+   **Extraction keeps the bare provider** — it must never be offered tools.
+
+**Measured 2026-09-28**, glm-5.2:cloud through Ollama in the Browser pane: told "I can't stand
+small talk, so keep it brief", she wrote `how_they_like_to_talk: "No small talk. Be brief and
+direct, always."` herself and answered "Got it. I won't fill space with filler." After a sad
+exchange and a reload, before any message, the overlay still read sadness 0.30 (0.42 a minute
+before). The scripted done-when: `self/mood.test.ts` and `ChatPage.test.tsx`.

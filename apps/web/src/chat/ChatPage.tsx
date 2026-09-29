@@ -5,13 +5,19 @@ import {
   ConversationMachine,
   DEFAULT_AFFECT_PARAMS,
   MemoryKernel,
+  SelfNotes,
   attachAffect,
   attachHistory,
   attachMemory,
+  attachMood,
+  selfNoteTools,
+  withLocalTools,
   attachUserAffect,
   renderSystemPrompt,
   type AttachedAffect,
   type AttachedMemory,
+  type AttachedMood,
+  type LocalTool,
   type ChatVoice,
 } from '@latentpresence/core';
 import { ListeningReactor } from '@latentpresence/avatar';
@@ -240,10 +246,12 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, affect, userAffect, stageAffect, listening, memoryHolder }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
+    // P4-T06 (ADR-40): her own notes and the tools she keeps them with, from the same store.
+    const builtSelfHolder: { notes: SelfNotes | null; tools: LocalTool[] } = { notes: null, tools: [] };
     const builtMachine = new ConversationMachine({
       sessionId: builtSessionId,
       characterId: defaultPersona.id,
@@ -252,7 +260,8 @@ function ConfiguredChatPage({
       scheduler: hostTimers(),
     });
     // P3-T09: one affect engine for the page, fed by the same bus — `[emote:x]` tags now,
-    // the user's affect from P3-T07. It starts at her baseline every visit until P4 persists it.
+    // the user's affect from P3-T07. It starts at her baseline and takes the saved mood, aged by
+    // the time away, once the store answers (P4-T06, the effect below).
     const builtAffect = attachAffect(builtMachine, { characterId: defaultPersona.id });
     // P3-T07: how the user seems, fused from their words, voice and face, on the same bus —
     // what it publishes the engine above takes in by empathy, and the prompt says in a line.
@@ -275,13 +284,17 @@ function ConfiguredChatPage({
           userAffect: builtUserAffect.fusion.last(),
           // P4-T04b (ADR-38): ready before the request, never awaited by it.
           memory: builtMemoryHolder.current?.context() ?? null,
+          notes: builtSelfHolder.notes?.notes() ?? [],
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
+    // P4-T06 (ADR-40): every answer — typed, spoken or in a call — may keep a note; the tools
+    // are read per request, so they arrive when the store does. Extraction keeps the bare one.
+    const builtChatLlm = withLocalTools(builtProvider, () => builtSelfHolder.tools);
     const builtChat = new ChatSession({
       sessionId: builtSessionId,
       machine: builtMachine,
-      llm: builtProvider,
+      llm: builtChatLlm,
       modelId,
       temperature,
       history: attached,
@@ -290,10 +303,12 @@ function ConfiguredChatPage({
     return {
       sessionId: builtSessionId,
       memoryHolder: builtMemoryHolder,
+      selfHolder: builtSelfHolder,
       machine: builtMachine,
       chat: builtChat,
       history: attached,
-      llm: builtProvider,
+      llm: builtChatLlm,
+      rawLlm: builtProvider,
       affect: builtAffect,
       userAffect: builtUserAffect,
       stageAffect: stageAffectOf(builtAffect),
@@ -313,6 +328,8 @@ function ConfiguredChatPage({
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
+    let mood: AttachedMood | null = null;
+    const saveMood = (): void => void mood?.save();
     void chooseMemory({
       setting: settings.memory,
       companionUrl,
@@ -321,11 +338,20 @@ function ConfiguredChatPage({
     }).then((choice) => {
       if (!live || choice === null) return;
       const warn = (error: Error, stage: string): void => console.warn(`memory (${stage}, ${choice.kind}): ${error.message}`);
-      const kernel = new MemoryKernel({ store: choice.store, characterId: defaultPersona.id, extractor: { llm, modelId }, onError: warn });
+      const kernel = new MemoryKernel({ store: choice.store, characterId: defaultPersona.id, extractor: { llm: rawLlm, modelId }, onError: warn });
       attached = attachMemory(machine, { kernel, sessionId, userAffect: () => userAffect.fusion.last(), onError: (error) => warn(error, 'recall') });
       memoryHolder.current = attached;
       setMemory(attached);
       setMemoryWhere(choice.reason);
+      // P4-T06 (ADR-40): her notes, and her mood as she left it, aged by the time away — saved
+      // after every answer, and once more as the page goes (a best effort; a closing tab may
+      // not wait for it).
+      const notes = new SelfNotes({ store: choice.store, characterId: defaultPersona.id });
+      void notes.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'notes'));
+      selfHolder.notes = notes;
+      selfHolder.tools = selfNoteTools(notes);
+      mood = attachMood(machine, { affect, notes, onError: (error) => warn(error, 'mood') });
+      window.addEventListener('pagehide', saveMood);
     });
     return () => {
       live = false;
@@ -333,8 +359,15 @@ function ConfiguredChatPage({
       memoryHolder.current = null;
       setMemory(null);
       setMemoryWhere(null);
+      window.removeEventListener('pagehide', saveMood);
+      if (mood !== null) {
+        void mood.save();
+        mood.detach();
+      }
+      selfHolder.notes = null;
+      selfHolder.tools = [];
     };
-  }, [chooseMemory, companionUrl, deps.fetch, llm, machine, memoryHolder, modelId, sessionId, settings.memory, userAffect]);
+  }, [affect, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, userAffect]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.

@@ -717,6 +717,19 @@ pub async fn read_blocks(
 
 const DEFAULT_BLOCK_CHAR_LIMIT: u32 = 2000;
 
+/// A block the system keeps for itself — its label starts with `_`, like `_mood` (P4-T06,
+/// ADR-40) — is machine JSON rather than the character's prose, and a saved mood with its
+/// sixteen live events runs past the prose limit; it is created with room for that.
+pub const SYSTEM_BLOCK_CHAR_LIMIT: u32 = 16_000;
+
+fn new_block_char_limit(label: &str) -> u32 {
+    if label.starts_with('_') {
+        SYSTEM_BLOCK_CHAR_LIMIT
+    } else {
+        DEFAULT_BLOCK_CHAR_LIMIT
+    }
+}
+
 /// `dbWriteBlock`: upsert by (character_id, label). The table's own `CHECK` would refuse a
 /// value over `char_limit`; this says so first, in words, as `bad_request`.
 pub async fn write_block(pool: &MySqlPool, block: &SelfBlock) -> Result<(), StoreError> {
@@ -730,7 +743,7 @@ pub async fn write_block(pool: &MySqlPool, block: &SelfBlock) -> Result<(), Stor
     .map_err(DbError::from)?;
     let limit = existing
         .map(|row| row.char_limit)
-        .unwrap_or(DEFAULT_BLOCK_CHAR_LIMIT);
+        .unwrap_or_else(|| new_block_char_limit(&block.name));
 
     let length = block.content.chars().count() as u32;
     if length > limit {
@@ -741,8 +754,8 @@ pub async fn write_block(pool: &MySqlPool, block: &SelfBlock) -> Result<(), Stor
     }
 
     sqlx::query!(
-        "INSERT INTO self_blocks (character_id, label, value, editable_by_character, updated_at)
-         VALUES (?, ?, ?, ?, ?)
+        "INSERT INTO self_blocks (character_id, label, value, char_limit, editable_by_character, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            value = VALUES(value),
            version = version + 1,
@@ -751,6 +764,7 @@ pub async fn write_block(pool: &MySqlPool, block: &SelfBlock) -> Result<(), Stor
         block.character_id,
         block.name,
         block.content,
+        limit,
         block.editable_by_character,
         block.updated_at,
     )

@@ -854,6 +854,17 @@ async fn blocks_round_trip_and_refuse_content_over_the_limit() {
     assert_matches_error_schema(&body);
     assert_eq!(body["error"]["code"], "bad_request");
 
+    // A system block (`_`-prefixed, ADR-40) is created with room for machine JSON.
+    let mood = json!({
+        "characterId": character_id,
+        "name": "_mood",
+        "content": "x".repeat(9000),
+        "updatedAt": "2026-09-27T00:00:02.000Z",
+        "editableByCharacter": false,
+    });
+    let (status, body) = call(&router, Method::PUT, "/db/blocks", Some(mood)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
     cleanup(&pool, &character_id).await;
 }
 

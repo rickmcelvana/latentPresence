@@ -96,6 +96,15 @@ export const PromptContextSchema = z.object({
     })
     .nullable()
     .default(null),
+  /**
+   * Her own notes (P4-T06, ADR-40): the self-model blocks she keeps with `self_write_block`,
+   * rendered as a short section before what she remembers. System blocks (`_mood`) never
+   * reach here. Empty leaves the prompt exactly as it was.
+   */
+  notes: z
+    .array(z.object({ name: z.string().min(1).max(64), content: z.string() }))
+    .max(16)
+    .default([]),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
 /** What a caller passes: the nullable fields may be left out and mean null. */

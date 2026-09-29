@@ -293,9 +293,10 @@ List, search, edit, delete facts and turns; show what was injected into the last
 Done when: deleting a fact removes it from the next retrieval.
 **Met:** the contract first (architect, a0135f8): `listEpisodes`, and `deleteFact`/`deleteEpisode` as hard deletes (ADR-39), in the companion and all three stores — conformance 18/18 on the dev MariaDB — with edits through the kernel so its cache and the prompt note follow. The panel by a Sonnet subagent: a **Memory** button beside Transcript; what she was told last, what she knows (edit, delete with an in-place confirm), conversations by visit with search and older pages. Tested through the UI (deleting a fact, then `kernel.recall` without it) and live in the Browser pane with glm-5.2:cloud: "I'm learning the cello…", deleted the cello fact from the panel, and the next request carried only the risotto.
 
-### P4-T06 Self-model blocks and mood persistence — owner: main
+### P4-T06 Self-model blocks and mood persistence — owner: main (done 2026-09-28; `packages/core/src/self`, ADR-40 proposed)
 Depends: P3-T01, P4-T03. Agent tools `self.read_block`, `self.write_block`; mood snapshot on session end and load on start with elapsed-time decay.
 Done when: mood carries across a restart in a scripted test.
+**Met:** `self/mood.test.ts` — a visit that ends sad starts the next still sad a minute later, exactly where an engine left running would be, and herself again after a week; `ChatPage.test.tsx` does it through `/chat` with a remount. The mood is the system block `_mood`, saved after every answer; her notes are the other blocks, in her prompt, kept with `self_read_block`/`self_write_block` run by `withLocalTools`, a provider wrapper every path shares. Live (glm-5.2:cloud): she wrote her own note from a stated preference, and was still sad after a reload.
 
 ### P4-T07 Planning studio v1 — owner: main
 Brainstorm mode prompt, `plan.create/update/list` tools, plan schema, side panel editor, Markdown export, follow-up scheduling stored as facts.

@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO self_blocks (character_id, label, value, char_limit, editable_by_character, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?)\n         ON DUPLICATE KEY UPDATE\n           value = VALUES(value),\n           version = version + 1,\n           editable_by_character = VALUES(editable_by_character),\n           updated_at = VALUES(updated_at)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "5ae4ccf31246bd4f3bb4ca782938c1b8706bb1aeb8377604820a3ae721499f5d"
+}

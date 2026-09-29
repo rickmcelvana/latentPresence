@@ -294,8 +294,23 @@ export class AffectEngine {
   }
 
   enqueue(input: AffectInput): void {
+    this.inputs += 1;
     this.queue.push(input);
   }
+
+  /**
+   * Start from a saved state instead of the baseline (P4-T06), advanced to `now` — a mood
+   * saved in a temper and restored a week later is back at her baseline (`restoreAffect`).
+   * **Only before anything has been felt:** once an input has arrived, the live state is
+   * newer than any saved one and is kept. Returns whether it took the saved state.
+   */
+  restore(state: AffectState, now: number): boolean {
+    if (this.inputs > 0 || state.characterId !== this.current.characterId) return false;
+    this.current = advanceAffect(state, Math.max(now, ms(state.updatedAt)), this.params);
+    return true;
+  }
+
+  private inputs = 0;
 
   /** Apply every input due by `now`, then advance to `now`. Returns the state. */
   tick(now: number): AffectState {

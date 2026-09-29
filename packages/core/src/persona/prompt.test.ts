@@ -59,6 +59,20 @@ describe('renderSystemPrompt', () => {
     expect(prompt).toMatchSnapshot();
   });
 
+  describe('her own notes (P4-T06, ADR-40)', () => {
+    it('leaves the prompt as it was with no notes, or only empty ones', () => {
+      expect(renderSystemPrompt(persona, { now: at, userName: null, notes: [] })).toBe(prompt);
+      expect(renderSystemPrompt(persona, { now: at, userName: null, notes: [{ name: 'blank', content: '  ' }] })).toBe(prompt);
+    });
+
+    it('lists them in their own section, before right now', () => {
+      const withNotes = renderSystemPrompt(persona, { now: at, userName: null, notes: [{ name: 'how_they_talk', content: 'Direct; no small talk.' }] });
+      const section = withNotes.slice(withNotes.indexOf('YOUR OWN NOTES'), withNotes.indexOf('RIGHT NOW'));
+      expect(section).toContain('- how they talk: Direct; no small talk.');
+      expect(section).toContain('self_write_block');
+    });
+  });
+
   describe('memory (P4-T04b, ADR-38)', () => {
     const fact = {
       id: 'f1',
