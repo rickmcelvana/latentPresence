@@ -644,3 +644,9 @@ Left: push; R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P4-T07 planning studio v1.
 Decisions: ADR-39 and ADR-40 accepted by Rick.
 
+## 2026-09-30 claude — hand-off
+Did: CI confirmed green on 63d94d0 (run 36608435248). PROJECT: CI status, and a P4-T07 hand-off (what exists, what the ADR must decide).
+Left: R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T07 planning studio v1 (main; brief/ADR first).
+Decisions: none.
+
