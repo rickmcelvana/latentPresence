@@ -12,7 +12,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.52",
     "@ai-sdk/google": "^4.0.67",
-    "@ai-sdk/mcp": "^2.0.63",
+    "@ai-sdk/mcp": "^2.0.62",
     "@ai-sdk/openai-compatible": "^3.0.47",
     "@latentpresence/core": "workspace:*",
     "@latentpresence/ml-web": "workspace:*",
