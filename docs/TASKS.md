@@ -184,6 +184,19 @@ planning with a person, rather than filling in a form by voice, needs you.
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-28 · Let her use a tool · ~10 minutes, desktop
+**Why:** P5-T01 lets her use MCP tools, asking you first (ADR-42). The automatic check passed with
+DeepWiki; whether the asking feels right — not naggy, not easy to click through blindly — needs you.
+1. `/settings` → **Tools** → add `DeepWiki`, `https://mcp.deepwiki.com/mcp`, Streamable HTTP,
+   sign-in None → **Test** (three tools, all *Ask first*).
+2. In `/chat`, ask her something about a GitHub repo you know ("what's in the docs for …?"). When
+   the card appears, read it, **Allow once**. Ask again and **Deny**. Then **Always allow** one tool.
+3. Try it by voice once (Start voice), and press Stop while the card is showing.
+
+**Pass:** the card says plainly who wants what; allowed, she answers from it; denied, she says
+she'll leave it and helps anyway; *always* stops the asking for that tool only; Stop dismisses the
+card. **Paste back:** pass/fail, and whether you would want fewer asks or more.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

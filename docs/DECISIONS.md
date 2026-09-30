@@ -44,6 +44,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | accepted | 2026-09-29 |
 | ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
 | ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | accepted | 2026-09-30 |
+| ADR-42 | MCP tools in the page: `@ai-sdk/mcp` through `listTools`/`callTool`, tools run by `withLocalTools` as `<server>__<tool>`; per-tool auto/ask/never with a fingerprint on "always"; every call a transcript line; stdio only from the companion's own config (P5-T02) | proposed | 2026-09-30 |
 
 ---
 
@@ -1288,3 +1289,60 @@ tool with the moment it is due and said "saying you will without the call does n
 same runs gave 1/5 and 2/5 — she said "I'll check in on the fourteenth" and did not call. In
 `/chat` (Browser pane, IndexedDB): the plan appeared in the Plans panel, her `plan_update`
 reached the open panel live, and it survived a reload.
+
+## ADR-42 MCP tools in the page: a gate per tool, stdio only through the companion (proposed 2026-09-30)
+
+**Context.** P5-T01: the AI SDK's MCP client, a UI to add servers (stdio via the companion, HTTP,
+SSE), a per-tool policy (auto, ask, never); done when a public demo server's tools are callable
+with an "ask" prompt. There: `withLocalTools` (ADR-40) runs her notes and plans and passes other
+tools through; `ToolCall`/`ToolResult` and the `tool.call`/`tool.result` events in the protocol,
+unused; the companion's `/mcp/tools` and `/mcp/call` in the contract, not built (P5-T02).
+
+**Decisions.**
+
+1. **`@ai-sdk/mcp` 2.x** (`createMCPClient`, Apache-2.0; the AI SDK 7 line), browser transports
+   `http` (streamable HTTP) and `sse`, **through `listTools`/`callTool`**, not `tools()`: our
+   providers speak `LlmTool` JSON Schema and `withLocalTools` runs every call, so an AI SDK tool
+   object would bypass the loop, the gate and the log. Behind an `McpServerClient` interface
+   in the protocol, with a `FakeMcpServer`.
+2. **MCP tools are page tools**: each becomes a `LocalTool` in the same wrapper, named
+   `<server>__<tool>` (the OpenAI name pattern, 64 characters), so typed, spoken and call paths
+   get them unchanged. A result is its text content (or `structuredContent`), capped at 8 000
+   characters with the cut said; `isError` is `{ error }`; images are named, not sent.
+3. **The gate is per tool: auto, ask, never.** A new tool is **ask**. `never` is not offered to
+   the model at all. **Ask** stops the answer and shows, in `/chat`, who wants what — server,
+   tool, arguments — with Allow once, Always allow, Deny; Stop, a barge-in or two minutes
+   unanswered is Deny, and she is told which. **Always** is kept with a fingerprint of the
+   tool's description and schema: a tool that changes after it was trusted is asked about
+   again (a "rug pull"). Her own tools (notes, plans) stay ungated — they change nothing outside
+   her.
+4. **Servers live in Settings → Tools**: name, URL, transport, on/off, and an optional
+   `Authorization` header kept in the vault (ADR-29). Each page connects on load; a server that
+   fails is shown failed in Settings and simply offers no tools.
+5. **No stdio from a web page.** Starting a process on a request is not something a page gets
+   to ask for. The companion will run stdio servers listed in **its own config file**, edited by
+   the person on disk, and serve them through the contract's `/mcp/tools` and `/mcp/call`; a
+   server that refuses browser origins goes the same way (ADR-29's relay). That is the
+   companion's MCP host, P5-T02; this task's UI lists what the companion serves once it does.
+6. **Every call is shown.** `withLocalTools` reports a call's start and end; the page puts
+   `tool.call`/`tool.result` on the bus, and the transcript shows one line per call ("Alice used
+   DeepWiki · read_wiki_structure", or refused, or failed). Like a failure notice it is not in
+   her history as something she said.
+7. **What a server returns is information, not instructions**: the prompt says so, and the
+   result reaches the model as a tool result, never as a user or system message.
+
+**Rejected.** *`tools()` and `streamText`'s own loop* — a second tool loop beside
+`withLocalTools`, without the gate. *Asking once per server* — one trusted search server can
+still add a destructive tool tomorrow. *stdio launched by the browser through the companion* —
+a page that can start a process can start any process.
+
+**Measured 2026-09-30.** `pnpm live:mcp` (glm-5.2:cloud, DeepWiki over streamable HTTP, the gate
+answered by the script): Allow once → a DeepWiki tool ran 3/3, every call was asked first, Deny →
+ran 0/3. After one Deny she tried the server's *other* tool, so a refusal now covers the whole
+server for that question; and she echoed "they said no" at the person, so the refusal is worded
+for her to say to them. In `/chat` (Browser pane): Settings → Tools listed DeepWiki's three tools
+straight from the page (open CORS), the card asked, Allow once, she answered from the real
+result, and the transcript said "Alice used deepwiki · read_wiki_structure". **Found there, not
+in any test:** `@ai-sdk/mcp` calls the `fetch` it is given off its own object, and `window.fetch`
+called that way throws "Illegal invocation" — the adapter always passes a wrapper. Pinned to
+`@ai-sdk/mcp` 2.0.62: 2.0.63 was hours old and fails pnpm's release-age check.

@@ -307,9 +307,10 @@ Done when: "let's plan a vegetable garden" ends with a saved plan visible in the
 
 ## Phase 5 — Knowledge and tools
 
-### P5-T01 MCP client and server manager — owner: main
+### P5-T01 MCP client and server manager — owner: main (done 2026-09-30; UI by sub from `docs/briefs/P5-T01.md`, ADR-42 proposed)
 AI SDK MCP client; UI to add servers (stdio via companion, HTTP, SSE); per-tool permission policy (auto, ask, never).
 Done when: a public demo MCP server's tools are callable with an "ask" prompt.
+**Met:** DeepWiki (`https://mcp.deepwiki.com/mcp`) added in Settings → Tools in the Browser pane; in `/chat` the card asked before `read_wiki_structure`, Allow once ran it and she answered from the result; `pnpm live:mcp` allowed 3/3 ran, denied 0/3. **stdio moved to P5-T02** (ADR-42): only the companion starts processes, from its own config file.
 
 ### P5-T02 Companion MCP host — owner: main
 Depends: P5-T01, P4-T02. Companion exposes first-party MCP servers: memory, plans, documents, sql, files (scoped roots).

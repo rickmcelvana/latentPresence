@@ -2183,3 +2183,24 @@ On the development server (MariaDB 11.8.8):
   the history, `plan_follow_up` came 4/6, the same as without (4/6).
 - Cloud flakiness: some requests fail with the AI SDK's `AI_RetryError`; the adapter logs it and
   the answer is empty, so a live count must tell a failed request from a missed call.
+
+## `@ai-sdk/mcp` and DeepWiki — verified 2026-09-30 (P5-T01)
+
+- **Package:** `@ai-sdk/mcp` (Apache-2.0) is the AI SDK 7 line's MCP client (2.x; `ai-v6` tag is
+  1.x); `ai` 7 itself has none. `createMCPClient({ transport: { type: 'http' | 'sse', url,
+  headers?, fetch?, authProvider? } })`; stdio only from the `./mcp-stdio` entry (Node). Client:
+  `listTools({ params: { cursor }, options })`, `callTool({ name, arguments, options })` with
+  `options = { signal?, timeout? }`, `serverInfo`, `instructions`, `close()` (unpkg `dist/index.d.ts`).
+- **It calls the `fetch` it is given as a method of its own object**: `window.fetch` passed
+  bare throws `Failed to execute 'fetch' on 'Window': Illegal invocation` in Chromium. Always
+  pass a wrapper.
+- **DeepWiki** (`https://mcp.deepwiki.com/mcp`, no key): answers a browser-origin preflight with
+  `access-control-allow-origin: *` and allows `content-type, mcp-protocol-version,
+  mcp-session-id`; replies as `text/event-stream`; serverInfo `DeepWiki 2.14.3`; tools
+  `ask_wiki_question`, `read_wiki_contents`, `read_wiki_structure` (no annotations);
+  `read_wiki_structure {repoName}` in ~170 ms with `content` + `structuredContent`. An unknown
+  repository and an unknown tool both come back as `isError: true` with text, not a JSON-RPC
+  error. GitMCP (`https://gitmcp.io/docs`) also allows browser origins and exposes `mcp-session-id`.
+- **pnpm 12 release age:** a version published within a day is refused on install, and `pnpm
+  add` of one writes `minimumReleaseAgeExclude` entries into `pnpm-workspace.yaml` — check that
+  file's diff after any `add`.

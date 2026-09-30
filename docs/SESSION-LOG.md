@@ -663,3 +663,9 @@ Left: R-27 (new); laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T01 MCP client and server manager (main; brief/ADR first). Phase 4 closes on R-27.
 Decisions: ADR-41 proposed (brainstorming is a prompt section; plan in focus in full; edits by title; follow-ups are `follow_up_on` facts, several per plan) — needs Rick's accept.
 Decisions: ADR-41 accepted by Rick (2026-09-30).
+
+## 2026-09-30 claude — P5-T01 MCP tools
+Did: P5-T01 (0002b01, c5c2b9b): `@ai-sdk/mcp` adapter, the per-tool gate (ask/always/never, fingerprint), MCP tools through `withLocalTools`, a transcript line per call, Settings → Tools and the permission card (sub, from a brief). Done-when met in the pane with DeepWiki; `live:mcp` allowed 3/3 ran, denied 0/3. Fixed: unbound `fetch` ("Illegal invocation"), a too-new `@ai-sdk/mcp` in the lockfile.
+Left: R-27, R-28 (new); laptop session (R-13, R-1, R-9); R-3; C-7. The permission card overlaps the character-consent card when both show.
+Next: P5-T02 companion MCP host (main; brief/ADR first) — stdio servers from the companion's own config.
+Decisions: ADR-41 accepted by Rick. ADR-42 proposed (MCP in the page: per-tool gate with fingerprints, `<server>__<tool>`, every call shown, no stdio from a page) — needs Rick's accept.
