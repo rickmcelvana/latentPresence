@@ -650,3 +650,9 @@ Left: R-26; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P4-T07 planning studio v1 (main; brief/ADR first).
 Decisions: none.
 
+
+## 2026-09-30 claude — R-26, transcript drawer
+Did: R-26 passed (D-39). Fixed /chat's transcript running out of its card on long conversations: `.transcript-log-wrap` never passed the drawer's height down, broken since P2-T06 (9b3ed97; measured in the pane with the real CSS, log now bounded and scrolling).
+Left: laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P4-T07 planning studio v1 (main; brief/ADR first).
+Decisions: none.

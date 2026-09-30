@@ -169,23 +169,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-26 · Does she remember you? · ~10 minutes, desktop
-**Why:** P4-T04b put memory into `/chat` (ADR-38). The automatic check passed — a fact told in one
-visit was used in the next, in this browser and through the companion — but whether it feels like
-being *remembered*, rather than recited at, needs you.
-1. Start the companion so memory goes to MariaDB (or skip this and it stays in the browser):
-   ```bash
-   pnpm companion
-   ```
-2. `/settings` → **Memory** → *Automatic* (it starts on *This browser*). Open `/chat` and talk for a few minutes about real
-   things — people, plans, something that changed ("I used to…, now…").
-3. Close the tab. Come back later (an hour, or tomorrow), open `/chat` and carry on as you would
-   with a friend. Don't quiz her; see what she brings up.
-
-**Pass:** she uses what you told her where it fits, gets a changed thing right (the new one, not
-the old), and never recites a list at you. **Paste back:** pass/fail, anything she got wrong or
-said too eagerly, and whether it felt like being remembered.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -208,6 +191,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-39 · R-26: does she remember you?** — Rick 2026-09-30: **passed** — she uses what she
+  was told naturally in ordinary conversation, gets changes right, and it reads as remembered
+  rather than recited. P4-T04b's done-when is met by a person.
 - **D-38 · R-25: does she listen like she means it?** — Rick 2026-09-27: **passed** — **no
   reaction contradicted Rick's tone**; the amount "seems right". P3-T08's done-when is met with
   the parameters unchanged.
