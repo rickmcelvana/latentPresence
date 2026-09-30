@@ -36,6 +36,19 @@ function notesOn(store = new FakeMemoryStore()) {
   return { store, notes: new SelfNotes({ store, characterId: 'alice', now: () => new Date(AT) }) };
 }
 
+/** One round that says `before` and calls a tool, and one that says `text` and then " Next." */
+function toolRound(before: string) {
+  return [
+    { type: 'text-delta', text: before },
+    { type: 'tool-call', call: call('self_read_block', { name: 'x' }) },
+    { type: 'finish', reason: 'tool-calls', usage: null },
+  ] as const;
+}
+
+function after(text: string) {
+  return [{ type: 'text-delta', text }, { type: 'text-delta', text: ' Next.' }, { type: 'finish', reason: 'stop', usage: null }] as const;
+}
+
 describe('withLocalTools (P4-T06, ADR-40)', () => {
   it('is the provider itself when there are no tools', async () => {
     const llm = scripted([[{ type: 'text-delta', text: 'Hi.' }, { type: 'finish', reason: 'stop', usage: null }]]);
@@ -72,6 +85,18 @@ describe('withLocalTools (P4-T06, ADR-40)', () => {
     expect((await store.readBlocks('alice')).map((block) => [block.name, block.content, block.editableByCharacter])).toEqual([
       ['what_they_like', 'Wants to be called Captain. Hates small talk.', true],
     ]);
+  });
+
+  it('puts a space between what was said before a call and after it when neither has one', async () => {
+    const { notes } = notesOn();
+    const said = async (before: string, next: string): Promise<string> => {
+      const chunks = await collect(withLocalTools(scripted([toolRound(before), after(next)]), () => selfNoteTools(notes)).stream(request));
+      return chunks.flatMap((chunk) => (chunk.type === 'text-delta' ? [chunk.text] : [])).join('');
+    };
+    expect(await said('Let me lay it out.', 'So I have saved it.')).toBe('Let me lay it out. So I have saved it. Next.');
+    expect(await said('Aye, ', 'Captain.')).toBe('Aye, Captain. Next.');
+    expect(await said('Right.', '\nSaved.')).toBe('Right.\nSaved. Next.');
+    expect(await said('', 'Saved.')).toBe('Saved. Next.');
   });
 
   it('offers no tools on the last round, so an answer always ends in words', async () => {

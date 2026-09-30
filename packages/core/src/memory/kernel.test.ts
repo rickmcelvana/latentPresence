@@ -182,6 +182,21 @@ describe('MemoryKernel — namespaces and consolidation', () => {
     expect((await alice.recall({ sessionId: 'sa2', query: 'Halifax harbour' })).episodes.map((e) => e.id)).toEqual(['a1']);
   });
 
+  it('records a fact the page states, embedded and believed, and closes it without losing the history', async () => {
+    const store = new FakeMemoryStore({ now: () => NOW });
+    const embedder = new WordsEmbedder();
+    const { kernel: k } = kernel(store, null, { embedder: { provider: embedder, model: MODEL } });
+    const followUp: SemanticFact = { id: 'fu', characterId: 'someone-else', subject: 'vegetable_garden', predicate: 'follow_up_on', object: '2026-10-15: whether the seedlings are in', confidence: 1, validFrom: NOW.toISOString(), validTo: null, recordedAt: NOW.toISOString(), sourceEpisodeId: null, embedding: null };
+    await k.recordFact(followUp);
+    expect(embedder.calls).toBe(1);
+    expect(await store.currentFacts('alice')).toEqual([expect.objectContaining({ id: 'fu', characterId: 'alice', object: '2026-10-15: whether the seedlings are in' })]);
+    expect((await k.knownFacts()).map((f) => f.id)).toEqual(['fu']);
+    await k.closeFact('fu');
+    expect(await store.currentFacts('alice')).toEqual([]);
+    expect(await k.knownFacts()).toEqual([]);
+    expect(store.rows.facts.map((row) => row.fact.id)).toEqual(['fu']);
+  });
+
   it('consolidates what is in the store, and its own view follows', async () => {
     const store = new FakeMemoryStore({ now: () => NOW });
     const base: SemanticFact = { id: 'x', characterId: 'alice', subject: 'user', predicate: 'likes', object: 'jazz', confidence: 0.6, validFrom: '2026-09-01T00:00:00.000Z', validTo: null, recordedAt: '2026-09-01T00:00:00.000Z', sourceEpisodeId: null, embedding: null };

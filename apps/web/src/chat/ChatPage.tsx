@@ -5,11 +5,13 @@ import {
   ConversationMachine,
   DEFAULT_AFFECT_PARAMS,
   MemoryKernel,
+  Plans,
   SelfNotes,
   attachAffect,
   attachHistory,
   attachMemory,
   attachMood,
+  planTools,
   selfNoteTools,
   withLocalTools,
   attachUserAffect,
@@ -27,6 +29,7 @@ import { ConsentScreen } from '../consent/ConsentScreen';
 import { TranscriptPanel } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import { MemoryPanel } from '../memory/MemoryPanel';
+import { PlansPanel } from '../plan/PlansPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
@@ -251,7 +254,8 @@ function ConfiguredChatPage({
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
     // P4-T06 (ADR-40): her own notes and the tools she keeps them with, from the same store.
-    const builtSelfHolder: { notes: SelfNotes | null; tools: LocalTool[] } = { notes: null, tools: [] };
+    // P4-T07 (ADR-41): her plans with them, kept with tools in the same store.
+    const builtSelfHolder: { notes: SelfNotes | null; plans: Plans | null; tools: LocalTool[] } = { notes: null, plans: null, tools: [] };
     const builtMachine = new ConversationMachine({
       sessionId: builtSessionId,
       characterId: defaultPersona.id,
@@ -285,6 +289,7 @@ function ConfiguredChatPage({
           // P4-T04b (ADR-38): ready before the request, never awaited by it.
           memory: builtMemoryHolder.current?.context() ?? null,
           notes: builtSelfHolder.notes?.notes() ?? [],
+          plans: builtSelfHolder.plans?.promptContext() ?? null,
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
@@ -325,6 +330,9 @@ function ConfiguredChatPage({
   // memory browser, P4-T05) are kept in step — one attach, two readers with different needs.
   const [memory, setMemory] = useState<AttachedMemory | null>(null);
   const [memoryWhere, setMemoryWhere] = useState<string | null>(null);
+  // The plans (P4-T07) for the panel: state, because the panel renders from it; `selfHolder`
+  // holds the same object for the prompt, which reads it outside React.
+  const [plans, setPlans] = useState<Plans | null>(null);
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
@@ -349,7 +357,12 @@ function ConfiguredChatPage({
       const notes = new SelfNotes({ store: choice.store, characterId: defaultPersona.id });
       void notes.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'notes'));
       selfHolder.notes = notes;
-      selfHolder.tools = selfNoteTools(notes);
+      // P4-T07 (ADR-41): plans in the same store; follow-ups are facts, so they go through the kernel.
+      const builtPlans = new Plans({ store: choice.store, characterId: defaultPersona.id, followUps: kernel });
+      void builtPlans.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'plans'));
+      selfHolder.plans = builtPlans;
+      setPlans(builtPlans);
+      selfHolder.tools = [...selfNoteTools(notes), ...planTools(builtPlans)];
       mood = attachMood(machine, { affect, notes, onError: (error) => warn(error, 'mood') });
       window.addEventListener('pagehide', saveMood);
     });
@@ -365,6 +378,8 @@ function ConfiguredChatPage({
         mood.detach();
       }
       selfHolder.notes = null;
+      selfHolder.plans = null;
+      setPlans(null);
       selfHolder.tools = [];
     };
   }, [affect, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, userAffect]);
@@ -391,13 +406,13 @@ function ConfiguredChatPage({
   // Read once: only the *starting* width decides the drawer's default (decision 9). A
   // window resized mid-session keeps whatever the person set with the Transcript button.
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
-  // Which of the two views the drawer shows (P4-T05). Always transcript at first, per the
-  // rule above — Memory only opens the drawer when a person asks it to.
-  const [drawerView, setDrawerView] = useState<'transcript' | 'memory'>('transcript');
-  /** The Transcript and Memory buttons share this: pressing the view already showing
+  // Which view the drawer shows (P4-T05, P4-T07). Always transcript at first, per the
+  // rule above — Memory and Plans only open the drawer when a person asks it to.
+  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans'>('transcript');
+  /** The Transcript, Memory and Plans buttons share this: pressing the view already showing
    * closes the drawer, pressing the other switches to it (opening the drawer if closed). */
   const toggleDrawerView = useCallback(
-    (view: 'transcript' | 'memory') => {
+    (view: 'transcript' | 'memory' | 'plans') => {
       if (drawerOpen && drawerView === view) {
         setDrawerOpen(false);
         return;
@@ -722,6 +737,8 @@ function ConfiguredChatPage({
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
         {drawerView === 'memory' ? (
           <MemoryPanel characterName={CHAT_CHARACTER_NAME} memory={memory} subscribe={subscribe} where={memoryWhere} />
+        ) : drawerView === 'plans' ? (
+          <PlansPanel characterName={CHAT_CHARACTER_NAME} plans={plans} />
         ) : (
           <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
         )}
@@ -872,6 +889,9 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={drawerOpen && drawerView === 'memory'} className="btn call-control-btn" onClick={() => toggleDrawerView('memory')} type="button">
           Memory
+        </button>
+        <button aria-pressed={drawerOpen && drawerView === 'plans'} className="btn call-control-btn" onClick={() => toggleDrawerView('plans')} type="button">
+          Plans
         </button>
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings

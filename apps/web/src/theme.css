@@ -1388,6 +1388,198 @@ kbd {
   max-height: none;
 }
 
+/* --- Plans panel (P4-T07, ADR-41) -------------------------------------------
+   A `.panel` beside the memory browser, with the same scrolling body so the
+   header (and its Back button) stay put while a long plan scrolls. The list
+   rows are buttons; the editor is a column of fields, phases and tasks. */
+
+.plans-panel {
+  min-height: 0;
+}
+
+.plans-off,
+.plans-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.plans-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  max-height: 480px;
+  padding-right: var(--gap-xs);
+  overflow-y: auto;
+}
+
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plans-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.plans-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  width: 100%;
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    background var(--transition);
+}
+
+.plans-row:hover {
+  border-color: var(--border-bright);
+  background: var(--panel-hover);
+}
+
+.plans-row:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.plans-row-title {
+  font-weight: 600;
+}
+
+.plans-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.plans-follow-up {
+  margin: 0;
+  padding-left: var(--gap-md);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.plans-archived-toggle {
+  align-self: flex-start;
+}
+
+.plans-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.plans-phase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding: var(--gap-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.plans-phase-head,
+.plans-task-head {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-xs);
+}
+
+.plans-phase-head > .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* At drawer width a task's title, status and two buttons cannot share a line (the title
+   shrank to a sliver, seen in the pane): the title takes its own, the rest wrap beneath,
+   Remove at the far end. */
+.plans-task-head {
+  flex-wrap: wrap;
+}
+
+.plans-task-head > .input {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.plans-task-head > :last-child {
+  margin-left: auto;
+}
+
+.plans-task {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.plans-task-status {
+  flex: none;
+  width: auto;
+}
+
+.plans-notes {
+  min-height: 48px;
+}
+
+.plans-add {
+  align-self: flex-start;
+}
+
+.plans-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  padding: var(--gap-sm) var(--gap-md);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.plans-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.plans-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.call-drawer .plans-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.call-drawer .plans-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 /* --- Chat (P1-T11) ----------------------------------------------------------
    `/chat`: the transcript above, this box below. Ships in production. */
 

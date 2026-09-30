@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`planToMarkdown (P4-T07, ADR-41) > renders a stable document 1`] = `
+"# Vegetable garden
+
+Easy vegetables by spring.
+
+Status: active · updated 2026-09-30
+
+## Prepare the bed
+
+- [x] Pick a sunny spot
+  Behind the shed.
+- [ ] Dig in compost (under way)
+  Two bags
+  from the allotment
+- [ ] ~~Raised bed~~ (dropped)
+
+## Plant
+
+_No tasks yet._
+"
+`;

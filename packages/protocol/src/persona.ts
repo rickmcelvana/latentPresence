@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AffectStateSchema, UserAffectSchema } from './affect';
 import { IdSchema } from './common';
-import { MemoryEpisodeSchema, SemanticFactSchema } from './memory';
+import { MemoryEpisodeSchema, PlanDocumentSchema, SemanticFactSchema } from './memory';
 
 /**
  * Who the character is, as a file (P1-T12).
@@ -105,6 +105,30 @@ export const PromptContextSchema = z.object({
     .array(z.object({ name: z.string().min(1).max(64), content: z.string() }))
     .max(16)
     .default([]),
+  /**
+   * Her plans with them (P4-T07, ADR-41): rendered by core as the planning section — how to
+   * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
+   * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.
+   */
+  plans: z
+    .object({
+      plans: z.array(PlanDocumentSchema).max(16),
+      /** The plan being worked on, shown in full; null when none is. */
+      focusId: IdSchema.nullable(),
+      followUps: z
+        .array(
+          z.object({
+            /** The plan's name as the fact holds it, in words. */
+            plan: z.string().min(1),
+            /** The day to ask, `YYYY-MM-DD`. */
+            on: z.iso.date(),
+            about: z.string(),
+          }),
+        )
+        .max(16),
+    })
+    .nullable()
+    .default(null),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
 /** What a caller passes: the nullable fields may be left out and mean null. */

@@ -7,6 +7,7 @@ import {
 } from '@latentpresence/protocol';
 import { describeFeeling, describeUser } from '../affect/express';
 import { renderMemory } from '../memory/recall';
+import { renderPlans } from '../plan/render';
 
 /**
  * The system prompt (P1-T12): a persona plus what is true right now, rendered to the
@@ -106,6 +107,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
           memory,
           '',
         ]),
+    // P4-T07 (ADR-41): how to plan together, and the plans — after memory, before "right now".
+    ...(context.plans ? renderPlans(context.plans, context.now) : []),
     'RIGHT NOW',
     `- It is ${formatNow(context.now)}.`,
     ...(userName === null ? [] : [`- You are talking to ${userName}.`]),

@@ -1,4 +1,5 @@
 import type { ConversationEvent, MemoryEpisode, PromptContext, SemanticFact, UserAffect } from '@latentpresence/protocol';
+import { FOLLOW_UP_PREDICATE } from '../plan/plans';
 import type { MemoryKernel } from './kernel';
 
 /** What the prompt carries (`PromptContext.memory`). */
@@ -67,7 +68,8 @@ function asError(error: unknown): Error {
  * out, and one it has since reinforced is taken in its current form.
  */
 export function promptFacts(recalled: readonly SemanticFact[], known: readonly SemanticFact[], max: number): SemanticFact[] {
-  const current = new Map(known.map((fact) => [fact.id, fact]));
+  // A plan's follow-up is said in the plans section (ADR-41), not twice.
+  const current = new Map(known.filter((fact) => fact.predicate !== FOLLOW_UP_PREDICATE).map((fact) => [fact.id, fact]));
   const first = recalled.flatMap((fact) => current.get(fact.id) ?? []);
   const seen = new Set(first.map((fact) => fact.id));
   const rest = known

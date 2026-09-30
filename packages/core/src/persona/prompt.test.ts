@@ -73,6 +73,63 @@ describe('renderSystemPrompt', () => {
     });
   });
 
+  describe('plans (P4-T07, ADR-41)', () => {
+    const garden = {
+      id: 'p1',
+      characterId: 'alice',
+      title: 'Vegetable garden',
+      goal: 'A small bed of easy vegetables by spring.',
+      status: 'active' as const,
+      version: 3,
+      updatedAt: at.toISOString(),
+      phases: [
+        {
+          id: 'ph1',
+          title: 'Prepare the bed',
+          tasks: [
+            { id: 't1', title: 'Pick a sunny spot', status: 'done' as const, notes: '' },
+            { id: 't2', title: 'Dig in compost', status: 'todo' as const, notes: '' },
+          ],
+        },
+      ],
+    };
+    const shed = { ...garden, id: 'p2', title: 'Tidy the shed', goal: '', phases: [] };
+
+    it('leaves the prompt exactly as it was without the plan tools', () => {
+      expect(renderSystemPrompt(persona, { now: at, userName: null, plans: null })).toBe(prompt);
+    });
+
+    it('says how to plan together whenever the tools are there, even with no plans yet', () => {
+      const empty = renderSystemPrompt(persona, { now: at, userName: null, plans: { plans: [], focusId: null, followUps: [] } });
+      const section = empty.slice(empty.indexOf('PLANNING TOGETHER'), empty.indexOf('RIGHT NOW'));
+      expect(section).toContain('plan_create');
+      expect(section).toContain('Never read it out');
+      expect(section).not.toContain('Your plans with them');
+    });
+
+    it('shows the plan in focus in full and every other in a line, with follow-ups due or not', () => {
+      const text = renderSystemPrompt(persona, {
+        now: at,
+        userName: null,
+        plans: {
+          plans: [garden, shed],
+          focusId: 'p1',
+          followUps: [
+            { plan: 'vegetable garden', on: '2026-09-21', about: 'whether the compost went in' },
+            { plan: 'tidy the shed', on: '2026-10-02', about: 'how the shelves look' },
+          ],
+        },
+      });
+      const section = text.slice(text.indexOf('PLANNING TOGETHER'), text.indexOf('RIGHT NOW'));
+      expect(section).toContain('  Tidy the shed (id p2, active): no tasks yet.');
+      expect(section).toContain('  Vegetable garden (id p1, active). Goal: A small bed of easy vegetables by spring.');
+      expect(section).toContain('  Prepare the bed: Pick a sunny spot (done); Dig in compost (to do)');
+      expect(section).toContain('  vegetable garden, on 21 September 2026: whether the compost went in (due now).');
+      expect(section).toContain('  tidy the shed, on 2 October 2026: how the shelves look.');
+      expect(text.indexOf('PLANNING TOGETHER')).toBeGreaterThan(text.indexOf('WHAT YOU WILL NOT DO'));
+    });
+  });
+
   describe('memory (P4-T04b, ADR-38)', () => {
     const fact = {
       id: 'f1',

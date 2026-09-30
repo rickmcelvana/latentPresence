@@ -167,6 +167,27 @@ export class MemoryKernel {
     });
   }
 
+  /**
+   * A fact the page states rather than hears — a plan's follow-up (P4-T07, ADR-41): written
+   * as given, embedded, and cached, queued behind any extraction so the two cannot interleave.
+   */
+  recordFact(fact: SemanticFact): Promise<void> {
+    return this.enqueueResult(async () => {
+      const recorded: SemanticFact = { ...fact, characterId: this.characterId, embedding: null };
+      const [embedding = null] = await this.embed([`${recorded.subject} ${recorded.predicate} ${recorded.object}`.replaceAll('_', ' ')]);
+      await this.options.store.upsertFact({ ...recorded, embedding });
+      (await this.loadKnown()).set(recorded.id, recorded);
+    });
+  }
+
+  /** A fact stops holding now (`supersedeFact`), and leaves the cache: the history keeps it. */
+  closeFact(id: string): Promise<void> {
+    return this.enqueueResult(async () => {
+      await this.options.store.supersedeFact(id, this.now().toISOString());
+      (await this.loadKnown()).delete(id);
+    });
+  }
+
   /** The person removes a turn (ADR-39). A fact read from it stays; delete that separately. */
   deleteEpisode(id: string): Promise<void> {
     return this.enqueueResult(async () => {

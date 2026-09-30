@@ -19,5 +19,6 @@ export * from './history';
 export * from './persona';
 export * from './affect';
 export * from './memory';
+export * from './plan';
 export * from './self';
 export { Cancellation } from './cancellation';

@@ -334,6 +334,55 @@ describe('ChatPage — the persona', () => {
     expect(second).toContain('how they talk: Short answers, please.');
   });
 
+  it('a plan she saves with plan_create is in the store and in the Plans panel (P4-T07)', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    const chats: LlmRequest[] = [];
+    let created = false;
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        if (request.reasoning === 'off') {
+          yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+          yield { type: 'finish', reason: 'stop', usage: null };
+          return;
+        }
+        chats.push(request);
+        if (!created && request.tools.some((tool) => tool.name === 'plan_create')) {
+          created = true;
+          const phases = [
+            { title: 'Prepare the bed', tasks: ['Pick a sunny spot', 'Dig in compost'] },
+            { title: 'Plant', tasks: ['Buy seedlings'] },
+          ];
+          yield { type: 'tool-call', call: { id: 'c1', name: 'plan_create', arguments: { title: 'Vegetable garden', goal: 'Easy vegetables by spring.', phases }, source: 'llm', requestedAt: '2026-09-30T00:00:00.000Z' } };
+          yield { type: 'finish', reason: 'tool-calls', usage: null };
+          return;
+        }
+        yield { type: 'text-delta', text: 'There is your plan.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    await waitFor(() => expect(store.calls).toContain('currentFacts'));
+    await act(() => settle());
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: "let's plan a vegetable garden" } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+    await waitFor(async () => expect((await store.listPlans(defaultPersona.id))[0]?.title).toBe('Vegetable garden'));
+    await waitFor(() => expect(chats.length).toBeGreaterThan(1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Plans' }));
+    const row = await screen.findByRole('button', { name: /Vegetable garden/ });
+    expect(row.textContent).toContain('0 of 3 done');
+    expect(row.textContent).toContain('working on it now');
+  });
+
   it('names the character from the persona file rather than a constant', () => {
     expect(CHAT_CHARACTER_NAME).toBe(defaultPersona.name);
   });
@@ -553,6 +602,33 @@ describe('ChatPage — the call layout (P2-T06)', () => {
     fireEvent.click(transcriptBtn);
     expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
     expect(transcriptBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('Plans is a third view of the drawer, pressed only while it shows, and says plans need memory when memory is off (P4-T07)', () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const plansBtn = screen.getByRole('button', { name: 'Plans' });
+    const memoryBtn = screen.getByRole('button', { name: 'Memory' });
+    expect(plansBtn.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(plansBtn);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+    expect(container.querySelector('.plans-panel')).toBeTruthy();
+    expect(screen.getByText(/Plans are kept with memory/)).toBeTruthy();
+    expect(plansBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(memoryBtn.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(memoryBtn);
+    expect(container.querySelector('.plans-panel')).toBeNull();
+    expect(container.querySelector('.memory-panel')).toBeTruthy();
+    expect(plansBtn.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(plansBtn);
+    fireEvent.click(plansBtn);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+    expect(plansBtn.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('the Text button hides and shows the text box', () => {

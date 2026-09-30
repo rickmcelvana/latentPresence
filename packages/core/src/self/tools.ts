@@ -58,6 +58,10 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
         return;
       }
       let messages: LlmMessage[] = request.messages;
+      // What was said before a tool call and what is said after it are two answers to the
+      // model and one to the person: "together." then "So I've…" must not arrive as
+      // "together.So I've…" (seen live, P4-T07). A space goes between them when neither has one.
+      let spoken = '';
       for (let round = 0; ; round += 1) {
         // The last round offers no local tools, so an answer always ends in words.
         const offered = round < maxRounds ? local : [];
@@ -69,8 +73,12 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
             calls.push(chunk.call);
           } else if (chunk.type === 'finish') {
             finish = chunk;
+          } else if (chunk.type === 'text-delta') {
+            const joined = text === '' && spoken !== '' && !/\s$/u.test(spoken) && !/^\s/u.test(chunk.text) ? ` ${chunk.text}` : chunk.text;
+            text += chunk.text;
+            spoken += joined;
+            yield joined === chunk.text ? chunk : { ...chunk, text: joined };
           } else {
-            if (chunk.type === 'text-delta') text += chunk.text;
             yield chunk;
           }
         }
