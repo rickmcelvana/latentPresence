@@ -298,7 +298,7 @@ Depends: P3-T01, P4-T03. Agent tools `self.read_block`, `self.write_block`; mood
 Done when: mood carries across a restart in a scripted test.
 **Met:** `self/mood.test.ts` — a visit that ends sad starts the next still sad a minute later, exactly where an engine left running would be, and herself again after a week; `ChatPage.test.tsx` does it through `/chat` with a remount. The mood is the system block `_mood`, saved after every answer; her notes are the other blocks, in her prompt, kept with `self_read_block`/`self_write_block` run by `withLocalTools`, a provider wrapper every path shares. Live (glm-5.2:cloud): she wrote her own note from a stated preference, and was still sad after a reload.
 
-### P4-T07 Planning studio v1 — owner: main (done 2026-09-30; `packages/core/src/plan`, panel by sub from `docs/briefs/P4-T07.md`, ADR-41 proposed)
+### P4-T07 Planning studio v1 — owner: main (done 2026-09-30; `packages/core/src/plan`, panel by sub from `docs/briefs/P4-T07.md`, ADR-41 accepted)
 Brainstorm mode prompt, `plan.create/update/list` tools, plan schema, side panel editor, Markdown export, follow-up scheduling stored as facts.
 Done when: "let's plan a vegetable garden" ends with a saved plan visible in the panel and in MariaDB.
 **Met:** `pnpm live:plan` — 5/5 conversations with glm-5.2:cloud left one plan in the companion's MariaDB, read back by a second client; `ChatPage.test.tsx` puts a scripted `plan_create` in the Plans panel; in the Browser pane a real one appeared there and her later `plan_update` arrived live. Brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; follow-ups are `follow_up_on` facts, several per plan (ADR-41).

@@ -662,3 +662,4 @@ Did: P4-T07 (e692bc9): `core/plan` (Plans, four tools, prompt section, Markdown)
 Left: R-27 (new); laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T01 MCP client and server manager (main; brief/ADR first). Phase 4 closes on R-27.
 Decisions: ADR-41 proposed (brainstorming is a prompt section; plan in focus in full; edits by title; follow-ups are `follow_up_on` facts, several per plan) — needs Rick's accept.
+Decisions: ADR-41 accepted by Rick (2026-09-30).

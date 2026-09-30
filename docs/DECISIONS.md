@@ -43,7 +43,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
 | ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | accepted | 2026-09-29 |
 | ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
-| ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | proposed | 2026-09-30 |
+| ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | accepted | 2026-09-30 |
 
 ---
 
@@ -1227,7 +1227,7 @@ direct, always."` herself and answered "Got it. I won't fill space with filler."
 exchange and a reload, before any message, the overlay still read sadness 0.30 (0.42 a minute
 before). The scripted done-when: `self/mood.test.ts` and `ChatPage.test.tsx`.
 
-## ADR-41 Planning studio: plans she keeps with tools, a plan in focus, follow-ups as facts (proposed 2026-09-30)
+## ADR-41 Planning studio: plans she keeps with tools, a plan in focus, follow-ups as facts (accepted 2026-09-30)
 
 **Context.** P4-T07: brainstorm mode prompt, `plan.create/update/list` tools, plan schema, side
 panel editor, Markdown export, follow-up scheduling stored as facts. Done when "let's plan a
