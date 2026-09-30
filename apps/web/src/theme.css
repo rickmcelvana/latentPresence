@@ -1565,9 +1565,24 @@ kbd {
   min-height: 0;
 }
 
+/* The wrap sits between the panel and the log, so it has to pass the height down: without
+   this the log's `flex: 1` did nothing, the log grew with the conversation and the newest
+   lines ran out of the card instead of scrolling. The jump button floats over the log's
+   foot rather than taking a row under it. */
+.call-drawer .transcript-log-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
 .call-drawer .transcript-log {
   flex: 1;
+  min-height: 0;
   max-height: none;
+}
+
+.call-drawer .transcript-jump {
+  position: absolute;
 }
 
 /* --- Voice card and text dock -----------------------------------------------
