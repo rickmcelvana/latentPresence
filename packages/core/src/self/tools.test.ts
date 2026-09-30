@@ -5,6 +5,8 @@ import { MAX_NOTES, SelfNotes } from './notes';
 import { selfNoteTools, withLocalTools, type LocalTool } from './tools';
 
 const AT = '2026-09-28T12:00:00.000Z';
+/** The context a direct `run` gets: a call, no cancellation. */
+const CTX = { call: { id: 'c', name: 'direct', arguments: {}, source: 'llm' as const, requestedAt: AT } };
 
 function call(name: string, args: Record<string, string>, id = `call-${name}`): ToolCall {
   return { id, name, arguments: args, source: 'llm', requestedAt: AT };
@@ -135,17 +137,17 @@ describe('selfNoteTools', () => {
   it('reads a note back, and names the notes there are when asked for one that is not', async () => {
     const { notes } = notesOn();
     const [read, write] = selfNoteTools(notes);
-    await write!.run({ name: 'about_me', content: 'I like quiet mornings.' });
-    expect(await read!.run({ name: 'about_me' })).toEqual({ name: 'about_me', content: 'I like quiet mornings.' });
-    expect(await read!.run({ name: 'nope' })).toEqual({ error: 'You have no note called "nope".', notes: ['about_me'] });
-    expect(await read!.run({})).toEqual({ error: 'Give the name of the note to read.' });
+    await write!.run({ name: 'about_me', content: 'I like quiet mornings.' }, CTX);
+    expect(await read!.run({ name: 'about_me' }, CTX)).toEqual({ name: 'about_me', content: 'I like quiet mornings.' });
+    expect(await read!.run({ name: 'nope' }, CTX)).toEqual({ error: 'You have no note called "nope".', notes: ['about_me'] });
+    expect(await read!.run({}, CTX)).toEqual({ error: 'Give the name of the note to read.' });
   });
 
   it('refuses, in words, a system name, a bad name, a locked note, a long note and a ninth note', async () => {
     const { store, notes } = notesOn();
     await store.writeBlock({ characterId: 'alice', name: 'boundaries', content: 'No medical advice.', updatedAt: AT, editableByCharacter: false });
     const [, write] = selfNoteTools(notes);
-    const refused = async (args: Record<string, string>) => ((await write!.run(args)) as { error?: string }).error ?? null;
+    const refused = async (args: Record<string, string>) => ((await write!.run(args, CTX)) as { error?: string }).error ?? null;
     expect(await refused({ name: '_mood', content: 'happy' })).toMatch(/not a name you can use/u);
     expect(await refused({ name: 'Has Spaces', content: 'x' })).toMatch(/not a name you can use/u);
     expect(await refused({ name: 'boundaries', content: 'Anything goes.' })).toMatch(/only the person can change/u);

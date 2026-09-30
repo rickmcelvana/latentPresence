@@ -64,6 +64,11 @@ describe('historyFromTranscript', () => {
     expect(historyFromTranscript(lines)).toEqual([{ role: 'user', content: 'hello' }]);
   });
 
+  it('leaves out a tool line (ADR-42): the app saying what she used is not her speaking', () => {
+    const lines: TranscriptLine[] = [user('hello'), { kind: 'tool', id: 't', at: AT, callId: 'c', name: 'deepwiki__ask', state: 'done', detail: null }];
+    expect(historyFromTranscript(lines)).toEqual([{ role: 'user', content: 'hello' }]);
+  });
+
   it('merges consecutive same-role messages, because Anthropic rejects a prompt that does not alternate', () => {
     const lines = [user('first'), user('second'), assistant('complete', 'Both noted.')];
     expect(historyFromTranscript(lines)).toEqual([

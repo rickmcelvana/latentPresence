@@ -7,6 +7,7 @@ import { FakeMemoryStore, replayFusion, type FusionRecording } from '@latentpres
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
+import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
@@ -14,7 +15,7 @@ import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { SETTINGS_STORAGE_KEY } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
-import { CHAT_CHARACTER_NAME, ChatPage, type FaceReadingLoader, type SpeakerLoader } from './ChatPage';
+import { CHAT_CHARACTER_NAME, ChatPage, type ChatPageProps, type FaceReadingLoader, type SpeakerLoader } from './ChatPage';
 import type { FaceReadingOptions } from '../call/face-reading';
 import type { ChatLlmOptions } from './chat-llm';
 
@@ -951,5 +952,108 @@ describe('ChatPage — face reading (P3-T06)', () => {
     await screen.findByText('Camera: Permission denied');
     expect(r.button().getAttribute('aria-pressed')).toBe('false');
     expect(r.runs).toHaveLength(0);
+  });
+});
+
+function wikiServer(): FakeMcpServer {
+  return new FakeMcpServer('DeepWiki', [
+    {
+      info: { name: 'read_wiki_structure', description: 'The topics of a repository.', inputSchema: { type: 'object', properties: { repoName: { type: 'string' } } }, annotations: null },
+      run: () => textResult('1. Overview'),
+    },
+  ]);
+}
+
+/** The model asks for the tool once, then answers with whatever the tool gave it. */
+function toolCaller(): (options: ChatLlmOptions) => LLMProvider {
+  return () => {
+    let asked = false;
+    return {
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        if (request.reasoning === 'off') {
+          yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+          yield { type: 'finish', reason: 'stop', usage: null };
+          return;
+        }
+        if (!asked && request.tools.some((tool) => tool.name === 'deepwiki__read_wiki_structure')) {
+          asked = true;
+          yield { type: 'tool-call', call: { id: 'c1', name: 'deepwiki__read_wiki_structure', arguments: { repoName: 'vitest-dev/vitest' }, source: 'llm', requestedAt: '2026-09-30T00:00:00.000Z' } };
+          yield { type: 'finish', reason: 'tool-calls', usage: null };
+          return;
+        }
+        const gotIt = request.messages.some((message) => message.role === 'tool' && JSON.stringify(message.content).includes('Overview'));
+        yield { type: 'text-delta', text: gotIt ? 'The wiki has an Overview.' : 'I will carry on without it.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    };
+  };
+}
+
+describe('ChatPage — MCP tools (P5-T01, ADR-42)', () => {
+  const ORIGINAL_INNER_WIDTH = window.innerWidth;
+
+  afterEach(() => {
+    setViewportWidth(ORIGINAL_INNER_WIDTH);
+  });
+
+  async function askForTool(server: FakeMcpServer, connectTools?: NonNullable<ChatPageProps['connectTools']>): Promise<void> {
+    setViewportWidth(1600);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(
+      <ChatPage
+        buildProvider={toolCaller()}
+        connectTools={
+          connectTools ??
+          (async () => ({
+            connected: [{ id: 'srv-1', label: 'DeepWiki', client: server, tools: await server.listTools() }],
+            statuses: [{ id: 'srv-1', label: 'DeepWiki', ok: true, detail: '1 tool' }],
+          }))
+        }
+        createRenderer={fakeCreateRenderer}
+        deps={testDeps({ storage })}
+      />,
+    );
+    await act(() => settle());
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'what is in the vitest wiki?' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+  }
+
+  it('asks first; Allow once runs the tool, and the transcript says so and shows her answer', async () => {
+    const server = wikiServer();
+    await askForTool(server);
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toContain(`${CHAT_CHARACTER_NAME} wants to use DeepWiki · read_wiki_structure`);
+    expect(dialog.textContent).toContain('vitest-dev/vitest');
+    expect(server.calls).toEqual([]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Allow once' }));
+    await screen.findByText(`${CHAT_CHARACTER_NAME} used deepwiki · read_wiki_structure`);
+    await screen.findByText('The wiki has an Overview.');
+    expect(server.calls).toEqual([{ name: 'read_wiki_structure', args: { repoName: 'vitest-dev/vitest' } }]);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('Deny leaves the server uncalled and the transcript says she did not use it', async () => {
+    const server = wikiServer();
+    await askForTool(server);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Deny' }));
+    await screen.findByText(new RegExp(`${CHAT_CHARACTER_NAME} did not use deepwiki · read_wiki_structure`));
+    await screen.findByText('I will carry on without it.');
+    expect(server.calls).toEqual([]);
+  });
+
+  it('a server that could not be connected puts a notice in the transcript', async () => {
+    await askForTool(wikiServer(), async () => ({
+      connected: [],
+      statuses: [{ id: 'srv-1', label: 'DeepWiki', ok: false, detail: 'Failed to fetch' }],
+    }));
+    await screen.findByText(/DeepWiki could not be reached \(Failed to fetch\), so its tools are off this visit\./);
   });
 });

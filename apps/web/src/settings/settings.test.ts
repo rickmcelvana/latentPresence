@@ -54,6 +54,10 @@ describe('loadSettings', () => {
       version: 1,
       companionUrl: 'http://127.0.0.1:9999',
       memory: 'browser',
+      tools: {
+        servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
+        grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
+      },
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
@@ -68,6 +72,14 @@ describe('loadSettings', () => {
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP4) });
     expect(loadSettings(storage)).toEqual(settings);
     expect(settings.memory).toBe('browser');
+  });
+
+  it('loads a document saved before tools existed, with no servers and nothing decided (P5-T01)', () => {
+    const settings: Settings = { ...DEFAULT_SETTINGS, companionUrl: 'http://127.0.0.1:9999' };
+    const { tools: _tools, ...beforeP5 } = settings;
+    const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP5) });
+    expect(loadSettings(storage)).toEqual(settings);
+    expect(settings.tools).toEqual({ servers: [], grants: {} });
   });
 
   it('defaults the companion URL to the documented default', () => {

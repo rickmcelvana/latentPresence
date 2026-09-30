@@ -30,7 +30,21 @@ export type TranscriptLine =
       readonly firstTokenMs: number | null;
       readonly firstAudioMs: number | null;
     }
-  | { readonly kind: 'notice'; readonly id: string; readonly at: string; readonly text: string };
+  | { readonly kind: 'notice'; readonly id: string; readonly at: string; readonly text: string }
+  /**
+   * A tool she used that reached outside (P5-T01, ADR-42): one line per call, running until its
+   * result arrives, then done or failed with the reason (a refusal is a failure she was told).
+   * Not something she said, so never in her history.
+   */
+  | {
+      readonly kind: 'tool';
+      readonly id: string;
+      readonly at: string;
+      readonly callId: string;
+      readonly name: string;
+      readonly state: 'running' | 'done' | 'failed';
+      readonly detail: string | null;
+    };
 
 /**
  * `lines` is the only field a caller should read. The rest is bookkeeping the reducer
@@ -208,6 +222,19 @@ export function reduceTranscript(state: TranscriptState, event: ConversationEven
       return { ...state, lines: removeAt(state.lines, open.index), openIndex: null, audioMarked: false };
     }
 
+    case 'tool.call': {
+      const line: TranscriptLine = { kind: 'tool', id: `t-${state.nextId}`, at: event.at, callId: event.call.id, name: event.call.name, state: 'running', detail: null };
+      return appended({ ...state, nextId: state.nextId + 1 }, line);
+    }
+
+    case 'tool.result': {
+      const index = state.lines.findIndex((line) => line.kind === 'tool' && line.callId === event.result.callId);
+      const line = state.lines[index];
+      if (line?.kind !== 'tool') return state;
+      const settled: TranscriptLine = event.result.ok ? { ...line, state: 'done', detail: null } : { ...line, state: 'failed', detail: event.result.error };
+      return withLines(state, replaceAt(state.lines, index, settled));
+    }
+
     case 'error': {
       if (event.scope === 'stt' && event.message === NOTHING_RECOGNISED) return state;
       const line: TranscriptLine = { kind: 'notice', id: `t-${state.nextId}`, at: event.at, text: `${SCOPE_LABEL[event.scope]} failed: ${event.message}` };
@@ -222,7 +249,7 @@ export function reduceTranscript(state: TranscriptState, event: ConversationEven
 /**
  * Plain text for Copy transcript (`docs/ui/transcript.md`): one line per entry, `You: …` /
  * `<characterName>: …`, an interrupted line as what was heard plus ` [interrupted]` (the
- * unsaid part is never copied), a notice as `[error] …`. Badges are never copied.
+ * unsaid part is never copied), a notice as `[error] …`, a tool as `[tool] …`. Badges are never copied.
  */
 export function transcriptToText(lines: readonly TranscriptLine[], characterName: string): string {
   return lines.map((line) => lineToText(line, characterName)).join('\n');
@@ -234,6 +261,8 @@ function lineToText(line: TranscriptLine, characterName: string): string {
       return `You: ${line.text}`;
     case 'notice':
       return `[error] ${line.text}`;
+    case 'tool':
+      return `[tool] ${line.name}${line.state === 'failed' ? ` — ${line.detail ?? 'failed'}` : ''}`;
     case 'assistant':
       return line.status === 'interrupted' ? `${characterName}: ${line.heard ?? ''} [interrupted]` : `${characterName}: ${line.text}`;
   }

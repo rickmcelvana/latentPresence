@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
-import { transcriptToText, type TranscriptLine } from '@latentpresence/core';
+import { splitToolName, transcriptToText, type TranscriptLine } from '@latentpresence/core';
 
 /**
  * The transcript panel (P1-T11, `docs/ui/transcript.md`): a `log` region of `lines`, Copy
@@ -55,6 +55,20 @@ function TranscriptLineView({ line, characterName }: { line: TranscriptLine; cha
       <p className="transcript-line transcript-line-notice">
         <span aria-hidden="true" className="transcript-notice-marker" />
         {line.text}
+      </p>
+    );
+  }
+
+  if (line.kind === 'tool') {
+    // P5-T01 (ADR-42): every call that reached outside, said plainly.
+    const { server, tool } = splitToolName(line.name);
+    const what = server === null ? tool : `${server} · ${tool}`;
+    return (
+      <p className={`transcript-line transcript-line-tool transcript-line-tool-${line.state}`}>
+        <span aria-hidden="true" className="transcript-tool-marker" />
+        {line.state === 'running' && `${characterName} is using ${what}…`}
+        {line.state === 'done' && `${characterName} used ${what}`}
+        {line.state === 'failed' && `${characterName} did not use ${what}: ${line.detail ?? 'it failed'}`}
       </p>
     );
   }

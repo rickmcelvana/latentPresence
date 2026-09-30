@@ -6,19 +6,24 @@ import {
   DEFAULT_AFFECT_PARAMS,
   MemoryKernel,
   Plans,
+  PermissionPrompts,
   SelfNotes,
   attachAffect,
   attachHistory,
   attachMemory,
   attachMood,
+  mcpTools,
   planTools,
   selfNoteTools,
+  splitToolName,
+  toolResultOf,
   withLocalTools,
   attachUserAffect,
   renderSystemPrompt,
   type AttachedAffect,
   type AttachedMemory,
   type AttachedMood,
+  type ConnectedToolServer,
   type LocalTool,
   type ChatVoice,
 } from '@latentpresence/core';
@@ -40,7 +45,9 @@ import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
+import { connectToolServers, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { hostTimers } from './host-timers';
+import { PermissionPrompt } from './PermissionPrompt';
 
 /** The character's name comes from the persona file now (P1-T12), not a constant. */
 export const CHAT_CHARACTER_NAME = defaultPersona.name;
@@ -158,7 +165,11 @@ export interface ChatPageProps {
   readonly loadFaceReading?: () => Promise<FaceReadingLoader>;
   /** Test seam: where memory lives (P4-T04b). Production never passes it. */
   readonly chooseMemory?: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
+  /** Test seam: connecting the MCP servers in Settings → Tools (P5-T01). Production never passes it. */
+  readonly connectTools?: ConnectTools;
 }
+
+type ConnectTools = (options: ConnectToolServersOptions) => Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }>;
 
 /**
  * `/chat` (P1-T11): the video-call layout (P2-T06). The stage fills the viewport, a
@@ -176,6 +187,7 @@ export function ChatPage({
   loadSpeaker = loadDefaultSpeaker,
   loadFaceReading = loadDefaultFaceReading,
   chooseMemory = chooseMemoryStore,
+  connectTools = connectToolServers,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
@@ -204,6 +216,7 @@ export function ChatPage({
       deps={deps}
       endpoint={llm.endpoint}
       chooseMemory={chooseMemory}
+      connectTools={connectTools}
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
@@ -227,6 +240,7 @@ interface ConfiguredChatPageProps {
   readonly loadSpeaker: () => Promise<SpeakerLoader>;
   readonly loadFaceReading: () => Promise<FaceReadingLoader>;
   readonly chooseMemory: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
+  readonly connectTools: ConnectTools;
 }
 
 function ConfiguredChatPage({
@@ -243,19 +257,25 @@ function ConfiguredChatPage({
   loadSpeaker,
   loadFaceReading,
   chooseMemory,
+  connectTools,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
     // P4-T06 (ADR-40): her own notes and the tools she keeps them with, from the same store.
     // P4-T07 (ADR-41): her plans with them, kept with tools in the same store.
     const builtSelfHolder: { notes: SelfNotes | null; plans: Plans | null; tools: LocalTool[] } = { notes: null, plans: null, tools: [] };
+    // P5-T01 (ADR-42): the MCP servers once connected (the effect below), their tools behind the
+    // gate; the person's decisions live in the settings document, read at every call.
+    const builtToolsHolder: { servers: ConnectedToolServer[] } = { servers: [] };
+    const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
+    const grants = settingsToolGrants(deps.storage);
     const builtMachine = new ConversationMachine({
       sessionId: builtSessionId,
       characterId: defaultPersona.id,
@@ -290,12 +310,26 @@ function ConfiguredChatPage({
           memory: builtMemoryHolder.current?.context() ?? null,
           notes: builtSelfHolder.notes?.notes() ?? [],
           plans: builtSelfHolder.plans?.promptContext() ?? null,
+          toolServers: builtToolsHolder.servers.map((server) => server.label),
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
     // P4-T06 (ADR-40): every answer — typed, spoken or in a call — may keep a note; the tools
     // are read per request, so they arrive when the store does. Extraction keeps the bare one.
-    const builtChatLlm = withLocalTools(builtProvider, () => builtSelfHolder.tools);
+    // P5-T01 (ADR-42): the MCP tools join hers, built per request so a policy set to never in
+    // Settings drops the tool at once; every call that reaches outside goes on the bus, for
+    // the transcript. Hers (no `server__` in the name) are not shown.
+    const outside = (name: string): boolean => splitToolName(name).server !== null;
+    const builtChatLlm = withLocalTools(builtProvider, () => [...builtSelfHolder.tools, ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
+      onCallStart: (call) => {
+        if (outside(call.name)) builtMachine.dispatch({ type: 'tool.call', sessionId: builtSessionId, at: new Date().toISOString(), call });
+      },
+      onCall: (call, result) => {
+        if (!outside(call.name)) return;
+        const at = new Date().toISOString();
+        builtMachine.dispatch({ type: 'tool.result', sessionId: builtSessionId, at, result: toolResultOf(call, result, at) });
+      },
+    });
     const builtChat = new ChatSession({
       sessionId: builtSessionId,
       machine: builtMachine,
@@ -309,6 +343,8 @@ function ConfiguredChatPage({
       sessionId: builtSessionId,
       memoryHolder: builtMemoryHolder,
       selfHolder: builtSelfHolder,
+      toolsHolder: builtToolsHolder,
+      permissionPrompts: builtPrompts,
       machine: builtMachine,
       chat: builtChat,
       history: attached,
@@ -383,6 +419,29 @@ function ConfiguredChatPage({
       selfHolder.tools = [];
     };
   }, [affect, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, userAffect]);
+
+  // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
+  // fails offers no tools, and the transcript says so — the person added it expecting it to work.
+  useEffect(() => {
+    let live = true;
+    let connected: ConnectedToolServer[] = [];
+    void connectTools({ servers: settings.tools.servers, loadKey: (ref) => deps.vault.loadKey(ref) }).then((result) => {
+      if (!live) {
+        for (const server of result.connected) void server.client.close();
+        return;
+      }
+      connected = result.connected;
+      toolsHolder.servers = result.connected;
+      for (const status of result.statuses.filter((candidate) => !candidate.ok)) {
+        machine.dispatch({ type: 'error', sessionId, at: new Date().toISOString(), scope: 'tool', message: `${status.label} could not be reached (${status.detail}), so its tools are off this visit.` });
+      }
+    });
+    return () => {
+      live = false;
+      toolsHolder.servers = [];
+      for (const server of connected) void server.client.close();
+    };
+  }, [connectTools, deps.vault, machine, sessionId, settings.tools.servers, toolsHolder]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.
@@ -848,6 +907,9 @@ function ConfiguredChatPage({
           {speakStatus !== null && <p className="chat-speak-status">{speakStatus}</p>}
         </div>
       )}
+
+      {/* After the docks it may sit above: the stylesheet lifts it clear of whichever is open. */}
+      <PermissionPrompt characterName={CHAT_CHARACTER_NAME} prompts={permissionPrompts} />
 
       <div className="call-controls-bar">
         {!voiceOpen && (

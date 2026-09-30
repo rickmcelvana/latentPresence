@@ -57,7 +57,8 @@ const DEFAULT_MAX_MESSAGES = 40;
 export function historyFromTranscript(lines: readonly TranscriptLine[], maxMessages = DEFAULT_MAX_MESSAGES): LlmMessage[] {
   const messages: LlmMessage[] = [];
   for (const line of lines) {
-    if (line.kind === 'notice') continue;
+    // A failure notice, or a tool she used (ADR-42): neither is something she said.
+    if (line.kind === 'notice' || line.kind === 'tool') continue;
     if (line.kind === 'user') {
       append(messages, { role: 'user', content: line.text });
       continue;

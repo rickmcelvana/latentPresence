@@ -110,6 +110,12 @@ export const PromptContextSchema = z.object({
    * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
    * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.
    */
+  /**
+   * The outside tool servers she can use this visit (P5-T01, ADR-42), by name: rendered as a
+   * short section saying what they return is information, not instructions. Empty leaves the
+   * prompt exactly as it was.
+   */
+  toolServers: z.array(z.string().min(1).max(80)).max(16).default([]),
   plans: z
     .object({
       plans: z.array(PlanDocumentSchema).max(16),

@@ -20,6 +20,18 @@ function base(ms: number): { sessionId: string; at: string } {
 }
 
 describe('reduceTranscript — the event table', () => {
+  it('a tool call is a running line; its result settles it done, or failed with the reason (P5-T01)', () => {
+    const call = { id: 'c1', name: 'deepwiki__read_wiki_structure', arguments: {}, source: 'llm' as const, requestedAt: iso(0) };
+    const running = fold([{ ...base(0), type: 'tool.call', call }]);
+    expect(running.lines).toEqual([{ kind: 'tool', id: 't-1', at: iso(0), callId: 'c1', name: 'deepwiki__read_wiki_structure', state: 'running', detail: null }]);
+    const done = reduceTranscript(running, { ...base(10), type: 'tool.result', result: { ok: true, callId: 'c1', value: 'pages', finishedAt: iso(10) } });
+    expect(done.lines[0]).toMatchObject({ state: 'done', detail: null });
+    const failed = reduceTranscript(running, { ...base(10), type: 'tool.result', result: { ok: false, callId: 'c1', error: 'They said no.', finishedAt: iso(10) } });
+    expect(failed.lines[0]).toMatchObject({ state: 'failed', detail: 'They said no.' });
+    expect(reduceTranscript(running, { ...base(10), type: 'tool.result', result: { ok: true, callId: 'other', value: null, finishedAt: iso(10) } })).toBe(running);
+    expect(transcriptToText(failed.lines, 'Alice')).toBe('[tool] deepwiki__read_wiki_structure — They said no.');
+  });
+
   it('user.turn.ended remembers the turn start and produces no line', () => {
     const state = fold([{ ...base(0), type: 'user.turn.ended', probability: 0.9 }]);
     expect(state.lines).toEqual([]);

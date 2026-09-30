@@ -31,3 +31,4 @@ export * from './providers/stt';
 export * from './providers/tts';
 export * from './providers/embedding';
 export * from './providers/omni';
+export * from './providers/mcp';

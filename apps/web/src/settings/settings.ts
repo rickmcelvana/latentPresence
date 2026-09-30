@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { McpTransportSchema } from '@latentpresence/protocol';
 import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
 
@@ -87,10 +88,40 @@ export type SttSettings = z.infer<typeof SttSettingsSchema>;
 export const MemorySettingSchema = z.enum(['auto', 'browser', 'companion', 'off']);
 export type MemorySetting = z.infer<typeof MemorySettingSchema>;
 
+/**
+ * An MCP server the person added (P5-T01, ADR-42). `id` is minted once and never changes, so a
+ * renamed server keeps its grants and its key (`mcpKeyRef(id)` in the vault when `auth` is
+ * `bearer`). No stdio here: only the companion starts processes, from its own config.
+ */
+export const ToolServerSettingSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(40),
+  url: z.string().min(1),
+  transport: McpTransportSchema,
+  enabled: z.boolean(),
+  auth: z.enum(['none', 'bearer']),
+});
+export type ToolServerSetting = z.infer<typeof ToolServerSettingSchema>;
+
+/** The person's decision about one tool: auto (with the fingerprint it was trusted at), ask, never. */
+export const ToolGrantSettingSchema = z.object({
+  policy: z.enum(['auto', 'ask', 'never']),
+  fingerprint: z.string().nullable(),
+});
+
+export const ToolsSettingsSchema = z.object({
+  servers: z.array(ToolServerSettingSchema).max(16),
+  /** By server id, then by the server's own tool name. A tool with no entry is asked about. */
+  grants: z.record(z.string(), z.record(z.string(), ToolGrantSettingSchema)),
+});
+export type ToolsSettings = z.infer<typeof ToolsSettingsSchema>;
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   companionUrl: z.string(),
   memory: MemorySettingSchema.default('browser'),
+  /** Defaulted, so a settings document saved before P5 still loads. */
+  tools: ToolsSettingsSchema.default({ servers: [], grants: {} }),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -103,6 +134,7 @@ export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   companionUrl: DEFAULT_COMPANION_URL,
   memory: 'browser',
+  tools: { servers: [], grants: {} },
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
@@ -120,6 +152,11 @@ export const TTS_KEY_REF = 'tts';
 
 /** The vault ref for the STT server's key. */
 export const STT_KEY_REF = 'stt';
+
+/** The vault ref for an MCP server's bearer token, by the server's id. */
+export function mcpKeyRef(serverId: string): string {
+  return `mcp:${serverId}`;
+}
 
 /** Load the settings document, falling back to defaults on missing or corrupt JSON —
  * never throws, so a wiped or hand-edited localStorage cannot crash the boot screen. */

@@ -16,7 +16,7 @@ function setup() {
   const run = async (name: string, args: Record<string, JsonValue>): Promise<JsonValue> => {
     const tool = tools.find((candidate) => candidate.definition.name === name);
     if (tool === undefined) throw new Error(`no ${name}`);
-    return tool.run(args);
+    return tool.run(args, { call: { id: 'c', name, arguments: args, source: 'llm', requestedAt: NOW.toISOString() } });
   };
   return { store, plans, tools, run };
 }

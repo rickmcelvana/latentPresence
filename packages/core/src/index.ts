@@ -21,4 +21,5 @@ export * from './affect';
 export * from './memory';
 export * from './plan';
 export * from './self';
+export * from './tools';
 export { Cancellation } from './cancellation';

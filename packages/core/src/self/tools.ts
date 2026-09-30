@@ -1,4 +1,4 @@
-import type { JsonValue, LLMProvider, LlmMessage, LlmRequest, LlmStreamChunk, LlmTool, ProviderCallOptions, ToolCall } from '@latentpresence/protocol';
+import type { CancellationSignal, JsonValue, LLMProvider, LlmMessage, LlmRequest, LlmStreamChunk, LlmTool, ProviderCallOptions, ToolCall } from '@latentpresence/protocol';
 import { z } from 'zod';
 import type { SelfNotes } from './notes';
 
@@ -12,30 +12,38 @@ import type { SelfNotes } from './notes';
  * after the call streams straight through; only the tool round trip is added, and only when
  * the model chooses to use one.
  *
- * Local tools only: MCP servers, permissions and the tool log are P5-T01's. The character's
- * own notes need none of that — they are hers, and they change nothing outside her.
+ * Her own tools (notes, plans) run here ungated. MCP tools (P5-T01, ADR-42) run here too, as
+ * `LocalTool`s whose `run` passes the permission gate first — see `tools/mcp.ts`.
  */
+
+/** What a run is told about its call: the call itself, and the answer's cancellation (Stop, a barge-in). */
+export interface LocalToolContext {
+  readonly call: ToolCall;
+  readonly signal?: CancellationSignal | undefined;
+}
 
 export interface LocalTool {
   readonly definition: LlmTool;
   /** The result the model reads. A refusal is a result too (a sentence), never a throw. */
-  run(args: Readonly<Record<string, JsonValue>>): Promise<JsonValue>;
+  run(args: Readonly<Record<string, JsonValue>>, context: LocalToolContext): Promise<JsonValue>;
 }
 
 export interface LocalToolsOptions {
   /** How many tool rounds one answer may take before the model is asked to just answer. */
   readonly maxRounds?: number;
+  /** A call about to run — before any permission prompt — for a log (P5-T01). */
+  readonly onCallStart?: (call: ToolCall) => void;
   /** Every call and what it returned, for a log or a test. */
   readonly onCall?: (call: ToolCall, result: JsonValue) => void;
 }
 
 export const DEFAULT_TOOL_ROUNDS = 2;
 
-async function runCall(tools: readonly LocalTool[], call: ToolCall): Promise<JsonValue> {
+async function runCall(tools: readonly LocalTool[], call: ToolCall, signal: CancellationSignal | undefined): Promise<JsonValue> {
   const tool = tools.find((candidate) => candidate.definition.name === call.name);
   if (tool === undefined) return { error: `There is no tool called ${call.name}.` };
   try {
-    return await tool.run(call.arguments);
+    return await tool.run(call.arguments, { call, signal });
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };
   }
@@ -86,7 +94,8 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
           if (finish !== null) yield finish;
           return;
         }
-        const results = await Promise.all(calls.map((call) => runCall(local, call)));
+        for (const call of calls) options.onCallStart?.(call);
+        const results = await Promise.all(calls.map((call) => runCall(local, call, callOptions?.signal)));
         for (const [i, call] of calls.entries()) options.onCall?.(call, results[i] ?? null);
         messages = [
           ...messages,

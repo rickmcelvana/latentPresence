@@ -5,11 +5,12 @@ import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { LanguageModelSection } from './LanguageModelSection';
 import { MemorySection } from './MemorySection';
+import { ToolsSection } from './ToolsSection';
 import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
 
 /**
- * The settings content (P1-T10): Language model, Voice and Hearing, plus the Companion
+ * The settings content (P1-T10): Language model, Voice, Hearing, Memory and Tools, plus the Companion
  * field the Language model section shows when it needs one. A bare component rather than
  * a page, so Phase 2 can mount it inside `.drawer` without dragging a page layout along.
  *
@@ -52,6 +53,8 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
       <HearingSection deps={deps} onChange={(stt: SttSettings) => setSettings((prev) => ({ ...prev, stt }))} stt={settings.stt} />
 
       <MemorySection memory={settings.memory} onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))} />
+
+      <ToolsSection onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
       <DownloadedModelsSection caches={deps.caches} consent={deps.consent} />
     </div>

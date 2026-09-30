@@ -382,7 +382,7 @@ describe('VoiceSession — barge-in', () => {
     await settle();
 
     const lines = r.all().reduce(reduceTranscript, emptyTranscript()).lines;
-    expect(lines.slice(0, 3).map((line) => (line.kind === 'assistant' ? [line.kind, line.status, line.heard, line.unsaid] : [line.kind, line.text]))).toEqual([
+    expect(lines.slice(0, 3).map((line) => (line.kind === 'assistant' ? [line.kind, line.status, line.heard, line.unsaid] : [line.kind, 'text' in line ? line.text : line.name]))).toEqual([
       ['user', 'what time is it'],
       ['assistant', 'interrupted', 'It is', " nearly three o'clock."],
       ['user', 'what time is it'],

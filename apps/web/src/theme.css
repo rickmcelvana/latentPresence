@@ -955,6 +955,108 @@ kbd {
   color: var(--danger);
 }
 
+/* --- Tools (P5-T01, ADR-42) ---------------------------------------------------
+   Settings → Tools: the servers she can reach, each with the tools it listed. */
+
+.tools-server-list,
+.tools-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tools-server {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding: var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tools-server-head,
+.tools-tool-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+}
+
+.tools-server-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tools-server-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tools-server-url {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.tools-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tools-switch input {
+  accent-color: var(--accent);
+}
+
+.tools-tool {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) 0;
+  border-top: 1px solid var(--border);
+}
+
+.tools-tool-name {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tools-tool-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.tools-tool-description-clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.tools-tool-more {
+  align-self: flex-start;
+}
+
+.tools-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+}
+
 .settings-help-steps {
   display: flex;
   flex-direction: column;
@@ -1191,6 +1293,39 @@ kbd {
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  background: var(--danger);
+}
+
+/* A tool she used that reached outside (P5-T01, ADR-42): a quiet line like a notice, its
+   marker teal while it runs and when done, the danger colour when it failed or was refused. */
+.transcript-line-tool {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-sm);
+  align-self: stretch;
+  max-width: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.transcript-tool-marker {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.transcript-line-tool-running .transcript-tool-marker {
+  background: var(--accent-glow);
+}
+
+.transcript-line-tool-done {
+  color: var(--text-muted);
+}
+
+.transcript-line-tool-failed .transcript-tool-marker {
   background: var(--danger);
 }
 
@@ -1812,6 +1947,64 @@ kbd {
   box-shadow: var(--shadow-card);
 }
 
+/* The permission card (P5-T01, ADR-42): docked like the voice card, above the controls bar.
+   It comes after the other docks in the page, so a dock that is open pushes it up clear
+   rather than sitting under it; 240px is a text box and a line of status. */
+.call-permission-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--call-bar-height) + var(--gap-md));
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(520px, calc(100vw - 2 * var(--gap-lg)));
+  margin: 0;
+  border-color: var(--accent-dim);
+}
+
+.call-text-dock ~ .call-permission-card,
+.call-voice-card ~ .call-permission-card {
+  bottom: calc(var(--call-bar-height) + var(--gap-md) + 240px);
+}
+
+.permission-title {
+  margin: 0;
+  color: var(--text);
+}
+
+.permission-description {
+  margin: 0 0 var(--gap-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.permission-args {
+  max-height: 160px;
+  margin: 0;
+  padding: var(--gap-sm);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.permission-more {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 /* --- Controls bar -----------------------------------------------------------
    One row, centred, over the bottom of the stage. */
 
@@ -1854,6 +2047,7 @@ kbd {
 .call-drawer,
 .call-voice-card,
 .call-text-dock,
+.call-permission-card,
 .call-controls-bar,
 .call-stage-overlay,
 .call-pip {
@@ -1871,6 +2065,7 @@ kbd {
    first fix, stopped the overlap but put them visibly off-centre. Same units as the
    drawer: both are zoomed by the same step. */
 .call-page-drawer-open .call-voice-card,
+.call-page-drawer-open .call-permission-card,
 .call-page-drawer-open .call-text-dock {
   max-width: calc(100% - 2 * var(--call-drawer-width) - 2 * var(--gap-md));
 }

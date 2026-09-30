@@ -195,7 +195,7 @@ describe('ChatSession — failures', () => {
 
 /** A transcript's lines as words, badges aside. */
 function words(events: ConversationEvent[]) {
-  return events.reduce(reduceTranscript, emptyTranscript()).lines.map((line) => ('status' in line ? [line.kind, line.status, line.text] : [line.kind, line.text]));
+  return events.reduce(reduceTranscript, emptyTranscript()).lines.map((line) => ('status' in line ? [line.kind, line.status, line.text] : [line.kind, 'text' in line ? line.text : line.name]));
 }
 
 /** P2-T08: the same rig with a voice, played by hand through `ManualSink`. */
