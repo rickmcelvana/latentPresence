@@ -169,6 +169,21 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-27 · Plan something with her · ~15 minutes, desktop, then a minute on the day she set
+**Why:** P4-T07 gave her plans (ADR-41). The automatic check passed — "let's plan a vegetable
+garden" left a plan in MariaDB five times out of five — but whether planning with her feels like
+planning with a person, rather than filling in a form by voice, needs you.
+1. Optional: `pnpm companion` and `/settings` → **Memory** → *The companion*, to see it in MariaDB.
+2. Open `/chat`, open the drawer's **Plans** view, and say "let's plan …" about something real
+   you are actually going to do. Talk it through; tell her when you've agreed on it.
+3. Ask her to check in on it on a day soon (tomorrow is fine). Later, tell her a step is done.
+4. In the panel: change a task, add one, **Save**; then **Download .md** and open the file.
+5. On or after the day she set, open `/chat` and just say hello.
+
+**Pass:** she asks before she plans and saves it once it has a shape; she never reads the plan
+out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
+brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

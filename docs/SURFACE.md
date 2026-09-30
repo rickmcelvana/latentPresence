@@ -2168,3 +2168,18 @@ On the development server (MariaDB 11.8.8):
   came back. Tool names with a dot are not allowed by the OpenAI function-name pattern, so the
   plan's `self.write_block` is `self_write_block`.
 
+## glm-5.2:cloud with nested tool arguments — measured 2026-09-30 (P4-T07)
+
+- `plan_create` with `phases: [{ title, tasks: [string] }]`: well-formed arrays in most calls.
+  **Twice in about fifteen it sent `phases` as a JSON string**, once valid (now parsed by the
+  tool) and once not (`"…frost"}]` — a missing `]`); refused with the reason, it retried with a
+  correct array in the same answer.
+- `plan_update` with `task_updates: [{ task: "<title as written>", status: "done" }]` matched by
+  title every time it was called.
+- **It says it will act without calling the tool** ("I'll check in on the fourteenth", "Let me
+  mark that off") — follow-ups 1/5 and task marks 2/5 over five conversations, until the prompt
+  paired each tool with its moment and said the words alone do nothing: then 4/5 and 4/5.
+- Not caused by the history holding no tool calls: with the calls and results put back into
+  the history, `plan_follow_up` came 4/6, the same as without (4/6).
+- Cloud flakiness: some requests fail with the AI SDK's `AI_RetryError`; the adapter logs it and
+  the answer is empty, so a live count must tell a failed request from a missed call.

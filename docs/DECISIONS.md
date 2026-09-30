@@ -43,6 +43,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-38 | Memory in the call: `PromptContext.memory` (facts and recalled turns); a note kept ready from the kernel's cache and a background recall one turn behind, never awaited; the store per a setting, this browser by default (companion only when chosen); a session per visit | accepted | 2026-09-28 |
 | ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | accepted | 2026-09-29 |
 | ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
+| ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | proposed | 2026-09-30 |
 
 ---
 
@@ -1225,3 +1226,65 @@ small talk, so keep it brief", she wrote `how_they_like_to_talk: "No small talk.
 direct, always."` herself and answered "Got it. I won't fill space with filler." After a sad
 exchange and a reload, before any message, the overlay still read sadness 0.30 (0.42 a minute
 before). The scripted done-when: `self/mood.test.ts` and `ChatPage.test.tsx`.
+
+## ADR-41 Planning studio: plans she keeps with tools, a plan in focus, follow-ups as facts (proposed 2026-09-30)
+
+**Context.** P4-T07: brainstorm mode prompt, `plan.create/update/list` tools, plan schema, side
+panel editor, Markdown export, follow-up scheduling stored as facts. Done when "let's plan a
+vegetable garden" ends with a saved plan in the panel and in MariaDB. Already there:
+`PlanDocumentSchema`, `MemoryStore.savePlan/listPlans` (whole document, version + 1 or
+`conflict`) in every store, and `withLocalTools` (ADR-40). Open: what "brainstorm mode" is,
+how a model edits a nested document reliably, and what a follow-up writes.
+
+**Decisions.**
+
+1. **Brainstorm mode is not a switch.** A short "PLANS" section is in her prompt whenever the
+   plan tools are: brainstorm first (ask, offer an idea or two at a time), save with
+   `plan_create` once the plan has a shape, keep it current with `plan_update`, never read it
+   out — it is in their panel. A mode someone must enter is a mode nobody enters by voice.
+   **What changes while planning is the plan in focus**: the one she last created or changed,
+   or the one the person opened in the panel, rendered in full in her prompt so she edits what
+   is really there; every other unarchived plan is one line (the newest six). Focus lasts the
+   visit and ends when that plan is marked done or archived.
+2. **Four tools, same wrapper as her notes**: `plan_create`, `plan_update`, `plan_list`,
+   `plan_follow_up`. **`plan_update` takes what changed, by title, never by id**: any of title,
+   goal, status; `phases` replaces the outline (a task may be a bare string), and
+   `task_updates` sets one task's status or notes by its title without resending the rest.
+   Ids are kept by matching titles, so the panel's rows survive her edits. A refusal is a
+   sentence she can read (an unknown plan, a task no phase holds).
+3. **`Plans` in core holds the page's plans** like `SelfNotes` holds her notes: loaded once,
+   kept in step by its own writes, read synchronously by the prompt, subscribed to by the
+   panel. Every write — hers and the panel's — goes through one queue, so the two cannot race
+   in a page. **The panel saves whole, against the version it opened**: if she changed the plan
+   meanwhile it is told so and chooses (keep mine, which saves over hers, or load hers); a
+   store `conflict` from another tab reloads the plans and is reported the same way.
+4. **A follow-up is a fact**: subject the plan's title in snake_case, predicate `follow_up_on`,
+   object `YYYY-MM-DD: what to ask about` — written through the memory kernel
+   (`recordFact`, embedded and cached), so it is in the store the person chose, readable and
+   forgettable in the Memory panel, with no new table. **Several per plan** (amended the same
+   day: "one per plan" stopped her adding the fortnight check-in Rick asked for on top of the
+   Monday one she had offered); one on the same day replaces it (`closeFact` =
+   `supersedeFact`), `cancel` drops one day or all, and marking the plan done closes them. The prompt's
+   plans section lists them with "due" once the date has come; the memory note leaves
+   `follow_up_on` facts out so nothing is said twice. Nothing fires at the date — a proactive
+   check-in is the scheduler's (ADR-14); she raises it the next time they talk.
+5. **Markdown export is core's** (`planToMarkdown`, snapshot-tested): `#` title, the goal,
+   `##` per phase, `- [ ]`/`- [x]` tasks, dropped ones struck through, notes indented. The
+   panel downloads it or copies it.
+
+**Protocol change:** `PromptContext.plans` (nullable, default null): the plans, the focus id,
+and the follow-ups. Null leaves the prompt exactly as it was.
+
+**Rejected.** *A brainstorm toggle in the call bar* — voice-first, and a model that has the tools
+can tell "let's plan" on its own. *`plan_update` as a whole document* — a weak model drops
+tasks it was not thinking about. *Follow-ups as `Schedule` rows* — the scheduler does not
+exist yet, and the plan asks for facts. *Autosave in the panel* — two writers autosaving
+against one version counter is how an edit is silently lost.
+
+**Measured 2026-09-30** (`pnpm live:plan`, glm-5.2:cloud, five-turn garden conversation, the
+companion's MariaDB, read back through a second client): **plan saved 5/5**, the asked-for
+fortnight follow-up 4/5, "I cleared the patch" marked done 4/5. Before the prompt named each
+tool with the moment it is due and said "saying you will without the call does nothing", the
+same runs gave 1/5 and 2/5 — she said "I'll check in on the fourteenth" and did not call. In
+`/chat` (Browser pane, IndexedDB): the plan appeared in the Plans panel, her `plan_update`
+reached the open panel live, and it survived a reload.

@@ -656,3 +656,9 @@ Did: R-26 passed (D-39). Fixed /chat's transcript running out of its card on lon
 Left: laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P4-T07 planning studio v1 (main; brief/ADR first).
 Decisions: none.
+
+## 2026-09-30 claude — P4-T07 planning studio
+Did: P4-T07 (e692bc9): `core/plan` (Plans, four tools, prompt section, Markdown), follow-ups as facts via `recordFact`/`closeFact`, the Plans panel (sub, from a brief; I fixed its narrow-drawer layout), `withLocalTools` spaces text across a tool call. `live:plan` 5/5 saved in MariaDB; follow-up 4/5 and task mark 4/5 after the prompt fix (1/5, 2/5 before).
+Left: R-27 (new); laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T01 MCP client and server manager (main; brief/ADR first). Phase 4 closes on R-27.
+Decisions: ADR-41 proposed (brainstorming is a prompt section; plan in focus in full; edits by title; follow-ups are `follow_up_on` facts, several per plan) — needs Rick's accept.
