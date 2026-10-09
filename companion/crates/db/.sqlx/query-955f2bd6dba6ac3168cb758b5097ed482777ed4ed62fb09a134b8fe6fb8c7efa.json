@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "UPDATE documents SET modified_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "955f2bd6dba6ac3168cb758b5097ed482777ed4ed62fb09a134b8fe6fb8c7efa"
+}

@@ -1,0 +1,116 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT id, source, bytes, modified_at, sha256, model_id\n         FROM documents WHERE folder = ? ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | PRIMARY_KEY | UNSIGNED | AUTO_INCREMENT",
+          "collation": 63,
+          "max_size": 20
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "source",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 8192
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "bytes",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | UNSIGNED | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 20
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "bytes"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "modified_at",
+        "type_info": {
+          "type": "Datetime",
+          "flags": "BINARY",
+          "collation": 63,
+          "max_size": 23
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "modified_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "sha256",
+        "type_info": {
+          "type": "String",
+          "flags": "NOT_NULL | MULTIPLE_KEY | BINARY | NO_DEFAULT_VALUE",
+          "collation": 63,
+          "max_size": 32
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "sha256"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "model_id",
+        "type_info": {
+          "type": "Long",
+          "flags": "MULTIPLE_KEY | UNSIGNED",
+          "collation": 63,
+          "max_size": 10
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.documents",
+            "name": "model_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "e18a4f5667497d4d111e8f8a4137832b346a91e73bedbb9e9d693bb2cabe2725"
+}

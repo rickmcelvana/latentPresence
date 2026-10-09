@@ -605,16 +605,16 @@
         }
       }
     },
-    "/ingest/documents": {
-      "post": {
-        "operationId": "ingestStart",
+    "/ingest/status": {
+      "get": {
+        "operationId": "ingestStatus",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/IngestStartResponse"
+                  "$ref": "#/components/schemas/IngestStatusResponse"
                 }
               }
             }
@@ -629,13 +629,30 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestStartRequest"
+        }
+      }
+    },
+    "/ingest/scan": {
+      "post": {
+        "operationId": "ingestScan",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestScanResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
               }
             }
           }
@@ -2892,17 +2909,211 @@
           "updatedAt"
         ]
       },
-      "IngestStartResponse": {
+      "IngestStatusResponse": {
+        "type": "object",
+        "properties": {
+          "folders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "exists": {
+                  "type": "boolean"
+                },
+                "documents": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "chunks": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "path",
+                "exists",
+                "documents",
+                "chunks"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "embedding": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "model": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dimensions": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "provider",
+                  "model",
+                  "dimensions"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "watching": {
+            "type": "boolean"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "queued",
+                      "running",
+                      "done",
+                      "failed"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "enum": [
+                      "start",
+                      "watch",
+                      "request"
+                    ]
+                  },
+                  "documentsSeen": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "documentsIndexed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "documentsRemoved": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "chunksWritten": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "failures": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "error": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "source",
+                        "error"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "startedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "finishedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "error": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "status",
+                  "trigger",
+                  "documentsSeen",
+                  "documentsIndexed",
+                  "documentsRemoved",
+                  "chunksWritten",
+                  "failures",
+                  "startedAt",
+                  "finishedAt",
+                  "error"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "folders",
+          "embedding",
+          "watching",
+          "job",
+          "configError"
+        ],
+        "additionalProperties": false
+      },
+      "IngestScanResponse": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "minLength": 1,
             "maxLength": 128
-          },
-          "collection": {
-            "type": "string",
-            "minLength": 1
           },
           "status": {
             "type": "string",
@@ -2913,7 +3124,25 @@
               "failed"
             ]
           },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "start",
+              "watch",
+              "request"
+            ]
+          },
           "documentsSeen": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "documentsIndexed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "documentsRemoved": {
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
@@ -2922,6 +3151,28 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "failures": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "error": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source",
+                "error"
+              ],
+              "additionalProperties": false
+            }
           },
           "startedAt": {
             "type": "string",
@@ -2949,47 +3200,18 @@
         },
         "required": [
           "id",
-          "collection",
           "status",
+          "trigger",
           "documentsSeen",
+          "documentsIndexed",
+          "documentsRemoved",
           "chunksWritten",
+          "failures",
           "startedAt",
           "finishedAt",
           "error"
         ],
         "additionalProperties": false
-      },
-      "IngestStartRequest": {
-        "type": "object",
-        "properties": {
-          "collection": {
-            "type": "string",
-            "minLength": 1
-          },
-          "path": {
-            "type": "string",
-            "minLength": 1
-          },
-          "recursive": {
-            "type": "boolean"
-          },
-          "embeddingModelId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "dimensions": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "collection",
-          "path",
-          "recursive",
-          "embeddingModelId",
-          "dimensions"
-        ]
       },
       "IngestJobResponse": {
         "type": "object",
@@ -2999,10 +3221,6 @@
             "minLength": 1,
             "maxLength": 128
           },
-          "collection": {
-            "type": "string",
-            "minLength": 1
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -3012,7 +3230,25 @@
               "failed"
             ]
           },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "start",
+              "watch",
+              "request"
+            ]
+          },
           "documentsSeen": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "documentsIndexed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "documentsRemoved": {
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
@@ -3021,6 +3257,28 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 9007199254740991
+          },
+          "failures": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "error": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "source",
+                "error"
+              ],
+              "additionalProperties": false
+            }
           },
           "startedAt": {
             "type": "string",
@@ -3048,10 +3306,13 @@
         },
         "required": [
           "id",
-          "collection",
           "status",
+          "trigger",
           "documentsSeen",
+          "documentsIndexed",
+          "documentsRemoved",
           "chunksWritten",
+          "failures",
           "startedAt",
           "finishedAt",
           "error"

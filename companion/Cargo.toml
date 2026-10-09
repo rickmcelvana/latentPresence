@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/db", "crates/server"]
+members = ["crates/db", "crates/ingest", "crates/server"]
 
 [workspace.package]
 version = "0.0.0"
@@ -10,6 +10,7 @@ repository = "https://github.com/rickmcelvana/latentPresence"
 
 [workspace.dependencies]
 latentpresence-db = { path = "crates/db" }
+latentpresence-ingest = { path = "crates/ingest" }
 axum = "0.8.9"
 http-body-util = "0.1.3"
 serde = { version = "1.0", features = ["derive"] }
@@ -39,3 +40,15 @@ rand = "0.9"
 # only: stdio servers it starts from its own config file, and streamable-HTTP servers that
 # refuse browser origins, through the reqwest it already has. No server macros, no schemars.
 rmcp = { version = "3.5.1", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }
+# P5-T03 (ADR-44): document ingestion. Extractors, measured 2026-10-09 (docs/SURFACE.md):
+# `pdf-extract` for PDF (page by page), `zip` + `quick-xml` for DOCX (zip 8.6.0, not the
+# hours-old 9.0.0), `html2text` for HTML; `sha2` for the content hash that makes a re-run a
+# no-op; `notify` to watch the folders the person listed.
+pdf-extract = "0.12.1"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+quick-xml = "0.42.0"
+html2text = "0.17.1"
+sha2 = "0.11.0"
+notify = "8.2.0"
+# Test folders for the extractors and the ingest API tests.
+tempfile = "3"

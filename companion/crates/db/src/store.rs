@@ -338,6 +338,47 @@ impl Registry {
     }
 }
 
+/// Register the model if needed, ensure the collection exists, and activate it if the
+/// collection has no active model yet. Returns the model's registry id. What `embed_item`
+/// does before every vector; document ingestion (P5-T03) does it once per job and then
+/// writes a whole document's vectors with `write_vector`.
+pub async fn prepare_embedding(
+    pool: &MySqlPool,
+    registry: &Registry,
+    collection: Collection,
+    model: &EmbeddingModel,
+) -> Result<u32, StoreError> {
+    let model_id = memory::register_model(pool, model).await?;
+    memory::ensure_collection(pool, collection, model_id).await?;
+    if memory::active_collection(pool, collection).await?.is_none() {
+        memory::activate_collection(pool, collection, model_id).await?;
+        registry.invalidate();
+    }
+    Ok(model_id)
+}
+
+/// Upsert one vector, already packed (`vector::encode_width`), into a collection's table for
+/// a registered model. The statement is built from `vector_table_name`, which takes integers.
+pub async fn write_vector(
+    connection: &mut sqlx::MySqlConnection,
+    collection: Collection,
+    model_id: u32,
+    item_id: u64,
+    bytes: &[u8],
+) -> Result<(), StoreError> {
+    let table = memory::vector_table_name(collection, model_id);
+    sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO {table} (item_id, embedding) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE embedding = VALUES(embedding)"
+    )))
+    .bind(item_id)
+    .bind(bytes)
+    .execute(connection)
+    .await
+    .map_err(DbError::from)?;
+    Ok(())
+}
+
 /// Register the model if needed, ensure the collection exists, activate it if the
 /// collection has no active model yet, then upsert the vector.
 async fn embed_item(
@@ -347,24 +388,10 @@ async fn embed_item(
     item_id: u64,
     embedding: &Embedding,
 ) -> Result<(), StoreError> {
-    let model_id = memory::register_model(pool, &embedding.model).await?;
-    memory::ensure_collection(pool, collection, model_id).await?;
-    if memory::active_collection(pool, collection).await?.is_none() {
-        memory::activate_collection(pool, collection, model_id).await?;
-        registry.invalidate();
-    }
+    let model_id = prepare_embedding(pool, registry, collection, &embedding.model).await?;
     let bytes = vector::encode_width(&embedding.vector, embedding.model.dimensions as usize)?;
-    let table = memory::vector_table_name(collection, model_id);
-    sqlx::query(AssertSqlSafe(format!(
-        "INSERT INTO {table} (item_id, embedding) VALUES (?, ?)
-         ON DUPLICATE KEY UPDATE embedding = VALUES(embedding)"
-    )))
-    .bind(item_id)
-    .bind(&bytes[..])
-    .execute(pool)
-    .await
-    .map_err(DbError::from)?;
-    Ok(())
+    let mut connection = pool.acquire().await.map_err(DbError::from)?;
+    write_vector(&mut connection, collection, model_id, item_id, &bytes).await
 }
 
 // ---------------------------------------------------------------------------------------

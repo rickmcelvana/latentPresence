@@ -82,31 +82,58 @@ export const BlocksResponseSchema = z.object({ blocks: z.array(SelfModelBlockSch
 export const PlansResponseSchema = z.object({ plans: z.array(PlanDocumentSchema) });
 
 /**
- * Ingest takes a path on the companion's own machine, not file bytes over HTTP. The
- * companion is local by definition, and streaming a folder of PDFs through the browser
- * would be slower and would put the user's documents on the wire for no reason.
+ * Document ingestion (P5-T03, ADR-44). **The page never names a path**: the companion indexes
+ * the folders its own `documents.json` lists — on disk, edited by the person, like `mcp.json`
+ * (ADR-43) — at start, when a file in them changes, and when the page asks for a scan. A page
+ * that could point the companion at any path could read any file through retrieval.
  */
-export const IngestRequestSchema = z.object({
-  collection: z.string().min(1),
-  path: z.string().min(1),
-  recursive: z.boolean(),
-  embeddingModelId: z.string().min(1),
-  /** Fixed per collection: a collection with mixed dimensions cannot be searched. */
-  dimensions: z.number().int().positive(),
+export const IngestFailureSchema = z.object({
+  /** The file, as the companion found it. */
+  source: z.string().min(1),
+  error: z.string().min(1),
 });
-export type IngestRequest = z.infer<typeof IngestRequestSchema>;
+export type IngestFailure = z.infer<typeof IngestFailureSchema>;
 
 export const IngestJobSchema = z.object({
   id: IdSchema,
-  collection: z.string().min(1),
   status: z.enum(['queued', 'running', 'done', 'failed']),
+  /** What started it: the companion starting, a change in a watched folder, or the page. */
+  trigger: z.enum(['start', 'watch', 'request']),
+  /** Every supported file it looked at. */
   documentsSeen: z.number().int().min(0),
+  /** New or changed, and written again. A re-run over unchanged files indexes none. */
+  documentsIndexed: z.number().int().min(0),
+  /** Gone from disk, so gone from the index. */
+  documentsRemoved: z.number().int().min(0),
   chunksWritten: z.number().int().min(0),
+  /** Files it could not read; the rest of the job goes on. The first 100. */
+  failures: z.array(IngestFailureSchema).max(100),
   startedAt: TimestampSchema,
   finishedAt: TimestampSchema.nullable(),
+  /** Why the whole job failed (no database, an embedding endpoint that refused), if it did. */
   error: z.string().nullable(),
 });
 export type IngestJob = z.infer<typeof IngestJobSchema>;
+
+export const IngestFolderSchema = z.object({
+  path: z.string().min(1),
+  exists: z.boolean(),
+  documents: z.number().int().min(0),
+  chunks: z.number().int().min(0),
+});
+
+export const IngestStatusSchema = z.object({
+  /** `documents.json` as the companion read it at start. */
+  folders: z.array(IngestFolderSchema),
+  /** The model chunks are embedded with, or null: keyword search only. */
+  embedding: z.object({ provider: z.string().min(1), model: z.string().min(1), dimensions: z.number().int().positive() }).nullable(),
+  watching: z.boolean(),
+  /** The job running now, or the last one. */
+  job: IngestJobSchema.nullable(),
+  /** Why `documents.json` was not used, when it could not be read. */
+  configError: z.string().nullable(),
+});
+export type IngestStatus = z.infer<typeof IngestStatusSchema>;
 
 export const IngestJobParamsSchema = z.object({ id: IdSchema });
 
@@ -300,12 +327,21 @@ export const companionRoutes = {
     response: okSchema,
   },
 
-  ingestStart: {
-    method: 'POST',
-    path: '/ingest/documents',
+  ingestStatus: {
+    method: 'GET',
+    path: '/ingest/status',
     params: null,
     query: null,
-    request: IngestRequestSchema,
+    request: null,
+    response: IngestStatusSchema,
+  },
+  /** Scan every folder now: the running job if one is running, else a new one (ADR-44). */
+  ingestScan: {
+    method: 'POST',
+    path: '/ingest/scan',
+    params: null,
+    query: null,
+    request: null,
     response: IngestJobSchema,
   },
   ingestJob: {

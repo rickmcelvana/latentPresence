@@ -131,13 +131,17 @@ impl McpConfig {
     }
 }
 
-/// `COMPANION_MCP_CONFIG`, else `mcp.json` in the OS config directory's `latentPresence`.
-pub fn config_path() -> Option<PathBuf> {
+/// The file `file_name` the person keeps in the OS config directory's `latentPresence` folder,
+/// or the path in the environment variable `env_var` when it is set: `mcp.json` with
+/// `COMPANION_MCP_CONFIG` (here), `documents.json` with `COMPANION_DOCUMENTS_CONFIG`
+/// (`ingest::config`, ADR-44).
+pub fn config_path(file_name: &str, env_var: &str) -> Option<PathBuf> {
     let var = |name: &str| std::env::var_os(name).filter(|value| !value.is_empty());
-    config_path_from(var("COMPANION_MCP_CONFIG"), |name| var(name))
+    config_path_from(file_name, var(env_var), |name| var(name))
 }
 
 fn config_path_from(
+    file_name: &str,
     explicit: Option<std::ffi::OsString>,
     var: impl Fn(&str) -> Option<std::ffi::OsString>,
 ) -> Option<PathBuf> {
@@ -151,7 +155,7 @@ fn config_path_from(
             .map(PathBuf::from)
             .or_else(|| var("HOME").map(|home| PathBuf::from(home).join(".config")))
     }?;
-    Some(base.join("latentPresence").join("mcp.json"))
+    Some(base.join("latentPresence").join(file_name))
 }
 
 #[cfg(test)]
@@ -228,16 +232,25 @@ mod tests {
     #[test]
     fn the_file_is_the_one_named_or_in_the_os_config_directory() {
         assert_eq!(
-            config_path_from(Some("/tmp/x.json".into()), |_| None),
+            config_path_from("mcp.json", Some("/tmp/x.json".into()), |_| None),
             Some(PathBuf::from("/tmp/x.json"))
         );
-        let found = config_path_from(None, |name| match name {
+        let found = config_path_from("mcp.json", None, |name| match name {
             "APPDATA" => Some("C:\\Users\\me\\AppData\\Roaming".into()),
             "XDG_CONFIG_HOME" => Some("/home/me/.xdg".into()),
             _ => None,
         })
         .expect("a path");
         assert!(found.ends_with(Path::new("latentPresence").join("mcp.json")));
+        // The same lookup finds the documents file beside it.
+        let beside = config_path_from("documents.json", None, |name| match name {
+            "APPDATA" => Some("C:\\Users\\me\\AppData\\Roaming".into()),
+            "XDG_CONFIG_HOME" => Some("/home/me/.xdg".into()),
+            _ => None,
+        })
+        .expect("a path");
+        assert_eq!(beside.parent(), found.parent());
+        assert!(beside.ends_with("documents.json"));
         if cfg!(windows) {
             assert!(found.starts_with("C:\\Users\\me\\AppData\\Roaming"));
         } else {

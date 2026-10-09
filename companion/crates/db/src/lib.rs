@@ -17,6 +17,7 @@ use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use sqlx::{Executor, Row};
 
 pub mod bench;
+pub mod documents;
 pub mod memory;
 pub mod store;
 pub mod time;

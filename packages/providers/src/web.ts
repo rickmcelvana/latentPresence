@@ -11,5 +11,6 @@ export * from './access';
 export * from './llm';
 export * from './memory';
 export * from './mcp';
+export * from './ingest';
 export { OpenAICompatibleTTSProvider, type OpenAICompatibleTtsConfig } from './tts/openai-compatible-tts';
 export { OpenAICompatibleSTTProvider, type OpenAICompatibleSttConfig } from './stt/openai-compatible-stt';

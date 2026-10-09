@@ -1,9 +1,10 @@
 //! latentPresence companion.
 //!
-//! Optional local service: MariaDB vector memory (P0-T06, P4-T02); document ingest lands
-//! later. It answers `/health` so the web app, the gate and CI have something real to talk
-//! to, `/relay` for endpoints that refuse browser origins (ADR-29), `/db/*` for the memory
-//! kernel (ADR-36), and `/mcp/*` for the MCP servers its own `mcp.json` names (ADR-43).
+//! Optional local service: MariaDB vector memory (P0-T06, P4-T02) and document ingest
+//! (P5-T03). It answers `/health` so the web app, the gate and CI have something real to
+//! talk to, `/relay` for endpoints that refuse browser origins (ADR-29), `/db/*` for the
+//! memory kernel (ADR-36), `/mcp/*` for the MCP servers its own `mcp.json` names (ADR-43),
+//! and `/ingest/*` for the folders its own `documents.json` lists (ADR-44).
 //!
 //! A library as well as a binary so `tests/memory_api.rs` — an integration test that needs
 //! a real MariaDB — can build the same router the binary serves, rather than a copy of it.
@@ -13,6 +14,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use axum::{Router, middleware, routing::get};
 
 pub mod bench;
+pub mod ingest;
 pub mod mcp;
 pub mod memory_api;
 pub mod relay;
@@ -33,12 +35,30 @@ fn router() -> Router {
 }
 
 /// The same surface with a chosen relay allowlist, memory state and MCP host, so tests can
-/// point it at a local upstream, a real database and/or a fake MCP server.
+/// point it at a local upstream, a real database and/or a fake MCP server. No folders are
+/// indexed (`/ingest/*` answers as an ingester with none configured would).
 pub fn router_with(
     relay: relay::Relay,
     memory: memory_api::MemoryState,
     has_database_url: bool,
     mcp: mcp::SharedHost,
+) -> Router {
+    router_with_ingest(
+        relay,
+        memory,
+        has_database_url,
+        mcp,
+        ingest::Ingester::default(),
+    )
+}
+
+/// The whole surface including document ingestion (ADR-44), over a chosen ingester.
+pub fn router_with_ingest(
+    relay: relay::Relay,
+    memory: memory_api::MemoryState,
+    has_database_url: bool,
+    mcp: mcp::SharedHost,
+    ingest: ingest::Ingester,
 ) -> Router {
     let relay_router = Router::new()
         .route("/relay", get(relay::relay).post(relay::relay))
@@ -46,6 +66,7 @@ pub fn router_with(
     memory_api::router(memory, has_database_url)
         .merge(relay_router)
         .merge(mcp::router(mcp))
+        .merge(ingest::router(ingest))
         .layer(middleware::from_fn(relay::cors))
 }
 

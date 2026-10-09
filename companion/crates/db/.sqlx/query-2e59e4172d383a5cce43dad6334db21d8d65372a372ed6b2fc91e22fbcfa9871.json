@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM documents WHERE path_key = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "2e59e4172d383a5cce43dad6334db21d8d65372a372ed6b2fc91e22fbcfa9871"
+}

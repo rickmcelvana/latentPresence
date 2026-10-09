@@ -2173,3 +2173,73 @@ kbd {
   margin-top: var(--gap-xs);
   font-size: 11px;
 }
+
+/* --- Documents (P5-T03, ADR-44) -----------------------------------------------
+   Settings → Documents: the folders the companion indexes, and how the last scan went. */
+
+.ingest-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.ingest-folder-list,
+.ingest-failure-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ingest-folder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ingest-folder-path {
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ingest-folder-counts,
+.ingest-job-counts {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ingest-job {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+}
+
+.ingest-failures {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ingest-failures summary {
+  cursor: pointer;
+}
+
+.ingest-failure-list {
+  margin-top: var(--gap-xs);
+}
+
+.ingest-failure {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

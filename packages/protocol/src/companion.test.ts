@@ -5,7 +5,8 @@ import {
   CompanionErrorSchema,
   CompanionEventSchema,
   HealthResponseSchema,
-  IngestRequestSchema,
+  IngestJobSchema,
+  IngestStatusSchema,
   McpCallRequestSchema,
   McpToolsResponseSchema,
   companionRoutes,
@@ -93,21 +94,36 @@ describe('HealthResponseSchema', () => {
   });
 });
 
-describe('IngestRequestSchema', () => {
-  it('fixes the embedding dimension per collection', () => {
-    // Mixing dimensions in one collection makes vector search silently wrong rather
-    // than failing, so the dimension is part of the request, not a server default.
-    const request = {
-      collection: 'notes',
-      path: '/home/rick/notes',
-      recursive: true,
-      embeddingModelId: 'nomic-embed-text',
-      dimensions: 768,
+describe('IngestStatusSchema (P5-T03, ADR-44)', () => {
+  const job = {
+    id: 'job-1',
+    status: 'done',
+    trigger: 'request',
+    documentsSeen: 3,
+    documentsIndexed: 0,
+    documentsRemoved: 0,
+    chunksWritten: 0,
+    failures: [{ source: 'C:/notes/broken.pdf', error: 'not a PDF' }],
+    startedAt: '2026-10-09T10:00:00.000Z',
+    finishedAt: '2026-10-09T10:00:01.000Z',
+    error: null,
+  };
+
+  it('reports folders, the embedding model or none, and the last job with the files it could not read', () => {
+    const status = {
+      folders: [{ path: 'C:/notes', exists: true, documents: 3, chunks: 41 }],
+      embedding: { provider: 'http://127.0.0.1:11434/v1', model: 'nomic-embed-text', dimensions: 768 },
+      watching: true,
+      job,
+      configError: null,
     };
-    expect(IngestRequestSchema.parse(request)).toEqual(request);
-    expect(IngestRequestSchema.safeParse({ ...request, dimensions: 0 }).success).toBe(false);
-    const { dimensions: _dropped, ...withoutDimensions } = request;
-    expect(IngestRequestSchema.safeParse(withoutDimensions).success).toBe(false);
+    expect(IngestStatusSchema.parse(status)).toEqual(status);
+    expect(IngestStatusSchema.parse({ ...status, embedding: null, job: null }).embedding).toBeNull();
+  });
+
+  it('never takes a path from the page: a scan has no body', () => {
+    expect(companionRoutes.ingestScan.request).toBeNull();
+    expect(IngestJobSchema.safeParse({ ...job, trigger: 'page' }).success).toBe(false);
   });
 });
 

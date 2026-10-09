@@ -16,3 +16,4 @@ export * from './ser';
 export * from './face';
 export * from './audio';
 export * from './mcp';
+export * from './ingest';

@@ -1,0 +1,38 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT COUNT(DISTINCT d.id) AS documents, COUNT(c.id) AS chunks\n         FROM documents d LEFT JOIN chunks c ON c.document_id = d.id\n         WHERE d.folder = ?",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "documents",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "chunks",
+        "type_info": {
+          "type": "LongLong",
+          "flags": "NOT_NULL | BINARY",
+          "collation": 63,
+          "max_size": 21
+        },
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3d4da41a30835bb094cc2034a3a5a9cae753010f8be5a1a33a4708b026731b9c"
+}
