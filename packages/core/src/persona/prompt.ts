@@ -121,6 +121,20 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
           '  say to them plainly that you will leave it, and help from what you know.',
           '',
         ]),
+    // P5-T04 (ADR-45): their documents, and how to cite them — the tag is lifted out of speech.
+    ...(context.documents === true
+      ? [
+          'THEIR DOCUMENTS',
+          '- They have documents you can search with documents_search: manuals, notes, papers.',
+          '  When they ask something their documents might answer, search before you answer.',
+          '- Answer from what you found. If nothing fits, say you could not find it in their',
+          '  documents, and only then say what you know yourself, as yours.',
+          '- Every sentence that uses a result ends with its ref as a tag, like',
+          '  "Hold reset for five seconds. [cite:c6612]". Use only refs a search gave you.',
+          '- Never read a ref, a file name or a path aloud; say which document in plain words.',
+          '',
+        ]
+      : []),
     // P4-T07 (ADR-41): how to plan together, and the plans — after memory, before "right now".
     ...(context.plans ? renderPlans(context.plans, context.now) : []),
     'RIGHT NOW',

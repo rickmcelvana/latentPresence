@@ -19,6 +19,10 @@ function base(ms: number): { sessionId: string; at: string } {
   return { sessionId: SID, at: iso(ms) };
 }
 
+function cite(value: string) {
+  return { kind: 'cite' as const, value, known: null, offset: 0 };
+}
+
 describe('reduceTranscript — the event table', () => {
   it('a tool call is a running line; its result settles it done, or failed with the reason (P5-T01)', () => {
     const call = { id: 'c1', name: 'deepwiki__read_wiki_structure', arguments: {}, source: 'llm' as const, requestedAt: iso(0) };
@@ -30,6 +34,19 @@ describe('reduceTranscript — the event table', () => {
     expect(failed.lines[0]).toMatchObject({ state: 'failed', detail: 'They said no.' });
     expect(reduceTranscript(running, { ...base(10), type: 'tool.result', result: { ok: true, callId: 'other', value: null, finishedAt: iso(10) } })).toBe(running);
     expect(transcriptToText(failed.lines, 'Alice')).toBe('[tool] deepwiki__read_wiki_structure — They said no.');
+  });
+
+  it('collects an answer’s citations from its sentences, in order, each once, and keeps them when it settles (P5-T04)', () => {
+    const state = fold([
+      { ...base(0), type: 'assistant.token', text: 'Hold reset.' },
+      { ...base(1), type: 'assistant.sentence', text: 'Hold reset.', index: 0, tags: [cite('c12'), { kind: 'emote', value: 'joy', known: 'joy', offset: 0 }] },
+      { ...base(2), type: 'assistant.sentence', text: 'Then wait.', index: 1, tags: [cite('c13'), cite('c12')] },
+      { ...base(3), type: 'assistant.message', entry: { id: 'e1', role: 'assistant', text: 'Hold reset. Then wait.', at: iso(3), spokenPrefix: null } },
+    ]);
+    expect(state.lines[0]).toMatchObject({ kind: 'assistant', status: 'complete', citations: ['c12', 'c13'] });
+    // A sentence with no line open to take it changes nothing.
+    const quiet = fold([{ ...base(0), type: 'assistant.sentence', text: 'Hi.', index: 0, tags: [cite('c1')] }]);
+    expect(quiet.lines).toEqual([]);
   });
 
   it('user.turn.ended remembers the turn start and produces no line', () => {
@@ -78,6 +95,7 @@ describe('reduceTranscript — the event table', () => {
         unsaid: '',
         firstTokenMs: 412,
         firstAudioMs: null,
+        citations: [],
       },
     ]);
   });
@@ -128,6 +146,7 @@ describe('reduceTranscript — the event table', () => {
         unsaid: '',
         firstTokenMs: null,
         firstAudioMs: null,
+        citations: [],
       },
     ]);
   });
@@ -160,7 +179,7 @@ describe('reduceTranscript — the event table', () => {
       { ...base(50), type: 'assistant.message', entry: { id: 'e1', role: 'assistant', text: 'Hi.', at: iso(50), spokenPrefix: null } },
     ]);
     expect(state.lines).toEqual([
-      { kind: 'assistant', id: 'e1', at: iso(50), status: 'complete', text: 'Hi.', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null },
+      { kind: 'assistant', id: 'e1', at: iso(50), status: 'complete', text: 'Hi.', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null, citations: [] },
     ]);
   });
 
@@ -311,6 +330,7 @@ describe('reduceTranscript — driven by a real ChatSession', () => {
         unsaid: '',
         firstTokenMs: 0,
         firstAudioMs: null,
+        citations: [],
       },
     ]);
   });
@@ -320,7 +340,7 @@ describe('transcriptToText', () => {
   it('renders the note\'s exact shape: user, complete, interrupted, notice, and a streaming line as-is', () => {
     const lines: TranscriptLine[] = [
       { kind: 'user', id: '1', text: 'what time is it', at: iso(0), via: 'text' },
-      { kind: 'assistant', id: '2', at: iso(1), status: 'complete', text: 'It is nearly three.', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null },
+      { kind: 'assistant', id: '2', at: iso(1), status: 'complete', text: 'It is nearly three.', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null, citations: [] },
       {
         kind: 'assistant',
         id: '3',
@@ -331,9 +351,10 @@ describe('transcriptToText', () => {
         unsaid: ' there was a dragon.',
         firstTokenMs: null,
         firstAudioMs: null,
+        citations: [],
       },
       { kind: 'notice', id: '4', at: iso(3), text: 'The language model failed: 401 Unauthorized' },
-      { kind: 'assistant', id: '5', at: iso(4), status: 'streaming', text: 'Still going', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null },
+      { kind: 'assistant', id: '5', at: iso(4), status: 'streaming', text: 'Still going', heard: null, unsaid: '', firstTokenMs: null, firstAudioMs: null, citations: [] },
     ];
     expect(transcriptToText(lines, 'Alice')).toBe(
       [

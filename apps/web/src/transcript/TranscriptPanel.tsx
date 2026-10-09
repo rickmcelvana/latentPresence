@@ -11,7 +11,22 @@ export interface TranscriptPanelProps {
   readonly lines: readonly TranscriptLine[];
   readonly characterName: string;
   readonly onClear: () => void;
+  /**
+   * P5-T04 (ADR-45): what a citation ref stands for, from the hits she was given. A ref this
+   * does not know was never given to her, so it is shown as a source she made up.
+   */
+  readonly sources?: ((ref: string) => CitationSource | undefined) | undefined;
 }
+
+/** A chunk she was given and may cite: where it came from and what it said. */
+export interface CitationSource {
+  readonly title: string;
+  readonly locator: string | null;
+  readonly source: string;
+  readonly text: string;
+}
+
+type Sources = TranscriptPanelProps['sources'];
 
 type AssistantLine = Extract<TranscriptLine, { kind: 'assistant' }>;
 
@@ -49,7 +64,47 @@ function TranscriptBadges({ line }: { line: AssistantLine }): ReactElement | nul
   );
 }
 
-function TranscriptLineView({ line, characterName }: { line: TranscriptLine; characterName: string }): ReactElement {
+/** The sources under an answer (P5-T04, ADR-45): numbered in the order first cited. */
+function TranscriptSources({ citations, sources }: { citations: readonly string[]; sources: Sources }): ReactElement | null {
+  if (citations.length === 0) return null;
+  return (
+    <div className="transcript-sources">
+      <p className="transcript-sources-title">Sources</p>
+      <ol className="transcript-source-list">
+        {citations.map((ref, index) => {
+          const found = sources?.(ref);
+          if (found === undefined) {
+            return (
+              <li className="transcript-source transcript-source-unknown" key={ref}>
+                {index + 1}. A source she was not given
+              </li>
+            );
+          }
+          const where = found.locator === null ? '' : `, ${found.locator}`;
+          return (
+            <li className="transcript-source" key={ref}>
+              <details className="transcript-source-details">
+                <summary>{`${index + 1}. ${found.title}${where}`}</summary>
+                <blockquote className="transcript-source-quote">{found.text}</blockquote>
+                <code className="transcript-source-path">{found.source}</code>
+              </details>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+function TranscriptLineView({
+  line,
+  characterName,
+  sources,
+}: {
+  line: TranscriptLine;
+  characterName: string;
+  sources: Sources;
+}): ReactElement {
   if (line.kind === 'notice') {
     return (
       <p className="transcript-line transcript-line-notice">
@@ -61,6 +116,17 @@ function TranscriptLineView({ line, characterName }: { line: TranscriptLine; cha
 
   if (line.kind === 'tool') {
     // P5-T01 (ADR-42): every call that reached outside, said plainly.
+    // Her own search of their documents (P5-T04) says what she did rather than a tool's name.
+    if (line.name === 'documents_search') {
+      return (
+        <p className={`transcript-line transcript-line-tool transcript-line-tool-${line.state}`}>
+          <span aria-hidden="true" className="transcript-tool-marker" />
+          {line.state === 'running' && `${characterName} is looking in your documents…`}
+          {line.state === 'done' && `${characterName} looked in your documents`}
+          {line.state === 'failed' && `${characterName} could not look in your documents: ${line.detail ?? 'it failed'}`}
+        </p>
+      );
+    }
     const { server, tool } = splitToolName(line.name);
     const what = server === null ? tool : `${server} · ${tool}`;
     return (
@@ -105,12 +171,13 @@ function TranscriptLineView({ line, characterName }: { line: TranscriptLine; cha
         )}
         {streaming && <span aria-hidden="true" className="transcript-cursor" />}
       </p>
+      {line.kind === 'assistant' && <TranscriptSources citations={line.citations} sources={sources} />}
       {line.kind === 'assistant' && !streaming && <TranscriptBadges line={line} />}
     </div>
   );
 }
 
-export function TranscriptPanel({ lines, characterName, onClear }: TranscriptPanelProps): ReactElement {
+export function TranscriptPanel({ lines, characterName, onClear, sources }: TranscriptPanelProps): ReactElement {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [pinned, setPinned] = useState(true);
   const logRef = useRef<HTMLDivElement | null>(null);
@@ -169,7 +236,7 @@ export function TranscriptPanel({ lines, characterName, onClear }: TranscriptPan
         <div aria-live="polite" className="transcript-log" onScroll={handleScroll} ref={logRef} role="log">
           {lines.length === 0 && <p className="transcript-empty">Nothing said yet.</p>}
           {lines.map((line) => (
-            <TranscriptLineView characterName={characterName} key={line.id} line={line} />
+            <TranscriptLineView characterName={characterName} key={line.id} line={line} sources={sources} />
           ))}
         </div>
         {!pinned && (

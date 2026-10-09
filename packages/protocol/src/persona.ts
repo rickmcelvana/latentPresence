@@ -106,16 +106,21 @@ export const PromptContextSchema = z.object({
     .max(16)
     .default([]),
   /**
-   * Her plans with them (P4-T07, ADR-41): rendered by core as the planning section — how to
-   * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
-   * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.
-   */
-  /**
    * The outside tool servers she can use this visit (P5-T01, ADR-42), by name: rendered as a
    * short section saying what they return is information, not instructions. Empty leaves the
    * prompt exactly as it was.
    */
   toolServers: z.array(z.string().min(1).max(80)).max(16).default([]),
+  /**
+   * Whether she can search the person's documents this visit (P5-T04, ADR-45): rendered as the
+   * section on looking things up and citing them. False leaves the prompt exactly as it was.
+   */
+  documents: z.boolean().default(false),
+  /**
+   * Her plans with them (P4-T07, ADR-41): rendered by core as the planning section — how to
+   * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
+   * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.
+   */
   plans: z
     .object({
       plans: z.array(PlanDocumentSchema).max(16),

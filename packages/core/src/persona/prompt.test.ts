@@ -260,3 +260,16 @@ describe('renderSystemPrompt', () => {
     expect(renderSystemPrompt(often, { now: at, userName: null })).not.toBe(prompt);
   });
 });
+
+describe('their documents (P5-T04, ADR-45)', () => {
+  it('teaches searching and citing only when she can search, and leaves the prompt as it was otherwise', () => {
+    const base = { now: new Date('2026-10-09T12:00:00Z'), userName: null };
+    const without = renderSystemPrompt(persona, base);
+    const withDocs = renderSystemPrompt(persona, { ...base, documents: true });
+    expect(without).not.toContain('THEIR DOCUMENTS');
+    expect(withDocs).toContain('THEIR DOCUMENTS');
+    expect(withDocs).toContain('[cite:c6612]');
+    expect(withDocs).toContain('Use only refs a search gave you.');
+    expect(withDocs.replace(/THEIR DOCUMENTS[\s\S]*?\n\n/u, '')).toBe(without);
+  });
+});

@@ -57,7 +57,11 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
 
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
-      <DocumentsSection companionUrl={settings.companionUrl} />
+      <DocumentsSection
+        companionUrl={settings.companionUrl}
+        onSearchChange={(search) => setSettings((prev) => ({ ...prev, documents: { ...prev.documents, search } }))}
+        search={settings.documents.search}
+      />
 
       <DownloadedModelsSection caches={deps.caches} consent={deps.consent} />
     </div>

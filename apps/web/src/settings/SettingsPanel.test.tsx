@@ -151,6 +151,20 @@ describe('SettingsPanel — Language model', () => {
   });
 });
 
+describe('SettingsPanel — Documents (P5-T04, ADR-45)', () => {
+  it('the search switch is off, turns on, and is saved in the settings document', async () => {
+    const storage = memoryStorage();
+    render(<SettingsPanel deps={testDeps({ storage })} />);
+    const toggle = screen.getByRole('switch', { name: 'Let her search these documents' }) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect((screen.getByRole('switch', { name: 'Let her search these documents' }) as HTMLInputElement).checked).toBe(true);
+    await waitFor(() => expect(JSON.parse(storage.getItem('latentpresence.settings.v1') ?? '{}').documents).toEqual({ search: true }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Let her search these documents' }));
+    await waitFor(() => expect(JSON.parse(storage.getItem('latentpresence.settings.v1') ?? '{}').documents).toEqual({ search: false }));
+  });
+});
+
 describe('SettingsPanel — Voice', () => {
   it('the speed control is bounded to 0.75-1.25', () => {
     render(<SettingsPanel deps={testDeps()} />);

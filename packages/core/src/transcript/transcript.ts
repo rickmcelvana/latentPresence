@@ -29,6 +29,11 @@ export type TranscriptLine =
       readonly unsaid: string;
       readonly firstTokenMs: number | null;
       readonly firstAudioMs: number | null;
+      /**
+       * The document chunks the answer cited (`[cite:c123]`, P5-T04, ADR-45): their refs, in the
+       * order first cited, each once. The panel lists them as its sources.
+       */
+      readonly citations: readonly string[];
     }
   | { readonly kind: 'notice'; readonly id: string; readonly at: string; readonly text: string }
   /**
@@ -154,8 +159,17 @@ export function reduceTranscript(state: TranscriptState, event: ConversationEven
         unsaid: '',
         firstTokenMs,
         firstAudioMs: null,
+        citations: [],
       };
       return appended({ ...state, nextId: state.nextId + 1, openIndex: state.lines.length, audioMarked: false }, line);
+    }
+
+    case 'assistant.sentence': {
+      const refs = event.tags.filter((tag) => tag.kind === 'cite').map((tag) => tag.value);
+      const open = openLine(state);
+      if (refs.length === 0 || open === null) return state;
+      const citations = [...open.line.citations, ...refs.filter((ref, i) => !open.line.citations.includes(ref) && refs.indexOf(ref) === i)];
+      return withLines(state, replaceAt(state.lines, open.index, { ...open.line, citations }));
     }
 
     case 'assistant.audio.started': {
@@ -196,6 +210,7 @@ export function reduceTranscript(state: TranscriptState, event: ConversationEven
           unsaid,
           firstTokenMs: open.line.firstTokenMs,
           firstAudioMs: open.line.firstAudioMs,
+          citations: open.line.citations,
         };
         return withLines(cleared, replaceAt(state.lines, open.index, line));
       }
@@ -210,6 +225,7 @@ export function reduceTranscript(state: TranscriptState, event: ConversationEven
         unsaid,
         firstTokenMs: null,
         firstAudioMs: null,
+        citations: [],
       };
       return appended(cleared, line);
     }

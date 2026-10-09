@@ -142,10 +142,12 @@ export const TAG_SCAN_LIMIT = 48;
  * removes the ugliest failure a model can hand us. **`emotive` joined it in P3-T03**:
  * `glm-5.2:cloud` wrote `[emotive:sad]` under a low mood (`pnpm live:affect`, 2026-09-24).
  */
-export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture|user):([a-z][a-z0-9-]*)\]/;
+export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture|user|cite):([a-z][a-z0-9-]*)\]/;
 
 /** The verdict on a raw label: on its own kind's list, or null. */
 function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | UserEmotion | null {
+  // A citation (P5-T04, ADR-45) names a chunk, not a label on a list.
+  if (kind === 'cite') return null;
   if (kind === 'emote') return knownEmotions.has(value) ? (value as CharacterEmotion) : null;
   if (kind === 'user') return knownUserEmotions.has(value) ? (value as UserEmotion) : null;
   return knownGestures.has(value) ? (value as CharacterGesture) : null;
@@ -193,7 +195,8 @@ export class SentenceChunker {
   /**
    * Tags that arrived after the last spoken character, so no chunk could carry them —
    * `Nice to meet you! [gesture:wave]`. Read after `flush()`. They are kept rather than
-   * dropped because a closing wave is exactly the gesture a model emits there.
+   * dropped because a closing wave is exactly the gesture a model emits there. (A citation
+   * never lands here: it rides the sentence before it, P5-T04.)
    */
   get trailingTags(): readonly InlineTag[] {
     return this.trailing;
@@ -242,14 +245,12 @@ export class SentenceChunker {
         const rest = this.buffer.slice(i, i + TAG_SCAN_LIMIT);
         const match = TAG_PATTERN.exec(rest);
         if (match !== null) {
-          const kind = match[1] === 'gesture' || match[1] === 'user' ? match[1] : 'emote';
+          const kind = match[1] === 'gesture' || match[1] === 'user' || match[1] === 'cite' ? match[1] : 'emote';
           const value = match[2] ?? '';
-          this.tags.push({
-            kind,
-            value,
-            known: known(kind, value),
-            offset: this.spoken.length,
-          });
+          // Other tags lead what follows them; a citation follows what it supports — `…five
+          // seconds. [cite:c6612]` cites that sentence, so it sits at its end (ADR-45).
+          const offset = kind === 'cite' ? this.spoken.trimEnd().length : this.spoken.length;
+          this.tags.push({ kind, value, known: known(kind, value), offset });
           i += match[0].length;
           // `Hello [emote:joy] world` must not become `Hello  world`.
           while (isWhitespace(this.buffer.charAt(i)) && this.endsWithSpace()) i += 1;
@@ -347,6 +348,10 @@ export class SentenceChunker {
         this.candidates.shift();
         continue;
       }
+      // Only whitespace after it, and a tag still arriving (` [ci`): it may be a citation, which
+      // belongs to this sentence (P5-T04), so the sentence waits the few tokens until it is
+      // whole. Anything else after the space sends the sentence at once, as before.
+      if (!final && this.buffer.startsWith('[') && this.spoken.slice(j).trim() === '') return null;
       return j;
     }
     return forced;

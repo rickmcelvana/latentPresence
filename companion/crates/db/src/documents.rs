@@ -263,3 +263,147 @@ pub async fn activate_model(
     registry.invalidate();
     Ok(true)
 }
+
+/// A chunk a search found (P5-T04, ADR-45), with where it is from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SearchHit {
+    pub chunk_id: u64,
+    pub document_id: u64,
+    pub folder: String,
+    pub title: String,
+    pub source: String,
+    pub locator: Option<String>,
+    pub text: String,
+    /// Reciprocal-rank fusion, scaled so a chunk first in both lists is 1.
+    pub score: f64,
+}
+
+/// `id, document_id, locator, text, folder, title, source`.
+type HitRow = (u64, u64, Option<String>, String, String, String, String);
+
+/// The reciprocal-rank constant: the usual 60, so a list's top few dominate without the rest
+/// counting for nothing.
+const RRF_K: f64 = 60.0;
+
+/// Fuse ranked id lists by reciprocal rank: best first, `limit` of them, with scores in 0..=1.
+pub fn fuse(lists: &[Vec<u64>], limit: usize) -> Vec<(u64, f64)> {
+    let mut scores: Vec<(u64, f64)> = Vec::new();
+    for list in lists {
+        for (rank, id) in list.iter().enumerate() {
+            let add = 1.0 / (RRF_K + rank as f64 + 1.0);
+            match scores.iter_mut().find(|(seen, _)| seen == id) {
+                Some((_, score)) => *score += add,
+                None => scores.push((*id, add)),
+            }
+        }
+    }
+    let best = lists.len().max(1) as f64 / (RRF_K + 1.0);
+    scores.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+    scores.truncate(limit);
+    scores
+        .into_iter()
+        .map(|(id, score)| (id, (score / best).clamp(0.0, 1.0)))
+        .collect()
+}
+
+/// The chunks that best answer `query`: the nearest by vector when `probe` (the active chunks
+/// table and the query's encoded vector) is given, the best `FULLTEXT` matches, fused.
+pub async fn search(
+    pool: &MySqlPool,
+    query: &str,
+    probe: Option<(&str, &[u8])>,
+    limit: usize,
+) -> Result<Vec<SearchHit>, StoreError> {
+    let overfetch = (4 * limit).max(20) as u32;
+    let mut lists = Vec::new();
+    if let Some((table, bytes)) = probe {
+        // `table` comes from `vector_collections`, written from `vector_table_name` (integers
+        // only) — never from the request.
+        let nearest: Vec<u64> = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
+            "SELECT item_id FROM {table} ORDER BY VEC_DISTANCE_COSINE(embedding, ?) LIMIT ?"
+        )))
+        .bind(bytes)
+        .bind(overfetch)
+        .fetch_all(pool)
+        .await
+        .map_err(DbError::from)?;
+        lists.push(nearest);
+    }
+    let matched: Vec<u64> = sqlx::query_scalar(
+        "SELECT id FROM chunks WHERE MATCH(text) AGAINST (? IN NATURAL LANGUAGE MODE)
+         ORDER BY MATCH(text) AGAINST (? IN NATURAL LANGUAGE MODE) DESC, id LIMIT ?",
+    )
+    .bind(query)
+    .bind(query)
+    .bind(overfetch)
+    .fetch_all(pool)
+    .await
+    .map_err(DbError::from)?;
+    lists.push(matched);
+
+    let ranked = fuse(&lists, limit);
+    if ranked.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut builder = QueryBuilder::new(
+        "SELECT c.id, c.document_id, c.locator, c.text, d.folder, d.title, d.source
+         FROM chunks c JOIN documents d ON d.id = c.document_id WHERE c.id IN (",
+    );
+    let mut ids = builder.separated(", ");
+    for (id, _) in &ranked {
+        ids.push_bind(*id);
+    }
+    builder.push(")");
+    let rows: Vec<HitRow> = builder
+        .build_query_as()
+        .fetch_all(pool)
+        .await
+        .map_err(DbError::from)?;
+    Ok(ranked
+        .into_iter()
+        .filter_map(|(id, score)| {
+            let (chunk_id, document_id, locator, text, folder, title, source) =
+                rows.iter().find(|row| row.0 == id)?.clone();
+            Some(SearchHit {
+                chunk_id,
+                document_id,
+                folder,
+                title,
+                source,
+                locator,
+                text,
+                score,
+            })
+        })
+        .collect())
+}
+
+/// The vector table to search and the model id it holds, when the active chunks collection is
+/// `model`'s; None when no model is active or another one is.
+pub async fn active_table_for(
+    pool: &MySqlPool,
+    model: &memory::EmbeddingModel,
+) -> Result<Option<String>, StoreError> {
+    let model_id = memory::register_model(pool, model).await?;
+    Ok(memory::active_collection(pool, Collection::Chunks)
+        .await?
+        .filter(|collection| collection.model_id == model_id)
+        .map(|collection| collection.table_name))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fuse;
+
+    #[test]
+    fn fusion_puts_what_both_lists_rank_high_first_and_scales_to_one() {
+        let fused = fuse(&[vec![7, 8, 9], vec![8, 1, 7]], 3);
+        assert_eq!(
+            fused.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+            [8, 7, 1]
+        );
+        assert!(fused.iter().all(|(_, score)| (0.0..=1.0).contains(score)));
+        assert_eq!(fuse(&[vec![5], vec![5]], 1), [(5, 1.0)]);
+        assert!(fuse(&[vec![], vec![]], 5).is_empty());
+    }
+}

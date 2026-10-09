@@ -19,6 +19,7 @@ export * from './history';
 export * from './persona';
 export * from './affect';
 export * from './memory';
+export * from './documents';
 export * from './plan';
 export * from './self';
 export * from './tools';

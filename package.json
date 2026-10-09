@@ -34,6 +34,7 @@
     "live:memory": "pnpm --filter @latentpresence/providers exec vite-node live/memory.ts",
     "live:plan": "pnpm --filter @latentpresence/providers exec vite-node live/plan.ts",
     "live:mcp": "pnpm --filter @latentpresence/providers exec vite-node live/mcp.ts",
+    "live:cite": "pnpm --filter @latentpresence/providers exec vite-node live/cite.ts",
     "live:user-affect": "pnpm --filter @latentpresence/providers exec vite-node live/user-affect.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",
     "live:kokoro": "pnpm --filter @latentpresence/ml-web exec vite-node live/kokoro-dtype.ts",

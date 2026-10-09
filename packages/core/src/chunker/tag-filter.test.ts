@@ -60,6 +60,7 @@ describe('TagFilter', () => {
     expect(stream(['[emotion:concern] That sounds hard.'])).toBe('That sounds hard.');
     expect(stream(['[emotive:sad] That sounds hard.'])).toBe('That sounds hard.');
     expect(stream(['[user:sad] [emote:concern] That sounds hard.'])).toBe('That sounds hard.');
+    expect(stream(['It is on page twelve. [ci', 'te:c66', '12] Anything else?'])).toBe('It is on page twelve. Anything else?');
   });
 
   it('removes an unknown label, because it is still a well-formed tag', () => {

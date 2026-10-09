@@ -122,12 +122,25 @@ export const ToolsSettingsSchema = z.object({
 });
 export type ToolsSettings = z.infer<typeof ToolsSettingsSchema>;
 
+/**
+ * Her search of the person's documents (P5-T04, ADR-45). Off by default: turning it on makes the
+ * page ask the companion at `127.0.0.1` whether it has documents, which an unasked request
+ * must not do (the same reason memory defaults to `browser`). Defaulted, so a document saved
+ * before P5-T04 loads.
+ */
+export const DocumentsSettingsSchema = z.object({
+  search: z.boolean(),
+});
+export type DocumentsSettings = z.infer<typeof DocumentsSettingsSchema>;
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   companionUrl: z.string(),
   memory: MemorySettingSchema.default('browser'),
   /** Defaulted, so a settings document saved before P5 still loads. */
   tools: ToolsSettingsSchema.default({ servers: [], grants: {}, companion: false }),
+  /** P5-T04, ADR-45: off by default, no unasked request to `127.0.0.1`. */
+  documents: DocumentsSettingsSchema.default({ search: false }),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -141,6 +154,7 @@ export const DEFAULT_SETTINGS: Settings = {
   companionUrl: DEFAULT_COMPANION_URL,
   memory: 'browser',
   tools: { servers: [], grants: {}, companion: false },
+  documents: { search: false },
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },

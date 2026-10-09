@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { IdSchema, JsonObjectSchema, TimestampSchema } from './common';
 import {
+  DocumentHitSchema,
   EmbeddingModelRefSchema,
   MemoryEpisodeSchema,
   PlanDocumentSchema,
@@ -134,6 +135,24 @@ export const IngestStatusSchema = z.object({
   configError: z.string().nullable(),
 });
 export type IngestStatus = z.infer<typeof IngestStatusSchema>;
+
+/**
+ * Her search of the documents (P5-T04, ADR-45). The companion embeds the query itself, with the
+ * model and `queryPrefix` from its `documents.json`, and fuses the nearest chunks with the best
+ * keyword matches. `vectorSearch` says whether vectors took part: `no-model` (none configured, or
+ * not the active one yet), `unavailable` (the endpoint did not answer).
+ */
+export const DocumentSearchRequestSchema = z.object({
+  query: z.string().min(1).max(1000),
+  limit: z.number().int().min(1).max(10),
+});
+export type DocumentSearchRequest = z.infer<typeof DocumentSearchRequestSchema>;
+
+export const DocumentSearchResponseSchema = z.object({
+  hits: z.array(DocumentHitSchema),
+  vectorSearch: z.enum(['used', 'no-model', 'unavailable']),
+});
+export type DocumentSearchResponse = z.infer<typeof DocumentSearchResponseSchema>;
 
 export const IngestJobParamsSchema = z.object({ id: IdSchema });
 
@@ -343,6 +362,14 @@ export const companionRoutes = {
     query: null,
     request: null,
     response: IngestJobSchema,
+  },
+  documentsSearch: {
+    method: 'POST',
+    path: '/documents/search',
+    params: null,
+    query: null,
+    request: DocumentSearchRequestSchema,
+    response: DocumentSearchResponseSchema,
   },
   ingestJob: {
     method: 'GET',

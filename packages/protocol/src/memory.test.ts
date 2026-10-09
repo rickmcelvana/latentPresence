@@ -151,6 +151,7 @@ describe('retrieval', () => {
           text: 'The lease ends in October.',
           score: 0.82,
           source: '/home/rick/notes/lease.md',
+          locator: null,
         },
       ],
       vectorSearch: 'used',

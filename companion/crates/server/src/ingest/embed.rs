@@ -53,17 +53,28 @@ impl Embedder {
     pub async fn embed_documents(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String> {
         let mut vectors = Vec::with_capacity(texts.len());
         for batch in texts.chunks(BATCH) {
-            vectors.extend(self.embed_batch(batch).await?);
+            vectors.extend(
+                self.embed_batch(batch, &self.config.document_prefix)
+                    .await?,
+            );
         }
         Ok(vectors)
     }
 
-    async fn embed_batch(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String> {
+    /// One query's vector, with the query prefix (P5-T04, ADR-45): what a search compares the
+    /// chunks to.
+    pub async fn embed_query(&self, text: &str) -> Result<Vec<f32>, String> {
+        let mut vectors = self
+            .embed_batch(&[text.to_owned()], &self.config.query_prefix)
+            .await?;
+        vectors
+            .pop()
+            .ok_or_else(|| "the embedding endpoint returned no vector".to_owned())
+    }
+
+    async fn embed_batch(&self, texts: &[String], prefix: &str) -> Result<Vec<Vec<f32>>, String> {
         let base = &self.config.base_url;
-        let input: Vec<String> = texts
-            .iter()
-            .map(|text| format!("{}{text}", self.config.document_prefix))
-            .collect();
+        let input: Vec<String> = texts.iter().map(|text| format!("{prefix}{text}")).collect();
         let body = serde_json::json!({ "model": self.config.model, "input": input });
         let mut request = self
             .client

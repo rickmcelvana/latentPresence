@@ -59,6 +59,7 @@ describe('loadSettings', () => {
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
         companion: true,
       },
+      documents: { search: true },
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
@@ -81,6 +82,14 @@ describe('loadSettings', () => {
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP5) });
     expect(loadSettings(storage)).toEqual(settings);
     expect(settings.tools).toEqual({ servers: [], grants: {}, companion: false });
+  });
+
+  it('loads a document saved before document search existed, with it off (P5-T04, ADR-45)', () => {
+    const settings: Settings = { ...DEFAULT_SETTINGS, companionUrl: 'http://127.0.0.1:9999' };
+    const { documents: _documents, ...beforeT04 } = settings;
+    const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeT04) });
+    expect(loadSettings(storage)).toEqual(settings);
+    expect(settings.documents).toEqual({ search: false });
   });
 
   it('defaults the companion URL to the documented default', () => {

@@ -710,11 +710,105 @@ async fn job(
     }
 }
 
+// ---------------------------------------------------------------------------------------
+// Search (`DocumentSearchRequestSchema`, `DocumentSearchResponseSchema`; P5-T04, ADR-45)
+// ---------------------------------------------------------------------------------------
+
+#[derive(serde::Deserialize)]
+struct SearchRequest {
+    query: String,
+    limit: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HitOut {
+    chunk_id: String,
+    document_id: String,
+    collection: String,
+    title: String,
+    text: String,
+    score: f64,
+    source: String,
+    locator: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchResponse {
+    hits: Vec<HitOut>,
+    vector_search: &'static str,
+}
+
+/// The query embedded with the configured model and its query prefix, compared with the active
+/// chunks table when that is the model's; keyword matches either way; fused by reciprocal rank.
+async fn search(
+    State(ingester): State<Ingester>,
+    body: Result<Json<SearchRequest>, axum::extract::rejection::JsonRejection>,
+) -> Result<Json<SearchResponse>, ApiError> {
+    let Json(request) = body.map_err(|rejection| ApiError::BadRequest(rejection.body_text()))?;
+    let query = request.query.trim();
+    if query.is_empty() || query.chars().count() > 1000 || !(1..=10).contains(&request.limit) {
+        return Err(ApiError::BadRequest(
+            "a search needs a query of 1 to 1000 characters and a limit of 1 to 10".into(),
+        ));
+    }
+    let inner = &ingester.inner;
+    let pool = inner.pool.as_ref().ok_or(ApiError::Unavailable)?;
+    let mut vector_search = "no-model";
+    let mut probe: Option<(String, Vec<u8>)> = None;
+    if let Some(embedder) = &inner.embedder {
+        let config = embedder.config();
+        let table = documents::active_table_for(pool, &config.model()).await?;
+        if let Some(table) = table {
+            match embedder.embed_query(query).await {
+                Ok(vector) => {
+                    let bytes = latentpresence_db::vector::encode_width(
+                        &vector,
+                        config.dimensions as usize,
+                    )
+                    .map_err(|error| ApiError::Internal(error.to_string()))?;
+                    probe = Some((table, bytes));
+                    vector_search = "used";
+                }
+                // The endpoint is down: the words still find what they can.
+                Err(_) => vector_search = "unavailable",
+            }
+        }
+    }
+    let hits = documents::search(
+        pool,
+        query,
+        probe
+            .as_ref()
+            .map(|(table, bytes)| (table.as_str(), bytes.as_slice())),
+        request.limit,
+    )
+    .await?;
+    Ok(Json(SearchResponse {
+        hits: hits
+            .into_iter()
+            .map(|hit| HitOut {
+                chunk_id: hit.chunk_id.to_string(),
+                document_id: hit.document_id.to_string(),
+                collection: hit.folder,
+                title: hit.title,
+                text: hit.text,
+                score: hit.score,
+                source: hit.source,
+                locator: hit.locator,
+            })
+            .collect(),
+        vector_search,
+    }))
+}
+
 pub fn router(ingester: Ingester) -> Router {
     Router::new()
         .route("/ingest/status", get(status))
         .route("/ingest/scan", post(scan))
         .route("/ingest/jobs/{id}", get(job))
+        .route("/documents/search", post(search))
         .with_state(ingester)
 }
 

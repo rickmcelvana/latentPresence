@@ -32,10 +32,16 @@ function companion(answers: { status?: unknown; scan?: unknown; job?: unknown } 
     seen.push({ url, method: init?.method ?? 'GET', body: init?.body });
     if (url.endsWith('/ingest/status')) return Response.json(answers.status ?? STATUS);
     if (url.endsWith('/ingest/scan')) return Response.json(answers.scan ?? JOB);
+    if (url.endsWith('/documents/search')) return Response.json(FOUND);
     return Response.json(answers.job ?? JOB);
   };
   return { fetch, seen };
 }
+
+const FOUND = {
+  hits: [{ chunkId: '12', documentId: '3', collection: 'C:/notes', title: 'Herb notes', text: 'Thyme likes to dry out.', score: 1, source: 'C:/notes/herb-notes.pdf', locator: 'p. 2' }],
+  vectorSearch: 'used',
+};
 
 async function refusing(): Promise<Response> {
   return Response.json({ error: { code: 'unavailable', message: 'there is no database', details: null } }, { status: 503 });
@@ -56,6 +62,12 @@ describe('companionIngest (P5-T03, ADR-44)', () => {
     const { fetch, seen } = companion();
     expect(await companionIngest({ baseUrl: 'http://127.0.0.1:8787', fetch }).scan()).toEqual(JOB);
     expect(seen).toEqual([{ url: 'http://127.0.0.1:8787/ingest/scan', method: 'POST', body: undefined }]);
+  });
+
+  it('searches with POST /documents/search, the query and limit as JSON (P5-T04)', async () => {
+    const { fetch, seen } = companion();
+    expect(await companionIngest({ baseUrl: 'http://127.0.0.1:8787', fetch }).search('thyme', 5)).toEqual(FOUND);
+    expect(seen).toEqual([{ url: 'http://127.0.0.1:8787/documents/search', method: 'POST', body: JSON.stringify({ query: 'thyme', limit: 5 }) }]);
   });
 
   it('reads one job by id, escaped into the path', async () => {

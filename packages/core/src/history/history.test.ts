@@ -28,6 +28,7 @@ function assistant(
     unsaid: heard === null ? '' : text.slice(heard.length),
     firstTokenMs: null,
     firstAudioMs: null,
+    citations: [],
   };
 }
 

@@ -4,6 +4,8 @@ import {
   COMPANION_WS_PATH,
   CompanionErrorSchema,
   CompanionEventSchema,
+  DocumentSearchRequestSchema,
+  DocumentSearchResponseSchema,
   HealthResponseSchema,
   IngestJobSchema,
   IngestStatusSchema,
@@ -153,6 +155,17 @@ describe('McpToolsResponseSchema (P5-T02, ADR-43)', () => {
     };
     expect(McpToolsResponseSchema.parse(response)).toEqual(response);
     expect(McpToolsResponseSchema.safeParse({ ...response, servers: [{ ...response.servers[0], state: 'asleep' }] }).success).toBe(false);
+  });
+});
+
+describe('DocumentSearchResponseSchema (P5-T04, ADR-45)', () => {
+  it('carries each hit with where in the document it is', () => {
+    const response = {
+      hits: [{ chunkId: '6612', documentId: '24', collection: 'C:/manuals', title: 'Boiler manual', text: 'Hold reset for five seconds.', score: 0.8, source: 'C:/manuals/boiler.pdf', locator: 'p. 12' }],
+      vectorSearch: 'used',
+    };
+    expect(DocumentSearchResponseSchema.parse(response)).toEqual(response);
+    expect(DocumentSearchRequestSchema.safeParse({ query: 'boiler reset', limit: 11 }).success).toBe(false);
   });
 });
 

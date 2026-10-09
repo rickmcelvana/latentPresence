@@ -17,9 +17,11 @@ export type ConversationState = z.infer<typeof ConversationStateSchema>;
  * Which inline tag this is. The grammar is `[emote:x]` / `[gesture:x]` (P1-T12), and since
  * P3-T04 `[user:x]` — the model's read of how the *user* seems, a `UserEmotion`: the text
  * channel's LLM side output (ADR-32, additive; `PROTOCOL_VERSION` stays 1). It is never
- * performed; the avatar ignores it and user-affect fusion (P3-T07) reads it.
+ * performed; the avatar ignores it and user-affect fusion (P3-T07) reads it. Since P5-T04
+ * `[cite:c123]` — a document chunk her answer used, `c` and the chunk's id (ADR-45, additive):
+ * never spoken, never performed; the transcript lists it as a source. Its `known` is null.
  */
-export const InlineTagKindSchema = z.enum(['emote', 'gesture', 'user']);
+export const InlineTagKindSchema = z.enum(['emote', 'gesture', 'user', 'cite']);
 export type InlineTagKind = z.infer<typeof InlineTagKindSchema>;
 
 /**

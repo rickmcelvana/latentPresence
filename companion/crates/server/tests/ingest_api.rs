@@ -363,6 +363,33 @@ async fn call(router: &Router, method: Method, uri: &str) -> (StatusCode, Value)
     (status, value)
 }
 
+/// `POST /documents/search` (P5-T04, ADR-45), the answer validated.
+async fn search(router: &Router, query: &str) -> Value {
+    let request = Request::builder()
+        .method(Method::POST)
+        .uri("/documents/search")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            json!({ "query": query, "limit": 5 }).to_string(),
+        ))
+        .expect("a request");
+    let response = router
+        .clone()
+        .oneshot(request)
+        .await
+        .expect("router answers");
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response
+        .into_body()
+        .collect()
+        .await
+        .expect("body")
+        .to_bytes();
+    let value: Value = serde_json::from_slice(&bytes).expect("json");
+    assert_matches_schema("DocumentsSearchResponse", &value);
+    value
+}
+
 /// `POST /ingest/scan`, then poll the job until it is not running; every answer validated.
 async fn scan(router: &Router) -> Value {
     let (status, started) = call(router, Method::POST, "/ingest/scan").await;
@@ -864,6 +891,53 @@ async fn a_model_changed_in_the_file_embeds_everything_again_and_becomes_the_one
     .await
     .expect("count");
     assert_eq!(on_new_model, 3);
+
+    cleanup(&pool, &folder).await;
+}
+
+#[tokio::test]
+async fn a_search_finds_the_page_a_fact_is_on_with_vectors_or_by_keyword_alone() {
+    let Some((pool, _serial)) = database().await else {
+        return;
+    };
+    let (fake, base_url) = Fake::start().await;
+    let dir = tempfile::tempdir().expect("temp dir");
+    garden(dir.path());
+    let (router, ingester) = build(
+        &pool,
+        &config_json(dir.path(), Some(&base_url), WIDTH, false),
+        None,
+    );
+    let folder = folder_label(&ingester);
+    cleanup(&pool, &folder).await;
+    assert_eq!(scan(&router).await["documentsIndexed"], 3);
+
+    let before = fake.requests();
+    let found = search(&router, "terracotta pot").await;
+    assert_eq!(found["vectorSearch"], "used");
+    assert_eq!(fake.requests(), before + 1, "the query was embedded once");
+    let top = &found["hits"][0];
+    assert_eq!(top["title"], "Herb notes");
+    assert_eq!(top["locator"], "p. 2");
+    assert!(
+        top["text"]
+            .as_str()
+            .is_some_and(|text| text.contains("terracotta"))
+    );
+    assert!(
+        top["source"]
+            .as_str()
+            .is_some_and(|source| source.ends_with("herb-notes.pdf"))
+    );
+    let docx = search(&router, "rosemary").await;
+    assert_eq!(docx["hits"][0]["locator"], Value::Null);
+    assert_eq!(docx["hits"][0]["title"], "watering");
+
+    // No model in the file: the same words still find it.
+    let (router, _ingester) = build(&pool, &config_json(dir.path(), None, WIDTH, false), None);
+    let keyword = search(&router, "terracotta pot").await;
+    assert_eq!(keyword["vectorSearch"], "no-model");
+    assert_eq!(keyword["hits"][0]["locator"], "p. 2");
 
     cleanup(&pool, &folder).await;
 }

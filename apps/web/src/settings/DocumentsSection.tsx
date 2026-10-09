@@ -14,6 +14,9 @@ import type { IngestJob, IngestStatus } from '@latentpresence/protocol';
 export interface DocumentsSectionProps {
   /** Where the companion listens — the settings document's `companionUrl`. */
   readonly companionUrl: string;
+  /** P5-T04, ADR-45: whether she may search the documents. Off by default; no unasked request. */
+  readonly search: boolean;
+  readonly onSearchChange: (search: boolean) => void;
   /** Test seam: what Check and Scan now ask. Omitted, the companion's real `/ingest/*`. */
   readonly ingest?: CompanionIngest | undefined;
   readonly fetch?: typeof globalThis.fetch | undefined;
@@ -66,7 +69,7 @@ function JobSummary({ job }: { readonly job: IngestJob }): ReactElement {
   );
 }
 
-export function DocumentsSection({ companionUrl, ingest, fetch, pollMs = POLL_MS }: DocumentsSectionProps): ReactElement {
+export function DocumentsSection({ companionUrl, search, onSearchChange, ingest, fetch, pollMs = POLL_MS }: DocumentsSectionProps): ReactElement {
   const [status, setStatus] = useState<IngestStatus | null>(null);
   const [job, setJob] = useState<IngestJob | null>(null);
   const [checking, setChecking] = useState(false);
@@ -137,6 +140,15 @@ export function DocumentsSection({ companionUrl, ingest, fetch, pollMs = POLL_MS
       <p className="panel-note">
         The companion indexes the folders listed in its own documents.json, on this computer, so she can look things up in them. Nothing here
         is sent anywhere.
+      </p>
+
+      <label className="tools-switch">
+        <input checked={search} onChange={(event) => onSearchChange(event.target.checked)} role="switch" type="checkbox" />
+        <span>Let her search these documents</span>
+      </label>
+      <p className="panel-note">
+        Off until you turn this on. On, she can look things up here and cite what she found, and the page asks the companion on this computer
+        whether it has documents.
       </p>
 
       <div className="settings-test-row">

@@ -132,6 +132,8 @@ export const DocumentHitSchema = z.object({
   score: UnitIntervalSchema,
   /** Where it came from, so a citation can be opened. */
   source: z.string(),
+  /** Where in it (`p. 12` for a PDF), or null for a format without pages (ADR-44). */
+  locator: z.string().nullable(),
 });
 export type DocumentHit = z.infer<typeof DocumentHitSchema>;
 

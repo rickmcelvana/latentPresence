@@ -42,6 +42,7 @@ const STATUS: IngestStatus = {
 function fakeIngest(overrides: Partial<CompanionIngest> = {}) {
   const calls = { status: 0, scan: 0, job: 0 };
   const ingest: CompanionIngest = {
+    search: async () => ({ hits: [], vectorSearch: 'used' }),
     status: async () => {
       calls.status += 1;
       return STATUS;
@@ -73,7 +74,7 @@ function scanDisabled(): boolean {
 describe('DocumentsSection (P5-T03, ADR-44)', () => {
   it('asks the companion nothing until a button is pressed', async () => {
     const { ingest, calls } = fakeIngest();
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000);
     });
@@ -81,9 +82,26 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
     expect(screen.getByText(/nothing here\s+is sent anywhere/iu)).toBeTruthy();
   });
 
+  it('has a switch, off by default, that writes search both ways and asks the companion nothing (P5-T04, ADR-45)', () => {
+    const { ingest, calls } = fakeIngest();
+    const onSearchChange = vi.fn();
+    const { rerender } = render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} onSearchChange={onSearchChange} search={false} />);
+    const off = screen.getByRole('switch', { name: 'Let her search these documents' }) as HTMLInputElement;
+    expect(off.checked).toBe(false);
+    fireEvent.click(off);
+    expect(onSearchChange).toHaveBeenLastCalledWith(true);
+
+    rerender(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} onSearchChange={onSearchChange} search />);
+    const on = screen.getByRole('switch', { name: 'Let her search these documents' }) as HTMLInputElement;
+    expect(on.checked).toBe(true);
+    fireEvent.click(on);
+    expect(onSearchChange).toHaveBeenLastCalledWith(false);
+    expect(calls).toEqual({ status: 0, scan: 0, job: 0 });
+  });
+
   it('Check shows each folder, the embedding model, watching and the last job', async () => {
     const { ingest } = fakeIngest();
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Check');
 
     expect(screen.getByText('C:/docs/manuals')).toBeTruthy();
@@ -100,7 +118,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
 
   it('says keyword search only when there is no embedding model, and not watching', async () => {
     const { ingest } = fakeIngest({ status: async () => ({ ...STATUS, embedding: null, watching: false, job: null }) });
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Check');
     expect(screen.getByText(/Keyword search only/u)).toBeTruthy();
     expect(screen.getByText(/Not watching/u)).toBeTruthy();
@@ -109,7 +127,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
 
   it('shows the config error in the danger style, with no folders', async () => {
     const { ingest } = fakeIngest({ status: async () => ({ folders: [], embedding: null, watching: false, job: null, configError: 'unknown field "foo"' }) });
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Check');
     const error = screen.getByText('documents.json: unknown field "foo"');
     expect(error.className).toContain('settings-status-danger');
@@ -126,7 +144,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
         return reads.shift() ?? DONE;
       },
     });
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Scan now');
     expect(screen.getByText(/Last scan: running…/u)).toBeTruthy();
     expect(screen.getByText('1 seen · 0 indexed · 0 removed · 0 chunks')).toBeTruthy();
@@ -157,7 +175,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
 
   it('stops following a scan when Settings closes', async () => {
     const { ingest, calls } = fakeIngest({ scan: async () => ({ ...DONE, status: 'running', finishedAt: null }) });
-    const { unmount } = render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    const { unmount } = render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Scan now');
     unmount();
     await act(async () => {
@@ -169,7 +187,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
   it('a failed job shows its error', async () => {
     const failed: IngestJob = { ...DONE, status: 'failed', failures: [], error: 'the embedding endpoint refused: 401' };
     const { ingest } = fakeIngest({ scan: async () => failed });
-    render(<DocumentsSection companionUrl="http://localhost:8731" ingest={ingest} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
     await press('Scan now');
     expect(screen.getByText(/Last scan: failed/u).className).toContain('settings-status-danger');
     expect(screen.getByText('the embedding endpoint refused: 401')).toBeTruthy();
@@ -179,7 +197,7 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
     const fetch = vi.fn(async () => {
       throw new TypeError('Failed to fetch');
     });
-    render(<DocumentsSection companionUrl="http://localhost:8731" fetch={fetch as unknown as typeof globalThis.fetch} />);
+    render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} fetch={fetch as unknown as typeof globalThis.fetch} />);
     await press('Check');
     expect(screen.getByText(/the companion is not answering \(Failed to fetch\)/u).textContent).toContain('pnpm companion');
     expect(fetch).toHaveBeenCalledWith('http://localhost:8731/ingest/status', expect.objectContaining({ method: 'GET' }));

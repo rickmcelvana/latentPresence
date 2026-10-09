@@ -18,6 +18,7 @@ import { defaultPersona } from '../persona/default-persona';
 import { CHAT_CHARACTER_NAME, ChatPage, type ChatPageProps, type FaceReadingLoader, type SpeakerLoader } from './ChatPage';
 import type { FaceReadingOptions } from '../call/face-reading';
 import type { ChatLlmOptions } from './chat-llm';
+import { connectDocuments } from './chat-documents';
 
 afterEach(cleanup);
 
@@ -1055,5 +1056,76 @@ describe('ChatPage — MCP tools (P5-T01, ADR-42)', () => {
       statuses: [{ id: 'srv-1', label: 'DeepWiki', ok: false, detail: 'Failed to fetch' }],
     }));
     await screen.findByText(/DeepWiki could not be reached \(Failed to fetch\), so its tools are off this visit\./);
+  });
+});
+
+/** She searches once, then answers from the passage and cites it, the tag split across tokens. */
+function searcher(): (options: ChatLlmOptions) => LLMProvider {
+  return () => {
+    let searched = false;
+    return {
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        if (request.reasoning === 'off') {
+          yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+          yield { type: 'finish', reason: 'stop', usage: null };
+          return;
+        }
+        if (!searched && request.tools.some((tool) => tool.name === 'documents_search')) {
+          searched = true;
+          yield { type: 'tool-call', call: { id: 'c1', name: 'documents_search', arguments: { query: 'boiler reset' }, source: 'llm', requestedAt: '2026-10-09T00:00:00.000Z' } };
+          yield { type: 'finish', reason: 'tool-calls', usage: null };
+          return;
+        }
+        for (const text of ['Hold the green button for eleven seconds.', ' [ci', 'te:c6612]', ' Then wait two minutes. [cite:c999]']) yield { type: 'text-delta', text };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    };
+  };
+}
+
+describe('ChatPage — cited answers (P5-T04, ADR-45)', () => {
+  const ORIGINAL_INNER_WIDTH = window.innerWidth;
+
+  afterEach(() => {
+    setViewportWidth(ORIGINAL_INNER_WIDTH);
+  });
+
+  it('offers her search when it is on, shows that she looked, and lists the source she cited — and one she was not given', async () => {
+    setViewportWidth(1600);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}'), documents: { search: true } }));
+    const hit = { chunkId: '6612', documentId: '24', collection: 'C:/manuals', title: 'Boiler manual', text: 'Hold the green reset button for eleven seconds.', score: 1, source: 'C:/manuals/boiler.pdf', locator: 'p. 7' };
+    const ingest = {
+      status: async () => ({ folders: [{ path: 'C:/manuals', exists: true, documents: 1, chunks: 9 }], embedding: null, watching: true, job: null, configError: null }),
+      scan: async () => {
+        throw new Error('not used');
+      },
+      job: async () => {
+        throw new Error('not used');
+      },
+      search: async () => ({ hits: [hit], vectorSearch: 'no-model' as const }),
+    };
+    render(
+      <ChatPage
+        buildProvider={searcher()}
+        connectDocs={(options) => connectDocuments({ ...options, ingest })}
+        createRenderer={fakeCreateRenderer}
+        deps={testDeps({ storage })}
+      />,
+    );
+    await act(() => settle());
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'how do I reset the boiler?' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+
+    await screen.findByText(`${CHAT_CHARACTER_NAME} looked in your documents`);
+    await screen.findByText(/Hold the green button for eleven seconds\. Then wait two minutes\./u);
+    expect(document.body.textContent).not.toContain('[cite');
+    await screen.findByText('1. Boiler manual, p. 7');
+    expect(screen.getByText('2. A source she was not given')).toBeTruthy();
   });
 });

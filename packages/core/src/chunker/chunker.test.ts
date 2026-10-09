@@ -137,6 +137,33 @@ describe('SentenceChunker tags', () => {
     expect(chunkText('[emote:sad] Hm.')[0]?.tags[0]?.known).toBeNull();
   });
 
+  it('lifts [cite:c123] out as a citation, never spoken and never a known label (P5-T04)', () => {
+    const chunks = chunkText('Hold reset for five seconds. [cite:c6612] Then wait. [cite:c6613]');
+    expect(chunks.map((chunk) => chunk.text).join(' ')).toBe('Hold reset for five seconds. Then wait.');
+    expect(chunks.flatMap((chunk) => chunk.tags)).toEqual([
+      expect.objectContaining({ kind: 'cite', value: 'c6612', known: null }),
+      expect.objectContaining({ kind: 'cite', value: 'c6613', known: null }),
+    ]);
+  });
+
+  it('keeps a streamed citation with the sentence before it, even split across tokens (P5-T04)', () => {
+    const chunker = new SentenceChunker();
+    const sent = [
+      ...chunker.push('Hold reset for five seconds.'),
+      ...chunker.push(' [ci'),
+      ...chunker.push('te:c66'),
+      ...chunker.push('12] Then'),
+      ...chunker.push(' wait. [cite:c6613]'),
+      ...chunker.flush(),
+    ];
+    expect(sent.map((chunk) => [chunk.text, chunk.tags.map((tag) => tag.value)])).toEqual([
+      ['Hold reset for five seconds.', ['c6612']],
+      ['Then wait.', ['c6613']],
+    ]);
+    // An emote still leads what follows it.
+    expect(chunkText('Sure. [emote:joy] Here it is.').map((chunk) => chunk.tags.length)).toEqual([0, 1]);
+  });
+
   it('does not invent a third kind out of the spelling', () => {
     const [chunk] = chunkText('[emotion:joy] Hello. [emote:joy] Hi.');
     expect(chunk?.tags.map((tag) => tag.kind)).toEqual(['emote']);

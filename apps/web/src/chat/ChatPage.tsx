@@ -46,6 +46,7 @@ import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '.
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
 import { connectToolServers, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
+import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { hostTimers } from './host-timers';
 import { PermissionPrompt } from './PermissionPrompt';
 
@@ -167,6 +168,8 @@ export interface ChatPageProps {
   readonly chooseMemory?: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
   /** Test seam: connecting the MCP servers in Settings → Tools (P5-T01). Production never passes it. */
   readonly connectTools?: ConnectTools;
+  /** Test seam: asking the companion for her documents (P5-T04). Production never passes it. */
+  readonly connectDocs?: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
 }
 
 type ConnectTools = (options: ConnectToolServersOptions) => Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }>;
@@ -188,6 +191,7 @@ export function ChatPage({
   loadFaceReading = loadDefaultFaceReading,
   chooseMemory = chooseMemoryStore,
   connectTools = connectToolServers,
+  connectDocs = connectDocuments,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
@@ -217,6 +221,7 @@ export function ChatPage({
       endpoint={llm.endpoint}
       chooseMemory={chooseMemory}
       connectTools={connectTools}
+      connectDocs={connectDocs}
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
@@ -241,6 +246,7 @@ interface ConfiguredChatPageProps {
   readonly loadFaceReading: () => Promise<FaceReadingLoader>;
   readonly chooseMemory: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
   readonly connectTools: ConnectTools;
+  readonly connectDocs: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
 }
 
 function ConfiguredChatPage({
@@ -258,13 +264,14 @@ function ConfiguredChatPage({
   loadFaceReading,
   chooseMemory,
   connectTools,
+  connectDocs,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
@@ -274,6 +281,9 @@ function ConfiguredChatPage({
     // P5-T01 (ADR-42): the MCP servers once connected (the effect below), their tools behind the
     // gate; the person's decisions live in the settings document, read at every call.
     const builtToolsHolder: { servers: ConnectedToolServer[] } = { servers: [] };
+    // P5-T04 (ADR-45): her search of the person's documents, once the companion says it has
+    // some (the effect below), and the hits she was given — what the transcript cites from.
+    const builtDocsHolder: { connected: ConnectedDocuments | null } = { connected: null };
     const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
     const grants = settingsToolGrants(deps.storage);
     const builtMachine = new ConversationMachine({
@@ -310,6 +320,7 @@ function ConfiguredChatPage({
           notes: builtSelfHolder.notes?.notes() ?? [],
           plans: builtSelfHolder.plans?.promptContext() ?? null,
           toolServers: builtToolsHolder.servers.map((server) => server.label),
+          documents: builtDocsHolder.connected?.tool != null,
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
@@ -318,8 +329,10 @@ function ConfiguredChatPage({
     // P5-T01 (ADR-42): the MCP tools join hers, built per request so a policy set to never in
     // Settings drops the tool at once; every call that reaches outside goes on the bus, for
     // the transcript. Hers (no `server__` in the name) are not shown.
-    const outside = (name: string): boolean => splitToolName(name).server !== null;
-    const builtChatLlm = withLocalTools(builtProvider, () => [...builtSelfHolder.tools, ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
+    // P5-T04: her document search is hers too, but shown — the person should see she looked.
+    const outside = (name: string): boolean => splitToolName(name).server !== null || name === 'documents_search';
+    const docsTool = (): LocalTool[] => (builtDocsHolder.connected?.tool == null ? [] : [builtDocsHolder.connected.tool]);
+    const builtChatLlm = withLocalTools(builtProvider, () => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
       onCallStart: (call) => {
         if (outside(call.name)) builtMachine.dispatch({ type: 'tool.call', sessionId: builtSessionId, at: new Date().toISOString(), call });
       },
@@ -343,6 +356,7 @@ function ConfiguredChatPage({
       memoryHolder: builtMemoryHolder,
       selfHolder: builtSelfHolder,
       toolsHolder: builtToolsHolder,
+      docsHolder: builtDocsHolder,
       permissionPrompts: builtPrompts,
       machine: builtMachine,
       chat: builtChat,
@@ -447,6 +461,23 @@ function ConfiguredChatPage({
       for (const server of connected) void server.client.close();
     };
   }, [companionUrl, connectTools, deps.vault, machine, sessionId, settings.tools.companion, settings.tools.servers, toolsHolder]);
+
+  // Her documents (P5-T04, ADR-45): only when Settings → Documents turned searching on — no
+  // unasked request to the companion. On and not working, the transcript says why.
+  useEffect(() => {
+    if (!settings.documents.search) return undefined;
+    let live = true;
+    void connectDocs({ companionUrl, fetch: deps.fetch }).then((connected) => {
+      if (!live) return;
+      docsHolder.connected = connected;
+      if (connected.notice !== null) machine.dispatch({ type: 'error', sessionId, at: new Date().toISOString(), scope: 'tool', message: connected.notice });
+    });
+    return () => {
+      live = false;
+      docsHolder.connected = null;
+    };
+  }, [companionUrl, connectDocs, deps.fetch, docsHolder, machine, sessionId, settings.documents.search]);
+  const citationSource = useCallback((ref: string) => docsHolder.connected?.sources.get(ref), [docsHolder]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.
@@ -804,7 +835,7 @@ function ConfiguredChatPage({
         ) : drawerView === 'plans' ? (
           <PlansPanel characterName={CHAT_CHARACTER_NAME} plans={plans} />
         ) : (
-          <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} />
+          <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} sources={citationSource} />
         )}
       </aside>
 

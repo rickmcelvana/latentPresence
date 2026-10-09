@@ -659,6 +659,43 @@
         }
       }
     },
+    "/documents/search": {
+      "post": {
+        "operationId": "documentsSearch",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsSearchResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentsSearchRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/ingest/jobs/{id}": {
       "get": {
         "operationId": "ingestJob",
@@ -1496,6 +1533,12 @@
                 },
                 "source": {
                   "type": "string"
+                },
+                "locator": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -1505,7 +1548,8 @@
                 "title",
                 "text",
                 "score",
-                "source"
+                "source",
+                "locator"
               ],
               "additionalProperties": false
             }
@@ -3212,6 +3256,96 @@
           "error"
         ],
         "additionalProperties": false
+      },
+      "DocumentsSearchResponse": {
+        "type": "object",
+        "properties": {
+          "hits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "chunkId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "documentId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "collection": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "title": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "source": {
+                  "type": "string"
+                },
+                "locator": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "chunkId",
+                "documentId",
+                "collection",
+                "title",
+                "text",
+                "score",
+                "source",
+                "locator"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "vectorSearch": {
+            "type": "string",
+            "enum": [
+              "used",
+              "no-model",
+              "unavailable"
+            ]
+          }
+        },
+        "required": [
+          "hits",
+          "vectorSearch"
+        ],
+        "additionalProperties": false
+      },
+      "DocumentsSearchRequest": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          }
+        },
+        "required": [
+          "query",
+          "limit"
+        ]
       },
       "IngestJobResponse": {
         "type": "object",
