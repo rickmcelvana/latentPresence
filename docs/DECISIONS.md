@@ -1265,7 +1265,10 @@ how a model edits a nested document reliably, and what a follow-up writes.
    forgettable in the Memory panel, with no new table. **Several per plan** (amended the same
    day: "one per plan" stopped her adding the fortnight check-in Rick asked for on top of the
    Monday one she had offered); one on the same day replaces it (`closeFact` =
-   `supersedeFact`), `cancel` drops one day or all, and marking the plan done closes them. The prompt's
+   `supersedeFact`), `cancel` drops one day or all, and marking the plan done closes them.
+   **Amended 2026-10-09 (R-27): a follow-up may be a time**, `YYYY-MM-DD HH:MM` in the person's
+   clock ("check in in a few hours"), due once the clock passes it — and `/chat` reads the clock
+   on every request, where it was fixed at page load, so a follow-up in an open tab comes due. The prompt's
    plans section lists them with "due" once the date has come; the memory note leaves
    `follow_up_on` facts out so nothing is said twice. Nothing fires at the date — a proactive
    check-in is the scheduler's (ADR-14); she raises it the next time they talk.

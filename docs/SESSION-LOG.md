@@ -669,3 +669,9 @@ Did: P5-T01 (0002b01, c5c2b9b): `@ai-sdk/mcp` adapter, the per-tool gate (ask/al
 Left: R-27, R-28 (new); laptop session (R-13, R-1, R-9); R-3; C-7. The permission card overlaps the character-consent card when both show.
 Next: P5-T02 companion MCP host (main; brief/ADR first) — stdio servers from the companion's own config.
 Decisions: ADR-41 accepted by Rick. ADR-42 proposed (MCP in the page: per-tool gate with fingerprints, `<server>__<tool>`, every call shown, no stdio from a page) — needs Rick's accept.
+
+## 2026-10-09 claude — R-27 fix, R-28 passed
+Did: R-28 passed (D-40). R-27's first try saved no plan: memory set to the companion, companion not answering, failures silent. Fixed (34ac43f): transcript notice for an unreachable companion, plans/notes retry a failed load, follow-ups take a time, the clock is read per request, panel shows the time. Verified in the pane (notice; plan + 18:00 check-in saved).
+Left: R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. "Tool calling failed without the companion" not reproduced.
+Next: P5-T02 companion MCP host (main; brief/ADR first).
+Decisions: ADR-41 amended (follow-up times; per-request clock). ADR-42 still proposed — needs Rick's accept. Slip: stopped Rick's running companion without asking; restarted it.

@@ -173,29 +173,21 @@ passes with 2× margin.**
 **Why:** P4-T07 gave her plans (ADR-41). The automatic check passed — "let's plan a vegetable
 garden" left a plan in MariaDB five times out of five — but whether planning with her feels like
 planning with a person, rather than filling in a form by voice, needs you.
-1. Optional: `pnpm companion` and `/settings` → **Memory** → *The companion*, to see it in MariaDB.
+**Retry, 2026-10-09:** the first try (herb garden) saved no plan because memory was set to the
+companion and it was not answering — that failed silently then. Fixed (34ac43f): `/chat` now says
+so in the transcript, plans retry once the companion is up, and a check-in can be a time.
+1. **Memory decides where plans live.** Either `/settings` → **Memory** → *This browser* (nothing
+   to start), or *The companion* **with `pnpm companion` running before you open `/chat`** — if it
+   is not, the transcript says "Memory failed: … not answering" and nothing is saved.
 2. Open `/chat`, open the drawer's **Plans** view, and say "let's plan …" about something real
-   you are actually going to do. Talk it through; tell her when you've agreed on it.
-3. Ask her to check in on it on a day soon (tomorrow is fine). Later, tell her a step is done.
+   you are actually going to do. Talk it through; say when you like where it's going.
+3. Ask her to check in on it — "in a few hours" works now (a time), or a day. Later, tell her a step is done.
 4. In the panel: change a task, add one, **Save**; then **Download .md** and open the file.
-5. On or after the day she set, open `/chat` and just say hello.
+5. After the time she set, open `/chat` (or come back to the open tab) and just say hello.
 
 **Pass:** she asks before she plans and saves it once it has a shape; she never reads the plan
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
-
-### R-28 · Let her use a tool · ~10 minutes, desktop
-**Why:** P5-T01 lets her use MCP tools, asking you first (ADR-42). The automatic check passed with
-DeepWiki; whether the asking feels right — not naggy, not easy to click through blindly — needs you.
-1. `/settings` → **Tools** → add `DeepWiki`, `https://mcp.deepwiki.com/mcp`, Streamable HTTP,
-   sign-in None → **Test** (three tools, all *Ask first*).
-2. In `/chat`, ask her something about a GitHub repo you know ("what's in the docs for …?"). When
-   the card appears, read it, **Allow once**. Ask again and **Deny**. Then **Always allow** one tool.
-3. Try it by voice once (Start voice), and press Stop while the card is showing.
-
-**Pass:** the card says plainly who wants what; allowed, she answers from it; denied, she says
-she'll leave it and helps anyway; *always* stops the asking for that tool only; Stop dismisses the
-card. **Paste back:** pass/fail, and whether you would want fewer asks or more.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
@@ -219,6 +211,10 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-40 · R-28: let her use a tool** — Rick 2026-10-09: **passed** — tool calls work, Deny,
+  Always allow and Stop all behave. One try without the companion running did not call a tool;
+  not reproduced (MCP tools work with the companion down in the pane, 2026-10-09) — likely the
+  same unreachable-companion memory that broke R-27's first try, now announced in the transcript.
 - **D-39 · R-26: does she remember you?** — Rick 2026-09-30: **passed** — she uses what she
   was told naturally in ordinary conversation, gets changes right, and it reads as remembered
   rather than recited. P4-T04b's done-when is met by a person.
