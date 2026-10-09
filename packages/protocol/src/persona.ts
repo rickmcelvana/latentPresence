@@ -126,8 +126,8 @@ export const PromptContextSchema = z.object({
           z.object({
             /** The plan's name as the fact holds it, in words. */
             plan: z.string().min(1),
-            /** The day to ask, `YYYY-MM-DD`. */
-            on: z.iso.date(),
+            /** When to ask: a day, `YYYY-MM-DD`, or a time on it, `YYYY-MM-DD HH:MM` (local). */
+            on: z.string().regex(/^\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?$/u),
             about: z.string(),
           }),
         )

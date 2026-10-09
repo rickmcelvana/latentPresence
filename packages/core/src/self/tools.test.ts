@@ -143,6 +143,17 @@ describe('selfNoteTools', () => {
     expect(await read!.run({}, CTX)).toEqual({ error: 'Give the name of the note to read.' });
   });
 
+  it('reads the store again after a failed first read (R-27)', async () => {
+    const { store, notes } = notesOn();
+    const readBlocks = store.readBlocks.bind(store);
+    store.readBlocks = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    await expect(notes.writeNote('about_me', 'Quiet mornings.')).rejects.toThrow('Failed to fetch');
+    store.readBlocks = readBlocks;
+    expect(await notes.writeNote('about_me', 'Quiet mornings.')).toEqual({ ok: true });
+  });
+
   it('refuses, in words, a system name, a bad name, a locked note, a long note and a ninth note', async () => {
     const { store, notes } = notesOn();
     await store.writeBlock({ characterId: 'alice', name: 'boundaries', content: 'No medical advice.', updatedAt: AT, editableByCharacter: false });

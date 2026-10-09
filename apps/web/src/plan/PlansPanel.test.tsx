@@ -105,6 +105,14 @@ describe('PlansPanel (P4-T07)', () => {
     expect(screen.getAllByText(/Follow up on/)).toHaveLength(1);
   });
 
+  it('shows a follow-up time when it has one (R-27)', async () => {
+    const { plans } = await setup();
+    await made(plans, GARDEN);
+    await plans.followUp('Vegetable garden', '2026-10-15 18:00', 'whether the pots are bought');
+    render(<PlansPanel characterName="Alice" plans={plans} />);
+    expect(screen.getByText('Follow up on 15 Oct, 18:00: whether the pots are bought')).toBeTruthy();
+  });
+
   it('opening a plan points her at it, and Back returns to the list with the focus kept', async () => {
     const { plans } = await setup();
     const garden = await made(plans, GARDEN);

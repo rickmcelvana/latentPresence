@@ -15,6 +15,12 @@ export interface MemoryChoice {
   readonly store: MemoryStore;
   readonly kind: 'companion' | 'browser';
   readonly reason: string;
+  /**
+   * Something the person must hear: memory is set to the companion and it is not answering, so
+   * nothing is remembered and no plan or note can be saved until it is (R-27, 2026-10-09 — that
+   * failed silently). The store is still the companion's: it works the moment the companion does.
+   */
+  readonly warning?: string | undefined;
 }
 
 export interface ChooseMemoryOptions {
@@ -49,7 +55,14 @@ export async function chooseMemoryStore(options: ChooseMemoryOptions): Promise<M
   const companion = (): MemoryChoice => ({ store: new CompanionMemoryStore({ baseUrl: companionUrl, fetch }), kind: 'companion', reason: `the companion at ${companionUrl}` });
   const browser = (why: string): MemoryChoice | null =>
     options.indexedDB === undefined ? null : { store: new IndexedDbMemoryStore({ indexedDB: options.indexedDB }), kind: 'browser', reason: why };
-  if (setting === 'companion') return companion();
+  if (setting === 'companion') {
+    // Asked only to warn: the person chose the companion, so its store is used either way.
+    if (await companionHasDatabase(companionUrl, fetch, options.timeoutMs ?? HEALTH_TIMEOUT_MS)) return companion();
+    return {
+      ...companion(),
+      warning: `memory is set to the companion at ${companionUrl}, and it is not answering (or has no database). Nothing from this visit is remembered, and she cannot save plans or notes, until it runs: start it with "pnpm companion", then reload this page.`,
+    };
+  }
   if (setting === 'browser') return browser('this browser');
   return (await companionHasDatabase(companionUrl, fetch, options.timeoutMs ?? HEALTH_TIMEOUT_MS))
     ? companion()

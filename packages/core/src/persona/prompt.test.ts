@@ -142,6 +142,13 @@ describe('renderSystemPrompt', () => {
       expect(section).toContain('  tidy the shed, on 2 October 2026: how the shelves look.');
       expect(text.indexOf('PLANNING TOGETHER')).toBeGreaterThan(text.indexOf('WHAT YOU WILL NOT DO'));
     });
+
+    it('says a follow-up time, and makes it due once the clock passes it, not before (R-27)', () => {
+      const pots = (now: Date) =>
+        renderSystemPrompt(persona, { now, userName: null, plans: { plans: [garden], focusId: null, followUps: [{ plan: 'herb garden', on: '2026-09-21 17:30', about: 'whether the pots are bought' }] } });
+      expect(pots(new Date(2026, 8, 21, 14, 5))).toContain('  herb garden, on 21 September 2026 at 17:30: whether the pots are bought.');
+      expect(pots(new Date(2026, 8, 21, 17, 31))).toContain('  herb garden, on 21 September 2026 at 17:30: whether the pots are bought (due now).');
+    });
   });
 
   describe('memory (P4-T04b, ADR-38)', () => {

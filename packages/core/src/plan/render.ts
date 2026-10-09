@@ -11,15 +11,23 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 const TASK_STATUS: Record<PlanTask['status'], string> = { todo: 'to do', doing: 'under way', done: 'done', dropped: 'dropped' };
 
-/** `2026-10-15` → "15 October 2026", read straight off the string: a date has no time zone. */
+/** `2026-10-15` → "15 October 2026", `2026-10-15 15:00` → "15 October 2026 at 15:00": read straight off the string. */
 function sayDate(on: string): string {
-  const [year, month, day] = on.split('-').map(Number);
-  return `${day} ${MONTHS[(month ?? 1) - 1]} ${year}`;
+  const [year, month, day] = on.slice(0, 10).split('-').map(Number);
+  const time = on.length > 10 ? ` at ${on.slice(11, 16)}` : '';
+  return `${day} ${MONTHS[(month ?? 1) - 1]} ${year}${time}`;
 }
 
-/** The day `now` falls on where the page is, as `YYYY-MM-DD`. */
-function today(now: Date): string {
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+function two(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/**
+ * `now` where the page is, as `YYYY-MM-DD HH:MM`. A follow-up is due once its `on` sorts at or
+ * before it: a day is due all of that day ("2026-10-09" < "2026-10-09 08:00"), a time from then on.
+ */
+function nowKey(now: Date): string {
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())} ${two(now.getHours())}:${two(now.getMinutes())}`;
 }
 
 function progress(plan: PlanDocument): string {
@@ -40,7 +48,7 @@ function inFull(plan: PlanDocument): string[] {
 export function renderPlans(context: PromptPlans, now: Date): string[] {
   const focus = context.plans.find((plan) => plan.id === context.focusId) ?? null;
   const others = context.plans.filter((plan) => plan !== focus);
-  const day = today(now);
+  const day = nowKey(now);
   return [
     'PLANNING TOGETHER',
     '- When they want to plan something, brainstorm with them first: ask what matters to them,',

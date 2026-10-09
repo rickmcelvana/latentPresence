@@ -290,19 +290,18 @@ function ConfiguredChatPage({
     // P3-T07: how the user seems, fused from their words, voice and face, on the same bus —
     // what it publishes the engine above takes in by empathy, and the prompt says in a line.
     const builtUserAffect = attachUserAffect(builtMachine, { sessionId: builtSessionId });
-    // `now` is fixed when the page mounts: it is what the model is told the time is, and a
-    // clock rewritten per turn would change the prompt under a provider's prompt cache for
-    // the sake of a clock nobody is watching that closely. **The mood is not fixed** — it is
-    // read on every request, and it is the prompt's last two lines, so a cached prefix
-    // survives it (P3-T03).
+    // `now` is read on every request (it was fixed at mount until 2026-10-09): "check in with me
+    // in a few hours" needs her to know the time, and a follow-up only comes due if the clock
+    // moves (R-27). It is the first line of RIGHT NOW, the prompt's last section, after the
+    // memory and plans that change per turn anyway — a cached prefix survives it, as it does
+    // the mood (P3-T03).
     // **The history is attached here, not by `ChatSession`** (P1-T12b): a voice call on
     // this page is handed the same one, and a history that watched the bus twice would
     // count every message twice. Whoever creates it owns its subscription.
-    const mountedAt = new Date();
     const attached = attachHistory(builtMachine, {
       system: () =>
         renderSystemPrompt(defaultPersona, {
-          now: mountedAt,
+          now: new Date(),
           userName: null,
           affect: builtAffect.state(),
           userAffect: builtUserAffect.fusion.last(),
@@ -387,6 +386,7 @@ function ConfiguredChatPage({
       memoryHolder.current = attached;
       setMemory(attached);
       setMemoryWhere(choice.reason);
+      if (choice.warning !== undefined) machine.dispatch({ type: 'error', sessionId, at: new Date().toISOString(), scope: 'memory', message: choice.warning });
       // P4-T06 (ADR-40): her notes, and her mood as she left it, aged by the time away — saved
       // after every answer, and once more as the page goes (a best effort; a closing tab may
       // not wait for it).

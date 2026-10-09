@@ -43,11 +43,11 @@ function progressOf(plan: PlanDocument): string {
   return `${tasks.filter((task) => task.status === 'done').length} of ${tasks.length} done`;
 }
 
-/** `2026-10-15` → `15 Oct`. Read off the string, so no time zone can move the day. */
+/** `2026-10-15` → `15 Oct`, `2026-10-15 18:00` → `15 Oct, 18:00`. Read off the string, so no time zone can move the day. */
 function followUpDay(on: string): string {
-  const [, month, day] = /^\d{4}-(\d{2})-(\d{2})$/u.exec(on) ?? [];
+  const [, month, day, time] = /^\d{4}-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?$/u.exec(on) ?? [];
   const name = MONTHS[Number(month) - 1];
-  return name === undefined ? on : `${Number(day)} ${name}`;
+  return name === undefined ? on : `${Number(day)} ${name}${time === undefined ? '' : `, ${time}`}`;
 }
 
 function isSameDraft(a: PlanDocument, b: PlanDocument): boolean {

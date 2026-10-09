@@ -164,7 +164,7 @@ export function planTools(plans: Plans): LocalTool[] {
           type: 'object',
           properties: {
             plan: { type: 'string', description: 'The plan’s id, or its title.' },
-            on: { type: 'string', description: 'The day, as YYYY-MM-DD.' },
+            on: { type: 'string', description: 'When: a day as YYYY-MM-DD, or a time as YYYY-MM-DD HH:MM in their own clock — use a time for "in a few hours". Work it out from the time it is now.' },
             about: { type: 'string', description: 'What to ask about, like "whether the seedlings are in".' },
             cancel: { type: 'boolean', description: 'True to drop the follow-up on that day instead, or every one for the plan when no day is given.' },
           },
@@ -175,7 +175,7 @@ export function planTools(plans: Plans): LocalTool[] {
         const parsed = FollowUpArgs.safeParse(args);
         if (!parsed.success) return { error: 'Name the plan, the day (YYYY-MM-DD) and what to ask about.' };
         const { plan, on, about, cancel } = parsed.data;
-        if (cancel !== true && on === undefined) return { error: 'Give the day as YYYY-MM-DD, or cancel: true.' };
+        if (cancel !== true && on === undefined) return { error: 'Give the day as YYYY-MM-DD (or a time as YYYY-MM-DD HH:MM), or cancel: true.' };
         const outcome = cancel === true ? await plans.cancelFollowUps(plan, on ?? null) : await plans.followUp(plan, on ?? '', about ?? '');
         if (!outcome.ok) return { error: outcome.reason };
         return cancel === true ? { cancelled: { plan: outcome.plan.title, on: on ?? 'every day' } } : { follow_up: { plan: outcome.plan.title, on: on ?? '', about: about ?? '' } };

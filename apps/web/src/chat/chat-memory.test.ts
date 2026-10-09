@@ -38,7 +38,15 @@ describe('chooseMemoryStore (P4-T04b)', () => {
     }
   });
 
-  it('takes an explicit choice without asking, and has no browser memory where there is no IndexedDB', async () => {
+  it('keeps an explicit companion, warning when it does not answer (R-27) and not when it does', async () => {
+    const down = await chooseMemoryStore({ setting: 'companion', companionUrl: 'http://127.0.0.1:8787', fetch: missing, indexedDB: idb, timeoutMs: 20 });
+    expect(down?.kind).toBe('companion');
+    expect(down?.warning).toContain('pnpm companion');
+    const up = await chooseMemoryStore({ setting: 'companion', companionUrl: 'http://127.0.0.1:8787', fetch: async () => health(true), indexedDB: idb });
+    expect(up?.warning).toBeUndefined();
+  });
+
+  it('takes an explicit choice, and has no browser memory where there is no IndexedDB', async () => {
     const fetch = async () => health(false);
     expect((await chooseMemoryStore({ setting: 'companion', companionUrl: 'http://x', fetch, indexedDB: idb }))?.kind).toBe('companion');
     expect((await chooseMemoryStore({ setting: 'browser', companionUrl: 'http://x', fetch, indexedDB: idb }))?.kind).toBe('browser');

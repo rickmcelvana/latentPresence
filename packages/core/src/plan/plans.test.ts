@@ -203,6 +203,17 @@ describe('Plans — follow-ups are facts (ADR-41)', () => {
     expect(kernel.characterId).toBe('alice');
   });
 
+  it('takes a time as well as a day — "in a few hours" — stored with a space whatever the model wrote', async () => {
+    const { store, plans } = setup();
+    const plan = await created(plans);
+    expect((await plans.followUp(plan.id, '2026-09-30T15:30', 'whether the pots are bought')).ok).toBe(true);
+    expect((await store.currentFacts('alice')).map((fact) => fact.object)).toEqual(['2026-09-30 15:30: whether the pots are bought']);
+    expect(plans.promptContext().followUps).toEqual([{ plan: 'vegetable garden', on: '2026-09-30 15:30', about: 'whether the pots are bought' }]);
+    expect(await plans.followUp(plan.id, '2026-09-30 25:00', 'x')).toMatchObject({ ok: false });
+    expect((await plans.cancelFollowUps(plan.id, '2026-09-30T15:30')).ok).toBe(true);
+    expect(await store.currentFacts('alice')).toEqual([]);
+  });
+
   it('refuses a day it cannot read, and a follow-up with memory off', async () => {
     const { plans } = setup();
     const plan = await created(plans);
@@ -224,6 +235,18 @@ describe('Plans — follow-ups are facts (ADR-41)', () => {
 });
 
 describe('Plans — store failures', () => {
+  it('tries the store again after a failed first read: a companion started late is not a broken visit (R-27)', async () => {
+    const { store, plans } = setup();
+    const listPlans = store.listPlans.bind(store);
+    store.listPlans = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+    await expect(plans.create({ title: 'Herb garden' })).rejects.toThrow('Failed to fetch');
+    store.listPlans = listPlans;
+    expect((await plans.create({ title: 'Herb garden' })).ok).toBe(true);
+    expect((await store.listPlans('alice')).map((plan) => plan.title)).toEqual(['Herb garden']);
+  });
+
   it('passes on a failure that is not a conflict', async () => {
     const { store, plans } = setup();
     store.savePlan = async () => {

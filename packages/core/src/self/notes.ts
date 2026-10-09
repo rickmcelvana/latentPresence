@@ -47,9 +47,16 @@ export class SelfNotes {
 
   /** Read the character's blocks once; later calls wait on the same read. */
   load(): Promise<void> {
-    this.loaded ??= this.store.readBlocks(this.characterId).then((blocks) => {
-      this.blocks = new Map(blocks.map((block) => [block.name, block]));
-    });
+    this.loaded ??= this.store.readBlocks(this.characterId).then(
+      (blocks) => {
+        this.blocks = new Map(blocks.map((block) => [block.name, block]));
+      },
+      (error: unknown) => {
+        // A failed read is forgotten so the next use tries again (R-27, 2026-10-09).
+        this.loaded = null;
+        throw error;
+      },
+    );
     return this.loaded;
   }
 

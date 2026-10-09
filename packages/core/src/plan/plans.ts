@@ -34,7 +34,7 @@ export interface FollowUp {
   readonly factId: string;
   /** The fact's subject, the plan's title as it was when the follow-up was set. */
   readonly subject: string;
-  /** `YYYY-MM-DD`. */
+  /** `YYYY-MM-DD`, or `YYYY-MM-DD HH:MM` in the person's own clock. */
   readonly on: string;
   readonly about: string;
 }
@@ -92,8 +92,21 @@ export function planSubject(title: string): string {
   return slug === '' ? 'plan' : slug;
 }
 
-const FOLLOW_UP_OBJECT = /^(\d{4}-\d{2}-\d{2}):\s*([\s\S]*)$/u;
-const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/u;
+/**
+ * When to follow up: a day, `YYYY-MM-DD`, or a time on it, `YYYY-MM-DD HH:MM` in the person's
+ * own clock — "check in with me in a few hours" is a time, not a day (R-27, 2026-10-09). The
+ * model may write a `T` for the space; it is stored with the space, which reads better in the
+ * Memory panel.
+ */
+const FOLLOW_UP_OBJECT = /^(\d{4}-\d{2}-\d{2}(?: \d{2}:\d{2})?):\s*([\s\S]*)$/u;
+const WHEN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(?:[T ]([01]\d|2[0-3]):[0-5]\d)?$/u;
+
+/** A follow-up's `on` as stored, or null if it is neither a day nor a time on one. */
+export function followUpWhen(on: string): string | null {
+  const trimmed = on.trim();
+  if (!WHEN.test(trimmed) || Number.isNaN(Date.parse(trimmed.slice(0, 10)))) return null;
+  return trimmed.replace('T', ' ');
+}
 
 /** A follow-up fact read back, or null for any other fact. */
 export function followUpOf(fact: SemanticFact): FollowUp | null {
@@ -152,11 +165,19 @@ export class Plans {
 
   /** Read the plans and follow-ups once; later calls wait on the same read. */
   load(): Promise<void> {
-    this.loaded ??= Promise.all([this.store.listPlans(this.characterId), this.facts?.knownFacts() ?? Promise.resolve([])]).then(([plans, facts]) => {
-      this.plans = plans;
-      this.follows = facts.flatMap((fact) => followUpOf(fact) ?? []);
-      this.changed();
-    });
+    this.loaded ??= Promise.all([this.store.listPlans(this.characterId), this.facts?.knownFacts() ?? Promise.resolve([])]).then(
+      ([plans, facts]) => {
+        this.plans = plans;
+        this.follows = facts.flatMap((fact) => followUpOf(fact) ?? []);
+        this.changed();
+      },
+      (error: unknown) => {
+        // Forget a failed read, so the next use tries again: a companion started after the page
+        // opened must not leave plans broken for the rest of the visit (R-27, 2026-10-09).
+        this.loaded = null;
+        throw error;
+      },
+    );
     return this.loaded;
   }
 
@@ -278,15 +299,16 @@ export class Plans {
       const plan = this.find(ref);
       if (plan === null) return { ok: false, reason: this.unknown(ref) };
       if (this.facts === null) return { ok: false, reason: 'Follow-ups need memory, and memory is off.' };
-      if (!ISO_DATE.test(on) || Number.isNaN(Date.parse(on))) return { ok: false, reason: `"${on}" is not a date. Give it as YYYY-MM-DD.` };
-      await this.closeFollowUps(plan, on);
+      const when = followUpWhen(on);
+      if (when === null) return { ok: false, reason: `"${on}" is not a date. Give it as YYYY-MM-DD, or YYYY-MM-DD HH:MM for a time.` };
+      await this.closeFollowUps(plan, when);
       const at = this.now().toISOString();
       const fact: SemanticFact = {
         id: this.newId(),
         characterId: this.characterId,
         subject: planSubject(plan.title),
         predicate: FOLLOW_UP_PREDICATE,
-        object: `${on}: ${about.trim()}`,
+        object: `${when}: ${about.trim()}`,
         confidence: 1,
         validFrom: at,
         validTo: null,
@@ -309,6 +331,7 @@ export class Plans {
       const plan = this.find(ref);
       if (plan === null) return { ok: false, reason: this.unknown(ref) };
       const subject = planSubject(plan.title);
+      on = on === null ? null : (followUpWhen(on) ?? on);
       if (!this.follows.some((follow) => follow.subject === subject && (on === null || follow.on === on))) {
         return { ok: false, reason: `"${plan.title}" has no follow-up${on === null ? '' : ` on ${on}`}.` };
       }
