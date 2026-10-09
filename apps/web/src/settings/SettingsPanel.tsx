@@ -54,7 +54,7 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
 
       <MemorySection memory={settings.memory} onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))} />
 
-      <ToolsSection onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
+      <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
       <DownloadedModelsSection caches={deps.caches} consent={deps.consent} />
     </div>

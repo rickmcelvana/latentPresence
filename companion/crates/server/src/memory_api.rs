@@ -54,10 +54,11 @@ pub enum ApiError {
     NotFound(String),
     Conflict(String),
     Unavailable,
+    /// An MCP server still starting, or failed (ADR-43): `unavailable`, with why.
+    NotReady(String),
+    /// An MCP server that broke during a call (ADR-43).
+    Upstream(String),
     Database(String),
-    /// Not produced by any route implemented here; kept for the codes the contract names
-    /// (`CompanionErrorSchema.error.code`) that a future route (ingest, MCP) will need.
-    #[allow(dead_code)]
     Internal(String),
 }
 
@@ -72,6 +73,12 @@ impl ApiError {
                 "unavailable",
                 "no database is configured".to_owned(),
             ),
+            Self::NotReady(message) => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                message.clone(),
+            ),
+            Self::Upstream(message) => (StatusCode::BAD_GATEWAY, "upstream", message.clone()),
             Self::Database(message) => (StatusCode::BAD_GATEWAY, "database", message.clone()),
             Self::Internal(message) => (
                 StatusCode::INTERNAL_SERVER_ERROR,

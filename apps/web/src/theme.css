@@ -1049,6 +1049,7 @@ kbd {
   align-self: flex-start;
 }
 
+.tools-companion,
 .tools-add {
   display: flex;
   flex-direction: column;

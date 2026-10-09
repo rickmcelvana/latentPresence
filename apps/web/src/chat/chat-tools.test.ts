@@ -1,8 +1,8 @@
 import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
-import type { McpServerConfig } from '@latentpresence/providers/web';
+import type { CompanionToolServer, McpServerConfig } from '@latentpresence/providers/web';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, type ToolServerSetting } from '../settings/settings';
-import { connectToolServers, settingsToolGrants } from './chat-tools';
+import { connectCompanionTools, connectToolServers, settingsToolGrants } from './chat-tools';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -55,6 +55,55 @@ describe('connectToolServers (P5-T01, ADR-42)', () => {
   });
 });
 
+describe('the companion’s servers (P5-T02, ADR-43)', () => {
+  const files = new FakeMcpServer('Files', [TOOL]);
+  const listed: CompanionToolServer[] = [
+    { server: { id: 'files', label: 'Files', kind: 'files', state: 'ready', detail: null, instructions: null }, tools: [TOOL.info], client: files },
+    { server: { id: 'everything', label: 'everything', kind: 'stdio', state: 'failed', detail: 'it exited: npx: not found', instructions: null }, tools: [], client: null },
+    { server: { id: 'slow', label: 'slow', kind: 'stdio', state: 'starting', detail: null, instructions: null }, tools: [], client: null },
+  ];
+
+  it('joins the ready ones under companion:<name>, and says why each other one is not there', async () => {
+    const asked: string[] = [];
+    const result = await connectToolServers({
+      servers: [WIKI],
+      loadKey: async () => null,
+      connect: async () => new FakeMcpServer('x', [TOOL]),
+      companion: { baseUrl: 'http://127.0.0.1:8787' },
+      listCompanion: async ({ baseUrl }) => {
+        asked.push(baseUrl);
+        return listed;
+      },
+    });
+    expect(asked).toEqual(['http://127.0.0.1:8787']);
+    expect(result.connected.map((server) => [server.id, server.label])).toEqual([
+      ['srv-1', 'DeepWiki'],
+      ['companion:files', 'Files'],
+    ]);
+    expect(result.connected[1]?.client).toBe(files);
+    expect(result.statuses.slice(1)).toEqual([
+      { id: 'companion:files', label: 'Files', ok: true, detail: '1 tool' },
+      { id: 'companion:everything', label: 'everything', ok: false, detail: 'it exited: npx: not found' },
+      { id: 'companion:slow', label: 'slow', ok: false, detail: 'it is still starting; reload in a moment' },
+    ]);
+  });
+
+  it('asks the companion nothing unless they are turned on, and says how to start it when it is down', async () => {
+    let asked = 0;
+    const listCompanion = async (): Promise<CompanionToolServer[]> => {
+      asked += 1;
+      throw new Error('the companion is not answering (Failed to fetch)');
+    };
+    await connectToolServers({ servers: [], loadKey: async () => null, companion: null, listCompanion });
+    expect(asked).toBe(0);
+    const down = await connectCompanionTools({ baseUrl: 'http://127.0.0.1:8787', listCompanion });
+    expect(down).toEqual({
+      connected: [],
+      statuses: [{ id: 'companion:', label: 'The companion', ok: false, detail: 'the companion is not answering (Failed to fetch); start it with "pnpm companion", then reload' }],
+    });
+  });
+});
+
 describe('settingsToolGrants', () => {
   it('reads and writes the settings document each time, keeping everything else', () => {
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify({ ...DEFAULT_SETTINGS, tools: { servers: [WIKI], grants: {} } }) });
@@ -63,6 +112,6 @@ describe('settingsToolGrants', () => {
     grants.set('srv-1', 'read', { policy: 'auto', fingerprint: 'abcd1234' });
     grants.set('srv-1', 'write', { policy: 'never', fingerprint: null });
     expect(grants.get('srv-1', 'read')).toEqual({ policy: 'auto', fingerprint: 'abcd1234' });
-    expect(loadSettings(storage).tools).toEqual({ servers: [WIKI], grants: { 'srv-1': { read: { policy: 'auto', fingerprint: 'abcd1234' }, write: { policy: 'never', fingerprint: null } } } });
+    expect(loadSettings(storage).tools).toEqual({ servers: [WIKI], grants: { 'srv-1': { read: { policy: 'auto', fingerprint: 'abcd1234' }, write: { policy: 'never', fingerprint: null } } }, companion: false });
   });
 });

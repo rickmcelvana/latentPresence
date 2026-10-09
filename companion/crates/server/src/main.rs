@@ -1,7 +1,7 @@
 //! The `latentpresence-companion` binary. The HTTP surface itself lives in the library
 //! (`lib.rs`), so `tests/memory_api.rs` can build the same router against a real MariaDB.
 
-use latentpresence_companion::{bench, bind_address, memory_api, relay, router_with};
+use latentpresence_companion::{bench, bind_address, mcp, memory_api, relay, router_with};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -45,13 +45,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let memory = memory_api::MemoryState::new(pool);
 
+    // P5-T02 (ADR-43): the MCP servers the person's own `mcp.json` names, started now and
+    // never on a page's request. No file is no servers; a broken one is said and skipped.
+    let config = match mcp::config::config_path() {
+        Some(path) => {
+            let loaded = mcp::config::McpConfig::load(&path);
+            match &loaded {
+                Ok(config) => println!(
+                    "companion: mcp servers from {} ({} listed, {} files root(s))",
+                    path.display(),
+                    config.servers.len(),
+                    config.roots.len()
+                ),
+                Err(error) => eprintln!("companion: mcp.json not used: {error}"),
+            }
+            loaded.unwrap_or_default()
+        }
+        None => mcp::config::McpConfig::default(),
+    };
+    let host = mcp::McpHost::start(config);
+
     let address = bind_address();
     let listener = tokio::net::TcpListener::bind(address).await?;
     println!("latentpresence-companion listening on http://{address}");
     axum::serve(
         listener,
-        router_with(relay::Relay::measured(), memory, has_database_url),
+        router_with(
+            relay::Relay::measured(),
+            memory,
+            has_database_url,
+            host.clone(),
+        ),
     )
+    .with_graceful_shutdown(async {
+        let _ = tokio::signal::ctrl_c().await;
+    })
     .await?;
+    // The servers it started go with it.
+    host.shutdown().await;
     Ok(())
 }

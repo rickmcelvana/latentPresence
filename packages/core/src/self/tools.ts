@@ -37,7 +37,15 @@ export interface LocalToolsOptions {
   readonly onCall?: (call: ToolCall, result: JsonValue) => void;
 }
 
-export const DEFAULT_TOOL_ROUNDS = 2;
+/**
+ * Four: a folder is listed, then a folder in it, then a file read, then she answers (P5-T02,
+ * seen live — at two she ran out before reading the file). Every call to an outside tool is still
+ * asked about, so a round costs the person a click, not a surprise.
+ */
+export const DEFAULT_TOOL_ROUNDS = 4;
+
+/** What a call to one of her tools gets on the last round, when none are offered. */
+const OUT_OF_ROUNDS = 'You cannot use more tools for this answer. Answer now, in words, from what you found so far.';
 
 async function runCall(tools: readonly LocalTool[], call: ToolCall, signal: CancellationSignal | undefined): Promise<JsonValue> {
   const tool = tools.find((candidate) => candidate.definition.name === call.name);
@@ -74,11 +82,16 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
         // The last round offers no local tools, so an answer always ends in words.
         const offered = round < maxRounds ? local : [];
         const calls: ToolCall[] = [];
+        // A model may call one of her tools on that last round anyway, from the calls it can
+        // see in its history (glm-5.2, P5-T02): told so, it gets one more round to answer.
+        const late: ToolCall[] = [];
         let text = '';
         let finish: LlmStreamChunk | null = null;
         for await (const chunk of llm.stream({ ...request, messages, tools: [...request.tools, ...offered.map((tool) => tool.definition)] }, callOptions)) {
           if (chunk.type === 'tool-call' && offered.some((tool) => tool.definition.name === chunk.call.name)) {
             calls.push(chunk.call);
+          } else if (chunk.type === 'tool-call' && local.some((tool) => tool.definition.name === chunk.call.name)) {
+            late.push(chunk.call);
           } else if (chunk.type === 'finish') {
             finish = chunk;
           } else if (chunk.type === 'text-delta') {
@@ -90,8 +103,16 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
             yield chunk;
           }
         }
+        if (late.length > 0 && calls.length === 0 && round === maxRounds && callOptions?.signal?.aborted !== true) {
+          messages = [
+            ...messages,
+            { role: 'assistant', content: text, toolCalls: late },
+            ...late.map((call): LlmMessage => ({ role: 'tool', callId: call.id, content: { error: OUT_OF_ROUNDS } })),
+          ];
+          continue;
+        }
         if (calls.length === 0 || callOptions?.signal?.aborted === true) {
-          if (finish !== null) yield finish;
+          if (finish !== null) yield late.length > 0 && finish.type === 'finish' ? { ...finish, reason: 'stop' } : finish;
           return;
         }
         for (const call of calls) options.onCallStart?.(call);

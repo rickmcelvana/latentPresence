@@ -23,7 +23,9 @@ serde_json = "1.0"
 # the protocol's ISO-8601 timestamps parse straight into it. `json` (P4-T02): the retrieval
 # union and `turns.user_affect` carry `serde_json::Value` through the driver directly.
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "mysql", "migrate", "macros", "chrono", "json"] }
-tokio = { version = "1.53", features = ["macros", "net", "rt-multi-thread", "signal"] }
+# `process`, `io-util`, `time` (P5-T02): the MCP host starts servers, reads their stderr, and
+# gives each a deadline.
+tokio = { version = "1.53", features = ["macros", "net", "rt-multi-thread", "signal", "process", "io-util", "time"] }
 tower = "0.5.3"
 # ADR-29: the relay for endpoints that refuse browser origins. rustls with aws-lc-rs is the
 # 0.13 default TLS; no system proxy lookup, no cookies, no decompression - bytes pass through.
@@ -33,3 +35,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 # P4-T02 integration tests validate every response against the committed OpenAPI file.
 jsonschema = "0.35"
 rand = "0.9"
+# P5-T02 (ADR-43): the companion's MCP host. The official Rust SDK (Apache-2.0), client side
+# only: stdio servers it starts from its own config file, and streamable-HTTP servers that
+# refuse browser origins, through the reqwest it already has. No server macros, no schemars.
+rmcp = { version = "3.5.1", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }

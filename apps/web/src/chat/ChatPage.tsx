@@ -425,7 +425,12 @@ function ConfiguredChatPage({
   useEffect(() => {
     let live = true;
     let connected: ConnectedToolServer[] = [];
-    void connectTools({ servers: settings.tools.servers, loadKey: (ref) => deps.vault.loadKey(ref) }).then((result) => {
+    void connectTools({
+      servers: settings.tools.servers,
+      loadKey: (ref) => deps.vault.loadKey(ref),
+      // P5-T02 (ADR-43): the companion's own servers, when Settings → Tools turned them on.
+      companion: settings.tools.companion ? { baseUrl: companionUrl } : null,
+    }).then((result) => {
       if (!live) {
         for (const server of result.connected) void server.client.close();
         return;
@@ -441,7 +446,7 @@ function ConfiguredChatPage({
       toolsHolder.servers = [];
       for (const server of connected) void server.client.close();
     };
-  }, [connectTools, deps.vault, machine, sessionId, settings.tools.servers, toolsHolder]);
+  }, [companionUrl, connectTools, deps.vault, machine, sessionId, settings.tools.companion, settings.tools.servers, toolsHolder]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.

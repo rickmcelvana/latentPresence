@@ -76,6 +76,7 @@ async fn setup() -> Option<(Router, MySqlPool, tokio::sync::OwnedMutexGuard<()>)
         relay::Relay::measured(),
         memory_api::MemoryState::new(Some(pool.clone())),
         true,
+        Default::default(),
     );
     Some((router, pool, serial))
 }
@@ -948,6 +949,7 @@ async fn every_route_answers_unavailable_with_no_database() {
         relay::Relay::measured(),
         memory_api::MemoryState::default(),
         false,
+        Default::default(),
     );
     let (status, body) = call(
         &router,

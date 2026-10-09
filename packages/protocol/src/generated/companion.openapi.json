@@ -949,6 +949,7 @@
                   "conflict",
                   "unavailable",
                   "database",
+                  "upstream",
                   "internal"
                 ]
               },
@@ -3060,6 +3061,59 @@
       "McpToolsResponse": {
         "type": "object",
         "properties": {
+          "servers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "stdio",
+                    "http",
+                    "files"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "starting",
+                    "ready",
+                    "failed"
+                  ]
+                },
+                "detail": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "instructions": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "kind",
+                "state",
+                "detail",
+                "instructions"
+              ],
+              "additionalProperties": false
+            }
+          },
           "tools": {
             "type": "array",
             "items": {
@@ -3084,19 +3138,49 @@
                   "additionalProperties": {
                     "$ref": "#/$defs/__schema0"
                   }
+                },
+                "annotations": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "readOnlyHint": {
+                          "type": "boolean"
+                        },
+                        "destructiveHint": {
+                          "type": "boolean"
+                        },
+                        "idempotentHint": {
+                          "type": "boolean"
+                        },
+                        "openWorldHint": {
+                          "type": "boolean"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
                 "serverId",
                 "name",
                 "description",
-                "inputSchema"
+                "inputSchema",
+                "annotations"
               ],
               "additionalProperties": false
             }
           }
         },
         "required": [
+          "servers",
           "tools"
         ],
         "additionalProperties": false,
@@ -3135,67 +3219,37 @@
         }
       },
       "McpCallResponse": {
-        "oneOf": [
-          {
-            "type": "object",
-            "properties": {
-              "ok": {
-                "type": "boolean",
-                "const": true
-              },
-              "callId": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128
-              },
-              "value": {
+        "type": "object",
+        "properties": {
+          "isError": {
+            "type": "boolean"
+          },
+          "text": {
+            "type": "string"
+          },
+          "structured": {
+            "anyOf": [
+              {
                 "$ref": "#/$defs/__schema0"
               },
-              "finishedAt": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "ok",
-              "callId",
-              "value",
-              "finishedAt"
-            ],
-            "additionalProperties": false
+            ]
           },
-          {
-            "type": "object",
-            "properties": {
-              "ok": {
-                "type": "boolean",
-                "const": false
-              },
-              "callId": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 128
-              },
-              "error": {
-                "type": "string",
-                "minLength": 1
-              },
-              "finishedAt": {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-              }
-            },
-            "required": [
-              "ok",
-              "callId",
-              "error",
-              "finishedAt"
-            ],
-            "additionalProperties": false
+          "images": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
           }
+        },
+        "required": [
+          "isError",
+          "text",
+          "structured",
+          "images"
         ],
+        "additionalProperties": false,
         "$defs": {
           "__schema0": {
             "anyOf": [

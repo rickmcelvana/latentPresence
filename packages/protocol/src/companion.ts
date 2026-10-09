@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { IdSchema, JsonObjectSchema, TimestampSchema } from './common';
-import { ToolResultSchema } from './conversation';
 import {
   EmbeddingModelRefSchema,
   MemoryEpisodeSchema,
@@ -10,6 +9,7 @@ import {
   SelfModelBlockSchema,
   SemanticFactSchema,
 } from './memory';
+import { McpCallResultSchema, McpToolAnnotationsSchema } from './providers/mcp';
 import { ScheduleRunSchema, ScheduleSchema } from './schedule';
 
 /**
@@ -22,8 +22,11 @@ import { ScheduleRunSchema, ScheduleSchema } from './schedule';
 /** One error shape for every route, so the client has one thing to handle. */
 export const CompanionErrorSchema = z.object({
   error: z.object({
-    /** `conflict`: a plan saved over a newer version (ADR-36). `unavailable`: no database. */
-    code: z.enum(['bad_request', 'not_found', 'conflict', 'unavailable', 'database', 'internal']),
+    /**
+     * `conflict`: a plan saved over a newer version (ADR-36). `unavailable`: no database, or an
+     * MCP server still starting or failed. `upstream`: an MCP server broke during a call (ADR-43).
+     */
+    code: z.enum(['bad_request', 'not_found', 'conflict', 'unavailable', 'database', 'upstream', 'internal']),
     message: z.string().min(1),
     details: JsonObjectSchema.nullable(),
   }),
@@ -107,16 +110,33 @@ export type IngestJob = z.infer<typeof IngestJobSchema>;
 
 export const IngestJobParamsSchema = z.object({ id: IdSchema });
 
+/**
+ * A server the companion runs or reaches for the page (P5-T02, ADR-43): one from its own
+ * `mcp.json` (`stdio`, `http`), or its own read-only `files`. `detail` says why one failed.
+ */
+export const McpHostServerSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  kind: z.enum(['stdio', 'http', 'files']),
+  state: z.enum(['starting', 'ready', 'failed']),
+  detail: z.string().nullable(),
+  instructions: z.string().nullable(),
+});
+export type McpHostServer = z.infer<typeof McpHostServerSchema>;
+
 /** A tool as an MCP server described it. `inputSchema` is JSON Schema, unchanged. */
 export const McpToolSchema = z.object({
   serverId: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
   inputSchema: JsonObjectSchema,
+  annotations: McpToolAnnotationsSchema.nullable(),
 });
 export type McpTool = z.infer<typeof McpToolSchema>;
 
-export const McpToolsResponseSchema = z.object({ tools: z.array(McpToolSchema) });
+/** Every server, ready or not, and the tools of the ready ones. */
+export const McpToolsResponseSchema = z.object({ servers: z.array(McpHostServerSchema), tools: z.array(McpToolSchema) });
+export type McpToolsResponse = z.infer<typeof McpToolsResponseSchema>;
 
 export const McpCallRequestSchema = z.object({
   callId: IdSchema,
@@ -311,7 +331,8 @@ export const companionRoutes = {
     params: null,
     query: null,
     request: McpCallRequestSchema,
-    response: ToolResultSchema,
+    /** The server's answer flattened, as the page's own adapter makes it; its failure is `isError`. */
+    response: McpCallResultSchema,
   },
 
   schedulesList: {

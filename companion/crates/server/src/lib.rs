@@ -1,9 +1,9 @@
 //! latentPresence companion.
 //!
-//! Optional local service: MariaDB vector memory (P0-T06, P4-T02), document ingest and MCP
-//! tools land later. It answers `/health` so the web app, the gate and CI have something
-//! real to talk to, `/relay` for endpoints that refuse browser origins (ADR-29), and
-//! `/db/*` for the memory kernel (ADR-36).
+//! Optional local service: MariaDB vector memory (P0-T06, P4-T02); document ingest lands
+//! later. It answers `/health` so the web app, the gate and CI have something real to talk
+//! to, `/relay` for endpoints that refuse browser origins (ADR-29), `/db/*` for the memory
+//! kernel (ADR-36), and `/mcp/*` for the MCP servers its own `mcp.json` names (ADR-43).
 //!
 //! A library as well as a binary so `tests/memory_api.rs` — an integration test that needs
 //! a real MariaDB — can build the same router the binary serves, rather than a copy of it.
@@ -13,6 +13,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use axum::{Router, middleware, routing::get};
 
 pub mod bench;
+pub mod mcp;
 pub mod memory_api;
 pub mod relay;
 
@@ -27,21 +28,24 @@ fn router() -> Router {
         relay::Relay::measured(),
         memory_api::MemoryState::default(),
         false,
+        mcp::SharedHost::default(),
     )
 }
 
-/// The same surface with a chosen relay allowlist and memory state, so tests can point it
-/// at a local upstream and/or a real database.
+/// The same surface with a chosen relay allowlist, memory state and MCP host, so tests can
+/// point it at a local upstream, a real database and/or a fake MCP server.
 pub fn router_with(
     relay: relay::Relay,
     memory: memory_api::MemoryState,
     has_database_url: bool,
+    mcp: mcp::SharedHost,
 ) -> Router {
     let relay_router = Router::new()
         .route("/relay", get(relay::relay).post(relay::relay))
         .with_state(relay);
     memory_api::router(memory, has_database_url)
         .merge(relay_router)
+        .merge(mcp::router(mcp))
         .layer(middleware::from_fn(relay::cors))
 }
 
@@ -159,6 +163,7 @@ mod tests {
             }]),
             memory_api::MemoryState::default(),
             false,
+            mcp::SharedHost::default(),
         )
     }
 

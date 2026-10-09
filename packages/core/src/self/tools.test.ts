@@ -110,6 +110,25 @@ describe('withLocalTools (P4-T06, ADR-40)', () => {
     expect(chunks.at(-1)).toEqual({ type: 'finish', reason: 'stop', usage: null });
   });
 
+  it('tells a model that calls her tool on the last round anyway to answer, and gives it one round to (P5-T02)', async () => {
+    const { notes } = notesOn();
+    const again = [{ type: 'tool-call', call: call('self_read_block', { name: 'x' }) }, { type: 'finish', reason: 'tool-calls', usage: null }] as const;
+    const llm = scripted([again, again, again, [{ type: 'text-delta', text: 'Here is what I found.' }, { type: 'finish', reason: 'stop', usage: null }]]);
+    const ran: string[] = [];
+    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes), { maxRounds: 2, onCall: (c) => ran.push(c.name) }).stream(request));
+    expect(llm.requests.map((r) => r.tools.length)).toEqual([2, 2, 0, 0]);
+    expect(ran).toHaveLength(2);
+    expect(llm.requests[3]?.messages.at(-1)).toEqual({ role: 'tool', callId: 'call-self_read_block', content: { error: expect.stringContaining('Answer now') } });
+    expect(chunks.filter((chunk) => chunk.type === 'text-delta').map((chunk) => chunk.text).join('')).toBe('Here is what I found.');
+    expect(chunks.at(-1)).toEqual({ type: 'finish', reason: 'stop', usage: null });
+
+    // And when it calls one even then, the answer ends — as a stop, never a call nobody runs.
+    const stubborn = scripted([again, again, again, again]);
+    const last = await collect(withLocalTools(stubborn, () => selfNoteTools(notes), { maxRounds: 2 }).stream(request));
+    expect(stubborn.requests).toHaveLength(4);
+    expect(last).toEqual([{ type: 'finish', reason: 'stop', usage: null }]);
+  });
+
   it('turns a tool that throws, or one that does not exist, into a result the model reads', async () => {
     const broken: LocalTool = {
       definition: { name: 'broken', description: '', parameters: { type: 'object' } },

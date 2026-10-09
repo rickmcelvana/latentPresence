@@ -1,6 +1,6 @@
 import type { ConnectedToolServer, ToolGrant, ToolGrants } from '@latentpresence/core';
 import type { McpServerClient } from '@latentpresence/protocol';
-import { connectMcpServer, type ConnectMcpOptions, type McpServerConfig } from '@latentpresence/providers/web';
+import { companionToolServers, connectMcpServer, type CompanionToolServer, type CompanionToolsOptions, type ConnectMcpOptions, type McpServerConfig } from '@latentpresence/providers/web';
 import { loadSettings, mcpKeyRef, saveSettings, type Settings, type ToolServerSetting } from '../settings/settings';
 
 /**
@@ -24,6 +24,41 @@ export interface ConnectToolServersOptions {
   readonly loadKey: (ref: string) => Promise<string | null>;
   readonly connect?: ConnectMcp;
   readonly fetch?: typeof globalThis.fetch;
+  /** The companion's servers too (P5-T02, ADR-43), when Settings → Tools turned them on. */
+  readonly companion?: { readonly baseUrl: string } | null;
+  readonly listCompanion?: (options: CompanionToolsOptions) => Promise<CompanionToolServer[]>;
+}
+
+/** The id a companion server's grants are kept under: never one a page-added server mints. */
+export function companionServerId(id: string): string {
+  return `companion:${id}`;
+}
+
+/** The companion's servers: each ready one connected, and a status for every one. Never throws. */
+export async function connectCompanionTools(
+  options: Pick<ConnectToolServersOptions, 'listCompanion' | 'fetch'> & { readonly baseUrl: string },
+): Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }> {
+  const list = options.listCompanion ?? companionToolServers;
+  let servers: CompanionToolServer[];
+  try {
+    servers = await list({ baseUrl: options.baseUrl, ...(options.fetch === undefined ? {} : { fetch: options.fetch }) });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return { connected: [], statuses: [{ id: companionServerId(''), label: 'The companion', ok: false, detail: `${detail}; start it with "pnpm companion", then reload` }] };
+  }
+  const connected: ConnectedToolServer[] = [];
+  const statuses: ToolServerStatus[] = [];
+  for (const { server, tools, client } of servers) {
+    const id = companionServerId(server.id);
+    if (client === null) {
+      const why = server.state === 'starting' ? 'it is still starting; reload in a moment' : (server.detail ?? 'it failed to start');
+      statuses.push({ id, label: server.label, ok: false, detail: why });
+      continue;
+    }
+    connected.push({ id, label: server.label, client, tools });
+    statuses.push({ id, label: server.label, ok: true, detail: `${tools.length} tool${tools.length === 1 ? '' : 's'}` });
+  }
+  return { connected, statuses };
 }
 
 /** One server: connected and listed, or a status saying why not. Never throws. */
@@ -51,8 +86,14 @@ export async function connectToolServer(
 
 /** Every enabled server, in parallel: one that fails offers no tools and says why. */
 export async function connectToolServers(options: ConnectToolServersOptions): Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }> {
-  const results = await Promise.all(options.servers.filter((server) => server.enabled).map((server) => connectToolServer(server, options)));
-  return { connected: results.flatMap((result) => (result.connected === null ? [] : [result.connected])), statuses: results.map((result) => result.status) };
+  const [results, companion] = await Promise.all([
+    Promise.all(options.servers.filter((server) => server.enabled).map((server) => connectToolServer(server, options))),
+    options.companion == null ? null : connectCompanionTools({ ...options, baseUrl: options.companion.baseUrl }),
+  ]);
+  return {
+    connected: [...results.flatMap((result) => (result.connected === null ? [] : [result.connected])), ...(companion?.connected ?? [])],
+    statuses: [...results.map((result) => result.status), ...(companion?.statuses ?? [])],
+  };
 }
 
 /**

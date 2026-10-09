@@ -7,6 +7,7 @@ import {
   HealthResponseSchema,
   IngestRequestSchema,
   McpCallRequestSchema,
+  McpToolsResponseSchema,
   companionRoutes,
 } from './companion';
 
@@ -122,6 +123,20 @@ describe('McpCallRequestSchema', () => {
     expect(McpCallRequestSchema.parse(call)).toEqual(call);
     const { serverId: _dropped, ...withoutServer } = call;
     expect(McpCallRequestSchema.safeParse(withoutServer).success).toBe(false);
+  });
+});
+
+describe('McpToolsResponseSchema (P5-T02, ADR-43)', () => {
+  it('reports every server with its state, and the tools of the ready ones with their hints', () => {
+    const response = {
+      servers: [
+        { id: 'files', label: 'Files', kind: 'files', state: 'ready', detail: null, instructions: null },
+        { id: 'everything', label: 'everything', kind: 'stdio', state: 'failed', detail: 'exited: npx not found', instructions: null },
+      ],
+      tools: [{ serverId: 'files', name: 'read_text_file', description: 'Read a file.', inputSchema: { type: 'object' }, annotations: { readOnlyHint: true } }],
+    };
+    expect(McpToolsResponseSchema.parse(response)).toEqual(response);
+    expect(McpToolsResponseSchema.safeParse({ ...response, servers: [{ ...response.servers[0], state: 'asleep' }] }).success).toBe(false);
   });
 });
 

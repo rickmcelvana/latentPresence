@@ -113,6 +113,12 @@ export const ToolsSettingsSchema = z.object({
   servers: z.array(ToolServerSettingSchema).max(16),
   /** By server id, then by the server's own tool name. A tool with no entry is asked about. */
   grants: z.record(z.string(), z.record(z.string(), ToolGrantSettingSchema)),
+  /**
+   * Offer the tools of the servers the companion runs from its own `mcp.json` (P5-T02, ADR-43).
+   * Off by default: a page reaching for `127.0.0.1` unasked is what memory's default avoids too.
+   * Their grants are under `companion:<name>`. Defaulted, so a document saved in P5-T01 loads.
+   */
+  companion: z.boolean().default(false),
 });
 export type ToolsSettings = z.infer<typeof ToolsSettingsSchema>;
 
@@ -121,7 +127,7 @@ export const SettingsSchema = z.object({
   companionUrl: z.string(),
   memory: MemorySettingSchema.default('browser'),
   /** Defaulted, so a settings document saved before P5 still loads. */
-  tools: ToolsSettingsSchema.default({ servers: [], grants: {} }),
+  tools: ToolsSettingsSchema.default({ servers: [], grants: {}, companion: false }),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -134,7 +140,7 @@ export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   companionUrl: DEFAULT_COMPANION_URL,
   memory: 'browser',
-  tools: { servers: [], grants: {} },
+  tools: { servers: [], grants: {}, companion: false },
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },

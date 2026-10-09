@@ -6,6 +6,7 @@ import { toolFingerprint } from '@latentpresence/core';
 import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
 import type { McpServerConfig } from '@latentpresence/providers/web';
 import type { ConnectMcp } from '../chat/chat-tools';
+import type { CompanionToolServer } from '@latentpresence/providers/web';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { mcpKeyRef, type ToolsSettings } from './settings';
 import { ToolsSection } from './ToolsSection';
@@ -43,6 +44,7 @@ function fakeServer(): FakeMcpServer {
 const EXISTING: ToolsSettings = {
   servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'bearer' }],
   grants: { 'srv-1': { search: { policy: 'auto', fingerprint: 'stale000' } }, other: { x: { policy: 'never', fingerprint: null } } },
+  companion: false,
 };
 
 interface Harness {
@@ -51,14 +53,16 @@ interface Harness {
 }
 
 /** The section over real state, as the panel holds it: `latest()` is what would be saved. */
-function mount(initial: ToolsSettings, connect?: ConnectMcp): Harness {
+function mount(initial: ToolsSettings, connect?: ConnectMcp, listCompanion?: () => Promise<CompanionToolServer[]>): Harness {
   const vault = new Vault(new InMemoryMasterKeyPort(), memoryStorage());
   let latest = initial;
   function Host(): ReactElement {
     const [tools, setTools] = useState(initial);
     return (
       <ToolsSection
+        companionUrl="http://localhost:8731"
         connect={connect}
+        listCompanion={listCompanion}
         onChange={(update) =>
           setTools((previous) => {
             latest = update(previous);
@@ -74,7 +78,7 @@ function mount(initial: ToolsSettings, connect?: ConnectMcp): Harness {
   return { vault, latest: () => latest };
 }
 
-const EMPTY: ToolsSettings = { servers: [], grants: {} };
+const EMPTY: ToolsSettings = { servers: [], grants: {}, companion: false };
 
 function fillForm(label: string, url: string): void {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: label } });
@@ -152,11 +156,12 @@ describe('ToolsSection — a listed server', () => {
     const { latest } = mount(EXISTING);
     expect(screen.getByText('DeepWiki')).toBeTruthy();
     expect(screen.getByText(/https:\/\/mcp.deepwiki.com\/mcp · Streamable HTTP/)).toBeTruthy();
-    const toggle = screen.getByRole('switch') as HTMLInputElement;
+    const serverRow = screen.getByText('DeepWiki').closest('li') as HTMLElement;
+    const toggle = within(serverRow).getByRole('switch') as HTMLInputElement;
     expect(toggle.checked).toBe(true);
     fireEvent.click(toggle);
     expect(latest().servers[0]?.enabled).toBe(false);
-    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(within(serverRow).getByRole('switch'));
     expect(latest().servers[0]?.enabled).toBe(true);
   });
 
@@ -179,10 +184,18 @@ describe('ToolsSection — a listed server', () => {
     expect(vault.hasKey(mcpKeyRef('other'))).toBe(true);
     expect(screen.queryByText('DeepWiki')).toBeNull();
   });
+
+  it('removing a server keeps the companion switch as it was', () => {
+    const { latest } = mount({ ...EXISTING, companion: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    expect(latest().servers).toEqual([]);
+    expect(latest().companion).toBe(true);
+  });
 });
 
 describe('ToolsSection — Test', () => {
-  const openServer: ToolsSettings = { servers: [{ ...EXISTING.servers[0]!, auth: 'none' }], grants: {} };
+  const openServer: ToolsSettings = { servers: [{ ...EXISTING.servers[0]!, auth: 'none' }], grants: {}, companion: false };
 
   it('connects, says how many tools, lists them, and closes the connection', async () => {
     const fake = fakeServer();
@@ -249,6 +262,7 @@ describe('ToolsSection — Test', () => {
     const settings: ToolsSettings = {
       servers: openServer.servers,
       grants: { 'srv-1': { search: { policy: 'auto', fingerprint: 'stale000' }, read_all: { policy: 'auto', fingerprint: toolFingerprint(LONG) } } },
+      companion: false,
     };
     mount(settings, async () => fakeServer());
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
@@ -271,5 +285,87 @@ describe('ToolsSection — Test', () => {
     expect(description.className).toContain('clamped');
     // A short description needs no toggle.
     expect(within(screen.getByText('search').closest('li') as HTMLElement).queryByRole('button')).toBeNull();
+  });
+});
+
+describe('ToolsSection — from the companion', () => {
+  const FILE_TOOLS = [
+    { name: 'read_file', description: 'Read one file.', inputSchema: { type: 'object' }, annotations: null },
+    { name: 'list_dir', description: 'List a folder.', inputSchema: { type: 'object' }, annotations: null },
+  ];
+  const READ_FILE = FILE_TOOLS[0]!;
+
+  function listing(): Promise<CompanionToolServer[]> {
+    return Promise.resolve([
+      {
+        server: { id: 'files', label: 'Files', kind: 'files', state: 'ready', detail: null, instructions: null },
+        tools: FILE_TOOLS,
+        client: new FakeMcpServer('Files', []),
+      },
+      {
+        server: { id: 'broken', label: 'Broken', kind: 'stdio', state: 'failed', detail: 'spawn ENOENT', instructions: null },
+        tools: [],
+        client: null,
+      },
+    ]);
+  }
+
+  it('the switch writes companion true and false, and the policies can be set while it is off', () => {
+    const { latest } = mount(EMPTY);
+    const toggle = screen.getByRole('switch', { name: "Offer the companion's tools" }) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    fireEvent.click(toggle);
+    expect(latest().companion).toBe(true);
+    fireEvent.click(screen.getByRole('switch', { name: "Offer the companion's tools" }));
+    expect(latest().companion).toBe(false);
+  });
+
+  it('reaches the companion only when List is pressed', async () => {
+    let asked = 0;
+    mount(EMPTY, undefined, () => {
+      asked += 1;
+      return listing();
+    });
+    expect(asked).toBe(0);
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    await screen.findByText('Files — 2 tools');
+    expect(asked).toBe(1);
+  });
+
+  it('List shows each server, the failure in danger style, and the tools as policy rows', async () => {
+    const { latest } = mount(EMPTY, undefined, listing);
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    const ok = await screen.findByText('Files — 2 tools');
+    expect(ok.className).toContain('settings-status-ok');
+    const failed = screen.getByText('Broken — spawn ENOENT');
+    expect(failed.className).toContain('settings-status-danger');
+    expect(screen.getAllByRole('combobox', { name: /Policy for/ })).toHaveLength(2);
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Policy for read_file' }), { target: { value: 'auto' } });
+    expect(latest().grants['companion:files']?.['read_file']).toEqual({ policy: 'auto', fingerprint: toolFingerprint(READ_FILE) });
+    expect(latest().companion).toBe(false);
+  });
+
+  it('pressing List again replaces what it showed', async () => {
+    let round = 0;
+    mount(EMPTY, undefined, async () => {
+      round += 1;
+      return round === 1 ? listing() : [];
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    await screen.findByText('Files — 2 tools');
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    await waitFor(() => expect(screen.queryByText('Files — 2 tools')).toBeNull());
+    expect(screen.queryByRole('combobox', { name: /Policy for/ })).toBeNull();
+  });
+
+  it('a companion that does not answer is one line saying how to start it', async () => {
+    mount(EMPTY, undefined, async () => {
+      throw new Error('the companion is not answering (Failed to fetch)');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    const line = await screen.findByText(/The companion — .*pnpm companion/);
+    expect(line.className).toContain('settings-status-danger');
+    expect(line.textContent).toContain('not answering');
   });
 });

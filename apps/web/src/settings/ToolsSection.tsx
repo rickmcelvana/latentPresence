@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { effectivePolicy, toolFingerprint, type ToolPolicy } from '@latentpresence/core';
 import type { McpToolInfo, McpTransport } from '@latentpresence/protocol';
-import { connectToolServer, type ConnectMcp } from '../chat/chat-tools';
+import { connectCompanionTools, connectToolServer, type ConnectMcp, type ToolServerStatus } from '../chat/chat-tools';
 import { KeyField } from './KeyField';
 import { mcpKeyRef, type ToolServerSetting, type ToolsSettings } from './settings';
 import type { Vault } from './vault';
@@ -23,6 +23,16 @@ export interface ToolsSectionProps {
   /** Test seam: the connection Test makes. Omitted, the real MCP adapter. */
   readonly connect?: ConnectMcp | undefined;
   readonly fetch?: typeof globalThis.fetch | undefined;
+  /** Where the companion listens: List asks it for the servers its `mcp.json` names (ADR-43). */
+  readonly companionUrl: string;
+  /** Test seam: what List asks. Omitted, the companion's real `/mcp/tools`. */
+  readonly listCompanion?: Parameters<typeof connectCompanionTools>[0]['listCompanion'] | undefined;
+}
+
+/** What List found out about the companion's servers, kept only while Settings is open. */
+interface CompanionListing {
+  readonly pending: boolean;
+  readonly servers: readonly { readonly status: ToolServerStatus; readonly tools: readonly McpToolInfo[] }[];
 }
 
 /** What Test found out about one server, kept only while Settings is open. */
@@ -96,8 +106,9 @@ function ToolRow({
   );
 }
 
-export function ToolsSection({ tools, onChange, vault, connect, fetch }: ToolsSectionProps): ReactElement {
+export function ToolsSection({ tools, onChange, vault, connect, fetch, companionUrl, listCompanion }: ToolsSectionProps): ReactElement {
   const [results, setResults] = useState<Record<string, TestResult>>({});
+  const [listing, setListing] = useState<CompanionListing | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
 
   // The new server's id is minted once, so a token saved in the vault before "Add" already
@@ -140,7 +151,7 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch }: ToolsSe
     vault.forgetKey(mcpKeyRef(id));
     onChange((previous) => {
       const { [id]: _dropped, ...grants } = previous.grants;
-      return { servers: previous.servers.filter((server) => server.id !== id), grants };
+      return { ...previous, servers: previous.servers.filter((server) => server.id !== id), grants };
     });
     setResults(({ [id]: _dropped, ...rest }) => rest);
     setConfirming(null);
@@ -170,6 +181,20 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch }: ToolsSe
         tools: connected?.tools ?? [],
       },
     }));
+  }
+
+  async function listFromCompanion(): Promise<void> {
+    setListing({ pending: true, servers: [] });
+    const { connected, statuses } = await connectCompanionTools({
+      baseUrl: companionUrl,
+      ...(listCompanion === undefined ? {} : { listCompanion }),
+      ...(fetch === undefined ? {} : { fetch }),
+    });
+    // List only reads what the companion reports; the companion owns its servers, so nothing is closed here.
+    setListing({
+      pending: false,
+      servers: statuses.map((status) => ({ status, tools: connected.find((server) => server.id === status.id)?.tools ?? [] })),
+    });
   }
 
   return (
@@ -251,6 +276,55 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch }: ToolsSe
           })}
         </ul>
       )}
+
+      <div className="tools-companion">
+        <span className="panel-title">From the companion</span>
+        <p className="panel-note">
+          The companion can run servers listed in its own mcp.json, on this computer and edited by you, including a read-only Files server for
+          folders you name there. They are off until you turn this on.
+        </p>
+        <label className="tools-switch">
+          <input
+            checked={tools.companion}
+            onChange={(event) => {
+              const companion = event.target.checked;
+              onChange((previous) => ({ ...previous, companion }));
+            }}
+            role="switch"
+            type="checkbox"
+          />
+          <span>Offer the companion&apos;s tools</span>
+        </label>
+        <div className="settings-test-row">
+          <button className="btn btn-sm" disabled={listing?.pending === true} onClick={() => void listFromCompanion()} type="button">
+            List
+          </button>
+        </div>
+        <div aria-live="polite" className="settings-status-region">
+          {listing?.pending === true && <p className="settings-status settings-status-warn">Listing…</p>}
+          {listing !== null &&
+            !listing.pending &&
+            listing.servers.map(({ status, tools: serverTools }) => (
+              <div className="tools-server" key={status.id}>
+                <p className={status.ok ? 'settings-status settings-status-ok' : 'settings-status settings-status-danger'}>
+                  {status.label} — {status.detail}
+                </p>
+                {status.ok && serverTools.length > 0 && (
+                  <ul className="tools-tool-list">
+                    {serverTools.map((info) => (
+                      <ToolRow
+                        grant={tools.grants[status.id]?.[info.name]}
+                        info={info}
+                        key={info.name}
+                        onPolicy={(policy) => setPolicy(status.id, info, policy)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+        </div>
+      </div>
 
       <div className="tools-add">
         <span className="panel-title">Add a server</span>

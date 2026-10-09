@@ -57,6 +57,7 @@ describe('loadSettings', () => {
       tools: {
         servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
+        companion: true,
       },
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
@@ -79,7 +80,7 @@ describe('loadSettings', () => {
     const { tools: _tools, ...beforeP5 } = settings;
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP5) });
     expect(loadSettings(storage)).toEqual(settings);
-    expect(settings.tools).toEqual({ servers: [], grants: {} });
+    expect(settings.tools).toEqual({ servers: [], grants: {}, companion: false });
   });
 
   it('defaults the companion URL to the documented default', () => {
