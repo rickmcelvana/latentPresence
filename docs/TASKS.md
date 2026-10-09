@@ -189,6 +189,38 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-29 · Tools from the companion · ~10 minutes, desktop
+**Why:** P5-T02 lets the companion run MCP servers you list in a file on this computer, including
+a read-only **Files** server for folders you choose (ADR-43). The automatic check passed in the
+Browser pane; whether it is easy to set up and feels safe needs you.
+1. Make the file (PowerShell):
+   ```powershell
+   New-Item -ItemType Directory -Force "$env:APPDATA\latentPresence"
+   ```
+   ```powershell
+   notepad "$env:APPDATA\latentPresence\mcp.json"
+   ```
+   Paste this, with a folder of your own notes in place of the path (forward slashes are fine),
+   and save:
+   ```json
+   {
+     "mcpServers": {
+       "everything": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything@2026.8.31"] }
+     },
+     "files": { "roots": ["C:/Users/rickm/Documents/notes"] }
+   }
+   ```
+2. Stop any companion that is running and start it again with `pnpm companion`. It prints
+   "mcp servers from …\mcp.json (1 listed, 1 files root(s))"; the first `npx` takes ~30 s.
+3. `/settings` → **Tools** → *From the companion* → **List**: Files (4 tools) and everything (13).
+   Turn on **Offer the companion's tools**.
+4. In `/chat`, ask her about something in one of those notes. Allow each card once. Then ask her
+   to read a file *outside* that folder (give a full path).
+
+**Pass:** the cards name Files and the tool; she finds and reads the note and answers from it;
+outside the folder she is refused and says so. **Paste back:** pass/fail, how many cards it took,
+and whether the file was easy to write.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

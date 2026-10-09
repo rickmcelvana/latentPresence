@@ -44,7 +44,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-39 | What the person deletes is deleted: `MemoryStore.deleteFact`/`deleteEpisode` are hard deletes (row and vector), beside the kernel's expiry; `listEpisodes` pages turns newest first; edits go through the kernel so its cache and the prompt note follow | accepted | 2026-09-29 |
 | ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
 | ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | accepted | 2026-09-30 |
-| ADR-42 | MCP tools in the page: `@ai-sdk/mcp` through `listTools`/`callTool`, tools run by `withLocalTools` as `<server>__<tool>`; per-tool auto/ask/never with a fingerprint on "always"; every call a transcript line; stdio only from the companion's own config (P5-T02) | proposed | 2026-09-30 |
+| ADR-42 | MCP tools in the page: `@ai-sdk/mcp` through `listTools`/`callTool`, tools run by `withLocalTools` as `<server>__<tool>`; per-tool auto/ask/never with a fingerprint on "always"; every call a transcript line; stdio only from the companion's own config (P5-T02) | accepted | 2026-10-09 |
+| ADR-43 | The companion's MCP host: `rmcp` client; stdio and HTTP servers from `mcp.json` in the OS config dir, started at start; a read-only Files server inside roots; `/mcp/tools` with server states, `/mcp/call` a flattened result; off in the page until turned on | proposed | 2026-10-09 |
 
 ---
 
@@ -1293,7 +1294,7 @@ same runs gave 1/5 and 2/5 — she said "I'll check in on the fourteenth" and di
 `/chat` (Browser pane, IndexedDB): the plan appeared in the Plans panel, her `plan_update`
 reached the open panel live, and it survived a reload.
 
-## ADR-42 MCP tools in the page: a gate per tool, stdio only through the companion (proposed 2026-09-30)
+## ADR-42 MCP tools in the page: a gate per tool, stdio only through the companion (accepted 2026-10-09)
 
 **Context.** P5-T01: the AI SDK's MCP client, a UI to add servers (stdio via the companion, HTTP,
 SSE), a per-tool policy (auto, ask, never); done when a public demo server's tools are callable
@@ -1349,3 +1350,65 @@ result, and the transcript said "Alice used deepwiki · read_wiki_structure". **
 in any test:** `@ai-sdk/mcp` calls the `fetch` it is given off its own object, and `window.fetch`
 called that way throws "Illegal invocation" — the adapter always passes a wrapper. Pinned to
 `@ai-sdk/mcp` 2.0.62: 2.0.63 was hours old and fails pnpm's release-age check.
+
+## ADR-43 The companion's MCP host: servers from its own file, a read-only Files server, tools off until asked for (proposed 2026-10-09)
+
+**Context.** P5-T02: the companion exposes first-party MCP servers (memory, plans, documents,
+sql, files with scoped roots); done when their tools are listed and callable from the app and
+the permission prompts appear. ADR-42 (accepted 2026-10-09) sent stdio here: only the companion
+starts processes, from its own config file, never on a page's request, and it relays servers
+that refuse browser origins. The contract had `/mcp/tools` and `/mcp/call`, unbuilt; the page
+had the gate and `mcpTools`, which take any `McpServerClient`.
+
+**Decisions.**
+
+1. **`rmcp` 3.5.1** (the official Rust SDK, Apache-2.0), client side only: `transport-child-process`
+   for stdio, `transport-streamable-http-client-reqwest` for HTTP servers on the companion's
+   reqwest. No server features, no macros.
+2. **One file, the person's, on disk**: `mcp.json` in the OS config directory
+   (`%APPDATA%\latentPresence\` on Windows, `$XDG_CONFIG_HOME` or `~/.config/latentPresence/`
+   elsewhere), or the path in `COMPANION_MCP_CONFIG`. Out of the repo, so a token in it is never
+   one `git add` away. The shape is the one people already write for other MCP clients:
+   `{ "mcpServers": { "<name>": { "command", "args", "env" } | { "url", "headers" } }, "files":
+   { "roots": [...] } }`, with `"disabled": true` to keep an entry without running it. No file is
+   no servers. It is read at start; a change needs a restart.
+3. **Started at start, never on request.** Each server connects in the background with a minute
+   to answer (a first `npx` downloads); `/mcp/tools` reports each as starting, ready or failed
+   with why (the last lines of its stderr when it exits). The page can only name a server the
+   file named; `/mcp/call` never takes a command. On Windows a bare command (`npx`) is resolved
+   through `PATH` and `PATHEXT`, since a `.cmd` is not found otherwise. **A server gets only a
+   path and a home** from the companion's environment (the names the official MCP SDKs pass by
+   default) plus its entry's own `env`: not a key or a `DATABASE_URL` a shell exported.
+4. **The contract changes** (architect task, this note): `/mcp/tools` answers
+   `{ servers, tools }` — servers with `id`, `label`, `kind` (`stdio|http|files`), `state`,
+   `detail`, `instructions`; tools with their `annotations` — and `/mcp/call` answers the same
+   flattened `McpCallResult` the page's adapter already makes. 404 for a server or tool it does
+   not have, 503 for one not ready, 502 for one that broke.
+5. **First-party: Files, read-only.** `list_allowed_directories`, `list_directory`,
+   `read_text_file` (256 KB), `search_files` (by name, 200 results), inside `files.roots` only:
+   every path is canonicalised and must stay under a canonical root, so `..` and a symlink out
+   are refused. No roots, no Files server. Writing waits for its own decision.
+   **Not here from the plan's list:** *memory* and *plans* are already her tools in the page
+   (ADR-40, ADR-41), on whichever store memory uses — a second copy through MCP would be two
+   ways to the same rows; *documents* is P5-T03/T04; *sql* is P5-T05, which owns the read-only
+   guarantees.
+6. **In the page, off until asked for.** Settings → Tools gets "Tools from the companion", off by
+   default (a hosted page probing `127.0.0.1` unasked is what ADR-38's default avoids). On, the
+   page reads `/mcp/tools` on load and each ready server becomes a `ConnectedToolServer` with
+   the id `companion:<name>`, behind the same gate: a new tool is asked about.
+
+**Rejected.** *A hand-rolled JSON-RPC client* — stdio is small, but HTTP sessions, pagination
+and protocol versions are not, and the SDK is maintained by the protocol's authors. *Servers
+added from the page* (ADR-42 rejected it). *Memory and plans as MCP servers now* — worth it
+when something other than her page wants them, not before. *Starting a server on first use* —
+the first question would wait on an `npx` download.
+
+**Measured 2026-10-09.** A companion on a scratch `mcp.json` (`server-everything` by `npx`,
+DeepWiki by URL, a notes folder for Files): all three ready, 13 + 3 + 4 tools; `/mcp/call` ran
+`get-sum`, DeepWiki's `read_wiki_structure` and `read_text_file`, and refused a path to the repo's
+`.env` as outside the folders. In `/chat` (Browser pane, glm-5.2:cloud) "what did I write about
+the herbs?" asked four times — Files' allowed folders, a folder, the folder in it, the file — and
+she answered from the file; `get-sum` through stdio asked once and ran. **Found there:** at two
+tool rounds (ADR-40's loop) she ran out before reading the file, and glm called a tool on the
+round that offered none, which ended her answer empty. The loop now allows four rounds, and a
+call on the last round is answered "answer now" with one more round to do it.

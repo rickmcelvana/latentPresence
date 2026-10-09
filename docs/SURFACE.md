@@ -2204,3 +2204,32 @@ On the development server (MariaDB 11.8.8):
 - **pnpm 12 release age:** a version published within a day is refused on install, and `pnpm
   add` of one writes `minimumReleaseAgeExclude` entries into `pnpm-workspace.yaml` — check that
   file's diff after any `add`.
+
+## `rmcp` and stdio servers through the companion — verified 2026-10-09 (P5-T02)
+
+- **Crate:** `rmcp` 3.5.1 (crates.io, Apache-2.0, the official Rust SDK; 3.5.0 2026-09-28, 3.5.1
+  2026-10-05), `default-features = false` with `client`, `transport-child-process`,
+  `transport-streamable-http-client-reqwest` (reqwest `^0.13.2`, the companion's own). Read from
+  the crate source: `().serve(transport).await` → `RunningService<RoleClient, ()>`;
+  `list_all_tools()` pages for you; `call_tool(CallToolRequestParams::new(name).with_arguments(map))`
+  → `CallToolResult` (serialises camelCase: `content`, `structuredContent`, `isError`);
+  `peer_info()` → `InitializeResult` with `instructions`; `cancellation_token().cancel()` stops it.
+  `TokioChildProcess::builder(Command).stderr(Stdio::piped()).spawn()` → `(transport, stderr)`; its
+  drop kills the child. Any `(AsyncRead, AsyncWrite)` is a transport — the tests use
+  `tokio::io::duplex`. A closed pipe mid-call is `ServiceError::TransportClosed`.
+- **Streamable HTTP from the companion:** `StreamableHttpClientTransport::with_client(reqwest::Client,
+  StreamableHttpClientTransportConfig::with_uri(url).custom_headers(map))`. DeepWiki connected
+  this way, listed its three tools with its long `instructions`, and answered
+  `read_wiki_structure`.
+- **`@modelcontextprotocol/server-everything` 2026.8.31** (npm, the reference test server; licence
+  "see LICENSE", repo `modelcontextprotocol/servers`) started from `mcp.json` as
+  `npx -y @modelcontextprotocol/server-everything@2026.8.31` on Windows: ready after the first
+  download (~30 s), 13 tools (`echo`, `get-sum`, `get-env`, `get-tiny-image`, …); `get-sum` →
+  "The sum of 2 and 3 is 5."; `get-tiny-image` → one image content item plus text.
+- **Windows:** `Command::new("npx")` does not find `npx.cmd`; resolving through `PATH` + `PATHEXT`
+  first does, and std runs the `.cmd` through `cmd.exe`. With `env_clear()` and only the default
+  names (the MCP SDKs' list plus `PATHEXT`, `COMSPEC`, `TMP`), npx still starts, and `get-env`
+  showed no variable from the companion's own environment beyond those (npm adds its own).
+- **glm-5.2:cloud** called `files__list_directory` on the round that offered no tools, from the
+  calls already in its history; the loop now answers that call with "answer now" and gives it
+  one more round. Reading a file in a folder in a folder took four rounds.

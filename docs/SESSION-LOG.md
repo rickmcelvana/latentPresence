@@ -675,3 +675,9 @@ Did: R-28 passed (D-40). R-27's first try saved no plan: memory set to the compa
 Left: R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. "Tool calling failed without the companion" not reproduced.
 Next: P5-T02 companion MCP host (main; brief/ADR first).
 Decisions: ADR-41 amended (follow-up times; per-request clock). ADR-42 still proposed — needs Rick's accept. Slip: stopped Rick's running companion without asking; restarted it.
+
+## 2026-10-09 claude — P5-T02 companion MCP host
+Did: ADR-42 accepted (Rick). P5-T02 (71afc52): rmcp 3.5.1 in the companion; stdio and HTTP servers from `mcp.json` (OS config dir or `COMPANION_MCP_CONFIG`), started at start, minimal env; read-only Files server in canonical roots; `/mcp/tools` with server states, `/mcp/call` a flattened result (protocol changed, ADR-43); page client + "From the companion" in Settings (sub, from the brief). Live in the pane: Files, stdio `server-everything` and DeepWiki through the companion, cards asked, she answered from a file.
+Found live: two tool rounds were too few, and glm called a tool on the no-tools round, ending the answer empty — loop now 4 rounds plus an "answer now" grace round.
+Left: R-29 (new), R-27 retry, laptop session (R-13, R-1, R-9), R-3, C-7. Rick's running companion is the old build — restart it for MCP.
+Next: P5-T03 document ingestion (owner sub; brief first). Decisions: ADR-43 proposed — needs Rick's accept.
