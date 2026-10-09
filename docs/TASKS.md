@@ -221,6 +221,29 @@ Browser pane; whether it is easy to set up and feels safe needs you.
 outside the folder she is refused and says so. **Paste back:** pass/fail, how many cards it took,
 and whether the file was easy to write.
 
+### R-30 · Index your own documents · ~10 minutes, desktop
+**Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
+1,274-page set; real PDFs (scans, odd fonts, forms) are where extractors fail.
+1. Next to `mcp.json` (R-29), make `documents.json`:
+   ```powershell
+   notepad "$env:APPDATA\latentPresence\documents.json"
+   ```
+   with a folder of real PDFs and documents in place of the path:
+   ```json
+   {
+     "folders": ["C:/Users/rickm/Documents/manuals"],
+     "embedding": { "baseUrl": "http://127.0.0.1:11434/v1", "model": "nomic-embed-text", "dimensions": 768,
+                    "documentPrefix": "search_document: ", "queryPrefix": "search_query: " }
+   }
+   ```
+2. Restart the companion (`pnpm companion`). It prints "documents from …: 1 folder(s), embedding
+   nomic-embed-text" and starts indexing.
+3. `/settings` → **Documents** → **Check**; when the scan is done, **Scan now** once more.
+
+**Pass:** the counts look right for the folder; failures (if any) name files that really are
+odd (scanned images, password-protected); the second scan indexes 0. **Paste back:** the counts,
+the failures, and how long the first scan took. Searching them with her is P5-T04.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

@@ -681,3 +681,9 @@ Did: ADR-42 accepted (Rick). P5-T02 (71afc52): rmcp 3.5.1 in the companion; stdi
 Found live: two tool rounds were too few, and glm called a tool on the no-tools round, ending the answer empty — loop now 4 rounds plus an "answer now" grace round.
 Left: R-29 (new), R-27 retry, laptop session (R-13, R-1, R-9), R-3, C-7. Rick's running companion is the old build — restart it for MCP.
 Next: P5-T03 document ingestion (owner sub; brief first). Decisions: ADR-43 proposed — needs Rick's accept.
+
+## 2026-10-09 claude — P5-T03 document ingestion
+Did: ADR-43 accepted (Rick). Spiked extractors on Edge-printed PDFs (pdf-extract kept; pdf_oxide 0.3.78 does not compile), quick-xml 0.42 API, Ollama nomic-embed-text speed; contract to `/ingest/status` + `/ingest/scan`, page never names a path (ADR-44); brief; two Sonnet subs (Rust, page) in parallel; review fix: activate the configured chunks model when a job ends. P5-T03 (a1be365). Live: 1,274 pages → 6,622 chunks in 81 s, re-run 0 in 102 ms, watcher both ways; test data removed again.
+Left: R-29, R-30 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T04 cited answers (main).
+Decisions: ADR-44 proposed — needs Rick's accept.

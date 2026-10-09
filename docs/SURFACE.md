@@ -2233,3 +2233,30 @@ On the development server (MariaDB 11.8.8):
 - **glm-5.2:cloud** called `files__list_directory` on the round that offered no tools, from the
   calls already in its history; the loop now answers that call with "answer now" and gives it
   one more round. Reading a file in a folder in a folder took four rounds.
+
+## Document extractors and embeddings for ingestion — measured 2026-10-09 (P5-T03)
+
+- **Test PDFs:** three of the repo's own docs printed by headless Edge
+  (`msedge --headless=new --print-to-pdf`, Georgia 11 pt): 8, 29 and 41 pages, real embedded
+  fonts — no download needed. A 1,000-page set is the same, repeated.
+- **`pdf-extract` 0.12.1** (MIT, 2026-09-16; it resolves `lopdf` 0.42, not the newest 0.45): `extract_text_by_pages(path)
+  -> Result<Vec<String>, OutputError>` (also `_from_mem_`, `_encrypted`). Words out vs words in:
+  3474/3455, 17327/17260, 22994/22341 (tables add `|` tokens); no ligature characters; release
+  build ~5 ms a page (41 pages in 205 ms). Nothing printed to stdout. It is known to panic on
+  some malformed files, so it runs under `catch_unwind`.
+- **`pdf_oxide` 0.3.78** (MIT OR Apache-2.0): **does not compile** as published, with or without
+  default features (`missing field defined_names in DocumentIR`, `pdf_to_ir.rs:194`). Rejected.
+- **`html2text` 0.17.1** (MIT): `from_read(&bytes[..], width) -> Result<String, _>`; RESEARCH.html
+  in 2 ms, 3479 words, headings kept as `#`.
+- **`zip` 8.6.0** (MIT; 9.0.0 is hours old — not taken) with `default-features = false,
+  features = ["deflate"]`, and **`quick-xml` 0.42.0** (MIT). **0.42 changed the API:** names are
+  `str` (`e.local_name().as_ref() == "t"`), text is `BytesText::xml10_content()`, entity references
+  arrive as `Event::GeneralRef` (`xml10_content()` gives the name: `amp`, `lt`…;
+  `resolve_char_ref()` for `&#233;`) — there is no `decode()`/`unescape()`. A two-paragraph DOCX
+  read back as `"Basil needs water & sun.\nThyme\tdry.\n"`.
+- **Embeddings, Ollama `nomic-embed-text`** (already on this machine, 768 dimensions) at
+  `http://127.0.0.1:11434/v1/embeddings`: OpenAI shape — `{ model, input: [..] }` →
+  `{ object, data: [{ index, embedding }], model, usage }`, in input order. Cold first call 21.7 s
+  (model load); warm, ~1,100-character chunks: 8 in 94 ms, 32 in 196 ms, 64 in 373 ms (~6 ms a
+  chunk). **A 40,000-character input is accepted and silently truncated** to the model's context,
+  so chunks must stay small. The model expects `search_document: ` / `search_query: ` prefixes.

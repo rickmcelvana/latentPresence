@@ -312,14 +312,15 @@ AI SDK MCP client; UI to add servers (stdio via companion, HTTP, SSE); per-tool 
 Done when: a public demo MCP server's tools are callable with an "ask" prompt.
 **Met:** DeepWiki (`https://mcp.deepwiki.com/mcp`) added in Settings → Tools in the Browser pane; in `/chat` the card asked before `read_wiki_structure`, Allow once ran it and she answered from the result; `pnpm live:mcp` allowed 3/3 ran, denied 0/3. **stdio moved to P5-T02** (ADR-42): only the companion starts processes, from its own config file.
 
-### P5-T02 Companion MCP host — owner: main (done 2026-10-09; Settings block by sub from `docs/briefs/P5-T02.md`, ADR-43 proposed)
+### P5-T02 Companion MCP host — owner: main (done 2026-10-09; Settings block by sub from `docs/briefs/P5-T02.md`, ADR-43 accepted 2026-10-09)
 Depends: P5-T01, P4-T02. Companion exposes first-party MCP servers: memory, plans, documents, sql, files (scoped roots).
 Done when: tools listed and callable from the app; permission prompts appear.
 **Met:** a companion on a scratch `mcp.json` ran `server-everything` (stdio, by `npx`), DeepWiki (HTTP) and Files; Settings → Tools → *From the companion* listed all three; in `/chat` "what did I write about the herbs?" asked four times (Files) and she answered from the file, and `get-sum` asked once and ran. **First-party is Files only** (ADR-43): memory and plans are already her tools in the page; documents is T03/T04, sql is T05.
 
-### P5-T03 Document ingestion — owner: sub
+### P5-T03 Document ingestion — owner: sub (done 2026-10-09; Rust and page by two subs from `docs/briefs/P5-T03.md`, ADR-44 proposed)
 Depends: P4-T01. Rust extractors (PDF, MD, DOCX, HTML, TXT), chunker with overlap, BYO embeddings call, incremental re-index by content hash, watch folders.
 Done when: 1,000-page PDF set indexes without errors; re-running is a no-op.
+**Met:** 24 PDFs, 1,274 pages (the repo's docs printed by headless Edge) in a folder named in `documents.json`, Ollama `nomic-embed-text`, the dev MariaDB: 6,622 chunks embedded, no failures, 81 s; a second scan indexed 0 in 102 ms. The watcher indexed a dropped-in PDF and removed it when deleted. **The page never names a path** (ADR-44): `/ingest/status`, `/ingest/scan`, Settings → Documents.
 
 ### P5-T04 Cited answers — owner: main
 Depends: P5-T03. Retrieval tool returning chunks with ids; prompt policy for citations; citation renderer in transcript and on the in-world screen.

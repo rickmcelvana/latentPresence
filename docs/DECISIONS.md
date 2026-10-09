@@ -45,7 +45,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-40 | Her mood and her own notes persist as self-model blocks: `_mood` (system, never shown to her) saved after every answer and restored aged by the time away; notes she keeps with `self_read_block`/`self_write_block`, run by a provider wrapper (`withLocalTools`) so every path gets them | accepted | 2026-09-29 |
 | ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | accepted | 2026-09-30 |
 | ADR-42 | MCP tools in the page: `@ai-sdk/mcp` through `listTools`/`callTool`, tools run by `withLocalTools` as `<server>__<tool>`; per-tool auto/ask/never with a fingerprint on "always"; every call a transcript line; stdio only from the companion's own config (P5-T02) | accepted | 2026-10-09 |
-| ADR-43 | The companion's MCP host: `rmcp` client; stdio and HTTP servers from `mcp.json` in the OS config dir, started at start; a read-only Files server inside roots; `/mcp/tools` with server states, `/mcp/call` a flattened result; off in the page until turned on | proposed | 2026-10-09 |
+| ADR-43 | The companion's MCP host: `rmcp` client; stdio and HTTP servers from `mcp.json` in the OS config dir, started at start; a read-only Files server inside roots; `/mcp/tools` with server states, `/mcp/call` a flattened result; off in the page until turned on | accepted | 2026-10-09 |
+| ADR-44 | Document ingestion: folders from the companion's own `documents.json`, never a path from the page (`/ingest/status`, `/ingest/scan`); incremental by path, size/mtime, then SHA-256; `pdf-extract`, `zip`+`quick-xml`, `html2text`; chunks inside a page with a locator; embeddings from the person's OpenAI-compatible endpoint, optional | proposed | 2026-10-09 |
 
 ---
 
@@ -1351,7 +1352,7 @@ in any test:** `@ai-sdk/mcp` calls the `fetch` it is given off its own object, a
 called that way throws "Illegal invocation" — the adapter always passes a wrapper. Pinned to
 `@ai-sdk/mcp` 2.0.62: 2.0.63 was hours old and fails pnpm's release-age check.
 
-## ADR-43 The companion's MCP host: servers from its own file, a read-only Files server, tools off until asked for (proposed 2026-10-09)
+## ADR-43 The companion's MCP host: servers from its own file, a read-only Files server, tools off until asked for (accepted 2026-10-09)
 
 **Context.** P5-T02: the companion exposes first-party MCP servers (memory, plans, documents,
 sql, files with scoped roots); done when their tools are listed and callable from the app and
@@ -1412,3 +1413,59 @@ she answered from the file; `get-sum` through stdio asked once and ran. **Found 
 tool rounds (ADR-40's loop) she ran out before reading the file, and glm called a tool on the
 round that offered none, which ended her answer empty. The loop now allows four rounds, and a
 call on the last round is answered "answer now" with one more round to do it.
+
+## ADR-44 Document ingestion: folders from the companion's own file, chunks by page, embeddings optional (proposed 2026-10-09)
+
+**Context.** P5-T03: Rust extractors (PDF, MD, DOCX, HTML, TXT), a chunker with overlap, a BYO
+embeddings call, incremental re-index by content hash, watch folders; done when a 1,000-page PDF
+set indexes without errors and re-running is a no-op. There: `documents` and `chunks` tables
+(0002, `FULLTEXT` on chunk text), per-model vector tables (`chunk_embeddings_<model>`, ADR-35)
+with `store::embed_item`, a contract `POST /ingest/documents` that took a **path from the page**,
+and no embedding client anywhere — the page's memory searches by text.
+
+**Decisions.**
+
+1. **The page never names a path.** The companion indexes the folders listed in
+   `documents.json`, beside `mcp.json` in the OS config directory (or `COMPANION_DOCUMENTS_CONFIG`),
+   edited by the person. A page that could point the companion at any path could read any file
+   back through retrieval — the hole ADR-43 closed for Files. The contract becomes
+   `GET /ingest/status`, `POST /ingest/scan` (no body) and `GET /ingest/jobs/:id`; `IngestRequest`
+   is gone; a job counts seen, indexed, removed and chunks, and lists the files it could not read.
+2. **When:** at start, on a change in a watched folder (`notify`, a few seconds' quiet first), and
+   when the page asks. One job at a time; a scan asked for while one runs gets that one.
+3. **Incremental by path, then content.** A document is keyed by its path. Same size and modified
+   time: skipped without reading. Otherwise hashed (SHA-256): same hash, skipped; different, its
+   old rows are deleted (chunks and vectors go with them) and it is indexed again. A file gone
+   from disk is removed. A document indexed with another embedding model is embedded again.
+   Re-running over unchanged folders writes nothing.
+4. **Extractors, measured 2026-10-09 (`docs/SURFACE.md`):** `pdf-extract` 0.12.1 (page by page;
+   run under `catch_unwind` — a malformed PDF is a failure for that file, not a crash);
+   `zip` 8.6 + `quick-xml` 0.42 for DOCX (`w:t` text, `w:p` paragraphs, `w:tab`); `html2text`
+   0.17.1; Markdown and text as UTF-8. `pdf_oxide` rejected: 0.3.78 does not compile as published,
+   and it is a twenty-language toolkit for a job that needs one function. Extensions `.pdf .docx
+   .html .htm .md .markdown .txt`; hidden files and folders, symlinks and files over 100 MB are
+   skipped.
+5. **Chunks stay inside a page**, about 1,000 characters with 150 of overlap, cut at a paragraph,
+   else a sentence, else a space — so every chunk has one locator (`p. 12` for a PDF; none
+   otherwise) and P5-T04 can cite it exactly. A migration adds `chunks.locator`, and to
+   `documents` the folder, a path key, the modified time and the embedding model it was indexed
+   with.
+6. **Embeddings are the person's and optional.** `documents.json` may name an OpenAI-compatible
+   endpoint — `baseUrl`, `model`, `dimensions`, optional `headers`, and `documentPrefix` /
+   `queryPrefix` for models that want them (`nomic-embed-text`: `search_document: ` /
+   `search_query: `). Chunks are sent 32 to a request. Without one, chunks are still indexed
+   and found by keyword (`FULLTEXT`). The query side is P5-T04's.
+
+**Rejected.** *Paths from the page* (decision 1). *Uploading files through the page* — the
+documents are already on the companion's disk. *Chunking across pages* — a citation would have to
+say "pp. 11–12" or be wrong. *Embedding in the browser and sending vectors* — a thousand pages
+through a tab, for no gain when an endpoint is local anyway.
+
+**Measured 2026-10-09.** A release companion on the dev MariaDB with `documents.json` naming a
+folder of 24 PDFs (1,274 pages, the repo's docs printed by headless Edge) and Ollama's
+`nomic-embed-text`: the start job indexed 24 documents into **6,622 chunks with vectors, no
+failures, in 81 s**; a scan straight after indexed **0 in 102 ms**. A PDF dropped into the folder
+was indexed by the watcher (39 chunks) and removed again when deleted. **Found in review:**
+re-embedding after the model in `documents.json` changes wrote vectors to a table retrieval would
+never read; a job that finishes now makes the configured model the active one for chunks.
+Bulk rows are written 100 to a statement (`QueryBuilder`), not one `query!` per chunk.
