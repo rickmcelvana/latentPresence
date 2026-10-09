@@ -317,14 +317,15 @@ Depends: P5-T01, P4-T02. Companion exposes first-party MCP servers: memory, plan
 Done when: tools listed and callable from the app; permission prompts appear.
 **Met:** a companion on a scratch `mcp.json` ran `server-everything` (stdio, by `npx`), DeepWiki (HTTP) and Files; Settings → Tools → *From the companion* listed all three; in `/chat` "what did I write about the herbs?" asked four times (Files) and she answered from the file, and `get-sum` asked once and ran. **First-party is Files only** (ADR-43): memory and plans are already her tools in the page; documents is T03/T04, sql is T05.
 
-### P5-T03 Document ingestion — owner: sub (done 2026-10-09; Rust and page by two subs from `docs/briefs/P5-T03.md`, ADR-44 proposed)
+### P5-T03 Document ingestion — owner: sub (done 2026-10-09; Rust and page by two subs from `docs/briefs/P5-T03.md`, ADR-44 accepted 2026-10-09)
 Depends: P4-T01. Rust extractors (PDF, MD, DOCX, HTML, TXT), chunker with overlap, BYO embeddings call, incremental re-index by content hash, watch folders.
 Done when: 1,000-page PDF set indexes without errors; re-running is a no-op.
 **Met:** 24 PDFs, 1,274 pages (the repo's docs printed by headless Edge) in a folder named in `documents.json`, Ollama `nomic-embed-text`, the dev MariaDB: 6,622 chunks embedded, no failures, 81 s; a second scan indexed 0 in 102 ms. The watcher indexed a dropped-in PDF and removed it when deleted. **The page never names a path** (ADR-44): `/ingest/status`, `/ingest/scan`, Settings → Documents.
 
-### P5-T04 Cited answers — owner: main
+### P5-T04 Cited answers — owner: main (done 2026-10-09; sources list and switch by sub from `docs/briefs/P5-T04.md`, ADR-45 proposed)
 Depends: P5-T03. Retrieval tool returning chunks with ids; prompt policy for citations; citation renderer in transcript and on the in-world screen.
 Done when: answers to five private-document questions cite the right chunk.
+**Met:** `pnpm live:cite` — five invented facts across PDF (p. 7, p. 3), DOCX, Markdown and text, glm-5.2:cloud: 20/20 cited the right chunk over four runs; in `/chat` the transcript listed the source with its page. **The in-world screen is P5-T08's** (diegetic displays), from the same hits.
 
 ### P5-T05 Custom database connector — owner: main
 Register MariaDB, MySQL, Postgres, SQLite sources; schema introspection with sampling; read-only text-to-SQL tool with preview and confirm; row and time limits.

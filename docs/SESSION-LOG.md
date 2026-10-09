@@ -687,3 +687,9 @@ Did: ADR-43 accepted (Rick). Spiked extractors on Edge-printed PDFs (pdf-extract
 Left: R-29, R-30 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T04 cited answers (main).
 Decisions: ADR-44 proposed — needs Rick's accept.
+
+## 2026-10-09 claude — P5-T04 cited answers
+Did: ADR-44 accepted (Rick). P5-T04 (8175445): `POST /documents/search` (query embedded by the companion, vector + FULLTEXT, RRF), `documents_search` tool, THEIR DOCUMENTS prompt section, `cite` inline tag, chunker keeps a citation with its sentence (also found: closing tags were dropped), transcript Sources (sub, from the brief), Settings switch. `pnpm live:cite`: 14/15 with the rule in the prompt, 20/20 with it in the tool result. Verified in the pane; test documents removed from the dev DB.
+Left: R-29, R-30, R-31 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. My test companion on port 8797 (scratchpad `target-ingest\release`, PID 20732) is still running — stopping it was refused.
+Next: P5-T05 custom database connector (main).
+Decisions: ADR-45 proposed — needs Rick's accept.

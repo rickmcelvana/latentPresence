@@ -244,6 +244,17 @@ and whether the file was easy to write.
 odd (scanned images, password-protected); the second scan indexes 0. **Paste back:** the counts,
 the failures, and how long the first scan took. Searching them with her is P5-T04.
 
+### R-31 · Ask her about your documents · ~10 minutes, desktop, after R-30
+**Why:** P5-T04 lets her search the documents R-30 indexed and cite them (ADR-45). The live check
+passed 20/20 on invented facts; whether her answers and the sources feel trustworthy needs you.
+1. `/settings` → **Documents** → turn on **Let her search these documents**.
+2. In `/chat`, ask her five things you know are in your documents, and one you know is not.
+3. Open the **Sources** under an answer and check the page and passage.
+
+**Pass:** she says she is looking, answers from the document, the source is the right one (page
+too, for a PDF), she never reads a ref or path aloud, and for the one that is not there she says
+so. **Paste back:** pass/fail per question, and any source marked "not given".
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

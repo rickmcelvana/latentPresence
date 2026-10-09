@@ -46,7 +46,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-41 | Planning studio: brainstorming is a prompt section, not a mode; the plan in focus is in her prompt in full; `plan_create`/`plan_update` (by title)/`plan_list`/`plan_follow_up` through `withLocalTools`; the panel saves whole against its version; follow-ups are `follow_up_on` facts | accepted | 2026-09-30 |
 | ADR-42 | MCP tools in the page: `@ai-sdk/mcp` through `listTools`/`callTool`, tools run by `withLocalTools` as `<server>__<tool>`; per-tool auto/ask/never with a fingerprint on "always"; every call a transcript line; stdio only from the companion's own config (P5-T02) | accepted | 2026-10-09 |
 | ADR-43 | The companion's MCP host: `rmcp` client; stdio and HTTP servers from `mcp.json` in the OS config dir, started at start; a read-only Files server inside roots; `/mcp/tools` with server states, `/mcp/call` a flattened result; off in the page until turned on | accepted | 2026-10-09 |
-| ADR-44 | Document ingestion: folders from the companion's own `documents.json`, never a path from the page (`/ingest/status`, `/ingest/scan`); incremental by path, size/mtime, then SHA-256; `pdf-extract`, `zip`+`quick-xml`, `html2text`; chunks inside a page with a locator; embeddings from the person's OpenAI-compatible endpoint, optional | proposed | 2026-10-09 |
+| ADR-44 | Document ingestion: folders from the companion's own `documents.json`, never a path from the page (`/ingest/status`, `/ingest/scan`); incremental by path, size/mtime, then SHA-256; `pdf-extract`, `zip`+`quick-xml`, `html2text`; chunks inside a page with a locator; embeddings from the person's OpenAI-compatible endpoint, optional | accepted | 2026-10-09 |
+| ADR-45 | Cited answers: `documents_search` is her own tool (shown, not gated), the companion embeds the query and fuses vector and `FULLTEXT` by reciprocal rank (`POST /documents/search`); citations are `[cite:c<chunk>]` inline tags, never spoken, listed as sources under the answer; off until Settings → Documents turns it on | proposed | 2026-10-09 |
 
 ---
 
@@ -1414,7 +1415,7 @@ tool rounds (ADR-40's loop) she ran out before reading the file, and glm called 
 round that offered none, which ended her answer empty. The loop now allows four rounds, and a
 call on the last round is answered "answer now" with one more round to do it.
 
-## ADR-44 Document ingestion: folders from the companion's own file, chunks by page, embeddings optional (proposed 2026-10-09)
+## ADR-44 Document ingestion: folders from the companion's own file, chunks by page, embeddings optional (accepted 2026-10-09)
 
 **Context.** P5-T03: Rust extractors (PDF, MD, DOCX, HTML, TXT), a chunker with overlap, a BYO
 embeddings call, incremental re-index by content hash, watch folders; done when a 1,000-page PDF
@@ -1469,3 +1470,58 @@ was indexed by the watcher (39 chunks) and removed again when deleted. **Found i
 re-embedding after the model in `documents.json` changes wrote vectors to a table retrieval would
 never read; a job that finishes now makes the configured model the active one for chunks.
 Bulk rows are written 100 to a statement (`QueryBuilder`), not one `query!` per chunk.
+
+## ADR-45 Cited answers: she searches the documents with a tool and cites chunks with a tag (proposed 2026-10-09)
+
+**Context.** P5-T04: a retrieval tool returning chunks with ids, a prompt policy for citations,
+a citation renderer in the transcript and on the in-world screen; done when answers to five
+private-document questions cite the right chunk. There: chunks with page locators, `FULLTEXT`
+and vectors in the active chunks collection (ADR-44), the embedding config with a `queryPrefix`
+in the companion's `documents.json`, `DocumentHit` in the protocol (unused), `withLocalTools`
+for her own tools (ADR-40), and inline tags lifted out of speech by the chunker (ADR-23, ADR-30).
+
+**Decisions.**
+
+1. **A tool she chooses to use, not retrieval on every turn**: `documents_search` (query, up to
+   ten results), one of her own tools like her notes and plans — ungated, since it reads only what
+   the person put in the folders — but **shown**: the transcript says she looked. Most turns are
+   not about documents, and a thousand pages of chunks in every prompt would crowd out the
+   conversation.
+2. **The companion searches**: `POST /documents/search` `{ query, limit }` → `{ hits,
+   vectorSearch }`. It embeds the query itself with `documents.json`'s model and `queryPrefix`
+   (the page has neither), takes the nearest chunks from the active collection when that is the
+   configured model, the best `FULLTEXT` matches, and fuses the two by reciprocal rank (k = 60).
+   No model, or an endpoint that is down: keyword only, and `vectorSearch` says so. A hit carries
+   its chunk and document ids, title, source path, locator (`p. 12`) and text.
+3. **A citation is an inline tag, `[cite:c123]`** — `c` and the chunk id — after the sentence that
+   uses the result. `cite` joins `InlineTagKind` (protocol, additive): the chunker lifts it out of
+   the spoken text and the streaming filter hides it, so she never says it; the transcript line
+   keeps the refs in order. The tool result gives each hit its `ref`, so she copies an id rather
+   than inventing one.
+4. **The transcript lists the sources under the answer**, numbered, as title and page; opened,
+   one shows the chunk's text and the file. A ref she was not given in this visit is shown as
+   not one she found. The in-world screen is P5-T08's (diegetic displays), from the same data.
+5. **Off until asked for**: Settings → Documents gets "Let her search these documents", off by
+   default (ADR-38, ADR-43: no unasked request to `127.0.0.1`). On, and the companion answering
+   with at least one document, the tool is offered and the prompt says how to cite; on and not
+   answering, the transcript says so, as memory does.
+6. **The prompt's rules**: search when their documents might answer; answer from what was found
+   and say when nothing was; cite every sentence that uses a result; never cite a ref you were
+   not given; never read refs or file paths aloud.
+
+**Rejected.** *Documents in the per-turn retrieval bundle* (decision 1). *Footnote numbers in
+her text* (`[1]`) — spoken aloud by TTS, and renumbered by every answer. *Citing by title and
+page in words only* — not checkable, and the done-when is "cites the right chunk". *A chunk
+route for the transcript* — the hits she was given are the ones she can cite; the page keeps them.
+
+**Measured 2026-10-09.** `pnpm live:cite` (glm-5.2:cloud, a release companion on the dev MariaDB
+indexing five invented facts — two Edge-printed PDFs with the fact on p. 7 and p. 3 among filler,
+a DOCX, Markdown and text — with `nomic-embed-text`): with the citing rule only in the prompt,
+**14/15** cited the right chunk; twice she answered right and left the tag off. With the rule
+repeated in the tool's result, **20/20**. In `/chat` (Browser pane) she looked, answered from
+p. 7, and the transcript listed "1. Halvorsen HX-40 boiler manual, p. 7". **Found on the way:**
+the chunker gave a tag after a sentence to the *next* sentence, and one after the last sentence
+to `trailingTags`, which nothing in production reads — so a closing citation was lost. A `cite`
+tag now sits at the end of the sentence before it, and a sentence followed only by a space waits
+while a tag is still arriving (` [ci`); other tags keep leading what follows, and a sentence with
+anything else after its space goes to TTS at once, as before.

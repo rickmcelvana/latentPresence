@@ -2260,3 +2260,19 @@ On the development server (MariaDB 11.8.8):
   (model load); warm, ~1,100-character chunks: 8 in 94 ms, 32 in 196 ms, 64 in 373 ms (~6 ms a
   chunk). **A 40,000-character input is accepted and silently truncated** to the model's context,
   so chunks must stay small. The model expects `search_document: ` / `search_query: ` prefixes.
+
+## Cited answers with glm-5.2:cloud — measured 2026-10-09 (P5-T04)
+
+- **Test set:** five invented facts (boiler reset time, greenhouse key, tyre pressure, notice
+  period, guest wifi name), each once, in two PDFs printed by headless Edge from HTML with
+  `page-break-after` (fact on p. 7 of 10 and p. 3 of 6, among the repo's docs as filler), a DOCX
+  written as a zip, a Markdown and a text file. 68 chunks with `nomic-embed-text`. Edge through
+  `Start-Process -ArgumentList` splits a path with spaces unless each argument is quoted.
+- **Searching:** she called `documents_search` on every question (twice on the lease, sometimes);
+  the chunk holding the fact was cited every time it was cited at all.
+- **Citing:** rule in the prompt only → 14/15; the two misses answered right with no tag at all.
+  The rule repeated in the tool result (`cite: "End each sentence that uses a passage with its
+  ref as a tag…"`) → 20/20. She spells numbers out for speech ("thirty-eight psi"), so a check on
+  her words must accept both.
+- **Tokens:** a citation arrives as several deltas (` [ci`, `te:c66`, `12]` in the page test's
+  shape), which is why the chunker waits on a pending `[` after a sentence end.
