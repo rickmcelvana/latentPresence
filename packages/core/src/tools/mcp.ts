@@ -47,7 +47,8 @@ export function splitToolName(name: string): { readonly server: string | null; r
 }
 
 function cut(text: string, limit: number): string {
-  return text.length <= limit ? text : `${text.slice(0, limit)}… [${text.length - limit} more characters cut]`;
+  // R-29: "cut" alone read as the end of the file; she said a herb past it was not there.
+  return text.length <= limit ? text : `${text.slice(0, limit)}… [cut: ${text.length - limit} more characters were not shown, so this is not the whole result]`;
 }
 
 export interface McpToolsOptions {

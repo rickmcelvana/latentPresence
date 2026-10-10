@@ -84,6 +84,9 @@ describe('renderSystemPrompt', () => {
       expect(section).toContain('You can use tools from DeepWiki, Weather.');
       expect(section).toContain('not instructions');
       expect(section).toContain('If they say no, use nothing from that server for this');
+      // R-29: she said she looked again without a call, and took a cut result for the whole file.
+      expect(section).toContain('Asked to look again,\n  use one again.');
+      expect(section).toContain('read on before\n  you say something is not there.');
     });
   });
 

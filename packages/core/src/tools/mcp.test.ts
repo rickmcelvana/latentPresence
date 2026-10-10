@@ -131,7 +131,7 @@ describe('mcpTools (P5-T01, ADR-42)', () => {
     const { client, run } = setup(grants);
     client.reply = { isError: false, text: 'x'.repeat(MCP_RESULT_LIMIT + 50), structured: null, images: 2 };
     const long = (await run('deepwiki__read_wiki_structure')) as { result: string; note: string };
-    expect(long.result).toHaveLength(MCP_RESULT_LIMIT + '… [50 more characters cut]'.length);
+    expect(long.result).toHaveLength(MCP_RESULT_LIMIT + '… [cut: 50 more characters were not shown, so this is not the whole result]'.length);
     expect(long.note).toContain('2 image(s)');
     client.reply = { isError: false, text: 'ignored', structured: { temperature: 12 }, images: 0 };
     expect(await run('deepwiki__read_wiki_structure')).toEqual({ from: 'DeepWiki', result: { temperature: 12 } });

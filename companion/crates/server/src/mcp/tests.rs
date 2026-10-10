@@ -255,7 +255,7 @@ async fn files_is_listed_first_and_called_through_the_same_route() {
     assert_eq!(listed["servers"][0]["id"], "files");
     assert_eq!(listed["servers"][0]["label"], "Files");
     assert_eq!(listed["servers"][0]["kind"], "files");
-    assert_eq!(listed["tools"].as_array().map(Vec::len), Some(4));
+    assert_eq!(listed["tools"].as_array().map(Vec::len), Some(5));
     let (status, body) = send(
         &router,
         call_request("files", "read_text_file", json!({ "path": "note.txt" })),
