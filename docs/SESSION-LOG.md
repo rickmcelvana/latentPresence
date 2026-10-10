@@ -693,3 +693,9 @@ Did: ADR-44 accepted (Rick). P5-T04 (8175445): `POST /documents/search` (query e
 Left: R-29, R-30, R-31 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. My test companion on port 8797 (scratchpad `target-ingest\release`, PID 20732) is still running — stopping it was refused.
 Next: P5-T05 custom database connector (main).
 Decisions: ADR-45 proposed — needs Rick's accept.
+
+## 2026-10-10 claude — R-29 fix, ADR-45 accepted
+Did: ADR-45 accepted (Rick). R-29 failed: `herbs.txt` (12,709 chars) was cut at the page's 8,000-character tool-result limit, so herbs from Rose on never reached her; asked again she claimed a second look with no call. Fix (586cf4e): Files `read_text_file` pages by whole lines (6 KB) with a "read on with from_line N" footer, reads up to 4 MB; new `search_text`; the page's cut says it is not the whole result; prompt: a look needs a tool, read on before saying it is not there. Live on the real note via a scratch companion (stopped): 8/8.
+Left: R-29 retry, R-30, R-31, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T05 custom database connector (main).
+Decisions: ADR-43 amended (Files paging and search_text).

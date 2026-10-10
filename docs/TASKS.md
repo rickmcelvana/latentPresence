@@ -212,7 +212,7 @@ Browser pane; whether it is easy to set up and feels safe needs you.
    ```
 2. Stop any companion that is running and start it again with `pnpm companion`. It prints
    "mcp servers from …\mcp.json (1 listed, 1 files root(s))"; the first `npx` takes ~30 s.
-3. `/settings` → **Tools** → *From the companion* → **List**: Files (4 tools) and everything (13).
+3. `/settings` → **Tools** → *From the companion* → **List**: Files (5 tools) and everything (13).
    Turn on **Offer the companion's tools**.
 4. In `/chat`, ask her about something in one of those notes. Allow each card once. Then ask her
    to read a file *outside* that folder (give a full path).
@@ -220,6 +220,13 @@ Browser pane; whether it is easy to set up and feels safe needs you.
 **Pass:** the cards name Files and the tool; she finds and reads the note and answers from it;
 outside the folder she is refused and says so. **Paste back:** pass/fail, how many cards it took,
 and whether the file was easy to write.
+
+**Retry (2026-10-10).** The first run failed: a herb near the end of `herbs.txt` was past the
+8,000 characters she was given, and asked again she said she had looked without looking. Fixed in
+586cf4e. Restart the companion (`pnpm companion`), then **List** again: Files now has 5 tools, and
+since `read_text_file` changed, its card asks again even if you chose Always. Ask about the same
+herb (and one from the very end, such as yarrow). **Pass:** the cards show `search_text`, then
+`read_text_file`; she answers from the note.
 
 ### R-30 · Index your own documents · ~10 minutes, desktop
 **Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated

@@ -1390,6 +1390,12 @@ had the gate and `mcpTools`, which take any `McpServerClient`.
    `read_text_file` (256 KB), `search_files` (by name, 200 results), inside `files.roots` only:
    every path is canonicalised and must stay under a canonical root, so `..` and a symlink out
    are refused. No roots, no Files server. Writing waits for its own decision.
+   **Amended 2026-10-10 (R-29):** `read_text_file` reads a page of whole lines (6 KB, under the
+   page's 8 000-character cut) and, unless it gave the whole file, ends with which lines those
+   were and `from_line` to read on; it reads up to 4 MB of a file. A fifth tool, `search_text`,
+   finds the lines that contain some text in a file or a folder (60 matches, 2 000 files). In
+   R-29 a 12,709-character note was cut at 8 000 and she said a herb past the cut was not there;
+   with both, glm-5.2:cloud found four such herbs 8/8, searching first and reading from the line.
    **Not here from the plan's list:** *memory* and *plans* are already her tools in the page
    (ADR-40, ADR-41), on whichever store memory uses — a second copy through MCP would be two
    ways to the same rows; *documents* is P5-T03/T04; *sql* is P5-T05, which owns the read-only
@@ -1471,7 +1477,7 @@ re-embedding after the model in `documents.json` changes wrote vectors to a tabl
 never read; a job that finishes now makes the configured model the active one for chunks.
 Bulk rows are written 100 to a statement (`QueryBuilder`), not one `query!` per chunk.
 
-## ADR-45 Cited answers: she searches the documents with a tool and cites chunks with a tag (proposed 2026-10-09)
+## ADR-45 Cited answers: she searches the documents with a tool and cites chunks with a tag (accepted 2026-10-10)
 
 **Context.** P5-T04: a retrieval tool returning chunks with ids, a prompt policy for citations,
 a citation renderer in the transcript and on the in-world screen; done when answers to five
