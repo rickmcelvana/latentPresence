@@ -18,13 +18,16 @@ notify.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-sqlx.workspace = true
 tokio.workspace = true
 chrono.workspace = true
 rmcp.workspace = true
+futures-util.workspace = true
+# P5-T05 (ADR-46): the person's own databases, read-only. `sqlite-bundled` without
+# `sqlite-load-extension`, so a query cannot load one.
+sqlx = { workspace = true, features = ["postgres", "sqlite-bundled", "rust_decimal", "uuid"] }
+sqlparser = { version = "0.63.0", features = ["visitor"] }
 
 [dev-dependencies]
-futures-util.workspace = true
 http-body-util.workspace = true
 serde_json.workspace = true
 tower = { workspace = true, features = ["util"] }

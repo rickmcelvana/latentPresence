@@ -75,6 +75,21 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=12
+      # P5-T05 (ADR-46): a Postgres for the read-only database suite
+      # (`crates/server/tests/sql_databases.rs`). Ephemeral like the MariaDB above.
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_USER: reader
+          POSTGRES_PASSWORD: ci-throwaway
+          POSTGRES_DB: shop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U reader -d shop"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
 
     steps:
       - uses: actions/checkout@v7
@@ -119,9 +134,11 @@ jobs:
       # P4-T02. The memory routes' integration tests (`crates/server/tests/memory_api.rs`)
       # against the same server: every implemented route, every response body checked
       # against the committed OpenAPI file. Unset, they would otherwise skip silently.
+      # P5-T05: the read-only database suite runs here against both servers.
       - name: memory API integration tests against a real MariaDB
         env:
           LP_TEST_DATABASE_URL: mysql://presenceuser:ci-throwaway@127.0.0.1:3306/latentpresence
+          LP_TEST_POSTGRES_URL: postgres://reader:ci-throwaway@127.0.0.1:5432/shop
         run: cargo test --manifest-path companion/Cargo.toml --workspace
 
       # P4-T04. The TypeScript `MemoryStore` conformance suite through `CompanionMemoryStore`

@@ -8,6 +8,7 @@
 
 pub mod config;
 pub mod files;
+pub mod sql;
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, RwLock};
@@ -25,8 +26,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::memory_api::ApiError;
-use config::{FILES_ID, McpConfig, ServerSpec};
+use config::{FILES_ID, McpConfig, SQL_PREFIX, ServerSpec};
 use files::FilesServer;
+use sql::SqlServer;
 
 /// A first `npx` downloads its package before it answers.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -149,6 +151,7 @@ type Client = RunningService<RoleClient, ()>;
 enum Connection {
     Mcp(Arc<Client>),
     Files(Arc<FilesServer>),
+    Sql(Arc<SqlServer>),
 }
 
 #[derive(Clone)]
@@ -209,6 +212,20 @@ impl McpHost {
                 ))
             };
             host.push(FILES_ID, "files", state);
+        }
+        // P5-T05 (ADR-46): each database is a server of its own, opened in the background.
+        for (name, spec) in config.databases {
+            let hosted = host.push(&format!("{SQL_PREFIX}{name}"), "sql", ServerState::Starting);
+            tokio::spawn(async move {
+                hosted.set(match SqlServer::connect(&name, &spec).await {
+                    Ok(server) => ServerState::Ready {
+                        tools: server.tools(),
+                        instructions: Some(server.instructions()),
+                        connection: Connection::Sql(Arc::new(server)),
+                    },
+                    Err(why) => ServerState::Failed(why),
+                });
+            });
         }
         for (name, spec) in config.servers {
             match spec {
@@ -287,13 +304,18 @@ impl McpHost {
             .map(|servers| servers.clone())
             .unwrap_or_default();
         for hosted in servers {
-            if let ServerState::Ready {
-                connection: Connection::Mcp(client),
-                ..
-            } = hosted.state()
-            {
-                hosted.set(ServerState::Failed("the companion stopped".into()));
-                client.cancellation_token().cancel();
+            if let ServerState::Ready { connection, .. } = hosted.state() {
+                match connection {
+                    Connection::Mcp(client) => {
+                        hosted.set(ServerState::Failed("the companion stopped".into()));
+                        client.cancellation_token().cancel();
+                    }
+                    Connection::Sql(server) => {
+                        hosted.set(ServerState::Failed("the companion stopped".into()));
+                        server.close().await;
+                    }
+                    Connection::Files(_) => {}
+                }
             }
         }
     }
@@ -328,7 +350,12 @@ impl McpHost {
                 label: if hosted.id == FILES_ID {
                     "Files".into()
                 } else {
-                    hosted.id.clone()
+                    // A database is named as the person named it.
+                    hosted
+                        .id
+                        .strip_prefix(SQL_PREFIX)
+                        .unwrap_or(&hosted.id)
+                        .to_owned()
                 },
                 id: hosted.id.clone(),
                 kind: hosted.kind,
@@ -378,6 +405,7 @@ impl McpHost {
                     .await
                     .map_err(|error| ApiError::Internal(error.to_string()))
             }
+            Connection::Sql(server) => Ok(server.call(&request.name, &request.arguments).await),
             Connection::Mcp(client) => {
                 let params =
                     CallToolRequestParams::new(request.name).with_arguments(request.arguments);

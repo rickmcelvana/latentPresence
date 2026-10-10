@@ -8,7 +8,11 @@
 //!     "everything": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything"] },
 //!     "remote": { "url": "https://example.com/mcp", "headers": { "Authorization": "Bearer ..." } }
 //!   },
-//!   "files": { "roots": ["C:/Users/me/Documents/notes"] }
+//!   "files": { "roots": ["C:/Users/me/Documents/notes"] },
+//!   "databases": {
+//!     "shop": { "url": "postgres://reader:password@localhost/shop", "description": "orders and stock" },
+//!     "garden": { "path": "C:/Users/me/garden.sqlite", "rowLimit": 50, "timeoutMs": 3000 }
+//!   }
 //! }
 //! ```
 //!
@@ -20,8 +24,50 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use super::sql::backend::Source;
+
 /// The companion's own server: its name is not one the file can use.
 pub const FILES_ID: &str = "files";
+
+/// A database's server id: `sql:<name>`, never one an `mcpServers` name can be.
+pub const SQL_PREFIX: &str = "sql:";
+
+/// Rows a query returns unless the entry says otherwise, and the most it may say.
+pub const DEFAULT_ROW_LIMIT: usize = 100;
+const MAX_ROW_LIMIT: u64 = 1000;
+/// How long a query may run unless the entry says otherwise, and the range it may say.
+pub const DEFAULT_TIMEOUT_MS: u64 = 5000;
+const TIMEOUT_RANGE: std::ops::RangeInclusive<u64> = 100..=60_000;
+
+/// A database the person listed (P5-T05, ADR-46). Its address may hold a password, so its
+/// `Debug` leaves the address out.
+#[derive(Clone, PartialEq, Eq)]
+pub enum DatabaseSpec {
+    Ready {
+        source: Source,
+        description: Option<String>,
+        row_limit: usize,
+        timeout_ms: u64,
+    },
+    /// An entry the companion will not open, and why — reported as failed, not dropped.
+    Invalid(String),
+}
+
+impl std::fmt::Debug for DatabaseSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ready {
+                row_limit,
+                timeout_ms,
+                ..
+            } => write!(
+                f,
+                "DatabaseSpec::Ready {{ rows: {row_limit}, timeout: {timeout_ms} ms }}"
+            ),
+            Self::Invalid(why) => write!(f, "DatabaseSpec::Invalid({why:?})"),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSpec {
@@ -44,6 +90,8 @@ pub struct McpConfig {
     pub servers: Vec<(String, ServerSpec)>,
     /// The folders the Files server may read. Empty: no Files server.
     pub roots: Vec<PathBuf>,
+    /// The databases, by name, in name order; disabled entries are left out.
+    pub databases: Vec<(String, DatabaseSpec)>,
 }
 
 #[derive(Deserialize)]
@@ -53,6 +101,71 @@ struct RawConfig {
     mcp_servers: BTreeMap<String, RawServer>,
     #[serde(default)]
     files: Option<RawFiles>,
+    #[serde(default)]
+    databases: BTreeMap<String, RawDatabase>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RawDatabase {
+    url: Option<String>,
+    path: Option<PathBuf>,
+    description: Option<String>,
+    row_limit: Option<u64>,
+    timeout_ms: Option<u64>,
+    #[serde(default)]
+    disabled: bool,
+}
+
+impl RawDatabase {
+    fn spec(self) -> DatabaseSpec {
+        const SCHEMES: [&str; 5] = [
+            "postgres://",
+            "postgresql://",
+            "mysql://",
+            "mariadb://",
+            "sqlite:",
+        ];
+        let source = match (self.url, self.path) {
+            (Some(url), None) if SCHEMES.iter().any(|scheme| url.starts_with(scheme)) => {
+                Source::Url(url)
+            }
+            // Only the scheme: the rest of an address may be a password.
+            (Some(url), None) => {
+                let scheme = url.split(':').next().unwrap_or("");
+                return DatabaseSpec::Invalid(format!(
+                    "its url starts \"{scheme}:\"; it must be postgres://, mysql://, mariadb:// or sqlite:"
+                ));
+            }
+            (None, Some(path)) => Source::SqliteFile(path),
+            (Some(_), Some(_)) => {
+                return DatabaseSpec::Invalid("it has both a url and a path; give it one".into());
+            }
+            (None, None) => {
+                return DatabaseSpec::Invalid("it needs a url, or a path to a SQLite file".into());
+            }
+        };
+        let row_limit = self.row_limit.unwrap_or(DEFAULT_ROW_LIMIT as u64);
+        if !(1..=MAX_ROW_LIMIT).contains(&row_limit) {
+            return DatabaseSpec::Invalid(format!(
+                "rowLimit {row_limit} is not between 1 and {MAX_ROW_LIMIT}"
+            ));
+        }
+        let timeout_ms = self.timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS);
+        if !TIMEOUT_RANGE.contains(&timeout_ms) {
+            return DatabaseSpec::Invalid(format!(
+                "timeoutMs {timeout_ms} is not between {} and {}",
+                TIMEOUT_RANGE.start(),
+                TIMEOUT_RANGE.end()
+            ));
+        }
+        DatabaseSpec::Ready {
+            source,
+            description: self.description.filter(|text| !text.trim().is_empty()),
+            row_limit: row_limit as usize,
+            timeout_ms,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -118,6 +231,12 @@ impl McpConfig {
         Ok(Self {
             servers,
             roots: raw.files.map(|files| files.roots).unwrap_or_default(),
+            databases: raw
+                .databases
+                .into_iter()
+                .filter(|(_, database)| !database.disabled)
+                .map(|(name, database)| (name, database.spec()))
+                .collect(),
         })
     }
 
@@ -219,6 +338,67 @@ mod tests {
             );
         }
         assert_eq!(config.roots, [PathBuf::from("/home/me/notes")]);
+    }
+
+    #[test]
+    fn databases_are_read_with_their_limits_and_a_bad_entry_says_why_without_its_address() {
+        let config = McpConfig::parse(
+            r#"{
+              "databases": {
+                "shop": { "url": "postgres://reader:s3cret@db/shop", "description": "orders" },
+                "garden": { "path": "C:/garden.sqlite", "rowLimit": 50, "timeoutMs": 3000 },
+                "odd": { "url": "oracle://reader:s3cret@db" },
+                "greedy": { "url": "mysql://db/x", "rowLimit": 100000 },
+                "both": { "url": "sqlite:x.db", "path": "x.db" },
+                "none": {},
+                "off": { "url": "mysql://db/x", "disabled": true }
+              }
+            }"#,
+        )
+        .expect("parses");
+        let spec = |name: &str| {
+            config
+                .databases
+                .iter()
+                .find(|(candidate, _)| candidate == name)
+                .map(|(_, spec)| spec.clone())
+                .expect("listed")
+        };
+        assert_eq!(config.databases.len(), 6);
+        assert_eq!(
+            spec("shop"),
+            DatabaseSpec::Ready {
+                source: Source::Url("postgres://reader:s3cret@db/shop".into()),
+                description: Some("orders".into()),
+                row_limit: DEFAULT_ROW_LIMIT,
+                timeout_ms: DEFAULT_TIMEOUT_MS
+            }
+        );
+        assert!(matches!(
+            spec("garden"),
+            DatabaseSpec::Ready {
+                row_limit: 50,
+                timeout_ms: 3000,
+                ..
+            }
+        ));
+        for (name, why) in [
+            ("odd", "starts \"oracle:\""),
+            ("greedy", "rowLimit 100000"),
+            ("both", "both a url and a path"),
+            ("none", "needs a url"),
+        ] {
+            assert!(
+                matches!(spec(name), DatabaseSpec::Invalid(message) if message.contains(why) && !message.contains("s3cret")),
+                "{name}"
+            );
+        }
+        assert!(!format!("{config:?}").contains("s3cret"));
+        // A misspelt limit is an error, not a limit silently ignored.
+        assert!(
+            McpConfig::parse(r#"{ "databases": { "x": { "url": "sqlite:x", "rowlimit": 5 } } }"#)
+                .is_err()
+        );
     }
 
     #[test]

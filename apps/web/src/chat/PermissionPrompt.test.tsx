@@ -20,19 +20,28 @@ describe('PermissionPrompt', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('names who wants what, with its description and its arguments as JSON', async () => {
+  it('names who wants what, with its description and its arguments one to a line', async () => {
     const gate = prompts();
     render(<PermissionPrompt characterName="Alice" prompts={gate} />);
-    act(() => void ask(gate, 'search', { q: 'vitest', limit: 3 }));
+    act(() => void ask(gate, 'search', { q: 'vitest', limit: 3, filter: { lang: 'ts' } }));
 
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog.textContent).toContain('Alice wants to use DeepWiki · search');
     expect(dialog.textContent).toContain('Does search.');
-    expect(dialog.querySelector('pre')?.textContent).toBe(JSON.stringify({ q: 'vitest', limit: 3 }, null, 2));
+    expect(dialog.querySelector('pre')?.textContent).toBe('q: vitest\nlimit: 3\nfilter: {\n  "lang": "ts"\n}');
     expect(dialog.getAttribute('aria-labelledby')).not.toBeNull();
     expect(dialog.getAttribute('aria-describedby')).not.toBeNull();
     expect(screen.queryByText(/more waiting/)).toBeNull();
     expect(screen.queryByText(/has changed since you allowed it/)).toBeNull();
+  });
+
+  it('shows a query as it was written — the preview before it runs (P5-T05)', async () => {
+    const gate = prompts();
+    render(<PermissionPrompt characterName="Alice" prompts={gate} />);
+    act(() => void ask(gate, 'query', { sql: "SELECT name\nFROM herbs\nWHERE note = 'a \"b\"'" }));
+
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.querySelector('pre')?.textContent).toBe("sql: SELECT name\nFROM herbs\nWHERE note = 'a \"b\"'");
   });
 
   it.each([

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
 import type { PermissionPrompts } from '@latentpresence/core';
+import type { JsonObject } from '@latentpresence/protocol';
 
 /**
  * The card that asks before a tool reaches outside (P5-T01, ADR-42). It shows the oldest ask in
@@ -12,6 +13,15 @@ import type { PermissionPrompts } from '@latentpresence/core';
 export interface PermissionPromptProps {
   readonly prompts: PermissionPrompts;
   readonly characterName: string;
+}
+
+/**
+ * Arguments one to a line, a string as it was written: a database query (P5-T05, ADR-46) is
+ * read here before it runs, and JSON would show its line breaks as `\n` and its quotes escaped.
+ */
+export function shownArguments(args: JsonObject): string {
+  const lines = Object.entries(args).map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value, null, 2)}`);
+  return lines.length === 0 ? '(nothing)' : lines.join('\n');
 }
 
 function typing(): boolean {
@@ -42,7 +52,7 @@ export function PermissionPrompt({ prompts, characterName }: PermissionPromptPro
       </p>
       <div id={detailId}>
         {current.description !== '' && <p className="permission-description">{current.description}</p>}
-        <pre className="permission-args">{JSON.stringify(current.args, null, 2)}</pre>
+        <pre className="permission-args">{shownArguments(current.args)}</pre>
       </div>
       {current.changed && <p className="settings-status settings-status-warn">This tool has changed since you allowed it.</p>}
       <div className="permission-actions">

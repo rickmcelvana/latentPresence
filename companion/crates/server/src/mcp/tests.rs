@@ -243,6 +243,7 @@ async fn files_is_listed_first_and_called_through_the_same_route() {
     let host = McpHost::start(McpConfig {
         servers: vec![],
         roots: vec![root.clone()],
+        ..McpConfig::default()
     });
     let router = router(host);
     let (_, listed) = send(
@@ -321,24 +322,26 @@ fn a_bare_command_is_found_through_pathext_on_windows() {
     );
 }
 
-/// Every answer in the shape the page parses: the committed OpenAPI file, generated from zod.
-#[tokio::test]
-async fn every_answer_matches_the_contract() {
+/// `instance` in the shape the page parses: the committed OpenAPI file, generated from zod.
+fn check(name: &str, instance: &Value) {
     const OPENAPI_JSON: &str =
         include_str!("../../../../../packages/protocol/src/generated/companion.openapi.json");
     let doc: Value = serde_json::from_str(OPENAPI_JSON).expect("valid json");
-    let check = |name: &str, instance: &Value| {
-        let schema = doc
-            .pointer(&format!("/components/schemas/{name}"))
-            .unwrap_or_else(|| panic!("no schema {name}"))
-            .clone();
-        let validator = jsonschema::validator_for(&schema).expect("schema compiles");
-        let errors: Vec<String> = validator
-            .iter_errors(instance)
-            .map(|error| error.to_string())
-            .collect();
-        assert!(errors.is_empty(), "{name}: {errors:?}\n{instance}");
-    };
+    let schema = doc
+        .pointer(&format!("/components/schemas/{name}"))
+        .unwrap_or_else(|| panic!("no schema {name}"))
+        .clone();
+    let validator = jsonschema::validator_for(&schema).expect("schema compiles");
+    let errors: Vec<String> = validator
+        .iter_errors(instance)
+        .map(|error| error.to_string())
+        .collect();
+    assert!(errors.is_empty(), "{name}: {errors:?}\n{instance}");
+}
+
+/// Every answer in the shape the page parses.
+#[tokio::test]
+async fn every_answer_matches_the_contract() {
     let root = std::env::temp_dir().join(format!("lp-mcp-contract-{}", std::process::id()));
     std::fs::create_dir_all(&root).expect("mkdir");
     let host = McpHost::start(
@@ -374,4 +377,182 @@ async fn every_answer_matches_the_contract() {
         check("CompanionError", &body);
     }
     let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A SQLite file with a few herbs in it, written the ordinary way, for a database entry to open.
+async fn garden_file(dir: &std::path::Path) -> std::path::PathBuf {
+    use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+    let path = dir.join("garden.sqlite");
+    let pool = SqlitePool::connect_with(
+        SqliteConnectOptions::new()
+            .filename(&path)
+            .create_if_missing(true),
+    )
+    .await
+    .expect("opens");
+    for statement in [
+        "CREATE TABLE herbs (id INTEGER PRIMARY KEY, name TEXT NOT NULL, price REAL, note TEXT)",
+        "INSERT INTO herbs (name, price, note) VALUES ('Basil', 2.5, 'sun'), ('Sage', 3.0, NULL), ('Yarrow', 1.75, 'a|b')",
+    ] {
+        sqlx::query(statement).execute(&pool).await.expect("writes");
+    }
+    pool.close().await;
+    path
+}
+
+async fn ready(router: &Router, id: &str) -> Value {
+    for _ in 0..100 {
+        let (_, listed) = send(
+            router,
+            Request::get("/mcp/tools")
+                .body(Body::empty())
+                .expect("builds"),
+        )
+        .await;
+        let state = listed["servers"]
+            .as_array()
+            .and_then(|servers| servers.iter().find(|server| server["id"] == id))
+            .map(|server| server["state"].clone());
+        if state != Some(json!("starting")) {
+            return listed;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    panic!("{id} never finished starting");
+}
+
+#[tokio::test]
+async fn a_database_is_its_own_server_and_its_tools_read_but_never_write() {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let file = garden_file(dir.path()).await;
+    let config = McpConfig::parse(
+        &json!({ "databases": {
+            "garden": { "path": file, "description": "what grows where" },
+            "nowhere": { "path": dir.path().join("missing.sqlite") },
+            "odd": { "url": "oracle://reader:s3cret@db" }
+        } })
+        .to_string(),
+    )
+    .expect("parses");
+    let router = router(McpHost::start(config));
+    ready(&router, "sql:nowhere").await;
+    let listed = ready(&router, "sql:garden").await;
+    check("McpToolsResponse", &listed);
+    let server = |id: &str| {
+        listed["servers"]
+            .as_array()
+            .and_then(|servers| servers.iter().find(|server| server["id"] == id))
+            .cloned()
+            .expect("listed")
+    };
+    let garden = server("sql:garden");
+    assert_eq!(
+        (&garden["label"], &garden["kind"], &garden["state"]),
+        (&json!("garden"), &json!("sql"), &json!("ready"))
+    );
+    let instructions = garden["instructions"].as_str().expect("instructions");
+    assert!(
+        instructions.contains("SQLite") && instructions.contains("what grows where"),
+        "{instructions}"
+    );
+    assert_eq!(server("sql:nowhere")["state"], "failed");
+    assert!(
+        server("sql:nowhere")["detail"]
+            .as_str()
+            .is_some_and(|why| why.contains("there is no file"))
+    );
+    let odd = server("sql:odd")["detail"]
+        .as_str()
+        .unwrap_or("")
+        .to_owned();
+    assert!(odd.contains("oracle:") && !odd.contains("s3cret"), "{odd}");
+    let tools: Vec<&str> = listed["tools"]
+        .as_array()
+        .expect("tools")
+        .iter()
+        .filter(|tool| tool["serverId"] == "sql:garden")
+        .filter_map(|tool| tool["name"].as_str())
+        .collect();
+    assert_eq!(tools, ["describe", "query"]);
+
+    let said = |body: &Value| body["text"].as_str().unwrap_or("").to_owned();
+    let (status, all) = send(&router, call_request("sql:garden", "describe", json!({}))).await;
+    assert_eq!(status, StatusCode::OK);
+    check("McpCallResponse", &all);
+    assert!(
+        said(&all).contains("herbs: id integer, name text, price real, note text"),
+        "{}",
+        said(&all)
+    );
+    let (_, one) = send(
+        &router,
+        call_request("sql:garden", "describe", json!({ "table": "HERBS" })),
+    )
+    .await;
+    assert!(
+        said(&one).contains("1 | Basil | 2.5 | sun"),
+        "{}",
+        said(&one)
+    );
+    let (_, asked) = send(
+        &router,
+        call_request(
+            "sql:garden",
+            "query",
+            json!({ "sql": "SELECT name, note FROM herbs WHERE price < 3 ORDER BY name" }),
+        ),
+    )
+    .await;
+    assert_eq!(asked["isError"], false);
+    assert_eq!(
+        said(&asked),
+        "name | note\nBasil | sun\nYarrow | a\\|b\n[2 rows]"
+    );
+    for sql in [
+        "DROP TABLE herbs",
+        "SELECT 1; DELETE FROM herbs",
+        "ATTACH DATABASE 'elsewhere.db' AS e",
+    ] {
+        let (_, refused) = send(
+            &router,
+            call_request("sql:garden", "query", json!({ "sql": sql })),
+        )
+        .await;
+        assert_eq!(refused["isError"], true, "{sql}");
+        assert!(
+            said(&refused).starts_with("Not run: "),
+            "{}",
+            said(&refused)
+        );
+    }
+    let (_, missing) = send(
+        &router,
+        call_request("sql:garden", "describe", json!({ "table": "weeds" })),
+    )
+    .await;
+    assert!(said(&missing).contains("no table called weeds. It has: herbs"));
+    let (_, broken) = send(
+        &router,
+        call_request(
+            "sql:garden",
+            "query",
+            json!({ "sql": "SELECT nope FROM herbs" }),
+        ),
+    )
+    .await;
+    assert!(
+        said(&broken).starts_with("The database said: ") && said(&broken).contains("nope"),
+        "{}",
+        said(&broken)
+    );
+    let (_, counted) = send(
+        &router,
+        call_request(
+            "sql:garden",
+            "query",
+            json!({ "sql": "SELECT COUNT(*) AS herbs FROM herbs" }),
+        ),
+    )
+    .await;
+    assert_eq!(said(&counted), "herbs\n3\n[1 row]");
 }

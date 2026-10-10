@@ -158,12 +158,13 @@ export const IngestJobParamsSchema = z.object({ id: IdSchema });
 
 /**
  * A server the companion runs or reaches for the page (P5-T02, ADR-43): one from its own
- * `mcp.json` (`stdio`, `http`), or its own read-only `files`. `detail` says why one failed.
+ * `mcp.json` (`stdio`, `http`), its own read-only `files`, or one of the person's databases
+ * (`sql`, P5-T05, ADR-46: id `sql:<name>`, label the name). `detail` says why one failed.
  */
 export const McpHostServerSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  kind: z.enum(['stdio', 'http', 'files']),
+  kind: z.enum(['stdio', 'http', 'files', 'sql']),
   state: z.enum(['starting', 'ready', 'failed']),
   detail: z.string().nullable(),
   instructions: z.string().nullable(),
