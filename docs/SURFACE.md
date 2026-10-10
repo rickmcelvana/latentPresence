@@ -2276,3 +2276,26 @@ On the development server (MariaDB 11.8.8):
   her words must accept both.
 - **Tokens:** a citation arrives as several deltas (` [ci`, `te:c66`, `12]` in the page test's
   shape), which is why the chunker waits on a pending `[` after a sentence end.
+
+## Databases for her `query` tool — verified 2026-10-10 (P5-T05)
+
+- **sqlparser 0.63.0** (2026-09-13, Apache-2.0, feature `visitor`): `Visitor` has
+  `pre_visit_statement/query/select/relation/expr`; `Query.locks`, `Query.for_clause`,
+  `Select.into`; `SetExpr::{Insert, Update, Delete, Merge}` wrap a `Statement`, so a
+  data-modifying CTE reaches `pre_visit_statement`. `MySqlDialect` reads `'a\' ; DROP …'` as
+  one literal, as MySQL does by default.
+- **sqlx 0.9.0** features `postgres`, `sqlite-bundled` (not `sqlite`, which adds
+  `sqlite-load-extension`), `rust_decimal` (1.43.0), `uuid` (pinned 1.26.1; 1.28.0 was hours
+  old). `sqlx::query` always sends arguments (`Some(empty)`), so MySQL prepares it; `raw_sql`
+  uses `COM_QUERY`, and the handshake sets `MULTI_STATEMENTS`. `Connection::begin_with`,
+  `PoolConnection::detach`, `LockedSqliteHandle::set_progress_handler(num_ops, FnMut -> bool)`,
+  `SqliteConnectOptions::read_only/pragma`, `PgConnectOptions::options([(k, v)])` all as used.
+  Dynamic SQL needs `AssertSqlSafe`.
+- **MariaDB 11.8.8** in `START TRANSACTION READ ONLY`: every write, DDL and
+  `CREATE TEMPORARY TABLE` → "Cannot execute statement in a READ ONLY transaction";
+  `max_statement_time` (seconds, fractional) → "Query execution was interrupted
+  (max_statement_time exceeded)". A recursive CTE returned 1,001 rows and stopped.
+- **SQLite 3.51.3** (bundled) read-only + `query_only`: "attempt to write a readonly database";
+  the progress handler's interrupt surfaces as an error the backend names as the time limit.
+- **CI:** `postgres:17.11-alpine` (Docker Hub, pushed 2026-09-21) as a service beside MariaDB,
+  `LP_TEST_POSTGRES_URL`.

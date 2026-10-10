@@ -262,6 +262,30 @@ passed 20/20 on invented facts; whether her answers and the sources feel trustwo
 too, for a PDF), she never reads a ref or path aloud, and for the one that is not there she says
 so. **Paste back:** pass/fail per question, and any source marked "not given".
 
+### R-32 · Ask her about a database of yours · ~15 minutes, desktop
+**Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
+The suites and a live run on a test database passed; a real schema is where she will stumble.
+1. If it is Postgres or MySQL/MariaDB, make a user that may only read (the fourth layer). For
+   MariaDB, as an admin:
+   ```sql
+   CREATE USER 'reader'@'%' IDENTIFIED BY 'choose-a-password';
+   GRANT SELECT ON yourdb.* TO 'reader'@'%';
+   ```
+   (A SQLite file needs nothing: it is opened read-only.)
+2. Add it to `mcp.json` (`notepad "$env:APPDATA\latentPresence\mcp.json"`), beside `files`:
+   ```json
+   "databases": {
+     "mine": { "url": "mysql://reader:choose-a-password@your-server/yourdb", "description": "what it holds" }
+   }
+   ```
+   or `"mine": { "path": "C:/path/to/file.sqlite" }`. Restart the companion.
+3. `/settings` → **Tools** → *From the companion* → **List**: "mine" (2 tools), ready.
+4. In `/chat`, ask her three things the database can answer, then ask her to delete something.
+
+**Pass:** each card shows her SQL readably before it runs; her answers match the data; she
+refuses the delete and nothing changed. **Paste back:** pass/fail per question, any SQL she got
+wrong (the card shows it), and anything in `/mcp/tools` or her answers that showed the password.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

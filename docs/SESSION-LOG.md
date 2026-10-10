@@ -699,3 +699,9 @@ Did: ADR-45 accepted (Rick). R-29 failed: `herbs.txt` (12,709 chars) was cut at 
 Left: R-29 retry, R-30, R-31, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T05 custom database connector (main).
 Decisions: ADR-43 amended (Files paging and search_text).
+
+## 2026-10-10 claude — P5-T05 custom database connector
+Did: P5-T05 (d39d9eb): `databases` in `mcp.json` → companion servers `sql:<name>` with `describe` (schema, 3 sample rows) and `query`; guard (sqlparser 0.63, dialect, one reading query, denylist, `/*!` refused), read-only transactions (Postgres, MySQL/MariaDB) or read-only SQLite, server and client time limits, row limit; contract kind `sql`; card shows string arguments as written; CI gains a Postgres 17.11 service. Suites: guard refuses all; past it MariaDB 11.8.8 and SQLite refuse every write. Live glm 10/10.
+Left: R-29 retry, R-30, R-31, R-32 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. Postgres layer runs only in CI.
+Next: P5-T06 web search and browser tools (main).
+Decisions: ADR-46 proposed — needs Rick's accept.

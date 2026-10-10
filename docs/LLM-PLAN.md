@@ -327,9 +327,10 @@ Depends: P5-T03. Retrieval tool returning chunks with ids; prompt policy for cit
 Done when: answers to five private-document questions cite the right chunk.
 **Met:** `pnpm live:cite` — five invented facts across PDF (p. 7, p. 3), DOCX, Markdown and text, glm-5.2:cloud: 20/20 cited the right chunk over four runs; in `/chat` the transcript listed the source with its page. **The in-world screen is P5-T08's** (diegetic displays), from the same hits.
 
-### P5-T05 Custom database connector — owner: main
+### P5-T05 Custom database connector — owner: main (done 2026-10-10, ADR-46 proposed)
 Register MariaDB, MySQL, Postgres, SQLite sources; schema introspection with sampling; read-only text-to-SQL tool with preview and confirm; row and time limits.
 Done when: SQL injection test-suite passes; no write statement can execute.
+**Met:** the guard refuses every case of the suite in every dialect; past the guard every write fails at MariaDB 11.8.8 and SQLite with the rows unchanged (Postgres 17.11 in CI), and a slow query stops at its limit. Live, glm-5.2:cloud 10/10 on a SQLite garden, never attempting a write and ignoring an instruction planted in a row.
 
 ### P5-T06 Web search and browser tools — owner: main
 SearXNG provider, Brave and Tavily BYO providers, Playwright MCP wiring, result rendering on the in-world screen.
