@@ -2299,3 +2299,15 @@ On the development server (MariaDB 11.8.8):
   the progress handler's interrupt surfaces as an error the backend names as the time limit.
 - **CI:** `postgres:17.11-alpine` (Docker Hub, pushed 2026-09-21) as a service beside MariaDB,
   `LP_TEST_POSTGRES_URL`.
+
+## Gemma 4 31b (`gemma4:31b-cloud`, Ollama) and tool calls — measured 2026-10-11 (R-29)
+
+- Offered real tools through Ollama's OpenAI-compatible endpoint, it writes the call as text in
+  about 1 ask in 6 (5 of 36 across two runs), in three shapes:
+  `[tool:files__read_text_file(path="C:\\Users\\…")]` (JSON-escaped),
+  `<call:files__read_text_file path="C:\Users\…"/>` (raw backslashes), and its native syntax
+  leaking through, `[tool_call:files__read_text_file{path:<|"|>C:\Users\…<|"|>}]` (`<|"|>` is
+  its string quote). Nothing runs; the markup is plain text to the page (not one of her tags).
+  In R-29 it then went on to say what the file held.
+- `withLocalTools` now recovers all three (`self/text-calls.ts`): 24/24 asks ended in a call, 3
+  recovered from text, 0 invented. glm-5.2:cloud never wrote one (31 runs).

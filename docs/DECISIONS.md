@@ -1532,7 +1532,7 @@ tag now sits at the end of the sentence before it, and a sentence followed only 
 while a tag is still arriving (` [ci`); other tags keep leading what follows, and a sentence with
 anything else after its space goes to TTS at once, as before.
 
-## ADR-46 The person's databases: companion tool servers, read-only in three layers (proposed 2026-10-10)
+## ADR-46 The person's databases: companion tool servers, read-only in three layers (accepted 2026-10-11)
 
 **Context.** P5-T05: register MariaDB, MySQL, Postgres and SQLite sources; schema introspection
 with sampling; a read-only text-to-SQL tool with preview and confirm; row and time limits. Done

@@ -711,3 +711,9 @@ Did: R-29 retry (Rick): yarrow passed; a file outside the root got an invented a
 Left: R-29 retry 2, R-30, R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T06 web search and browser tools (main).
 Decisions: none (ADR-46 still proposed).
+
+## 2026-10-11 claude — ADR-46 accepted, Gemma's written tool calls
+Did: ADR-46 accepted (Rick). R-29's invented answer was Gemma 4 31b (Rick had switched models). gemma4:31b-cloud writes tool calls as text ~1 in 6 (`[tool:…(…)]`, `<call:… />`, `[tool_call:…{…<|"|>…}]`); d114a19 recovers them in `withLocalTools` (held back from speech, run as calls, what follows dropped): 24/24 live, 0 invented; glm unchanged 6/6. CI green on the previous push.
+Left: R-29 retry 2 (glm and Gemma), R-30, R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T06 web search and browser tools (main).
+Decisions: ADR-46 accepted.

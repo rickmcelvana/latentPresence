@@ -236,6 +236,8 @@ a guessed tool name answered instead of silently ending the answer, and every ca
 notes and plans shown. Restart the page (no companion change), then ask the same question.
 **Pass:** a "did not use …" line and "I can't read that". **Paste back:** if it happens again,
 the model named in Settings → Language model, and every line of the transcript for that turn.
+**Found 2026-10-11:** the model was Gemma 4 31b, which writes a tool call as text about 1 ask in
+6; d114a19 runs those as real calls (24/24 live). Retry with Gemma as well as glm.
 
 ### R-30 · Index your own documents · ~10 minutes, desktop
 **Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
