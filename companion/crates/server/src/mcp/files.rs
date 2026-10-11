@@ -227,34 +227,18 @@ impl FilesServer {
             Ok(read) => read,
             Err(why) => return refuse(why),
         };
-        let lines: Vec<&str> = content.split_inclusive('\n').collect();
-        let total = lines.len();
-        if from_line > total.max(1) {
+        let Some(LinesPage { page, next, total }) = lines_page(&content, from_line, PAGE_BYTES)
+        else {
+            let total = content.split_inclusive('\n').count();
             return refuse(format!(
                 "{} has {total} lines; there is no line {from_line}.",
                 shown(&file)
             ));
-        }
-        let first = from_line - 1;
-        let mut page = String::new();
-        let mut next = first;
-        while next < total && (next == first || page.len() + lines[next].len() <= PAGE_BYTES) {
-            page.push_str(lines[next]);
-            next += 1;
-        }
-        // One line longer than a page: its start, at a character boundary.
-        if page.len() > PAGE_BYTES {
-            let mut at = PAGE_BYTES;
-            while !page.is_char_boundary(at) {
-                at -= 1;
-            }
-            page.truncate(at);
-            page.push_str("… [this line goes on]");
-        }
-        if first == 0 && next == total && size.is_none() {
+        };
+        if from_line == 1 && next == total && size.is_none() {
             return text(content);
         }
-        let mut out = page.trim_end().to_owned();
+        let mut out = page;
         if next < total {
             out.push_str(&format!(
                 "\n[lines {from_line}–{next} of {total}. Not the whole file: read on with from_line {}.]",
@@ -381,8 +365,47 @@ impl FilesServer {
     }
 }
 
+/// One page of whole lines of `content` from line `from_line` (1-based), trimmed at its end.
+pub struct LinesPage {
+    pub page: String,
+    /// The line after the page (1-based), or `total` when the page reached the end.
+    pub next: usize,
+    pub total: usize,
+}
+
+/// A page of `content` within `page_bytes`, starting at `from_line`; `None` when there is no such
+/// line. Shared by Files and the web's `read_page`, so both read on the same way.
+pub fn lines_page(content: &str, from_line: usize, page_bytes: usize) -> Option<LinesPage> {
+    let lines: Vec<&str> = content.split_inclusive('\n').collect();
+    let total = lines.len();
+    if from_line == 0 || from_line > total.max(1) {
+        return None;
+    }
+    let first = from_line - 1;
+    let mut page = String::new();
+    let mut next = first;
+    while next < total && (next == first || page.len() + lines[next].len() <= page_bytes) {
+        page.push_str(lines[next]);
+        next += 1;
+    }
+    // One line longer than a page: its start, at a character boundary.
+    if page.len() > page_bytes {
+        let mut at = page_bytes;
+        while !page.is_char_boundary(at) {
+            at -= 1;
+        }
+        page.truncate(at);
+        page.push_str("… [this line goes on]");
+    }
+    Some(LinesPage {
+        page: page.trim_end().to_owned(),
+        next,
+        total,
+    })
+}
+
 /// `from_line` as given: a number, or a number in a string, as some models send it.
-fn from_line(value: Option<&Value>) -> Result<usize, String> {
+pub fn from_line(value: Option<&Value>) -> Result<usize, String> {
     let line = match value {
         None | Some(Value::Null) => return Ok(1),
         Some(Value::Number(number)) => number.as_u64().or_else(|| {

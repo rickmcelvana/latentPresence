@@ -32,6 +32,80 @@ pub const FILES_ID: &str = "files";
 /// A database's server id: `sql:<name>`, never one an `mcpServers` name can be.
 pub const SQL_PREFIX: &str = "sql:";
 
+/// The companion's web server (P5-T06, ADR-47): its name is not one the file can use either.
+pub const WEB_ID: &str = "web";
+
+/// `web` in `mcp.json`: a search provider (the person's SearXNG, or Tavily or Brave with their
+/// key), and whether she may read pages. The key is never printed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WebSpec {
+    Ready {
+        search: Option<super::web::search::Provider>,
+        read_pages: bool,
+    },
+    Invalid(String),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct RawWeb {
+    search: Option<RawSearch>,
+    read_pages: Option<bool>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawSearch {
+    provider: String,
+    url: Option<String>,
+    key: Option<String>,
+}
+
+impl RawWeb {
+    fn spec(self) -> WebSpec {
+        use super::web::search::Provider;
+        let read_pages = self.read_pages.unwrap_or(true);
+        let search = match self.search {
+            None => None,
+            Some(raw) => {
+                let key = raw.key.filter(|key| !key.trim().is_empty());
+                match (
+                    raw.provider.trim().to_ascii_lowercase().as_str(),
+                    raw.url,
+                    key,
+                ) {
+                    ("searxng", Some(url), _)
+                        if url.starts_with("http://") || url.starts_with("https://") =>
+                    {
+                        Some(Provider::Searxng { url })
+                    }
+                    ("searxng", _, _) => {
+                        return WebSpec::Invalid(
+                            "searxng needs the url of the instance, http or https".into(),
+                        );
+                    }
+                    ("tavily", _, Some(key)) => Some(Provider::Tavily { key }),
+                    ("brave", _, Some(key)) => Some(Provider::Brave { key }),
+                    ("tavily" | "brave", _, None) => {
+                        return WebSpec::Invalid(format!("{} needs its key", raw.provider.trim()));
+                    }
+                    (other, _, _) => {
+                        return WebSpec::Invalid(format!(
+                            "search provider \"{other}\" is not searxng, tavily or brave"
+                        ));
+                    }
+                }
+            }
+        };
+        if search.is_none() && !read_pages {
+            return WebSpec::Invalid(
+                "it has no search and readPages is false, so there is nothing to offer".into(),
+            );
+        }
+        WebSpec::Ready { search, read_pages }
+    }
+}
+
 /// Rows a query returns unless the entry says otherwise, and the most it may say.
 pub const DEFAULT_ROW_LIMIT: usize = 100;
 const MAX_ROW_LIMIT: u64 = 1000;
@@ -92,6 +166,8 @@ pub struct McpConfig {
     pub roots: Vec<PathBuf>,
     /// The databases, by name, in name order; disabled entries are left out.
     pub databases: Vec<(String, DatabaseSpec)>,
+    /// The web server, when `web` is in the file.
+    pub web: Option<WebSpec>,
 }
 
 #[derive(Deserialize)]
@@ -103,6 +179,8 @@ struct RawConfig {
     files: Option<RawFiles>,
     #[serde(default)]
     databases: BTreeMap<String, RawDatabase>,
+    #[serde(default)]
+    web: Option<RawWeb>,
 }
 
 #[derive(Deserialize)]
@@ -197,9 +275,9 @@ impl McpConfig {
             .into_iter()
             .filter(|(_, server)| !server.disabled)
             .map(|(name, server)| {
-                let spec = if name == FILES_ID {
+                let spec = if name == FILES_ID || name == WEB_ID {
                     ServerSpec::Invalid(format!(
-                        "\"{FILES_ID}\" is the companion's own server; give this one another name"
+                        "\"{name}\" is the companion's own server; give this one another name"
                     ))
                 } else {
                     match (server.command, server.url) {
@@ -237,6 +315,7 @@ impl McpConfig {
                 .filter(|(_, database)| !database.disabled)
                 .map(|(name, database)| (name, database.spec()))
                 .collect(),
+            web: raw.web.map(RawWeb::spec),
         })
     }
 
@@ -421,6 +500,74 @@ mod tests {
         assert!(
             McpConfig::parse(r#"{ "databases": { "x": { "url": "sqlite:x", "rowlimit": 5 } } }"#)
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn the_web_entry_names_a_provider_and_says_what_is_missing_without_the_key() {
+        use crate::mcp::web::search::Provider;
+        let web = |json: &str| McpConfig::parse(json).expect("parses").web;
+        assert_eq!(
+            web(
+                r#"{ "web": { "search": { "provider": "SearXNG", "url": "http://10.0.0.1:6699" } } }"#
+            ),
+            Some(WebSpec::Ready {
+                search: Some(Provider::Searxng {
+                    url: "http://10.0.0.1:6699".into()
+                }),
+                read_pages: true
+            })
+        );
+        assert_eq!(
+            web(
+                r#"{ "web": { "search": { "provider": "tavily", "key": "tvly-s3cret" }, "readPages": false } }"#
+            ),
+            Some(WebSpec::Ready {
+                search: Some(Provider::Tavily {
+                    key: "tvly-s3cret".into()
+                }),
+                read_pages: false
+            })
+        );
+        assert_eq!(
+            web(r#"{ "web": {} }"#),
+            Some(WebSpec::Ready {
+                search: None,
+                read_pages: true
+            })
+        );
+        assert_eq!(web("{}"), None);
+        for (json, says) in [
+            (
+                r#"{ "web": { "search": { "provider": "brave" } } }"#,
+                "brave needs its key",
+            ),
+            (
+                r#"{ "web": { "search": { "provider": "searxng" } } }"#,
+                "needs the url",
+            ),
+            (
+                r#"{ "web": { "search": { "provider": "bing", "key": "k" } } }"#,
+                "\"bing\" is not",
+            ),
+            (r#"{ "web": { "readPages": false } }"#, "nothing to offer"),
+        ] {
+            assert!(
+                matches!(web(json), Some(WebSpec::Invalid(why)) if why.contains(says)),
+                "{json}"
+            );
+        }
+        let printed = format!(
+            "{:?}",
+            McpConfig::parse(
+                r#"{ "web": { "search": { "provider": "tavily", "key": "tvly-s3cret" } } }"#
+            )
+        );
+        assert!(!printed.contains("s3cret"), "{printed}");
+        let named =
+            McpConfig::parse(r#"{ "mcpServers": { "web": { "command": "x" } } }"#).expect("parses");
+        assert!(
+            matches!(&named.servers[0].1, ServerSpec::Invalid(why) if why.contains("\"web\" is the companion's own"))
         );
     }
 

@@ -556,3 +556,163 @@ async fn a_database_is_its_own_server_and_its_tools_read_but_never_write() {
     .await;
     assert_eq!(said(&counted), "herbs\n3\n[1 row]");
 }
+
+/// A SearXNG and a web page on loopback: `/search` answers JSON for its query, `/page` is a long
+/// HTML page, `/hop` redirects to the page.
+async fn fake_web() -> String {
+    use axum::extract::Query;
+    use axum::response::{Html, Redirect};
+    let app = Router::new()
+        .route(
+            "/search",
+            get(|Query(params): Query<std::collections::HashMap<String, String>>| async move {
+                assert_eq!(params.get("format").map(String::as_str), Some("json"));
+                let query = params.get("q").cloned().unwrap_or_default();
+                Json(json!({ "query": query, "results": [
+                    { "url": "https://weather.example/halifax", "title": "Halifax weather", "content": format!("Cloudy for {query}, 12 C."), "publishedDate": "2026-10-11" },
+                    { "url": "https://forecast.example/ns", "title": "Nova Scotia forecast", "content": "Rain tonight." }
+                ] }))
+            }),
+        )
+        .route(
+            "/page",
+            get(|| async {
+                let rows: String = (1..=400).map(|n| format!("<p>Hour {n}: twelve degrees and cloudy.</p>")).collect();
+                Html(format!("<html><head><title>Hourly forecast</title></head><body>{rows}</body></html>"))
+            }),
+        )
+        .route("/hop", get(|| async { Redirect::temporary("/page") }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("binds");
+    let address = listener.local_addr().expect("address");
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    format!("http://{address}")
+}
+
+#[tokio::test]
+async fn the_web_searches_reads_pages_with_refs_to_cite_and_never_reads_this_machine() {
+    let base = fake_web().await;
+    let host = SharedHost::default();
+    let unguarded = WebServer::unguarded(
+        Some((web::search::Provider::Searxng { url: base.clone() }, None)),
+        true,
+    )
+    .expect("builds");
+    host.push(
+        WEB_ID,
+        "web",
+        ServerState::Ready {
+            tools: unguarded.tools(),
+            instructions: Some(unguarded.instructions()),
+            connection: Connection::Web(Arc::new(unguarded)),
+        },
+    );
+    let router = router(host);
+    let (_, listed) = send(
+        &router,
+        Request::get("/mcp/tools")
+            .body(Body::empty())
+            .expect("builds"),
+    )
+    .await;
+    check("McpToolsResponse", &listed);
+    assert_eq!(listed["servers"][0]["label"], "Web");
+    assert_eq!(listed["servers"][0]["kind"], "web");
+
+    let (status, searched) = send(
+        &router,
+        call_request(
+            WEB_ID,
+            "search",
+            json!({ "query": "weather halifax", "limit": "1" }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    check("McpCallResponse", &searched);
+    let found = &searched["structured"]["found"];
+    assert_eq!(found.as_array().map(Vec::len), Some(1), "{searched}");
+    assert_eq!(
+        found[0]["ref"],
+        json!(web::reference("https://weather.example/halifax"))
+    );
+    assert_eq!(found[0]["site"], "weather.example");
+    assert_eq!(found[0]["snippet"], "Cloudy for weather halifax, 12 C.");
+    assert!(
+        searched["structured"]["cite"]
+            .as_str()
+            .is_some_and(|rule| rule.contains("[cite:"))
+    );
+    assert!(searched["text"].as_str().is_some_and(|text| {
+        text.contains("Halifax weather — https://weather.example/halifax (2026-10-11)")
+    }));
+
+    let (_, page) = send(
+        &router,
+        call_request(WEB_ID, "read_page", json!({ "url": format!("{base}/hop") })),
+    )
+    .await;
+    let read = &page["structured"];
+    assert_eq!(read["title"], "Hourly forecast", "{page}");
+    assert_eq!(read["url"], json!(format!("{base}/page")));
+    assert_eq!(read["ref"], json!(web::reference(&format!("{base}/page"))));
+    assert!(
+        read["text"]
+            .as_str()
+            .is_some_and(|text| text.starts_with("Hour 1: twelve degrees"))
+    );
+    let more = read["more"]
+        .as_str()
+        .expect("a long page says how to read on")
+        .to_owned();
+    let next: usize = more
+        .trim_start_matches("Not the whole page: read on with from_line ")
+        .trim_end_matches('.')
+        .parse()
+        .expect("a line number");
+    let (_, on) = send(
+        &router,
+        call_request(
+            WEB_ID,
+            "read_page",
+            json!({ "url": format!("{base}/page"), "from_line": next }),
+        ),
+    )
+    .await;
+    assert!(
+        on["structured"]["lines"]
+            .as_str()
+            .is_some_and(|lines| lines.starts_with(&format!("{next}–")))
+    );
+    assert!(
+        serde_json::to_string(&page["structured"])
+            .expect("json")
+            .len()
+            < 8000
+    );
+
+    // The guarded server, as the companion runs it: nothing on this machine or its network.
+    let guarded = WebServer::new(None, true).expect("builds");
+    for address in [
+        format!("{base}/page"),
+        "http://localhost:8787/health".into(),
+        "http://10.0.0.1:6699/".into(),
+        "file:///C:/Windows/win.ini".into(),
+    ] {
+        let refused = guarded
+            .call(
+                "read_page",
+                json!({ "url": address }).as_object().expect("object"),
+            )
+            .await;
+        assert!(refused.is_error, "{address} was read");
+        assert!(
+            refused.text.contains("not the internet")
+                || refused.text.contains("only http and https"),
+            "{address}: {}",
+            refused.text
+        );
+    }
+    assert!(guarded.tools().iter().all(|tool| tool.name != "search"));
+}

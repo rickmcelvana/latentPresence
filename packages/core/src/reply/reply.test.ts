@@ -45,7 +45,8 @@ describe('Reply — a complete answer', () => {
 
     expect(outcome()).toEqual({ status: 'complete', text: 'Hello there. How are you?' });
     expect(events.map((e) => (e.type === 'token' ? `token:${e.text}` : `${e.type}:${e.index}`))).toEqual([
-      'token:Hello there. ', 'sentence:0', 'token:How are you?', 'sentence:1',
+      // A trailing space is shown with the next text (P5-T06): the joined text is the same.
+      'token:Hello there.', 'sentence:0', 'token: How are you?', 'sentence:1',
       'audio-started:0', 'audio-ended:0', 'audio-started:1', 'audio-ended:1',
     ]);
     expect(sink.listenerCount).toBe(0);

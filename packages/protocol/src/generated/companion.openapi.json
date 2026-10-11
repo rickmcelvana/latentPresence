@@ -3475,7 +3475,8 @@
                     "stdio",
                     "http",
                     "files",
-                    "sql"
+                    "sql",
+                    "web"
                   ]
                 },
                 "state": {

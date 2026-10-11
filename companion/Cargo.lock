@@ -1415,11 +1415,13 @@ dependencies = [
  "rmcp",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "sqlparser",
  "sqlx",
  "tempfile",
  "tokio",
  "tower",
+ "url",
  "zip",
 ]
 
@@ -2277,6 +2279,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",

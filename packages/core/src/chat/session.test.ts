@@ -89,7 +89,7 @@ describe('ChatSession — a typed turn', () => {
     const r = rig(llm, { system: 'You are Alice.' });
     r.chat.send('one');
     await settle();
-    r.chat.stop(); // only "First " was shown
+    r.chat.stop(); // only "First" was shown: a trailing space waits for the next text
     gate.resolve();
     r.chat.send('two');
     await settle();
@@ -97,7 +97,7 @@ describe('ChatSession — a typed turn', () => {
     expect(llm.requests[1]?.messages).toEqual([
       { role: 'system', content: 'You are Alice.' },
       { role: 'user', content: 'one' },
-      { role: 'assistant', content: 'First ', toolCalls: [] },
+      { role: 'assistant', content: 'First', toolCalls: [] },
       { role: 'user', content: 'two' },
     ]);
     expect(llm.requests[1]).toMatchObject({ modelId: 'm', temperature: 0.7, tools: [], maxOutputTokens: null });
@@ -114,8 +114,8 @@ describe('ChatSession — stopping', () => {
     r.chat.stop();
 
     expect(llm.signals[0]?.aborted).toBe(true);
-    expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('Half ');
-    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Half ', spokenPrefix: 'Half ' });
+    expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('Half');
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Half', spokenPrefix: 'Half' });
     expect(r.machine.getState()).toBe('listening');
 
     // The model finishing late changes nothing.
@@ -267,8 +267,8 @@ describe('ChatSession — spoken answers (P2-T08)', () => {
     await settle();
     r.chat.stop();
 
-    expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('Half ');
-    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Half ', spokenPrefix: 'Half ' });
+    expect(r.of('assistant.interrupted')[0]?.spokenPrefix).toBe('Half');
+    expect(r.of('assistant.message')[0]?.entry).toMatchObject({ text: 'Half', spokenPrefix: 'Half' });
     expect(r.of('assistant.audio.started')).toHaveLength(0);
     expect(r.machine.getState()).toBe('listening');
     gate.resolve();
@@ -305,7 +305,7 @@ describe('ChatSession — spoken answers (P2-T08)', () => {
     r.chat.send('two');
     await settle();
     expect(r.tts.requests).toHaveLength(0);
-    expect(r.of('assistant.message').map((event) => event.entry.text)).toEqual(['Spoken ', 'Typed.']);
+    expect(r.of('assistant.message').map((event) => event.entry.text)).toEqual(['Spoken', 'Typed.']);
     expect(r.machine.getState()).toBe('listening');
   });
 

@@ -1,4 +1,4 @@
-import { TAG_PATTERN, TAG_SCAN_LIMIT } from './chunker';
+import { CLOSING, TAG_PATTERN, TAG_SCAN_LIMIT } from './chunker';
 
 /**
  * Keeps inline tags out of the token stream (P1-T12).
@@ -36,6 +36,14 @@ export class TagFilter {
    * different calls and this cannot be handled inside one.
    */
   private trimAfterTag = false;
+  /**
+   * A space at the end of what was shown, held until the next text: `fourteen [cite:w1a2b3c].`
+   * must read `fourteen.`, and the space before the tag arrives before anyone knows a tag and a
+   * full stop follow it (P5-T06, seen live).
+   */
+  private heldSpace = false;
+  /** A tag was lifted out while a space was held. */
+  private tagSinceSpace = false;
 
   /** Feed one delta; get back what is safe to show. May be empty. */
   push(text: string): string {
@@ -47,10 +55,20 @@ export class TagFilter {
       if (this.trimAfterTag) {
         // As the chunker does: one space survives a removed tag, and an answer that
         // opens with a tag does not open with the space that followed it.
-        while (piece.length > 0 && isSpace(piece.charAt(0)) && (this.lastShown === '' || isSpace(this.lastShown))) {
+        while (piece.length > 0 && isSpace(piece.charAt(0)) && (this.lastShown === '' || isSpace(this.lastShown) || this.heldSpace)) {
           piece = piece.slice(1);
         }
         if (piece !== '') this.trimAfterTag = false;
+      }
+      if (piece === '') return;
+      if (this.heldSpace) {
+        this.heldSpace = false;
+        if (!(this.tagSinceSpace && CLOSING.test(piece.charAt(0)))) piece = ` ${piece}`;
+      }
+      this.tagSinceSpace = false;
+      if (isSpace(piece.charAt(piece.length - 1))) {
+        piece = piece.slice(0, -1);
+        this.heldSpace = true;
       }
       if (piece === '') return;
       out += piece;
@@ -68,6 +86,7 @@ export class TagFilter {
       if (match !== null) {
         buffer = rest.slice(match[0].length);
         this.trimAfterTag = true;
+        this.tagSinceSpace = this.heldSpace;
         continue;
       }
       // Not a tag yet. Long enough to be sure, or already closed: it is literal text.
@@ -88,8 +107,10 @@ export class TagFilter {
    * model write.
    */
   flush(): string {
-    const rest = this.held;
+    // A space held at the very end is said by nothing; one before held text is kept.
+    const rest = this.held === '' ? '' : `${this.heldSpace ? ' ' : ''}${this.held}`;
     this.held = '';
+    this.heldSpace = false;
     if (rest !== '') this.lastShown = rest.charAt(rest.length - 1);
     return rest;
   }

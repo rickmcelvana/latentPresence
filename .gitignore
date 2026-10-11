@@ -54,3 +54,6 @@ docs/runs/media/
 
 # Downloaded animation packs (R-12): only the retargeted .vrma and the manifest are committed
 assets/clips/source/
+
+# Playwright MCP (P5-T06) writes page snapshots into the working folder unless told --output-dir.
+.playwright-mcp/

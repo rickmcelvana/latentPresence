@@ -86,7 +86,14 @@ function TranscriptSources({ citations, sources }: { citations: readonly string[
               <details className="transcript-source-details">
                 <summary>{`${index + 1}. ${found.title}${where}`}</summary>
                 <blockquote className="transcript-source-quote">{found.text}</blockquote>
-                <code className="transcript-source-path">{found.source}</code>
+                {/^https?:\/\//u.test(found.source) ? (
+                  // P5-T06: a web source opens in a tab of its own, telling it nothing of this page.
+                  <a className="transcript-source-link" href={found.source} rel="noopener noreferrer" target="_blank">
+                    {found.source}
+                  </a>
+                ) : (
+                  <code className="transcript-source-path">{found.source}</code>
+                )}
               </details>
             </li>
           );

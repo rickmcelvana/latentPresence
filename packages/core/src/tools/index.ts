@@ -12,3 +12,4 @@ export {
   type ToolPolicy,
 } from './gate';
 export { MCP_RESULT_LIMIT, mcpToolName, mcpTools, splitToolName, toolResultOf, type ConnectedToolServer, type McpToolsOptions } from './mcp';
+export { citedSources, type CitedSource } from './sources';

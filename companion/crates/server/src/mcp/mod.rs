@@ -9,6 +9,7 @@
 pub mod config;
 pub mod files;
 pub mod sql;
+pub mod web;
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, RwLock};
@@ -26,9 +27,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::memory_api::ApiError;
-use config::{FILES_ID, McpConfig, SQL_PREFIX, ServerSpec};
+use config::{FILES_ID, McpConfig, SQL_PREFIX, ServerSpec, WEB_ID, WebSpec};
 use files::FilesServer;
 use sql::SqlServer;
+use web::WebServer;
 
 /// A first `npx` downloads its package before it answers.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -152,6 +154,7 @@ enum Connection {
     Mcp(Arc<Client>),
     Files(Arc<FilesServer>),
     Sql(Arc<SqlServer>),
+    Web(Arc<WebServer>),
 }
 
 #[derive(Clone)]
@@ -212,6 +215,21 @@ impl McpHost {
                 ))
             };
             host.push(FILES_ID, "files", state);
+        }
+        // P5-T06 (ADR-47): the web, when the file has a `web` entry.
+        if let Some(spec) = config.web {
+            let state = match spec {
+                WebSpec::Ready { search, read_pages } => match WebServer::new(search, read_pages) {
+                    Ok(server) => ServerState::Ready {
+                        tools: server.tools(),
+                        instructions: Some(server.instructions()),
+                        connection: Connection::Web(Arc::new(server)),
+                    },
+                    Err(why) => ServerState::Failed(why),
+                },
+                WebSpec::Invalid(why) => ServerState::Failed(format!("mcp.json: {why}")),
+            };
+            host.push(WEB_ID, "web", state);
         }
         // P5-T05 (ADR-46): each database is a server of its own, opened in the background.
         for (name, spec) in config.databases {
@@ -314,7 +332,7 @@ impl McpHost {
                         hosted.set(ServerState::Failed("the companion stopped".into()));
                         server.close().await;
                     }
-                    Connection::Files(_) => {}
+                    Connection::Files(_) | Connection::Web(_) => {}
                 }
             }
         }
@@ -349,6 +367,8 @@ impl McpHost {
             response.servers.push(ServerOut {
                 label: if hosted.id == FILES_ID {
                     "Files".into()
+                } else if hosted.id == WEB_ID {
+                    "Web".into()
                 } else {
                     // A database is named as the person named it.
                     hosted
@@ -406,6 +426,7 @@ impl McpHost {
                     .map_err(|error| ApiError::Internal(error.to_string()))
             }
             Connection::Sql(server) => Ok(server.call(&request.name, &request.arguments).await),
+            Connection::Web(server) => Ok(server.call(&request.name, &request.arguments).await),
             Connection::Mcp(client) => {
                 let params =
                     CallToolRequestParams::new(request.name).with_arguments(request.arguments);

@@ -68,6 +68,8 @@ export interface SentenceChunkerOptions {
 
 /** What ends a sentence. Exported so a test can hold it against the set below. */
 export const terminators = new Set(['.', '!', '?', '。', '！', '？']);
+/** Punctuation that closes onto the word before it: no space goes before it. */
+export const CLOSING = /^[.,!?;:…)\]。，！？]$/u;
 
 /** CJK sentence marks carry their own spacing: nothing follows them but the next
  * sentence, so demanding whitespace after one would never split Japanese at all. */
@@ -187,6 +189,8 @@ export class SentenceChunker {
   private nextIndex = 0;
   private inFence = false;
   private inCode = false;
+  /** A tag was lifted out after a space, and only whitespace has come since. */
+  private spaceBeforeTag = false;
 
   constructor(options: SentenceChunkerOptions = {}) {
     this.maxChars = options.maxChars ?? 200;
@@ -254,6 +258,7 @@ export class SentenceChunker {
           i += match[0].length;
           // `Hello [emote:joy] world` must not become `Hello  world`.
           while (isWhitespace(this.buffer.charAt(i)) && this.endsWithSpace()) i += 1;
+          this.spaceBeforeTag = this.endsWithSpace();
           continue;
         }
         // No match: either it is not a tag, or the tag has not finished arriving.
@@ -263,6 +268,9 @@ export class SentenceChunker {
         continue;
       }
 
+      // `fourteen [cite:w6a155b].` must not be said as `fourteen .` (P5-T06, seen live).
+      if (this.spaceBeforeTag && CLOSING.test(ch) && this.endsWithSpace()) this.dropTrailingSpace();
+      if (!isWhitespace(ch)) this.spaceBeforeTag = false;
       this.append(ch);
       if (!this.inCode && !this.inFence && terminators.has(ch)) {
         this.candidates.push(this.spoken.length - 1);
@@ -270,6 +278,13 @@ export class SentenceChunker {
       i += 1;
     }
     this.buffer = this.buffer.slice(i);
+  }
+
+  /** Take back the space before a lifted tag; a tag that sat after it moves back with it. */
+  private dropTrailingSpace(): void {
+    this.spoken = this.spoken.slice(0, -1);
+    const end = this.spoken.length;
+    this.tags = this.tags.map((tag) => (tag.offset > end ? { ...tag, offset: end } : tag));
   }
 
   private endsWithSpace(): boolean {

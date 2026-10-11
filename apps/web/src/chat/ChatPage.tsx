@@ -16,6 +16,7 @@ import {
   planTools,
   selfNoteTools,
   toolResultOf,
+  citedSources,
   withLocalTools,
   attachUserAffect,
   renderSystemPrompt,
@@ -30,7 +31,7 @@ import { ListeningReactor } from '@latentpresence/avatar';
 import type { ConversationEvent, LLMProvider, ModelDescriptor } from '@latentpresence/protocol';
 import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
-import { TranscriptPanel } from '../transcript/TranscriptPanel';
+import { TranscriptPanel, type CitationSource } from '../transcript/TranscriptPanel';
 import { useTranscript } from '../transcript/useTranscript';
 import { MemoryPanel } from '../memory/MemoryPanel';
 import { PlansPanel } from '../plan/PlansPanel';
@@ -270,7 +271,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, webSources, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
@@ -283,6 +284,8 @@ function ConfiguredChatPage({
     // P5-T04 (ADR-45): her search of the person's documents, once the companion says it has
     // some (the effect below), and the hits she was given — what the transcript cites from.
     const builtDocsHolder: { connected: ConnectedDocuments | null } = { connected: null };
+    // P5-T06 (ADR-47): what the web gave her to cite, beside her documents' hits.
+    const builtWebSources = new Map<string, CitationSource>();
     const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
     const grants = settingsToolGrants(deps.storage);
     const builtMachine = new ConversationMachine({
@@ -339,6 +342,7 @@ function ConfiguredChatPage({
       },
       onCall: (call, result) => {
         if (!outside(call.name)) return;
+        for (const found of citedSources(result)) builtWebSources.set(found.ref, found);
         const at = new Date().toISOString();
         builtMachine.dispatch({ type: 'tool.result', sessionId: builtSessionId, at, result: toolResultOf(call, result, at) });
       },
@@ -358,6 +362,7 @@ function ConfiguredChatPage({
       selfHolder: builtSelfHolder,
       toolsHolder: builtToolsHolder,
       docsHolder: builtDocsHolder,
+      webSources: builtWebSources,
       permissionPrompts: builtPrompts,
       machine: builtMachine,
       chat: builtChat,
@@ -478,7 +483,7 @@ function ConfiguredChatPage({
       docsHolder.connected = null;
     };
   }, [companionUrl, connectDocs, deps.fetch, docsHolder, machine, sessionId, settings.documents.search]);
-  const citationSource = useCallback((ref: string) => docsHolder.connected?.sources.get(ref), [docsHolder]);
+  const citationSource = useCallback((ref: string) => docsHolder.connected?.sources.get(ref) ?? webSources.get(ref), [docsHolder, webSources]);
 
   // `stop`, not `dispose`: StrictMode runs this cleanup once on mount in development, and a
   // disposed session refuses every later message — the page would never answer.

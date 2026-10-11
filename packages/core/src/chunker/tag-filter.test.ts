@@ -36,11 +36,19 @@ describe('TagFilter', () => {
     expect(stream(['I read [1] and [emote:nonsense here.'])).toBe('I read [1] and [emote:nonsense here.');
   });
 
+  it('shows no space before the punctuation a tag stood in front of, however the stream splits it (P5-T06)', () => {
+    expect(stream(['high of fourteen [cite:w6a155b]. Next.'])).toBe('high of fourteen. Next.');
+    expect(stream(['high of fourteen ', '[cite:w6a', '155b]', '.', ' Next.'])).toBe('high of fourteen. Next.');
+    expect(stream(['Rain later [cite:wc6706f] , then dry.'])).toBe('Rain later, then dry.');
+    expect(stream(['So ', '[emote:happy]', ' glad.'])).toBe('So glad.');
+    expect(stream(['a ', 'b'])).toBe('a b');
+  });
+
   it('gives back a partial tag the stream ended on rather than eating it', () => {
     // An answer that really ends "[emo" is an answer that ends "[emo".
     const filter = new TagFilter();
-    expect(filter.push('Done. [emo')).toBe('Done. ');
-    expect(filter.flush()).toBe('[emo');
+    expect(filter.push('Done. [emo')).toBe('Done.');
+    expect(filter.flush()).toBe(' [emo');
   });
 
   it('releases an unclosed bracket once it is too long to be a tag', () => {

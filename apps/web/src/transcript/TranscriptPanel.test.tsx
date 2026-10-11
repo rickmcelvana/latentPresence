@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TranscriptLine } from '@latentpresence/core';
-import { TranscriptPanel } from './TranscriptPanel';
+import { TranscriptPanel, type CitationSource } from './TranscriptPanel';
 
 afterEach(cleanup);
 
@@ -86,6 +86,9 @@ const lookup = (ref: string) =>
       ? { title: 'Notes', locator: null, source: 'C:/docs/notes.md', text: 'The pump lives under the stairs.' }
       : undefined;
 
+const webPage = (ref: string): CitationSource | undefined =>
+  ref === 'w1a2b3c' ? { title: 'Halifax weather', locator: 'weather.example', source: 'https://weather.example/halifax', text: 'Cloudy, 12 C.' } : undefined;
+
 describe('TranscriptPanel — sources (P5-T04, ADR-45)', () => {
   const CITED: TranscriptLine = {
     ...ASSISTANT_LINE,
@@ -122,6 +125,17 @@ describe('TranscriptPanel — sources (P5-T04, ADR-45)', () => {
     render(<TranscriptPanel characterName="Alice" lines={[CITED]} onClear={() => {}} />);
     expect(screen.getByText('1. A source she was not given')).toBeTruthy();
     expect(screen.getByText('2. A source she was not given')).toBeTruthy();
+  });
+
+  it('opens a web source to its snippet and a link to the page, in a tab that is told nothing (P5-T06)', () => {
+    const web: TranscriptLine = { ...CITED, id: 'a-web', citations: ['w1a2b3c'] };
+    const { container } = render(<TranscriptPanel characterName="Alice" lines={[web]} onClear={() => {}} sources={webPage} />);
+    expect(screen.getByText('1. Halifax weather, weather.example').tagName).toBe('SUMMARY');
+    const link = container.querySelector('a.transcript-source-link');
+    expect(link?.getAttribute('href')).toBe('https://weather.example/halifax');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(container.querySelector('code.transcript-source-path')).toBeNull();
   });
 
   it('shows no Sources heading when nothing was cited', () => {

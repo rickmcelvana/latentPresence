@@ -1387,6 +1387,21 @@ kbd {
   overflow-wrap: anywhere;
 }
 
+/* P5-T06: a web source's address, which opens the page. */
+.transcript-source-link {
+  display: block;
+  margin-top: var(--gap-xs);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.transcript-source-link:hover,
+.transcript-source-link:focus-visible {
+  color: var(--accent-hover);
+}
+
 .transcript-source-unknown {
   color: var(--warning);
 }

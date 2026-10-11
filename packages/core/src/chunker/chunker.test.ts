@@ -212,6 +212,18 @@ describe('SentenceChunker tags', () => {
       expect(chunkText(input)[0]?.text).not.toMatch(/ {2}/);
     }
   });
+
+  it('leaves no space before the punctuation a tag stood in front of (P5-T06, seen live)', () => {
+    const [chunk] = chunkText('Sunny, high of fourteen [cite:w6a155b]. Rain later [cite:wc6706f] , then dry.');
+    expect(chunk?.text).toBe('Sunny, high of fourteen.');
+    expect(chunk?.tags).toEqual([{ kind: 'cite', value: 'w6a155b', known: null, offset: 'Sunny, high of fourteen'.length }]);
+    expect(chunkText('Rain later [cite:wc6706f] , then dry.')[0]?.text).toBe('Rain later, then dry.');
+    expect(chunkText('So [emote:happy] glad.')[0]?.text).toBe('So glad.');
+    // Split across pushes, as a stream delivers it.
+    const chunker = new SentenceChunker();
+    const said = [...chunker.push('high of fourteen [cite:w6a155b]'), ...chunker.push('. Next one'), ...chunker.flush()].map((c) => c.text);
+    expect(said).toEqual(['high of fourteen.', 'Next one']);
+  });
 });
 
 /** Feed one character at a time — the worst case the real token stream can produce. */
