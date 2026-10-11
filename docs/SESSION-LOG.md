@@ -740,3 +740,9 @@ Did: P5-T07 (e5a9d4f): companion `homeAssistant` entry (url, token) → HA's `/a
 Left: R-34 (new), R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T08 diegetic displays (sub).
 Decisions: ADR-48 proposed — needs Rick's accept.
+
+## 2026-10-11 claude — ADR-48 accepted, R-34 passed
+Did: recorded R-34 (D-45: Rick's HA on a Raspberry Pi, HA OS 18.3, Core 2026.10.1, by voice with the card); ADR-48 accepted; SURFACE note for HA 2026.10.1. CI green on the P5-T07 note.
+Left: R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T08 diegetic displays (sub).
+Decisions: ADR-48 accepted.

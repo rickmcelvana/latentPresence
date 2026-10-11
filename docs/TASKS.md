@@ -189,31 +189,6 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-34 · Ask her to turn on a light · ~20 minutes, desktop, needs your Home Assistant
-**Why:** P5-T07 lets her work your home through Home Assistant's own MCP server, asking per device
-(ADR-48). It passed against a throwaway HA with demo lights; your home, your names and your voice
-are the real test.
-1. In Home Assistant: **Settings → Devices & services → Add integration → "Model Context Protocol
-   Server"** → keep *Assist* → Submit. Then **Settings → Voice assistants → Expose** and check the
-   lights you want her to see (only exposed devices reach her).
-2. Your profile (bottom left) → **Security** → *Long-lived access tokens* → **Create token**, name
-   it "latentPresence", copy it (HA shows it once).
-3. `notepad "$env:APPDATA\latentPresence\mcp.json"`, beside `files`, add (your address):
-   ```json
-   "homeAssistant": { "url": "http://homeassistant.local:8123", "token": "PASTE-THE-TOKEN" }
-   ```
-   Save, restart the companion — it prints "…, Home Assistant)".
-4. `/settings` → **Tools** → *From the companion* → **List**: "Home Assistant — N tools", then your
-   devices. Set **Where you talk to her from** to the room your computer is in.
-5. `/chat` → **Start voice**, say "turn on the light". The card names the light: **Allow once**.
-   Say "turn it off" — the card again: **Always allow <that light>**. Say "turn it on" — no card.
-6. Say "open the garage door" (or "unlock the front door", if you expose one): the card has no
-   *Always*. **Deny.**
-
-**Pass:** the right light each time; the card names it; after Always it runs unasked; a door or
-lock always asks; she never says it is done before it is. **Paste back:** pass/fail per step, the
-HA version (Settings → About), and any "Home Assistant said: …" error.
-
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
 The suites and a live run on a test database passed; a real schema is where she will stumble.
@@ -260,6 +235,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-45 · R-34: ask her to turn on a light** — Rick 2026-10-11: **passed** — his own Home
+  Assistant on a Raspberry Pi (Home Assistant OS 18.3, Core 2026.10.1), a few devices moved onto
+  its network so far; more to follow as he moves them.
 - **D-44 · R-33: ask her the weather** — Rick 2026-10-11: **passed** — with Tavily she searched,
   read weatherapi.com and weather.gc.ca for Halifax, and answered with no errors. Rick's SearXNG
   `settings.yml` is updated (json format, limiter), and Playwright MCP is in his `mcpServers`.

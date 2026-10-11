@@ -50,7 +50,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-45 | Cited answers: `documents_search` is her own tool (shown, not gated), the companion embeds the query and fuses vector and `FULLTEXT` by reciprocal rank (`POST /documents/search`); citations are `[cite:c<chunk>]` inline tags, never spoken, listed as sources under the answer; off until Settings → Documents turns it on | accepted | 2026-10-10 |
 | ADR-46 | The person's databases: first-party `sql:<name>` companion servers from `mcp.json`; read-only in three layers (sqlparser verdict, read-only transaction or file, time and row limits), plus a read-only user | accepted | 2026-10-11 |
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
-| ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | proposed | 2026-10-11 |
+| ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
 
 ---
 
@@ -1656,7 +1656,7 @@ space until the next text shows whether punctuation follows a tag. Playwright MC
 navigated and returned a snapshot through `/mcp/call`. Rick's SearXNG answered 429 to every
 request from this machine (its limiter); the Tavily and SearXNG round trips are R-33.
 
-## ADR-48 Home Assistant: a companion server, and a policy per device (proposed 2026-10-11)
+## ADR-48 Home Assistant: a companion server, and a policy per device (accepted 2026-10-11)
 
 **Context.** P5-T07: connect to Home Assistant's MCP server with a long-lived token; a device
 confirmation policy; area-aware prompts. Done when a light toggles from voice with a confirm

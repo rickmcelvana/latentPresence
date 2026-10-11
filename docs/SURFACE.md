@@ -2371,3 +2371,6 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
   those stubbed in a launcher (not in HA). A `http:` block in YAML becomes a *pending* HTTP config
   that **reverts to the default (0.0.0.0:8123) after five minutes** unless confirmed — set it as
   the stored stable config instead.
+- **HA Core 2026.10.1 (Home Assistant OS 18.3, Raspberry Pi) — Rick, live, 2026-10-11 (R-34,
+  D-45):** the same entry (url, long-lived token) connected and worked by voice with the card;
+  the 2026.10 admin requirement did not get in the way of his own (owner) token.
