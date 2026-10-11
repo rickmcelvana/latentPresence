@@ -142,13 +142,33 @@ describe('withLocalTools (P4-T06, ADR-40)', () => {
     expect(llm.requests[1]?.messages.at(-1)).toEqual({ role: 'tool', callId: 'call-broken', content: { error: 'disk full' } });
   });
 
-  it('passes through a tool call that is not one of its own', async () => {
+  it('passes through a call to a tool the caller offered itself', async () => {
     const { notes } = notesOn();
     const foreign = call('mcp_weather', { city: 'Halifax' });
     const llm = scripted([[{ type: 'tool-call', call: foreign }, { type: 'finish', reason: 'tool-calls', usage: null }]]);
-    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes)).stream(request));
+    const withWeather: LlmRequest = { ...request, tools: [{ name: 'mcp_weather', description: '', parameters: { type: 'object' } }] };
+    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes)).stream(withWeather));
     expect(chunks).toEqual([{ type: 'tool-call', call: foreign }, { type: 'finish', reason: 'tool-calls', usage: null }]);
     expect(llm.requests).toHaveLength(1);
+  });
+
+  it('answers a call to a tool nobody offered with the tools there are, and goes on (R-29)', async () => {
+    const { notes } = notesOn();
+    const guessed = call('read_text_file', { path: 'C:/tea.txt' });
+    const llm = scripted([
+      [{ type: 'text-delta', text: 'I will look.' }, { type: 'tool-call', call: guessed }, { type: 'finish', reason: 'tool-calls', usage: null }],
+      [{ type: 'text-delta', text: 'I could not read it.' }, { type: 'finish', reason: 'stop', usage: null }],
+    ]);
+    const ran: string[] = [];
+    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes), { onCallStart: (c) => ran.push(c.name) }).stream(request));
+    expect(ran).toEqual(['read_text_file']);
+    expect(chunks.some((chunk) => chunk.type === 'tool-call')).toBe(false);
+    expect(llm.requests[1]?.messages.at(-1)).toEqual({
+      role: 'tool',
+      callId: 'call-read_text_file',
+      content: { error: 'There is no tool called read_text_file. The tools you have are: self_read_block, self_write_block. Use one of them, or say you could not.' },
+    });
+    expect(chunks.filter((chunk) => chunk.type === 'text-delta').map((chunk) => chunk.text).join('')).toBe('I will look. I could not read it.');
   });
 });
 

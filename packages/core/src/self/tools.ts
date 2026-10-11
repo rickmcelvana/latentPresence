@@ -49,7 +49,10 @@ const OUT_OF_ROUNDS = 'You cannot use more tools for this answer. Answer now, in
 
 async function runCall(tools: readonly LocalTool[], call: ToolCall, signal: CancellationSignal | undefined): Promise<JsonValue> {
   const tool = tools.find((candidate) => candidate.definition.name === call.name);
-  if (tool === undefined) return { error: `There is no tool called ${call.name}.` };
+  if (tool === undefined) {
+    const names = tools.map((candidate) => candidate.definition.name).join(', ');
+    return { error: `There is no tool called ${call.name}. The tools you have are: ${names}. Use one of them, or say you could not.` };
+  }
   try {
     return await tool.run(call.arguments, { call, signal });
   } catch (error) {
@@ -92,6 +95,11 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
             calls.push(chunk.call);
           } else if (chunk.type === 'tool-call' && local.some((tool) => tool.definition.name === chunk.call.name)) {
             late.push(chunk.call);
+          } else if (chunk.type === 'tool-call' && !request.tools.some((tool) => tool.name === chunk.call.name)) {
+            // A name nobody offered (R-29: a model may guess one): passed on, it ended the answer
+            // silently with nothing run. Answered as a call, it hears which tools it has.
+            if (offered.length > 0) calls.push(chunk.call);
+            else late.push(chunk.call);
           } else if (chunk.type === 'finish') {
             finish = chunk;
           } else if (chunk.type === 'text-delta') {

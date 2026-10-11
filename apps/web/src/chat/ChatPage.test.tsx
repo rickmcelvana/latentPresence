@@ -119,6 +119,14 @@ function systemOf(request: LlmRequest | undefined): string {
   return request?.messages.find((message) => message.role === 'system')?.content ?? '';
 }
 
+/** The system prompt without its last two lines (the mood) and the clock line. */
+function withoutMoodOrClock(request: LlmRequest | undefined): string[] {
+  return systemOf(request)
+    .split('\n')
+    .slice(0, -2)
+    .filter((line) => !line.startsWith('- It is '));
+}
+
 describe('ChatPage — the persona', () => {
   it('sends the persona as a system prompt, with the tag rules in it', async () => {
     // The whole of P1-T12 reaches a model through this one field. Before 67dd675 a
@@ -178,8 +186,9 @@ describe('ChatPage — the persona', () => {
 
     expect(systemOf(seen[0])).toContain('settled, your usual self');
     expect(systemOf(seen[1])).toContain('and right now sad');
-    // The persona part is untouched: only the last two lines move.
-    expect(systemOf(seen[1]).split('\n').slice(0, -2)).toEqual(systemOf(seen[0]).split('\n').slice(0, -2));
+    // The persona part is untouched: only the last two lines move — and the clock, which
+    // crossed a minute between the two turns once on CI (2026-10-10).
+    expect(withoutMoodOrClock(seen[1])).toEqual(withoutMoodOrClock(seen[0]));
   });
 
   it("tells the model how the user seems, from what they wrote, and shows it on the overlay (P3-T07)", async () => {

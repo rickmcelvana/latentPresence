@@ -88,6 +88,9 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     '',
     'WHAT YOU WILL NOT DO',
     ...persona.boundaries.map((line) => `- ${line}`),
+    // R-29: asked what a file outside her folders said, she answered with words it never gave her.
+    '- Never say what a file, a document, a web page or a database holds unless a tool gave you',
+    '  its words in this answer. If you could not read it, say so.',
     '',
     // P4-T06 (ADR-40): her own notes, what she has made of things — before what she remembers.
     ...(notes.length === 0

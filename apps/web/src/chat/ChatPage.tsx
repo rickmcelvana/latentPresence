@@ -15,7 +15,6 @@ import {
   mcpTools,
   planTools,
   selfNoteTools,
-  splitToolName,
   toolResultOf,
   withLocalTools,
   attachUserAffect,
@@ -330,7 +329,9 @@ function ConfiguredChatPage({
     // Settings drops the tool at once; every call that reaches outside goes on the bus, for
     // the transcript. Hers (no `server__` in the name) are not shown.
     // P5-T04: her document search is hers too, but shown — the person should see she looked.
-    const outside = (name: string): boolean => splitToolName(name).server !== null || name === 'documents_search';
+    // Every call but her own notes and plans is shown — a name she guessed too (R-29), so a
+    // call that ran nothing is never invisible.
+    const outside = (name: string): boolean => !builtSelfHolder.tools.some((tool) => tool.definition.name === name);
     const docsTool = (): LocalTool[] => (builtDocsHolder.connected?.tool == null ? [] : [builtDocsHolder.connected.tool]);
     const builtChatLlm = withLocalTools(builtProvider, () => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
       onCallStart: (call) => {
