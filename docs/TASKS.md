@@ -228,6 +228,15 @@ since `read_text_file` changed, its card asks again even if you chose Always. As
 herb (and one from the very end, such as yarrow). **Pass:** the cards show `search_text`, then
 `read_text_file`; she answers from the note.
 
+**Retry 2 (2026-10-10).** Yarrow passed. Asked what `Documents\herbal-teas.txt` (outside the
+folder) said, she answered with words it never gave her and no tool line was shown. Not
+reproduced in 25 glm runs (she tried, was refused and said so every time); 7565534 closes where
+such an answer could hide: a standing rule never to say what a file holds without a tool's words,
+a guessed tool name answered instead of silently ending the answer, and every call but her own
+notes and plans shown. Restart the page (no companion change), then ask the same question.
+**Pass:** a "did not use …" line and "I can't read that". **Paste back:** if it happens again,
+the model named in Settings → Language model, and every line of the transcript for that turn.
+
 ### R-30 · Index your own documents · ~10 minutes, desktop
 **Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
 1,274-page set; real PDFs (scans, odd fonts, forms) are where extractors fail.

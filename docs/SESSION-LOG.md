@@ -705,3 +705,9 @@ Did: P5-T05 (d39d9eb): `databases` in `mcp.json` → companion servers `sql:<nam
 Left: R-29 retry, R-30, R-31, R-32 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. Postgres layer runs only in CI.
 Next: P5-T06 web search and browser tools (main).
 Decisions: ADR-46 proposed — needs Rick's accept.
+
+## 2026-10-10 claude — R-29 retry, CI flake
+Did: R-29 retry (Rick): yarrow passed; a file outside the root got an invented answer with no tool line. 25 glm runs through a scratch companion (cold, after a turn, with notes and plan tools, without Files) never reproduced it. 7565534: a standing prompt rule (no file's contents without a tool's words), unknown tool names answered with the real ones instead of passed through, transcript shows every call but her own notes/plans. CI's ubuntu failure on the P5-T05 push was the prompt's clock line crossing a minute in a ChatPage test — fixed in the test. Postgres suite passed in CI.
+Left: R-29 retry 2, R-30, R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T06 web search and browser tools (main).
+Decisions: none (ADR-46 still proposed).
