@@ -2339,3 +2339,35 @@ On the development server (MariaDB 11.8.8):
   environment; 25 tools listed; `browser_navigate` and `browser_snapshot` returned the page.
   `browser_navigate` links a snapshot file it writes to `.playwright-mcp/` in the working folder
   (now gitignored); `--output-dir` moves it. Its origin options are "not a security boundary".
+
+## Home Assistant's MCP server — verified 2026-10-11 by live call (P5-T07)
+
+HA **2026.9.4** (pip, a throwaway instance on this machine with the `demo` integration; docs page
+home-assistant.io/integrations/mcp_server read the same day, which is for 2026.10).
+
+- **Endpoint** `<ha>/api/mcp`, also `/api/mcp/<api id>` (`/api/mcp/assist` needs no admin in
+  2026.9.4's code). **Stateless streamable HTTP**: JSON answers, no `Mcp-Session-Id`; a
+  long-lived token as `Authorization: Bearer`. The 2026.10 docs add "Require an administrator
+  account" (on by default) and OAuth for clients that support it; the config flow in 2026.9.4
+  asks only which LLM API (Assist).
+- **Tools** come from the LLM API: 27 for the demo, named `<domain>__<Intent>` —
+  `intent__HassTurnOn`/`HassTurnOff`/`HassSetPosition`/`HassStopMoving`/`HassCancelAllTimers`,
+  `light__HassLightSet`, `climate__HassClimateSetTemperature`, `fan__HassFanSetSpeed`,
+  `media_player__*` (pause, next, volume, mute, search-and-play), `todo__get_items`,
+  `todo__HassList*`, `vacuum__*`, `humidifier__*`, `homeassistant__GetLiveContext`,
+  `llm__GetDateTime`. No annotations. Arguments: `name`, `area`, `floor`, `domain[]`,
+  `device_class[]` — **never an entity id**. `HassTurnOn` **locks** a lock, `HassTurnOff`
+  **unlocks** one (its description says so). `HassTurnOff { domain: ["light"] }` turned off every
+  light.
+- **Results**: text JSON `{ "response_type": "action_done", "data": { "success": [{ name, type,
+  id }], "failed": [] } }`; an area target reports the area. An unknown name is `isError` with
+  `MatchFailedError … no_match_reason=NAME`.
+- **Prompt** "Assist" ("Default prompt for Home Assistant Assist API"): guidance, then "Static
+  Context:" and a YAML list of every exposed entity — `names` (aliases **replace** the name,
+  joined with ", "), `domain`, `areas` (area name then its aliases). Ends with "prefer passing
+  just name and domain … just area name and domain". **Resource**
+  `homeassistant://assist/context-snapshot` mirrors `GetLiveContext`.
+- **On Windows**: HA refuses to start (`validate_os`) and imports `fcntl`/`resource`; it runs with
+  those stubbed in a launcher (not in HA). A `http:` block in YAML becomes a *pending* HTTP config
+  that **reverts to the default (0.0.0.0:8123) after five minutes** unless confirmed — set it as
+  the stored stable config instead.

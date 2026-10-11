@@ -716,3 +716,120 @@ async fn the_web_searches_reads_pages_with_refs_to_cite_and_never_reads_this_mac
     }
     assert!(guarded.tools().iter().all(|tool| tool.name != "search"));
 }
+
+/// A Home Assistant's MCP server as HA 2026.9.4 speaks it (measured, P5-T07): stateless
+/// streamable HTTP at `/api/mcp`, JSON answers, a bearer token, and the "Assist" prompt. It
+/// records the `name` of every call.
+async fn fake_home() -> (String, Arc<Mutex<Vec<String>>>) {
+    use axum::http::HeaderMap;
+    use axum::response::{IntoResponse, Response};
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let seen = calls.clone();
+    let app = Router::new().route(
+        "/api/mcp",
+        post(move |headers: HeaderMap, Json(message): Json<Value>| {
+            let seen = seen.clone();
+            async move {
+                if headers.get("authorization").and_then(|value| value.to_str().ok()) != Some("Bearer good-token") {
+                    return (StatusCode::UNAUTHORIZED, "401: Unauthorized").into_response();
+                }
+                let Some(id) = message.get("id").cloned() else {
+                    return StatusCode::ACCEPTED.into_response();
+                };
+                let result = match message["method"].as_str().unwrap_or("") {
+                    "initialize" => json!({
+                        "protocolVersion": message["params"]["protocolVersion"],
+                        "capabilities": { "prompts": { "listChanged": false }, "tools": { "listChanged": false } },
+                        "serverInfo": { "name": "home-assistant", "version": "1.26.0" }
+                    }),
+                    "tools/list" => json!({ "tools": [
+                        { "name": "intent__HassTurnOn", "description": "Turns on/opens/presses a device or entity.", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "area": { "type": "string" } } } },
+                        { "name": "homeassistant__GetLiveContext", "description": "Provides real-time information.", "inputSchema": { "type": "object" } }
+                    ] }),
+                    "prompts/get" => {
+                        assert_eq!(message["params"]["name"], "Assist");
+                        json!({ "description": "Default prompt for Home Assistant Assist API", "messages": [{ "role": "assistant", "content": { "type": "text", "text": "Static Context: An overview of the areas and the devices in this smart home:\n- names: Kitchen Lights\n  domain: light\n  areas: Kitchen\n" } }] })
+                    }
+                    "tools/call" => {
+                        let name = message["params"]["arguments"]["name"].as_str().unwrap_or("").to_owned();
+                        seen.lock().expect("calls").push(name.clone());
+                        json!({ "content": [{ "type": "text", "text": format!("{{\"response_type\": \"action_done\", \"data\": {{\"success\": [{{\"name\": \"{name}\"}}]}}}}") }], "isError": false })
+                    }
+                    _ => json!({}),
+                };
+                let reply: Response = Json(json!({ "jsonrpc": "2.0", "id": id, "result": result })).into_response();
+                reply
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("binds");
+    let address = listener.local_addr().expect("address");
+    tokio::spawn(async move { axum::serve(listener, app).await });
+    (format!("http://{address}"), calls)
+}
+
+#[tokio::test]
+async fn home_assistant_connects_with_its_token_and_serves_its_own_overview() {
+    let (base, calls) = fake_home().await;
+    let config = McpConfig::parse(&format!(
+        r#"{{ "homeAssistant": {{ "url": "{base}", "token": "good-token" }} }}"#
+    ))
+    .expect("parses");
+    let router = router(McpHost::start(config));
+    let listed = ready(&router, "homeassistant").await;
+    let server = &listed["servers"][0];
+    assert_eq!(server["kind"], "homeassistant");
+    assert_eq!(server["label"], "Home Assistant");
+    assert_eq!(server["state"], "ready", "{server}");
+    assert!(
+        server["instructions"].as_str().is_some_and(
+            |text| text.contains("- names: Kitchen Lights\n  domain: light\n  areas: Kitchen")
+        ),
+        "{server}"
+    );
+    let names: Vec<&str> = listed["tools"]
+        .as_array()
+        .expect("tools")
+        .iter()
+        .filter_map(|tool| tool["name"].as_str())
+        .collect();
+    assert_eq!(
+        names,
+        ["intent__HassTurnOn", "homeassistant__GetLiveContext"]
+    );
+    let (status, done) = send(
+        &router,
+        call_request(
+            "homeassistant",
+            "intent__HassTurnOn",
+            json!({ "name": "Kitchen Lights" }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{done}");
+    assert!(
+        done["text"]
+            .as_str()
+            .is_some_and(|text| text.contains("action_done")),
+        "{done}"
+    );
+    assert_eq!(*calls.lock().expect("calls"), ["Kitchen Lights"]);
+}
+
+#[tokio::test]
+async fn a_refused_token_says_to_make_a_new_one_and_never_shows_it() {
+    let (base, _) = fake_home().await;
+    let config = McpConfig::parse(&format!(
+        r#"{{ "homeAssistant": {{ "url": "{base}", "token": "wrong-s3cret" }} }}"#
+    ))
+    .expect("parses");
+    let router = router(McpHost::start(config));
+    let listed = ready(&router, "homeassistant").await;
+    let server = &listed["servers"][0];
+    assert_eq!(server["state"], "failed");
+    let detail = server["detail"].as_str().unwrap_or("");
+    assert!(detail.contains("refused the token"), "{detail}");
+    assert!(!listed.to_string().contains("s3cret"), "{listed}");
+}

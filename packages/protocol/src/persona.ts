@@ -117,6 +117,26 @@ export const PromptContextSchema = z.object({
    */
   documents: z.boolean().default(false),
   /**
+   * Their Home Assistant this visit (P5-T07, ADR-48): the devices by area, as HA lists them, and
+   * the area they talk to her from. Rendered as the home section; null leaves the prompt exactly
+   * as it was.
+   */
+  home: z
+    .object({
+      devices: z
+        .array(
+          z.object({
+            names: z.array(z.string().min(1).max(200)).min(1).max(8),
+            domain: z.string().min(1).max(64),
+            areas: z.array(z.string().min(1).max(200)).max(8),
+          }),
+        )
+        .max(1000),
+      area: z.string().min(1).max(200).nullable(),
+    })
+    .nullable()
+    .default(null),
+  /**
    * Her plans with them (P4-T07, ADR-41): rendered by core as the planning section — how to
    * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
    * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.

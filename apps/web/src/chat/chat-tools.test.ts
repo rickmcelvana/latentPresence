@@ -2,7 +2,7 @@ import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
 import type { CompanionToolServer, McpServerConfig } from '@latentpresence/providers/web';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, type ToolServerSetting } from '../settings/settings';
-import { connectCompanionTools, connectToolServers, settingsToolGrants } from './chat-tools';
+import { connectCompanionTools, connectToolServers, homePrompt, settingsToolGrants } from './chat-tools';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -88,6 +88,22 @@ describe('the companion’s servers (P5-T02, ADR-43)', () => {
     ]);
   });
 
+  it("hands Home Assistant's devices, read from its overview, to the gate (P5-T07, ADR-48)", async () => {
+    const home = new FakeMcpServer('home-assistant', [TOOL]);
+    const overview = 'Static Context: An overview of the areas and the devices in this smart home:\n- names: Kitchen Lights\n  domain: light\n  areas: Kitchen\n';
+    const result = await connectCompanionTools({
+      baseUrl: 'http://127.0.0.1:8787',
+      listCompanion: async () => [
+        { server: { id: 'homeassistant', label: 'Home Assistant', kind: 'homeassistant', state: 'ready', detail: null, instructions: overview }, tools: [TOOL.info], client: home },
+        ...listed.slice(0, 1),
+      ],
+    });
+    expect(result.connected[0]?.home).toEqual({ devices: [{ names: ['Kitchen Lights'], domain: 'light', areas: ['Kitchen'] }] });
+    expect(result.connected[1]?.home).toBeUndefined();
+    expect(homePrompt(result.connected, 'Kitchen')).toEqual({ devices: [{ names: ['Kitchen Lights'], domain: 'light', areas: ['Kitchen'] }], area: 'Kitchen' });
+    expect(homePrompt(result.connected.slice(1), 'Kitchen')).toBeNull();
+  });
+
   it('asks the companion nothing unless they are turned on, and says how to start it when it is down', async () => {
     let asked = 0;
     const listCompanion = async (): Promise<CompanionToolServer[]> => {
@@ -112,6 +128,6 @@ describe('settingsToolGrants', () => {
     grants.set('srv-1', 'read', { policy: 'auto', fingerprint: 'abcd1234' });
     grants.set('srv-1', 'write', { policy: 'never', fingerprint: null });
     expect(grants.get('srv-1', 'read')).toEqual({ policy: 'auto', fingerprint: 'abcd1234' });
-    expect(loadSettings(storage).tools).toEqual({ servers: [WIKI], grants: { 'srv-1': { read: { policy: 'auto', fingerprint: 'abcd1234' }, write: { policy: 'never', fingerprint: null } } }, companion: false });
+    expect(loadSettings(storage).tools).toEqual({ servers: [WIKI], grants: { 'srv-1': { read: { policy: 'auto', fingerprint: 'abcd1234' }, write: { policy: 'never', fingerprint: null } } }, companion: false, homeArea: null });
   });
 });

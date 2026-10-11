@@ -2048,6 +2048,13 @@ kbd {
   color: var(--text);
 }
 
+/* P5-T07: the device a Home Assistant call reaches, read before anything else on the card. */
+.permission-target {
+  margin: var(--gap-xs) 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .permission-description {
   margin: 0 0 var(--gap-sm);
   color: var(--text-muted);
@@ -2318,4 +2325,36 @@ kbd {
   font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+/* Settings → Tools → Home Assistant devices (P5-T07, ADR-48) */
+
+.home-devices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+}
+
+.home-device-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-device-names {
+  color: var(--text);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.home-device-meta {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.home-device-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
 }

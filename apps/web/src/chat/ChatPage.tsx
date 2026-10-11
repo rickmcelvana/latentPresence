@@ -45,7 +45,7 @@ import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
-import { connectToolServers, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
+import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { hostTimers } from './host-timers';
 import { PermissionPrompt } from './PermissionPrompt';
@@ -322,6 +322,8 @@ function ConfiguredChatPage({
           notes: builtSelfHolder.notes?.notes() ?? [],
           plans: builtSelfHolder.plans?.promptContext() ?? null,
           toolServers: builtToolsHolder.servers.map((server) => server.label),
+          // P5-T07 (ADR-48): the room is read per request, so a change in Settings applies at once.
+          home: homePrompt(builtToolsHolder.servers, loadSettings(deps.storage).tools.homeArea),
           documents: builtDocsHolder.connected?.tool != null,
         }),
     }).history;

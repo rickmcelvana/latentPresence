@@ -337,9 +337,13 @@ SearXNG provider, Brave and Tavily BYO providers, Playwright MCP wiring, result 
 Done when: "what's the weather" answers with a cited source.
 **Met (with a stand-in provider):** glm-5.2:cloud 20/20 through the companion's web server — searched, answered and cited the weather result, listed under her answer as a link. The real Tavily/SearXNG round trip is R-33; Playwright MCP verified through the stdio host. **The in-world screen is P5-T08's.**
 
-### P5-T07 Home Assistant — owner: main
+### P5-T07 Home Assistant — owner: main (done 2026-10-11, ADR-48 proposed)
 Connect to HA's MCP server with a long-lived token; device confirmation policy; area-aware prompts.
 Done when: a light toggles from voice with a confirm step; policy can set specific devices to auto.
+**Met (typed, against a throwaway HA 2026.9.4):** the card asked about *Kitchen Lights (Kitchen)*,
+the light came on, and after "Always allow Kitchen Lights" the next request ran with no card;
+glm-5.2:cloud 25/25 and gemma4:31b-cloud 15/15 on five policy cases. **From voice is R-34** — the
+voice path is the typed one (P1-T12b), so it reaches the same card.
 
 ### P5-T08 Diegetic displays — owner: sub
 Depends: P2-T05. Screen and whiteboard objects rendering HTML-to-texture or canvas textures for tool results and plans.

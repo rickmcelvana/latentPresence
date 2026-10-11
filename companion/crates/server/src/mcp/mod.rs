@@ -8,12 +8,13 @@
 
 pub mod config;
 pub mod files;
+pub mod home;
 pub mod sql;
 pub mod web;
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::extract::State;
 use axum::{Json, Router, routing::get, routing::post};
@@ -27,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::memory_api::ApiError;
-use config::{FILES_ID, McpConfig, SQL_PREFIX, ServerSpec, WEB_ID, WebSpec};
+use config::{FILES_ID, HOME_ID, HomeSpec, McpConfig, SQL_PREFIX, ServerSpec, WEB_ID, WebSpec};
 use files::FilesServer;
 use sql::SqlServer;
 use web::WebServer;
@@ -172,6 +173,8 @@ struct Hosted {
     id: String,
     kind: &'static str,
     state: RwLock<ServerState>,
+    /// Home Assistant: when its overview was last read (P5-T07).
+    refreshed: Mutex<Option<Instant>>,
 }
 
 impl Hosted {
@@ -185,6 +188,34 @@ impl Hosted {
     fn set(&self, next: ServerState) {
         if let Ok(mut state) = self.state.write() {
             *state = next;
+        }
+    }
+
+    /// Home Assistant's overview, read again when a minute has passed (ADR-48).
+    async fn refresh_home(&self) {
+        let ServerState::Ready {
+            connection: Connection::Mcp(client),
+            ..
+        } = self.state()
+        else {
+            return;
+        };
+        let due = self.refreshed.lock().is_ok_and(|mut at| {
+            let due = at.is_none_or(|at| at.elapsed() >= home::OVERVIEW_EVERY);
+            if due {
+                // Marked first, so two listings at once do not both ask.
+                *at = Some(Instant::now());
+            }
+            due
+        });
+        if !due {
+            return;
+        }
+        if let Some(text) = home::overview(&client).await
+            && let Ok(mut state) = self.state.write()
+            && let ServerState::Ready { instructions, .. } = &mut *state
+        {
+            *instructions = Some(text);
         }
     }
 }
@@ -230,6 +261,54 @@ impl McpHost {
                 WebSpec::Invalid(why) => ServerState::Failed(format!("mcp.json: {why}")),
             };
             host.push(WEB_ID, "web", state);
+        }
+        // P5-T07 (ADR-48): Home Assistant, over its own MCP server, with the token as a bearer.
+        if let Some(spec) = config.home {
+            match spec {
+                HomeSpec::Invalid(why) => {
+                    host.push(
+                        HOME_ID,
+                        "homeassistant",
+                        ServerState::Failed(format!("mcp.json: {why}")),
+                    );
+                }
+                HomeSpec::Ready { endpoint, token } => {
+                    let hosted = host.push(HOME_ID, "homeassistant", ServerState::Starting);
+                    tokio::spawn(async move {
+                        let headers = std::collections::BTreeMap::from([(
+                            "Authorization".to_owned(),
+                            format!("Bearer {token}"),
+                        )]);
+                        let outcome = match http_transport(&endpoint, &headers) {
+                            Ok(transport) => connect(transport).await,
+                            Err(why) => Err(why),
+                        };
+                        // Ready only with its overview, so no listing sees HA without its devices.
+                        let state = match settle(outcome.map_err(home::failure), &Mutex::default())
+                        {
+                            ServerState::Ready {
+                                connection: Connection::Mcp(client),
+                                tools,
+                                instructions,
+                            } => {
+                                let overview = home::overview(&client).await;
+                                if overview.is_some()
+                                    && let Ok(mut at) = hosted.refreshed.lock()
+                                {
+                                    *at = Some(Instant::now());
+                                }
+                                ServerState::Ready {
+                                    connection: Connection::Mcp(client),
+                                    tools,
+                                    instructions: overview.or(instructions),
+                                }
+                            }
+                            other => other,
+                        };
+                        hosted.set(state);
+                    });
+                }
+            }
         }
         // P5-T05 (ADR-46): each database is a server of its own, opened in the background.
         for (name, spec) in config.databases {
@@ -288,6 +367,7 @@ impl McpHost {
             id: id.to_owned(),
             kind,
             state: RwLock::new(state),
+            refreshed: Mutex::new(None),
         });
         if let Ok(mut servers) = self.servers.write() {
             servers.push(hosted.clone());
@@ -338,6 +418,24 @@ impl McpHost {
         }
     }
 
+    /// Every Home Assistant's overview, where a minute has passed since it was read.
+    pub async fn refresh_homes(&self) {
+        let homes: Vec<Arc<Hosted>> = self
+            .servers
+            .read()
+            .map(|servers| {
+                servers
+                    .iter()
+                    .filter(|hosted| hosted.kind == "homeassistant")
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        for hosted in homes {
+            hosted.refresh_home().await;
+        }
+    }
+
     fn report(&self) -> ToolsResponse {
         let servers: Vec<Arc<Hosted>> = self
             .servers
@@ -369,6 +467,8 @@ impl McpHost {
                     "Files".into()
                 } else if hosted.id == WEB_ID {
                     "Web".into()
+                } else if hosted.id == HOME_ID {
+                    "Home Assistant".into()
                 } else {
                     // A database is named as the person named it.
                     hosted
@@ -673,6 +773,7 @@ struct CallRequest {
 }
 
 async fn tools(State(host): State<SharedHost>) -> Json<ToolsResponse> {
+    host.refresh_homes().await;
     Json(host.report())
 }
 

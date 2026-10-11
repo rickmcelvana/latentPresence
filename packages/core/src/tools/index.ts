@@ -13,3 +13,4 @@ export {
 } from './gate';
 export { MCP_RESULT_LIMIT, mcpToolName, mcpTools, splitToolName, toolResultOf, type ConnectedToolServer, type McpToolsOptions } from './mcp';
 export { citedSources, type CitedSource } from './sources';
+export { ALWAYS_ASK_DOMAINS, areaDevices, deviceKey, findDevice, homeTarget, homeVerdict, isReadingTool, mayBeAuto, parseHomeOverview, type HomeDevice, type HomeVerdict } from './home';

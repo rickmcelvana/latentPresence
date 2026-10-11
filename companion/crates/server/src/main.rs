@@ -54,10 +54,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let loaded = mcp::config::McpConfig::load(&path);
             match &loaded {
                 Ok(config) => println!(
-                    "companion: mcp servers from {} ({} listed, {} files root(s))",
+                    "companion: mcp servers from {} ({} listed, {} files root(s){}{})",
                     path.display(),
                     config.servers.len(),
-                    config.roots.len()
+                    config.roots.len(),
+                    if config.web.is_some() { ", web" } else { "" },
+                    if config.home.is_some() {
+                        ", Home Assistant"
+                    } else {
+                        ""
+                    }
                 ),
                 Err(error) => eprintln!("companion: mcp.json not used: {error}"),
             }

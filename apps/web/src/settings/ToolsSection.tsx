@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { effectivePolicy, toolFingerprint, type ToolPolicy } from '@latentpresence/core';
+import { effectivePolicy, isReadingTool, toolFingerprint, type HomeDevice, type ToolPolicy } from '@latentpresence/core';
 import type { McpToolInfo, McpTransport } from '@latentpresence/protocol';
 import { connectCompanionTools, connectToolServer, type ConnectMcp, type ToolServerStatus } from '../chat/chat-tools';
+import { HomeDevices } from './HomeDevices';
 import { KeyField } from './KeyField';
 import { mcpKeyRef, type ToolServerSetting, type ToolsSettings } from './settings';
 import type { Vault } from './vault';
@@ -32,7 +33,12 @@ export interface ToolsSectionProps {
 /** What List found out about the companion's servers, kept only while Settings is open. */
 interface CompanionListing {
   readonly pending: boolean;
-  readonly servers: readonly { readonly status: ToolServerStatus; readonly tools: readonly McpToolInfo[] }[];
+  readonly servers: readonly {
+    readonly status: ToolServerStatus;
+    readonly tools: readonly McpToolInfo[];
+    /** Home Assistant's devices, parsed from its overview; absent for every other server. */
+    readonly home?: readonly HomeDevice[] | undefined;
+  }[];
 }
 
 /** What Test found out about one server, kept only while Settings is open. */
@@ -103,6 +109,42 @@ function ToolRow({
       )}
       {changed && <p className="settings-status settings-status-warn">Changed since you allowed it — she will ask again.</p>}
     </li>
+  );
+}
+
+/** One companion server's tools; Home Assistant's actions are decided per device, so only its reading tools get a row. */
+function CompanionServerTools({
+  serverId,
+  serverTools,
+  home,
+  tools,
+  onChange,
+  onPolicy,
+}: {
+  readonly serverId: string;
+  readonly serverTools: readonly McpToolInfo[];
+  readonly home: readonly HomeDevice[] | undefined;
+  readonly tools: ToolsSettings;
+  readonly onChange: ToolsSectionProps['onChange'];
+  readonly onPolicy: (info: McpToolInfo, policy: ToolPolicy) => void;
+}): ReactElement | null {
+  const rows = home === undefined ? serverTools : serverTools.filter((info) => isReadingTool(info.name));
+  return (
+    <>
+      {rows.length > 0 && (
+        <ul className="tools-tool-list">
+          {rows.map((info) => (
+            <ToolRow grant={tools.grants[serverId]?.[info.name]} info={info} key={info.name} onPolicy={(policy) => onPolicy(info, policy)} />
+          ))}
+        </ul>
+      )}
+      {home !== undefined && (
+        <>
+          <p className="panel-note">Her actions in the home are decided for each device below, not for each tool.</p>
+          <HomeDevices devices={home} onChange={onChange} serverId={serverId} tools={tools} />
+        </>
+      )}
+    </>
   );
 }
 
@@ -193,7 +235,10 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch, companion
     // List only reads what the companion reports; the companion owns its servers, so nothing is closed here.
     setListing({
       pending: false,
-      servers: statuses.map((status) => ({ status, tools: connected.find((server) => server.id === status.id)?.tools ?? [] })),
+      servers: statuses.map((status) => {
+        const server = connected.find((candidate) => candidate.id === status.id);
+        return { status, tools: server?.tools ?? [], home: server?.home?.devices };
+      }),
     });
   }
 
@@ -304,22 +349,20 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch, companion
           {listing?.pending === true && <p className="settings-status settings-status-warn">Listing…</p>}
           {listing !== null &&
             !listing.pending &&
-            listing.servers.map(({ status, tools: serverTools }) => (
+            listing.servers.map(({ status, tools: serverTools, home }) => (
               <div className="tools-server" key={status.id}>
                 <p className={status.ok ? 'settings-status settings-status-ok' : 'settings-status settings-status-danger'}>
                   {status.label} — {status.detail}
                 </p>
-                {status.ok && serverTools.length > 0 && (
-                  <ul className="tools-tool-list">
-                    {serverTools.map((info) => (
-                      <ToolRow
-                        grant={tools.grants[status.id]?.[info.name]}
-                        info={info}
-                        key={info.name}
-                        onPolicy={(policy) => setPolicy(status.id, info, policy)}
-                      />
-                    ))}
-                  </ul>
+                {status.ok && (
+                  <CompanionServerTools
+                    home={home}
+                    onChange={onChange}
+                    onPolicy={(info, policy) => setPolicy(status.id, info, policy)}
+                    serverId={status.id}
+                    serverTools={serverTools}
+                    tools={tools}
+                  />
                 )}
               </div>
             ))}

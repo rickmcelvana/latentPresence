@@ -58,6 +58,7 @@ describe('loadSettings', () => {
         servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
         companion: true,
+        homeArea: 'Kitchen',
       },
       documents: { search: true },
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
@@ -81,7 +82,7 @@ describe('loadSettings', () => {
     const { tools: _tools, ...beforeP5 } = settings;
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeP5) });
     expect(loadSettings(storage)).toEqual(settings);
-    expect(settings.tools).toEqual({ servers: [], grants: {}, companion: false });
+    expect(settings.tools).toEqual({ servers: [], grants: {}, companion: false, homeArea: null });
   });
 
   it('loads a document saved before document search existed, with it off (P5-T04, ADR-45)', () => {

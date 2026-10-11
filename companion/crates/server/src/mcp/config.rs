@@ -12,7 +12,8 @@
 //!   "databases": {
 //!     "shop": { "url": "postgres://reader:password@localhost/shop", "description": "orders and stock" },
 //!     "garden": { "path": "C:/Users/me/garden.sqlite", "rowLimit": 50, "timeoutMs": 3000 }
-//!   }
+//!   },
+//!   "homeAssistant": { "url": "http://homeassistant.local:8123", "token": "<long-lived token>" }
 //! }
 //! ```
 //!
@@ -34,6 +35,60 @@ pub const SQL_PREFIX: &str = "sql:";
 
 /// The companion's web server (P5-T06, ADR-47): its name is not one the file can use either.
 pub const WEB_ID: &str = "web";
+
+/// The person's Home Assistant (P5-T07, ADR-48): its name is reserved as well.
+pub const HOME_ID: &str = "homeassistant";
+
+/// `homeAssistant` in `mcp.json`: where HA is and a long-lived token. The companion speaks MCP to
+/// `<url>/api/mcp`; the token never reaches the page and its `Debug` leaves it out.
+#[derive(Clone, PartialEq, Eq)]
+pub enum HomeSpec {
+    Ready { endpoint: String, token: String },
+    Invalid(String),
+}
+
+impl std::fmt::Debug for HomeSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ready { endpoint, .. } => write!(f, "HomeSpec::Ready {{ {endpoint} }}"),
+            Self::Invalid(why) => write!(f, "HomeSpec::Invalid({why})"),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawHome {
+    url: String,
+    token: String,
+}
+
+impl RawHome {
+    fn spec(self) -> HomeSpec {
+        let base = self.url.trim().trim_end_matches('/');
+        let token = self.token.trim();
+        if !(base.starts_with("http://") || base.starts_with("https://")) {
+            return HomeSpec::Invalid(format!(
+                "\"{base}\" is not an http(s) address, like http://homeassistant.local:8123"
+            ));
+        }
+        if token.is_empty() {
+            return HomeSpec::Invalid(
+                "it needs a long-lived access token: in Home Assistant, your profile → Security →                  Long-lived access tokens → Create token"
+                    .into(),
+            );
+        }
+        let endpoint = if base.ends_with("/api/mcp") {
+            base.to_owned()
+        } else {
+            format!("{base}/api/mcp")
+        };
+        HomeSpec::Ready {
+            endpoint,
+            token: token.to_owned(),
+        }
+    }
+}
 
 /// `web` in `mcp.json`: a search provider (the person's SearXNG, or Tavily or Brave with their
 /// key), and whether she may read pages. The key is never printed.
@@ -168,6 +223,8 @@ pub struct McpConfig {
     pub databases: Vec<(String, DatabaseSpec)>,
     /// The web server, when `web` is in the file.
     pub web: Option<WebSpec>,
+    /// Home Assistant, when `homeAssistant` is in the file.
+    pub home: Option<HomeSpec>,
 }
 
 #[derive(Deserialize)]
@@ -181,6 +238,8 @@ struct RawConfig {
     databases: BTreeMap<String, RawDatabase>,
     #[serde(default)]
     web: Option<RawWeb>,
+    #[serde(default, rename = "homeAssistant")]
+    home_assistant: Option<RawHome>,
 }
 
 #[derive(Deserialize)]
@@ -275,7 +334,7 @@ impl McpConfig {
             .into_iter()
             .filter(|(_, server)| !server.disabled)
             .map(|(name, server)| {
-                let spec = if name == FILES_ID || name == WEB_ID {
+                let spec = if name == FILES_ID || name == WEB_ID || name == HOME_ID {
                     ServerSpec::Invalid(format!(
                         "\"{name}\" is the companion's own server; give this one another name"
                     ))
@@ -316,6 +375,7 @@ impl McpConfig {
                 .map(|(name, database)| (name, database.spec()))
                 .collect(),
             web: raw.web.map(RawWeb::spec),
+            home: raw.home_assistant.map(RawHome::spec),
         })
     }
 
@@ -568,6 +628,60 @@ mod tests {
             McpConfig::parse(r#"{ "mcpServers": { "web": { "command": "x" } } }"#).expect("parses");
         assert!(
             matches!(&named.servers[0].1, ServerSpec::Invalid(why) if why.contains("\"web\" is the companion's own"))
+        );
+    }
+
+    #[test]
+    fn home_assistant_is_its_address_and_a_token_never_printed() {
+        let home = |json: &str| McpConfig::parse(json).expect("parses").home;
+        let ready = |endpoint: &str| {
+            Some(HomeSpec::Ready {
+                endpoint: endpoint.into(),
+                token: "eyJs3cret".into(),
+            })
+        };
+        assert_eq!(
+            home(
+                r#"{ "homeAssistant": { "url": "http://homeassistant.local:8123/", "token": " eyJs3cret " } }"#
+            ),
+            ready("http://homeassistant.local:8123/api/mcp")
+        );
+        // The whole MCP address, as HA's own page gives it, is taken as it is.
+        assert_eq!(
+            home(
+                r#"{ "homeAssistant": { "url": "https://ha.example.net/api/mcp", "token": "eyJs3cret" } }"#
+            ),
+            ready("https://ha.example.net/api/mcp")
+        );
+        assert_eq!(home("{}"), None);
+        for (json, says) in [
+            (
+                r#"{ "homeAssistant": { "url": "homeassistant.local:8123", "token": "t" } }"#,
+                "not an http(s) address",
+            ),
+            (
+                r#"{ "homeAssistant": { "url": "http://ha:8123", "token": "  " } }"#,
+                "Long-lived access tokens",
+            ),
+        ] {
+            assert!(
+                matches!(home(json), Some(HomeSpec::Invalid(why)) if why.contains(says)),
+                "{json}"
+            );
+        }
+        assert!(McpConfig::parse(r#"{ "homeAssistant": { "url": "http://ha:8123" } }"#).is_err());
+        let printed = format!(
+            "{:?}",
+            McpConfig::parse(
+                r#"{ "homeAssistant": { "url": "http://ha:8123", "token": "eyJs3cret" } }"#
+            )
+        );
+        assert!(!printed.contains("s3cret"), "{printed}");
+        let named =
+            McpConfig::parse(r#"{ "mcpServers": { "homeassistant": { "url": "http://x" } } }"#)
+                .expect("parses");
+        assert!(
+            matches!(&named.servers[0].1, ServerSpec::Invalid(why) if why.contains("companion's own"))
         );
     }
 

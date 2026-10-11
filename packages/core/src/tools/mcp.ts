@@ -1,6 +1,7 @@
 import type { JsonObject, JsonValue, McpServerClient, McpToolInfo, ToolCall, ToolResult } from '@latentpresence/protocol';
 import type { LocalTool } from '../self/tools';
-import { effectivePolicy, toolFingerprint, type PermissionPrompts, type ToolGrants } from './gate';
+import { effectivePolicy, toolFingerprint, type PermissionOutcome, type PermissionPrompts, type ToolGrants } from './gate';
+import { deviceKey, homeVerdict, type HomeDevice } from './home';
 
 /**
  * MCP tools as page tools (P5-T01, ADR-42): every tool of every connected server becomes a
@@ -18,6 +19,8 @@ export interface ConnectedToolServer {
   readonly label: string;
   readonly client: McpServerClient;
   readonly tools: readonly McpToolInfo[];
+  /** Home Assistant's devices (P5-T07, ADR-48): its actions are then decided per device. */
+  readonly home?: { readonly devices: readonly HomeDevice[] } | null;
 }
 
 /** How much of a result the model reads: a page of text, not a book. */
@@ -76,19 +79,33 @@ export function mcpTools(servers: readonly ConnectedToolServer[], options: McpTo
         },
         async run(args, context): Promise<JsonValue> {
           // Read again at the call: the person may have changed it since the request was built.
-          const { policy, changed } = effectivePolicy(options.grants.get(server.id, info.name), info);
-          if (policy === 'never') return { error: `The person does not allow ${server.label}'s ${info.name}.` };
-          if (policy === 'ask') {
+          const refused = (outcome: PermissionOutcome): JsonValue => {
+            if ('reason' in outcome && outcome.reason === 'timeout') return { error: `They did not answer whether you may use ${server.label}'s ${info.name}, so it did not run. Carry on without it.` };
+            if ('reason' in outcome && outcome.reason === 'stopped') return { error: 'Stopped before it ran.' };
+            return { error: `The person you are talking to said no to using ${server.label}. Use none of its tools for this. Speaking to them, say in your own words that you will leave it since they would rather you did not, then help from what you know.` };
+          };
+          // P5-T07 (ADR-48): Home Assistant's actions are decided per device, from the arguments.
+          const home = server.home == null ? ({ kind: 'tool' } as const) : homeVerdict(info.name, args as JsonObject, server.home.devices, (key) => options.grants.get(server.id, key));
+          if (home.kind === 'never') return { error: `The person does not let you control ${home.target}. Tell them it is set that way in their settings.` };
+          if (home.kind === 'ask') {
             const outcome = await options.prompts.ask(
-              { serverId: server.id, serverName: server.label, tool: info.name, description: info.description, args: args as JsonObject, changed },
+              { serverId: server.id, serverName: server.label, tool: info.name, description: info.description, args: args as JsonObject, changed: false, target: home.target, always: home.device?.names[0] ?? null },
               context.signal,
             );
-            if (outcome.decision === 'deny') {
-              if ('reason' in outcome && outcome.reason === 'timeout') return { error: `They did not answer whether you may use ${server.label}'s ${info.name}, so it did not run. Carry on without it.` };
-              if ('reason' in outcome && outcome.reason === 'stopped') return { error: 'Stopped before it ran.' };
-              return { error: `The person you are talking to said no to using ${server.label}. Use none of its tools for this. Speaking to them, say in your own words that you will leave it since they would rather you did not, then help from what you know.` };
+            if (outcome.decision === 'deny') return refused(outcome);
+            if (outcome.decision === 'always' && home.device !== null) options.grants.set(server.id, deviceKey(home.device), { policy: 'auto', fingerprint: null });
+          }
+          if (home.kind === 'tool') {
+            const { policy, changed } = effectivePolicy(options.grants.get(server.id, info.name), info);
+            if (policy === 'never') return { error: `The person does not allow ${server.label}'s ${info.name}.` };
+            if (policy === 'ask') {
+              const outcome = await options.prompts.ask(
+                { serverId: server.id, serverName: server.label, tool: info.name, description: info.description, args: args as JsonObject, changed },
+                context.signal,
+              );
+              if (outcome.decision === 'deny') return refused(outcome);
+              if (outcome.decision === 'always') options.grants.set(server.id, info.name, { policy: 'auto', fingerprint: toolFingerprint(info) });
             }
-            if (outcome.decision === 'always') options.grants.set(server.id, info.name, { policy: 'auto', fingerprint: toolFingerprint(info) });
           }
           let result;
           try {

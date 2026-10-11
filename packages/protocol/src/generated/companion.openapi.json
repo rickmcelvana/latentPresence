@@ -3476,7 +3476,8 @@
                     "http",
                     "files",
                     "sql",
-                    "web"
+                    "web",
+                    "homeassistant"
                   ]
                 },
                 "state": {

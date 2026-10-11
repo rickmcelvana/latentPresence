@@ -45,6 +45,7 @@ const EXISTING: ToolsSettings = {
   servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'bearer' }],
   grants: { 'srv-1': { search: { policy: 'auto', fingerprint: 'stale000' } }, other: { x: { policy: 'never', fingerprint: null } } },
   companion: false,
+  homeArea: null,
 };
 
 interface Harness {
@@ -78,7 +79,7 @@ function mount(initial: ToolsSettings, connect?: ConnectMcp, listCompanion?: () 
   return { vault, latest: () => latest };
 }
 
-const EMPTY: ToolsSettings = { servers: [], grants: {}, companion: false };
+const EMPTY: ToolsSettings = { servers: [], grants: {}, companion: false, homeArea: null };
 
 function fillForm(label: string, url: string): void {
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: label } });
@@ -195,7 +196,7 @@ describe('ToolsSection — a listed server', () => {
 });
 
 describe('ToolsSection — Test', () => {
-  const openServer: ToolsSettings = { servers: [{ ...EXISTING.servers[0]!, auth: 'none' }], grants: {}, companion: false };
+  const openServer: ToolsSettings = { servers: [{ ...EXISTING.servers[0]!, auth: 'none' }], grants: {}, companion: false, homeArea: null };
 
   it('connects, says how many tools, lists them, and closes the connection', async () => {
     const fake = fakeServer();
@@ -263,6 +264,7 @@ describe('ToolsSection — Test', () => {
       servers: openServer.servers,
       grants: { 'srv-1': { search: { policy: 'auto', fingerprint: 'stale000' }, read_all: { policy: 'auto', fingerprint: toolFingerprint(LONG) } } },
       companion: false,
+      homeArea: null,
     };
     mount(settings, async () => fakeServer());
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
@@ -367,5 +369,66 @@ describe('ToolsSection — from the companion', () => {
     const line = await screen.findByText(/The companion — .*pnpm companion/);
     expect(line.className).toContain('settings-status-danger');
     expect(line.textContent).toContain('not answering');
+  });
+});
+
+const tool = (name: string) => ({ name, description: `${name}.`, inputSchema: { type: 'object' }, annotations: null });
+
+describe('ToolsSection — Home Assistant (P5-T07, ADR-48)', () => {
+  const OVERVIEW = [
+    'Static Context: An overview of the areas and the devices in this smart home:',
+    '- names: Kitchen Lights',
+    '  domain: light',
+    '  areas: Kitchen',
+    '- names: Garage Door',
+    '  domain: cover',
+    '  areas: Garage',
+    '- names: Outside Temperature',
+    '  domain: sensor',
+    '',
+  ].join('\n');
+  const HA_TOOLS = [tool('homeassistant__GetLiveContext'), tool('intent__HassTurnOn'), tool('light__HassLightSet')];
+
+  function homeListing(): Promise<CompanionToolServer[]> {
+    return Promise.resolve([
+      {
+        server: { id: 'homeassistant', label: 'Home Assistant', kind: 'homeassistant', state: 'ready', detail: null, instructions: OVERVIEW },
+        tools: HA_TOOLS,
+        client: new FakeMcpServer('Home Assistant', []),
+      },
+    ]);
+  }
+
+  it('List gives the reading tool a row, the actions none, and the devices a choice each', async () => {
+    const { latest } = mount(EMPTY, undefined, homeListing);
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    await screen.findByText('Home Assistant — 3 tools');
+    expect(screen.getByRole('combobox', { name: 'Policy for homeassistant__GetLiveContext' })).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: 'Policy for intent__HassTurnOn' })).toBeNull();
+    expect(screen.queryByRole('combobox', { name: 'Policy for light__HassLightSet' })).toBeNull();
+    expect(screen.getByText(/decided for each device below/)).toBeTruthy();
+    expect(screen.queryByText('Outside Temperature')).toBeNull();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Policy for Kitchen Lights' }), { target: { value: 'auto' } });
+    expect(latest().grants['companion:homeassistant']?.['device:kitchen lights']).toEqual({ policy: 'auto', fingerprint: null });
+    const garage = screen.getByRole('combobox', { name: 'Policy for Garage Door' });
+    expect((within(garage).getByRole('option', { name: 'Always allow' }) as HTMLOptionElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('Where you talk to her from'), { target: { value: 'Kitchen' } });
+    expect(latest().homeArea).toBe('Kitchen');
+  });
+
+  it('any other companion server keeps a row for every tool and no device list', async () => {
+    mount(EMPTY, undefined, async () => [
+      {
+        server: { id: 'files', label: 'Files', kind: 'files', state: 'ready', detail: null, instructions: null },
+        tools: [tool('read_file'), tool('HassTurnOn')],
+        client: new FakeMcpServer('Files', []),
+      },
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    await screen.findByText('Files — 2 tools');
+    expect(screen.getAllByRole('combobox', { name: /Policy for/ })).toHaveLength(2);
+    expect(screen.queryByLabelText('Find a device')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
-import type { ConnectedToolServer, ToolGrant, ToolGrants } from '@latentpresence/core';
-import type { McpServerClient } from '@latentpresence/protocol';
+import { homeContext, parseHomeOverview, type ConnectedToolServer, type ToolGrant, type ToolGrants } from '@latentpresence/core';
+import type { McpServerClient, PromptContextInput } from '@latentpresence/protocol';
 import { companionToolServers, connectMcpServer, type CompanionToolServer, type CompanionToolsOptions, type ConnectMcpOptions, type McpServerConfig } from '@latentpresence/providers/web';
 import { loadSettings, mcpKeyRef, saveSettings, type Settings, type ToolServerSetting } from '../settings/settings';
 
@@ -55,7 +55,9 @@ export async function connectCompanionTools(
       statuses.push({ id, label: server.label, ok: false, detail: why });
       continue;
     }
-    connected.push({ id, label: server.label, client, tools });
+    // P5-T07 (ADR-48): Home Assistant's devices, from the overview the companion serves.
+    const home = server.kind === 'homeassistant' ? { devices: parseHomeOverview(server.instructions ?? '') } : null;
+    connected.push({ id, label: server.label, client, tools, ...(home === null ? {} : { home }) });
     statuses.push({ id, label: server.label, ok: true, detail: `${tools.length} tool${tools.length === 1 ? '' : 's'}` });
   }
   return { connected, statuses };
@@ -94,6 +96,12 @@ export async function connectToolServers(options: ConnectToolServersOptions): Pr
     connected: [...results.flatMap((result) => (result.connected === null ? [] : [result.connected])), ...(companion?.connected ?? [])],
     statuses: [...results.map((result) => result.status), ...(companion?.statuses ?? [])],
   };
+}
+
+/** Her prompt's home (P5-T07, ADR-48): Home Assistant's devices and the room they talk from, or null. */
+export function homePrompt(servers: readonly ConnectedToolServer[], area: string | null): PromptContextInput['home'] {
+  const home = servers.find((server) => server.home != null)?.home;
+  return home == null ? null : homeContext(home.devices, area);
 }
 
 /**

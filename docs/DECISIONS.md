@@ -50,6 +50,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-45 | Cited answers: `documents_search` is her own tool (shown, not gated), the companion embeds the query and fuses vector and `FULLTEXT` by reciprocal rank (`POST /documents/search`); citations are `[cite:c<chunk>]` inline tags, never spoken, listed as sources under the answer; off until Settings → Documents turns it on | accepted | 2026-10-10 |
 | ADR-46 | The person's databases: first-party `sql:<name>` companion servers from `mcp.json`; read-only in three layers (sqlparser verdict, read-only transaction or file, time and row limits), plus a read-only user | accepted | 2026-10-11 |
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
+| ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | proposed | 2026-10-11 |
 
 ---
 
@@ -1654,3 +1655,68 @@ speech and on screen; the chunker takes the space back, and the display filter h
 space until the next text shows whether punctuation follows a tag. Playwright MCP 0.0.82
 navigated and returned a snapshot through `/mcp/call`. Rick's SearXNG answered 429 to every
 request from this machine (its limiter); the Tavily and SearXNG round trips are R-33.
+
+## ADR-48 Home Assistant: a companion server, and a policy per device (proposed 2026-10-11)
+
+**Context.** P5-T07: connect to Home Assistant's MCP server with a long-lived token; a device
+confirmation policy; area-aware prompts. Done when a light toggles from voice with a confirm
+step, and the policy can set specific devices to auto. ADR-08 chose HA's MCP server as the only
+smart-home path; ADR-42 gates tools per tool; ADR-43 gave the companion first-party servers.
+
+**Measured first (HA 2026.9.4, a throwaway instance with the demo devices, 2026-10-11).**
+`/api/mcp` speaks stateless streamable HTTP (no `Mcp-Session-Id`) with the token as `Bearer`.
+27 tools named `<domain>__<Intent>` (`intent__HassTurnOn`, `light__HassLightSet`,
+`homeassistant__GetLiveContext`, …). **They target by `name`, `area`, `floor`, `domain`,
+`device_class` — never an entity id**, and `intent__HassTurnOff { domain: ["light"] }` with no
+name turned off every light. **`HassTurnOn` locks a lock and `HassTurnOff` unlocks it.** A
+prompt, "Assist", lists every exposed device as YAML (`names` — aliases replace the name —
+`domain`, `areas`); a result names what changed (`data.success[].id`).
+
+**Decisions.**
+
+1. **In the companion.** `homeAssistant` in `mcp.json`: `{ "url": "http://homeassistant.local:8123",
+   "token": "<long-lived token>" }`; the companion connects to `<url>/api/mcp`. The token never
+   reaches the page (HA sends no CORS headers for it either). A first-party server, id
+   `homeassistant`, label "Home Assistant", kind `homeassistant` (the contract's change, this
+   note); the name is reserved in `mcpServers`.
+2. **Her map of the home is HA's own.** The companion reads the "Assist" prompt and serves it as
+   the server's `instructions`, read again when the page lists tools and a minute has passed.
+   The page parses names, domain and areas from it.
+3. **Actions are decided per device, not per tool.** For HA's tools that change something:
+   - a call naming a device follows that device's policy — **ask** (default), **auto** or
+     **never** — kept with the tool grants under `device:<name>`;
+   - a call that names no device (an area, a floor, a domain) **always asks**: it reaches every
+     device that matches;
+   - **locks, alarm panels, covers and valves always ask and cannot be set to auto**: they
+     unlock, open and disarm, and HA's own turn-on/turn-off does it.
+   "Always allow" on the card means *this device*, says so, and is not offered where auto is not
+   allowed. Reading tools (`GetLiveContext`, `GetDateTime`, a to-do list's items) keep the
+   ordinary per-tool gate.
+4. **Area-aware prompt.** Settings → Tools → Home Assistant: *where you talk to her from* (an
+   area). Her prompt gets a home section — the devices by area, the room they are in ("the
+   light" means that room's), and to name one device exactly or an area with a domain.
+5. **Voice is the typed path** (P1-T12b), so a spoken request reaches the same card. Answering the
+   card by voice is not this task.
+
+**Rejected.** *HA from the page* — the token in the browser, and no CORS. *Policy per tool* —
+`HassTurnOn` is the kitchen light and the front-door lock. *Matching what HA resolved* — the
+target is only known after the call has run. *Letting locks be auto* — one sentence from a
+model that reads web pages would open the door.
+
+**Amended in the build (same day).** The first live run found glm, told they were in the kitchen,
+asking for "the light" as `{ area: "Kitchen", domain: ["light"] }` 3/3 — HA's own prompt advises
+it — so an auto light was never auto by area. **A call with an area and domains that may be auto
+is worked out from the overview**: one device is decided as that device (its card offers "always"
+for it); several run by themselves only if every one is auto, otherwise ask. A floor, a bare area
+or a lock, cover, alarm or valve domain is never worked out, so an overview a minute behind can
+only miss one more light, never a door.
+
+**Measured 2026-10-11.** The throwaway HA (2026.9.4, demo devices given areas), the real companion
+and the page's own gate, five cases — the kitchen light by area, asked once; the kitchen light by
+name, set to auto; the same by area; the garage door with a hand-written auto, denied; every
+light, denied: **glm-5.2:cloud 25/25** (after the amendment; 9/12 before it), **gemma4:31b-cloud
+15/15** — asked exactly when the policy says, with the device in words, "always" only where
+allowed, and HA in the expected state each time. In the Browser pane: List showed Home
+Assistant's devices; Kitchen chosen; "Turn on the light, please." brought the card *Kitchen
+Lights (Kitchen)* with **Always allow Kitchen Lights**; the light came on; "now turn it off
+again" ran with no card and changed only that light.

@@ -51,6 +51,8 @@ export function PermissionPrompt({ prompts, characterName }: PermissionPromptPro
         {characterName} wants to use <strong>{current.serverName}</strong> · {current.tool}
       </p>
       <div id={detailId}>
+        {/* P5-T07 (ADR-48): what a Home Assistant call reaches, which its arguments only hint at. */}
+        {current.target !== undefined && <p className="permission-target">{current.target}</p>}
         {current.description !== '' && <p className="permission-description">{current.description}</p>}
         <pre className="permission-args">{shownArguments(current.args)}</pre>
       </div>
@@ -59,9 +61,11 @@ export function PermissionPrompt({ prompts, characterName }: PermissionPromptPro
         <button className="btn btn-primary" onClick={() => prompts.answer(current.id, 'once')} ref={allowOnce} type="button">
           Allow once
         </button>
-        <button className="btn" onClick={() => prompts.answer(current.id, 'always')} type="button">
-          Always allow
-        </button>
+        {current.always !== null && (
+          <button className="btn" onClick={() => prompts.answer(current.id, 'always')} type="button">
+            {current.always === undefined ? 'Always allow' : `Always allow ${current.always}`}
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={() => prompts.answer(current.id, 'deny')} type="button">
           Deny
         </button>

@@ -8,6 +8,7 @@ import {
 import { describeFeeling, describeUser } from '../affect/express';
 import { renderMemory } from '../memory/recall';
 import { renderPlans } from '../plan/render';
+import { renderHome } from './home';
 
 /**
  * The system prompt (P1-T12): a persona plus what is true right now, rendered to the
@@ -144,6 +145,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
           '',
         ]
       : []),
+    // P5-T07 (ADR-48): their home, by area, and the room they are in.
+    ...(context.home ? renderHome(context.home) : []),
     // P4-T07 (ADR-41): how to plan together, and the plans — after memory, before "right now".
     ...(context.plans ? renderPlans(context.plans, context.now) : []),
     'RIGHT NOW',

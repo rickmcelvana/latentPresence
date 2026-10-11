@@ -73,6 +73,13 @@ export interface PermissionRequest {
   readonly args: JsonObject;
   /** She trusted this tool before and it has changed since. */
   readonly changed: boolean;
+  /** What the call reaches, in words, when the tool alone does not say (a Home Assistant device, ADR-48). */
+  readonly target?: string;
+  /**
+   * What "Always allow" would trust: absent, the tool; a name, that one device (ADR-48); null,
+   * nothing — not offered, as for a lock or a call that names no device.
+   */
+  readonly always?: string | null;
   readonly at: string;
 }
 

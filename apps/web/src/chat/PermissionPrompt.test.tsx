@@ -44,6 +44,24 @@ describe('PermissionPrompt', () => {
     expect(dialog.querySelector('pre')?.textContent).toBe("sql: SELECT name\nFROM herbs\nWHERE note = 'a \"b\"'");
   });
 
+  it('names the Home Assistant device a call reaches, and offers "always" for that device or not at all (P5-T07)', async () => {
+    const gate = prompts();
+    render(<PermissionPrompt characterName="Alice" prompts={gate} />);
+    let light: Promise<PermissionOutcome> | undefined;
+    act(() => {
+      light = gate.ask({ serverId: 'companion:homeassistant', serverName: 'Home Assistant', tool: 'intent__HassTurnOn', description: 'Turns on a device.', args: { name: 'Kitchen Lights' }, changed: false, target: 'Kitchen Lights (Kitchen)', always: 'Kitchen Lights' });
+    });
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.querySelector('.permission-target')?.textContent).toBe('Kitchen Lights (Kitchen)');
+    fireEvent.click(screen.getByRole('button', { name: 'Always allow Kitchen Lights' }));
+    await expect(light).resolves.toEqual({ decision: 'always' });
+
+    act(() => void gate.ask({ serverId: 'companion:homeassistant', serverName: 'Home Assistant', tool: 'intent__HassTurnOn', description: '', args: { name: 'Garage Door' }, changed: false, target: 'Garage Door (Garage)', always: null }));
+    await screen.findByText('Garage Door (Garage)');
+    expect(screen.queryByRole('button', { name: /Always allow/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Allow once' })).toBeDefined();
+  });
+
   it.each([
     ['Allow once', 'once'],
     ['Always allow', 'always'],

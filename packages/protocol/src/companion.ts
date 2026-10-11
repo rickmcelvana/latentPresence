@@ -160,12 +160,13 @@ export const IngestJobParamsSchema = z.object({ id: IdSchema });
  * A server the companion runs or reaches for the page (P5-T02, ADR-43): one from its own
  * `mcp.json` (`stdio`, `http`), its own read-only `files`, or one of the person's databases
  * (`sql`, P5-T05, ADR-46: id `sql:<name>`, label the name), or its own `web` (P5-T06, ADR-47:
- * search and read a page). `detail` says why one failed.
+ * search and read a page), or the person's Home Assistant (`homeassistant`, P5-T07, ADR-48: its
+ * `instructions` are HA's own overview of the devices). `detail` says why one failed.
  */
 export const McpHostServerSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  kind: z.enum(['stdio', 'http', 'files', 'sql', 'web']),
+  kind: z.enum(['stdio', 'http', 'files', 'sql', 'web', 'homeassistant']),
   state: z.enum(['starting', 'ready', 'failed']),
   detail: z.string().nullable(),
   instructions: z.string().nullable(),

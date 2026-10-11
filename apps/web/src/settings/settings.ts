@@ -119,6 +119,11 @@ export const ToolsSettingsSchema = z.object({
    * Their grants are under `companion:<name>`. Defaulted, so a document saved in P5-T01 loads.
    */
   companion: z.boolean().default(false),
+  /**
+   * The Home Assistant area they talk to her from (P5-T07, ADR-48): "the light" means that
+   * room's. Null, no room is assumed. Device policies sit in `grants` under `device:<name>`.
+   */
+  homeArea: z.string().min(1).max(200).nullable().default(null),
 });
 export type ToolsSettings = z.infer<typeof ToolsSettingsSchema>;
 
@@ -138,7 +143,7 @@ export const SettingsSchema = z.object({
   companionUrl: z.string(),
   memory: MemorySettingSchema.default('browser'),
   /** Defaulted, so a settings document saved before P5 still loads. */
-  tools: ToolsSettingsSchema.default({ servers: [], grants: {}, companion: false }),
+  tools: ToolsSettingsSchema.default({ servers: [], grants: {}, companion: false, homeArea: null }),
   /** P5-T04, ADR-45: off by default, no unasked request to `127.0.0.1`. */
   documents: DocumentsSettingsSchema.default({ search: false }),
   llm: LlmSettingsSchema,
@@ -153,7 +158,7 @@ export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   companionUrl: DEFAULT_COMPANION_URL,
   memory: 'browser',
-  tools: { servers: [], grants: {}, companion: false },
+  tools: { servers: [], grants: {}, companion: false, homeArea: null },
   documents: { search: false },
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
