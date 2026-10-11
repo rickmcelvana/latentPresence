@@ -189,56 +189,6 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-29 · Tools from the companion · ~10 minutes, desktop
-**Why:** P5-T02 lets the companion run MCP servers you list in a file on this computer, including
-a read-only **Files** server for folders you choose (ADR-43). The automatic check passed in the
-Browser pane; whether it is easy to set up and feels safe needs you.
-1. Make the file (PowerShell):
-   ```powershell
-   New-Item -ItemType Directory -Force "$env:APPDATA\latentPresence"
-   ```
-   ```powershell
-   notepad "$env:APPDATA\latentPresence\mcp.json"
-   ```
-   Paste this, with a folder of your own notes in place of the path (forward slashes are fine),
-   and save:
-   ```json
-   {
-     "mcpServers": {
-       "everything": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-everything@2026.8.31"] }
-     },
-     "files": { "roots": ["C:/Users/rickm/Documents/notes"] }
-   }
-   ```
-2. Stop any companion that is running and start it again with `pnpm companion`. It prints
-   "mcp servers from …\mcp.json (1 listed, 1 files root(s))"; the first `npx` takes ~30 s.
-3. `/settings` → **Tools** → *From the companion* → **List**: Files (5 tools) and everything (13).
-   Turn on **Offer the companion's tools**.
-4. In `/chat`, ask her about something in one of those notes. Allow each card once. Then ask her
-   to read a file *outside* that folder (give a full path).
-
-**Pass:** the cards name Files and the tool; she finds and reads the note and answers from it;
-outside the folder she is refused and says so. **Paste back:** pass/fail, how many cards it took,
-and whether the file was easy to write.
-
-**Retry (2026-10-10).** The first run failed: a herb near the end of `herbs.txt` was past the
-8,000 characters she was given, and asked again she said she had looked without looking. Fixed in
-586cf4e. Restart the companion (`pnpm companion`), then **List** again: Files now has 5 tools, and
-since `read_text_file` changed, its card asks again even if you chose Always. Ask about the same
-herb (and one from the very end, such as yarrow). **Pass:** the cards show `search_text`, then
-`read_text_file`; she answers from the note.
-
-**Retry 2 (2026-10-10).** Yarrow passed. Asked what `Documents\herbal-teas.txt` (outside the
-folder) said, she answered with words it never gave her and no tool line was shown. Not
-reproduced in 25 glm runs (she tried, was refused and said so every time); 7565534 closes where
-such an answer could hide: a standing rule never to say what a file holds without a tool's words,
-a guessed tool name answered instead of silently ending the answer, and every call but her own
-notes and plans shown. Restart the page (no companion change), then ask the same question.
-**Pass:** a "did not use …" line and "I can't read that". **Paste back:** if it happens again,
-the model named in Settings → Language model, and every line of the transcript for that turn.
-**Found 2026-10-11:** the model was Gemma 4 31b, which writes a tool call as text about 1 ask in
-6; d114a19 runs those as real calls (24/24 live). Retry with Gemma as well as glm.
-
 ### R-30 · Index your own documents · ~10 minutes, desktop
 **Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
 1,274-page set; real PDFs (scans, odd fonts, forms) are where extractors fail.
@@ -246,7 +196,9 @@ the model named in Settings → Language model, and every line of the transcript
    ```powershell
    notepad "$env:APPDATA\latentPresence\documents.json"
    ```
-   with a folder of real PDFs and documents in place of the path:
+   Notepad asks to create it — say Yes — then paste this, with a folder of real PDFs and
+   documents in place of the path, and **save (Ctrl+S) before step 2**: the file exists, empty,
+   from the moment Notepad creates it, and a companion that reads it then says "is empty".
    ```json
    {
      "folders": ["C:/Users/rickm/Documents/manuals"],
@@ -257,6 +209,10 @@ the model named in Settings → Language model, and every line of the transcript
 2. Restart the companion (`pnpm companion`). It prints "documents from …: 1 folder(s), embedding
    nomic-embed-text" and starts indexing.
 3. `/settings` → **Documents** → **Check**; when the scan is done, **Scan now** once more.
+
+**Note (2026-10-11):** the first try said "EOF while parsing a value at line 1 column 0" — the
+companion read the file before it was saved; the JSON was fine. That error now reads "… is empty:
+save it (Ctrl+S in Notepad), then restart the companion".
 
 **Pass:** the counts look right for the folder; failures (if any) name files that really are
 odd (scanned images, password-protected); the second scan indexes 0. **Paste back:** the counts,
@@ -319,6 +275,10 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-41 · R-29: tools from the companion** — Rick 2026-10-11: **passed** (third try) — Files
+  reads a long note and finds the line; a file outside the folder is refused and she says so,
+  with glm-5.2, Gemma 4 31b and deepseek-v4.1-flash. The first try found the 8,000-character
+  cut (586cf4e); the second, Gemma writing its tool calls as text (d114a19).
 - **D-40 · R-28: let her use a tool** — Rick 2026-10-09: **passed** — tool calls work, Deny,
   Always allow and Stop all behave. One try without the companion running did not call a tool;
   not reproduced (MCP tools work with the companion down in the pane, 2026-10-09) — likely the

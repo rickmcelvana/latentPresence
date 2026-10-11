@@ -717,3 +717,8 @@ Did: ADR-46 accepted (Rick). R-29's invented answer was Gemma 4 31b (Rick had sw
 Left: R-29 retry 2 (glm and Gemma), R-30, R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T06 web search and browser tools (main).
 Decisions: ADR-46 accepted.
+## 2026-10-11 claude — R-29 passed, R-30's empty file
+Did: R-29 passed (Rick: glm-5.2, Gemma 4 31b, deepseek-v4.1-flash). R-30's "EOF while parsing a value at line 1 column 0" was an empty documents.json read before Notepad's Save — Rick's saved file parses (checked with the companion). Both config files now say "is empty: save it (Ctrl+S in Notepad), then restart the companion" and skip a UTF-8 BOM; R-30's steps say to save before restarting.
+Left: R-30 (restart the companion), R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T06 web search and browser tools (main).
+Decisions: none.
