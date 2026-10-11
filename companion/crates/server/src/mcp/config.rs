@@ -242,11 +242,34 @@ impl McpConfig {
 
     /// The file at `path`: none there is no servers; one that does not parse is an error.
     pub fn load(path: &Path) -> Result<Self, String> {
-        match std::fs::read_to_string(path) {
-            Ok(text) => Self::parse(&text).map_err(|error| format!("{}: {error}", path.display())),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(error) => Err(format!("{}: {error}", path.display())),
+        match read_config(path)? {
+            Some(text) => {
+                Self::parse(&text).map_err(|error| format!("{}: {error}", path.display()))
+            }
+            None => Ok(Self::default()),
         }
+    }
+}
+
+/// A config file's text, or `None` when there is no file. An empty one says what it is: Notepad
+/// makes the file, empty, the moment it offers to create it, so a companion started before Save
+/// read nothing (R-30: "EOF while parsing a value at line 1 column 0"). A byte-order mark, which
+/// some editors write first, is dropped. Shared by `mcp.json` and `documents.json`.
+pub fn read_config(path: &Path) -> Result<Option<String>, String> {
+    match std::fs::read_to_string(path) {
+        Ok(text) => {
+            let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+            if text.trim().is_empty() {
+                Err(format!(
+                    "{} is empty: save it (Ctrl+S in Notepad), then restart the companion",
+                    path.display()
+                ))
+            } else {
+                Ok(Some(text.to_owned()))
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(format!("{}: {error}", path.display())),
     }
 }
 

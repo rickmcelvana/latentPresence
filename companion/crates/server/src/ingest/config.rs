@@ -118,10 +118,11 @@ impl DocumentsConfig {
 
     /// The file at `path`: none there is no folders; one that does not parse is an error.
     pub fn load(path: &Path) -> Result<Self, String> {
-        match std::fs::read_to_string(path) {
-            Ok(text) => Self::parse(&text).map_err(|error| format!("{}: {error}", path.display())),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(error) => Err(format!("{}: {error}", path.display())),
+        match crate::mcp::config::read_config(path)? {
+            Some(text) => {
+                Self::parse(&text).map_err(|error| format!("{}: {error}", path.display()))
+            }
+            None => Ok(Self::default()),
         }
     }
 }
@@ -337,6 +338,20 @@ mod tests {
         assert_eq!(
             DocumentsConfig::load(&path).expect("loads").folders,
             [PathBuf::from("/x")]
+        );
+        // R-30: Notepad makes the file empty before Save; some editors write a byte-order mark.
+        std::fs::write(&path, " \r\n").expect("writes");
+        let empty = DocumentsConfig::load(&path).expect_err("empty");
+        assert!(
+            empty.ends_with("is empty: save it (Ctrl+S in Notepad), then restart the companion"),
+            "{empty}"
+        );
+        std::fs::write(&path, "\u{feff}{ \"folders\": [\"/y\"] }").expect("writes");
+        assert_eq!(
+            DocumentsConfig::load(&path)
+                .expect("loads past a BOM")
+                .folders,
+            [PathBuf::from("/y")]
         );
     }
 
