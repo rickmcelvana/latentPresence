@@ -2324,7 +2324,8 @@ On the development server (MariaDB 11.8.8):
 - **Tavily** (docs.tavily.com): `POST https://api.tavily.com/search`, `Authorization: Bearer
   tvly-…`, body `{ query, max_results (0–20, default 10), search_depth: basic (1 credit),
   time_range: day|week|month|year, include_answer: false }`; `results[]` with `title`, `url`,
-  `content`, `score`, `published_date`. Not called live (no key in this session).
+  `content`, `score`, `published_date`. Not called live in this session; **Rick ran it live
+  2026-10-11 (R-33, D-44)**: Halifax weather from weatherapi.com and weather.gc.ca, no errors.
 - **Brave Search API** (api-dashboard.search.brave.com): `GET
   https://api.search.brave.com/res/v1/web/search?q=&count=(≤20)&freshness=pd|pw|pm|py`, header
   `X-Subscription-Token`; `web.results[]` with `title`, `url`, `description` (with `<strong>`

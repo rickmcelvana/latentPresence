@@ -332,7 +332,7 @@ Register MariaDB, MySQL, Postgres, SQLite sources; schema introspection with sam
 Done when: SQL injection test-suite passes; no write statement can execute.
 **Met:** the guard refuses every case of the suite in every dialect; past the guard every write fails at MariaDB 11.8.8 and SQLite with the rows unchanged (Postgres 17.11 in CI), and a slow query stops at its limit. Live, glm-5.2:cloud 10/10 on a SQLite garden, never attempting a write and ignoring an instruction planted in a row.
 
-### P5-T06 Web search and browser tools — owner: main (done 2026-10-11, ADR-47 proposed)
+### P5-T06 Web search and browser tools — owner: main (done 2026-10-11, ADR-47 accepted; R-33 passed)
 SearXNG provider, Brave and Tavily BYO providers, Playwright MCP wiring, result rendering on the in-world screen.
 Done when: "what's the weather" answers with a cited source.
 **Met (with a stand-in provider):** glm-5.2:cloud 20/20 through the companion's web server — searched, answered and cited the weather result, listed under her answer as a link. The real Tavily/SearXNG round trip is R-33; Playwright MCP verified through the stdio host. **The in-world screen is P5-T08's.**

@@ -189,72 +189,6 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-33 · Ask her the weather · ~15 minutes, desktop
-**Why:** P5-T06 gives her web search and page reading through the companion (ADR-47). It passed
-20/20 against a stand-in search service; your Tavily key and your SearXNG are the real ones.
-1. In `mcp.json` (`notepad "$env:APPDATA\latentPresence\mcp.json"`), beside `files`, add
-   ```json
-   "web": { "search": { "provider": "tavily", "key": "tvly-YOUR-KEY" } }
-   ```
-   Save, restart the companion. `/settings` → **Tools** → *From the companion* → **List**: "Web"
-   (2 tools), ready.
-2. In `/chat`, ask "What's the weather in Halifax right now?" Allow the card. Open **Sources**
-   under the answer and follow the link.
-3. Optional, your SearXNG instead: on the server, in `settings.yml`, add `json` under
-   `search: formats:` (beside `html`) and set `server: limiter: false` (or add the address the
-   companion's requests arrive from to `pass_ip` in `limiter.toml`); restart SearXNG; then use
-   `{ "provider": "searxng", "url": "http://10.0.0.1:6699" }`. Today it answers 429 to this
-   machine.
-4. Optional, a browser for her: add to `mcpServers`
-   ```json
-   "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@0.0.82", "--headless", "--isolated", "--browser", "msedge", "--output-dir", "C:/Users/rickm/AppData/Local/Temp/latentpresence-playwright"] }
-   ```
-   It can open any page, local ones included, and asks before each step.
-
-**Pass:** she searches, the weather matches the source, the Sources link opens the page she
-used, and she never reads a link aloud. **Paste back:** pass/fail, the provider, and any
-"Web said: …" error.
-
-### R-30 · Index your own documents · ~10 minutes, desktop
-**Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
-1,274-page set; real PDFs (scans, odd fonts, forms) are where extractors fail.
-1. Next to `mcp.json` (R-29), make `documents.json`:
-   ```powershell
-   notepad "$env:APPDATA\latentPresence\documents.json"
-   ```
-   Notepad asks to create it — say Yes — then paste this, with a folder of real PDFs and
-   documents in place of the path, and **save (Ctrl+S) before step 2**: the file exists, empty,
-   from the moment Notepad creates it, and a companion that reads it then says "is empty".
-   ```json
-   {
-     "folders": ["C:/Users/rickm/Documents/manuals"],
-     "embedding": { "baseUrl": "http://127.0.0.1:11434/v1", "model": "nomic-embed-text", "dimensions": 768,
-                    "documentPrefix": "search_document: ", "queryPrefix": "search_query: " }
-   }
-   ```
-2. Restart the companion (`pnpm companion`). It prints "documents from …: 1 folder(s), embedding
-   nomic-embed-text" and starts indexing.
-3. `/settings` → **Documents** → **Check**; when the scan is done, **Scan now** once more.
-
-**Note (2026-10-11):** the first try said "EOF while parsing a value at line 1 column 0" — the
-companion read the file before it was saved; the JSON was fine. That error now reads "… is empty:
-save it (Ctrl+S in Notepad), then restart the companion".
-
-**Pass:** the counts look right for the folder; failures (if any) name files that really are
-odd (scanned images, password-protected); the second scan indexes 0. **Paste back:** the counts,
-the failures, and how long the first scan took. Searching them with her is P5-T04.
-
-### R-31 · Ask her about your documents · ~10 minutes, desktop, after R-30
-**Why:** P5-T04 lets her search the documents R-30 indexed and cite them (ADR-45). The live check
-passed 20/20 on invented facts; whether her answers and the sources feel trustworthy needs you.
-1. `/settings` → **Documents** → turn on **Let her search these documents**.
-2. In `/chat`, ask her five things you know are in your documents, and one you know is not.
-3. Open the **Sources** under an answer and check the page and passage.
-
-**Pass:** she says she is looking, answers from the document, the source is the right one (page
-too, for a PDF), she never reads a ref or path aloud, and for the one that is not there she says
-so. **Paste back:** pass/fail per question, and any source marked "not given".
-
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
 The suites and a live run on a test database passed; a real schema is where she will stumble.
@@ -301,6 +235,14 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-44 · R-33: ask her the weather** — Rick 2026-10-11: **passed** — with Tavily she searched,
+  read weatherapi.com and weather.gc.ca for Halifax, and answered with no errors. Rick's SearXNG
+  `settings.yml` is updated (json format, limiter), and Playwright MCP is in his `mcpServers`.
+- **D-43 · R-31: ask her about your documents** — Rick 2026-10-11: **passed** — every answer
+  matched his manuals, and she cited the source and page.
+- **D-42 · R-30: index your own documents** — Rick 2026-10-11: **passed** (second try, after
+  49a627c) — `C:/Users/rickm/Documents/manuals`: 3 documents, 309 chunks, nomic-embed-text
+  (768); the rescan saw 3 and indexed 0; no failures.
 - **D-41 · R-29: tools from the companion** — Rick 2026-10-11: **passed** (third try) — Files
   reads a long note and finds the line; a file outside the folder is refused and she says so,
   with glm-5.2, Gemma 4 31b and deepseek-v4.1-flash. The first try found the 8,000-character

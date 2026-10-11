@@ -728,3 +728,9 @@ Did: P5-T06 (cea6ced): companion `web` server (`mcp.json` `web`: SearXNG url, or
 Left: R-30, R-31, R-32, R-33 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T07 Home Assistant (main).
 Decisions: ADR-47 proposed — needs Rick's accept.
+
+## 2026-10-11 claude — R-30, R-31, R-33 passed; ADR-47 accepted
+Did: recorded Rick's results — R-30 (D-42: manuals, 3 documents, 309 chunks, rescan indexed 0), R-31 (D-43: answers matched, cited with page), R-33 (D-44: Tavily, Halifax weather from weatherapi.com and weather.gc.ca, no errors; his SearXNG settings fixed; Playwright MCP added). ADR-47 accepted; DECISIONS table caught up (ADR-45 accepted, ADR-46 and ADR-47 rows). SURFACE: Tavily live. CI green on 0dc3e19.
+Left: R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T07 Home Assistant (main).
+Decisions: ADR-47 accepted.
