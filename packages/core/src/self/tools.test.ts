@@ -152,6 +152,27 @@ describe('withLocalTools (P4-T06, ADR-40)', () => {
     expect(llm.requests).toHaveLength(1);
   });
 
+  it('runs a call the model wrote as text, and never says the markup or what it imagined after (R-29)', async () => {
+    const { notes } = notesOn();
+    await notes.writeNote('herbs', 'Yarrow: Venus.');
+    const llm = scripted([
+      [
+        { type: 'text-delta', text: 'Let me check. [tool:self_read_' },
+        { type: 'text-delta', text: 'block(name="herbs")] It says sage.' },
+        { type: 'finish', reason: 'stop', usage: null },
+      ],
+      [{ type: 'text-delta', text: 'Yarrow goes with Venus.' }, { type: 'finish', reason: 'stop', usage: null }],
+    ]);
+    const ran: string[] = [];
+    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes), { onCallStart: (c) => ran.push(c.name) }).stream(request));
+    expect(ran).toEqual(['self_read_block']);
+    expect(chunks.filter((chunk) => chunk.type === 'text-delta').map((chunk) => chunk.text).join('')).toBe('Let me check. Yarrow goes with Venus.');
+    expect(llm.requests[1]?.messages.slice(-2)).toEqual([
+      { role: 'assistant', content: 'Let me check. ', toolCalls: [expect.objectContaining({ name: 'self_read_block', arguments: { name: 'herbs' } })] },
+      { role: 'tool', callId: 'written-0-0', content: expect.anything() },
+    ]);
+  });
+
   it('answers a call to a tool nobody offered with the tools there are, and goes on (R-29)', async () => {
     const { notes } = notesOn();
     const guessed = call('read_text_file', { path: 'C:/tea.txt' });

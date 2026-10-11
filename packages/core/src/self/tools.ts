@@ -1,6 +1,7 @@
 import type { CancellationSignal, JsonValue, LLMProvider, LlmMessage, LlmRequest, LlmStreamChunk, LlmTool, ProviderCallOptions, ToolCall } from '@latentpresence/protocol';
 import { z } from 'zod';
 import type { SelfNotes } from './notes';
+import { TextCallScanner } from './text-calls';
 
 /**
  * Tools the page runs itself (P4-T06, ADR-40), and the one place they are run.
@@ -90,6 +91,14 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
         const late: ToolCall[] = [];
         let text = '';
         let finish: LlmStreamChunk | null = null;
+        // R-29: a call written as text is held back as it streams and run as the call it meant.
+        const written = new TextCallScanner();
+        const say = (piece: string): string => {
+          const joined = text === '' && spoken !== '' && !/\s$/u.test(spoken) && !/^\s/u.test(piece) ? ` ${piece}` : piece;
+          text += piece;
+          spoken += joined;
+          return joined;
+        };
         for await (const chunk of llm.stream({ ...request, messages, tools: [...request.tools, ...offered.map((tool) => tool.definition)] }, callOptions)) {
           if (chunk.type === 'tool-call' && offered.some((tool) => tool.definition.name === chunk.call.name)) {
             calls.push(chunk.call);
@@ -103,12 +112,22 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
           } else if (chunk.type === 'finish') {
             finish = chunk;
           } else if (chunk.type === 'text-delta') {
-            const joined = text === '' && spoken !== '' && !/\s$/u.test(spoken) && !/^\s/u.test(chunk.text) ? ` ${chunk.text}` : chunk.text;
-            text += chunk.text;
-            spoken += joined;
+            const piece = written.feed(chunk.text);
+            if (piece === '') continue;
+            const joined = say(piece);
             yield joined === chunk.text ? chunk : { ...chunk, text: joined };
           } else {
             yield chunk;
+          }
+        }
+        const rest = written.end();
+        if (rest.text !== '') yield { type: 'text-delta', text: say(rest.text) };
+        if (calls.length === 0 && late.length === 0) {
+          const at = new Date().toISOString();
+          for (const [i, call] of rest.calls.entries()) {
+            const real: ToolCall = { id: `written-${round}-${i}`, name: call.name, arguments: call.arguments, source: 'llm', requestedAt: at };
+            if (offered.length > 0) calls.push(real);
+            else late.push(real);
           }
         }
         if (late.length > 0 && calls.length === 0 && round === maxRounds && callOptions?.signal?.aborted !== true) {
