@@ -722,3 +722,9 @@ Did: R-29 passed (Rick: glm-5.2, Gemma 4 31b, deepseek-v4.1-flash). R-30's "EOF 
 Left: R-30 (restart the companion), R-31, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T06 web search and browser tools (main).
 Decisions: none.
+
+## 2026-10-11 claude — P5-T06 web search and pages
+Did: P5-T06 (cea6ced): companion `web` server (`mcp.json` `web`: SearXNG url, or Tavily/Brave key), tools `search` and `read_page` (guarded: public addresses only, checked after DNS and on redirects, no proxy, text, 2 MB, paged like Files), refs `w`+6 hex cited into the Sources list (`citedSources`, links), prompt line, contract kind `web`; chunker and display filter close "fourteen ." left by a tag before punctuation. Live (stand-in SearXNG): glm 20/20 with each result's exact tag (11/16 → 9/10 → 20/20), Gemma 5/6; Playwright MCP 0.0.82 through the stdio host. Rick's SearXNG: 429 (limiter). Tavily live skipped at Rick's call.
+Left: R-30, R-31, R-32, R-33 (new), R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T07 Home Assistant (main).
+Decisions: ADR-47 proposed — needs Rick's accept.

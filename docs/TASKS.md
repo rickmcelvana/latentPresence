@@ -189,6 +189,32 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-33 · Ask her the weather · ~15 minutes, desktop
+**Why:** P5-T06 gives her web search and page reading through the companion (ADR-47). It passed
+20/20 against a stand-in search service; your Tavily key and your SearXNG are the real ones.
+1. In `mcp.json` (`notepad "$env:APPDATA\latentPresence\mcp.json"`), beside `files`, add
+   ```json
+   "web": { "search": { "provider": "tavily", "key": "tvly-YOUR-KEY" } }
+   ```
+   Save, restart the companion. `/settings` → **Tools** → *From the companion* → **List**: "Web"
+   (2 tools), ready.
+2. In `/chat`, ask "What's the weather in Halifax right now?" Allow the card. Open **Sources**
+   under the answer and follow the link.
+3. Optional, your SearXNG instead: on the server, in `settings.yml`, add `json` under
+   `search: formats:` (beside `html`) and set `server: limiter: false` (or add the address the
+   companion's requests arrive from to `pass_ip` in `limiter.toml`); restart SearXNG; then use
+   `{ "provider": "searxng", "url": "http://10.0.0.1:6699" }`. Today it answers 429 to this
+   machine.
+4. Optional, a browser for her: add to `mcpServers`
+   ```json
+   "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@0.0.82", "--headless", "--isolated", "--browser", "msedge", "--output-dir", "C:/Users/rickm/AppData/Local/Temp/latentpresence-playwright"] }
+   ```
+   It can open any page, local ones included, and asks before each step.
+
+**Pass:** she searches, the weather matches the source, the Sources link opens the page she
+used, and she never reads a link aloud. **Paste back:** pass/fail, the provider, and any
+"Web said: …" error.
+
 ### R-30 · Index your own documents · ~10 minutes, desktop
 **Why:** P5-T03 indexes folders you name for the companion (ADR-44). It passed on a generated
 1,274-page set; real PDFs (scans, odd fonts, forms) are where extractors fail.

@@ -2311,3 +2311,30 @@ On the development server (MariaDB 11.8.8):
   In R-29 it then went on to say what the file held.
 - `withLocalTools` now recovers all three (`self/text-calls.ts`): 24/24 asks ended in a call, 3
   recovered from text, 0 invented. glm-5.2:cloud never wrote one (31 runs).
+
+## Web search providers and Playwright MCP — verified 2026-10-11 (P5-T06)
+
+- **SearXNG** (docs.searxng.org, `searx/settings.yml` on GitHub): `GET /search?q=…&format=json`
+  (also `time_range=day|month|year`); JSON must be listed under `search: formats` in
+  `settings.yml` (default `[html]`) or the instance answers 403. Results: `results[]` with
+  `url`, `title`, `content`, `publishedDate`. Rick's instance (`http://10.0.0.1:6699`, a tunnel)
+  answered **429 "Too Many Requests"** to everything from this machine, `/` included, with or
+  without `Accept-Language` and a browser User-Agent: its limiter. The companion sends
+  `Accept: application/json` and `Accept-Language`, and names the 429 and 403 causes.
+- **Tavily** (docs.tavily.com): `POST https://api.tavily.com/search`, `Authorization: Bearer
+  tvly-…`, body `{ query, max_results (0–20, default 10), search_depth: basic (1 credit),
+  time_range: day|week|month|year, include_answer: false }`; `results[]` with `title`, `url`,
+  `content`, `score`, `published_date`. Not called live (no key in this session).
+- **Brave Search API** (api-dashboard.search.brave.com): `GET
+  https://api.search.brave.com/res/v1/web/search?q=&count=(≤20)&freshness=pd|pw|pm|py`, header
+  `X-Subscription-Token`; `web.results[]` with `title`, `url`, `description` (with `<strong>`
+  marks, stripped). Not called live.
+- **reqwest 0.13.5**: `query` and `json` are features now (added to the server crate);
+  `ClientBuilder::dns_resolver(Arc<dyn Resolve>)`, `redirect::Policy::custom(Fn(Attempt) ->
+  Action)` with `attempt.url()/previous()/follow()/error()`, `no_proxy()`, `Error::without_url()`.
+- **Playwright MCP** `@playwright/mcp` (Apache-2.0; 0.0.83 was 13 days old, so 0.0.82, 2026-09-18):
+  `npx -y @playwright/mcp@0.0.82 --headless --isolated --browser msedge` ran through the
+  companion's stdio host with the installed Edge (no browser download) and its minimal
+  environment; 25 tools listed; `browser_navigate` and `browser_snapshot` returned the page.
+  `browser_navigate` links a snapshot file it writes to `.playwright-mcp/` in the working folder
+  (now gitignored); `--output-dir` moves it. Its origin options are "not a security boundary".
