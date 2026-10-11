@@ -734,3 +734,9 @@ Did: recorded Rick's results — R-30 (D-42: manuals, 3 documents, 309 chunks, r
 Left: R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T07 Home Assistant (main).
 Decisions: ADR-47 accepted.
+
+## 2026-10-11 claude — P5-T07 Home Assistant
+Did: P5-T07 (e5a9d4f): companion `homeAssistant` entry (url, token) → HA's `/api/mcp` with HA's "Assist" prompt as the server's instructions (re-read at most once a minute); core `homeVerdict`: per-device ask/auto/never, a call naming no device asks, lock/alarm/cover/valve always ask, area+domain worked out from the overview; card names the device, "Always allow <device>" or none; Settings device list and room (Sonnet subagent, reviewed); prompt THEIR HOME by area. Measured on a throwaway HA 2026.9.4 (pip, native Windows with stubs): glm 9/12 → 25/25 after the area rule, Gemma 15/15; Browser pane: card → Always → no card, only the kitchen light changed. Throwaway HA, its test owner and token deleted.
+Left: R-34 (new), R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P5-T08 diegetic displays (sub).
+Decisions: ADR-48 proposed — needs Rick's accept.
