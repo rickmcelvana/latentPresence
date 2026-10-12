@@ -18,6 +18,7 @@ import {
   tapAnalyser,
   type AffectInputs,
   type CameraPreset,
+  type Displays,
   type GazeModulation,
   type LifePose,
   type ListeningReactor,
@@ -64,6 +65,8 @@ export interface CallStageRenderer {
   setCameraPreset?(preset: CameraPreset, transitionMs?: number): void;
   setPixelRatio?(ratio: number): void;
   setShadows?(on: boolean): void;
+  /** P5-T08: what the room's whiteboard and screen show. */
+  setDisplays?(displays: Displays): void;
   /** P2-T03's base clips. `loadClip` is VRM-only; a renderer without it plays no clips. */
   loadClip?(id: string, url: string): Promise<void>;
   playClip?(id: string, options: { loop: boolean; crossfadeMs: number; weight: number }): Promise<void>;
@@ -100,6 +103,8 @@ export interface CallStageProps {
   readonly affect?: CallStageAffect | null;
   /** How she listens; omitted or null, she keeps the face she has while the user talks, as before P3-T08. */
   readonly listening?: CallStageListening | null;
+  /** What the whiteboard and the screen in the room show (P5-T08); omitted, they stay blank and dark. */
+  readonly displays?: Displays | undefined;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -117,6 +122,8 @@ function playBaseClip(avatar: CallStageRenderer, graph: BaseClipGraph, state: Co
 
 type CharacterPhase = 'consent' | 'loading' | 'ready' | 'declined' | 'failed';
 
+const EMPTY_DISPLAYS: Displays = { whiteboard: null, screen: null };
+
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
 
 export function CallStage({
@@ -125,6 +132,7 @@ export function CallStage({
   voice,
   affect = null,
   listening = null,
+  displays = EMPTY_DISPLAYS,
   createRenderer = defaultCreateRenderer,
   fetchModel = cachedModelFetch,
 }: CallStageProps): ReactElement {
@@ -248,6 +256,13 @@ export function CallStage({
     // `createRenderer` is a stable identity in production (the module-level default) and
     // in a test (the seam a test passes once); `machine` lives for the page's life.
   }, [machine, createRenderer]);
+
+  // The room's whiteboard and screen (P5-T08): pushed when the content changes, and once the
+  // renderer is mounted (they are part of the room, so they need no character).
+  useEffect(() => {
+    if (!mounted) return;
+    rendererRef.current?.setDisplays?.(displays);
+  }, [displays, mounted]);
 
   // The drawing buffer's pixel ratio (decision 10): applied once the surface is mounted,
   // and re-applied on every resize so a window dragged onto a 4K monitor is not stuck at

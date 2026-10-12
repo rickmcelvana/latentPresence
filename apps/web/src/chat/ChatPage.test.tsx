@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
-import { FakeAvatarRenderer } from '@latentpresence/avatar';
+import { FakeAvatarRenderer, type Displays } from '@latentpresence/avatar';
 import { FakeMemoryStore, replayFusion, type FusionRecording } from '@latentpresence/core';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
@@ -32,6 +32,14 @@ async function settle(): Promise<void> {
  * fast and network-free as it always was. */
 function fakeCreateRenderer(): FakeAvatarRenderer {
   return new FakeAvatarRenderer();
+}
+
+/** A stage that records what the room's whiteboard and screen were told to show (P5-T08). */
+class DisplayRenderer extends FakeAvatarRenderer {
+  readonly shown: Displays[] = [];
+  setDisplays(displays: Displays): void {
+    this.shown.push(displays);
+  }
 }
 
 function setViewportWidth(width: number): void {
@@ -379,7 +387,8 @@ describe('ChatPage — the persona', () => {
       },
     });
     const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
-    render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const stage = new DisplayRenderer();
+    render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={() => stage} deps={testDeps({ storage })} />);
     await waitFor(() => expect(store.calls).toContain('currentFacts'));
     await act(() => settle());
 
@@ -392,6 +401,11 @@ describe('ChatPage — the persona', () => {
     const row = await screen.findByRole('button', { name: /Vegetable garden/ });
     expect(row.textContent).toContain('0 of 3 done');
     expect(row.textContent).toContain('working on it now');
+
+    // The plan in focus is on the room's whiteboard (P5-T08, ADR-49).
+    const whiteboard = stage.shown.at(-1)?.whiteboard;
+    expect(whiteboard?.title).toBe('Vegetable garden');
+    expect(whiteboard?.lines.map((line) => line.text)).toEqual(['Prepare the bed', 'Pick a sunny spot', 'Dig in compost', 'Plant', 'Buy seedlings']);
   });
 
   it('names the character from the persona file rather than a constant', () => {
@@ -1119,11 +1133,12 @@ describe('ChatPage — cited answers (P5-T04, ADR-45)', () => {
       },
       search: async () => ({ hits: [hit], vectorSearch: 'no-model' as const }),
     };
+    const stage = new DisplayRenderer();
     render(
       <ChatPage
         buildProvider={searcher()}
         connectDocs={(options) => connectDocuments({ ...options, ingest })}
-        createRenderer={fakeCreateRenderer}
+        createRenderer={() => stage}
         deps={testDeps({ storage })}
       />,
     );
@@ -1136,5 +1151,9 @@ describe('ChatPage — cited answers (P5-T04, ADR-45)', () => {
     expect(document.body.textContent).not.toContain('[cite');
     await screen.findByText('1. Boiler manual, p. 7');
     expect(screen.getByText('2. A source she was not given')).toBeTruthy();
+
+    // The screen in the room shows the source she was given, not the one she made up (P5-T08).
+    await waitFor(() => expect(stage.shown.at(-1)?.screen?.items.map((item) => item.title)).toEqual(['Boiler manual']));
+    expect(stage.shown.at(-1)?.screen?.items[0]).toMatchObject({ where: 'p. 7', text: 'Hold the green reset button for eleven seconds.' });
   });
 });

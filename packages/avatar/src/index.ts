@@ -28,6 +28,27 @@ export {
   type CameraPreset,
   type Framing,
 } from './stage/camera';
+export {
+  BOARD_TEXT,
+  MAX_BOARD_PHASES,
+  MAX_SCREEN_ITEMS,
+  SCREEN_TEXT_CHARS,
+  fontCss,
+  layoutBoard,
+  screenBlocks,
+  whiteboardBlocks,
+  type BoardBlock,
+  type BoardBox,
+  type BoardFont,
+  type BoardLayout,
+  type BoardStyle,
+  type ColourRole,
+  type Displays,
+  type MeasureText,
+  type PositionedLine,
+  type ScreenContent,
+  type WhiteboardContent,
+} from './stage/displays';
 export * from './life';
 export * from './lipsync';
 export * from './clips';

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, ReactElement } from 'react';
 import {
   ChatSession,
@@ -27,7 +27,7 @@ import {
   type LocalTool,
   type ChatVoice,
 } from '@latentpresence/core';
-import { ListeningReactor } from '@latentpresence/avatar';
+import { ListeningReactor, type Displays } from '@latentpresence/avatar';
 import type { ConversationEvent, LLMProvider, ModelDescriptor } from '@latentpresence/protocol';
 import type { AudioOutputHandle } from '@latentpresence/providers';
 import { ConsentScreen } from '../consent/ConsentScreen';
@@ -39,6 +39,7 @@ import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
 import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
+import { latestCitedSources, pickPlan, planToWhiteboard, sourcesToScreen } from '../call/displays';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
 import { AffectOverlay } from '../call/AffectOverlay';
 import type { ActiveCall } from '../voice/VoicePanel';
@@ -494,6 +495,16 @@ function ConfiguredChatPage({
   const subscribe = useMemo(() => (listener: (event: ConversationEvent) => void) => machine.subscribe(listener), [machine]);
   const { lines, clear } = useTranscript(subscribe);
 
+  // The room's boards (P5-T08, ADR-49): the whiteboard shows the plan in focus (else the newest
+  // that is not archived), the screen the sources of her latest cited answer.
+  const subscribePlans = useCallback((listener: () => void) => plans?.subscribe(listener) ?? (() => {}), [plans]);
+  const plansSnapshot = useCallback(() => plans?.snapshot() ?? null, [plans]);
+  const planState = useSyncExternalStore(subscribePlans, plansSnapshot);
+  const displays = useMemo<Displays>(() => {
+    const plan = planState === null ? null : pickPlan(planState.plans, planState.focusId);
+    return { whiteboard: plan === null ? null : planToWhiteboard(plan), screen: sourcesToScreen(latestCitedSources(lines, citationSource)) };
+  }, [planState, lines, citationSource]);
+
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(chat.busy);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -829,6 +840,7 @@ function ConfiguredChatPage({
           affect={stageAffect}
           consent={deps.consent}
           createRenderer={createRenderer}
+          displays={displays}
           listening={listening}
           machine={machine}
           voice={voiceOutput}

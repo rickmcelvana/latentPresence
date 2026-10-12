@@ -18,13 +18,15 @@ import {
   type Viseme,
 } from '@latentpresence/protocol';
 import type { ExpressionPlan } from '../expressions';
+import { type Displays, screenBlocks, whiteboardBlocks } from '../stage/displays';
 import { type GazeOffset, type Vec3, gazePoint } from '../gaze';
 import type { LifeBone, LifePose } from '../life';
 import { type Body, CameraRig, DEFAULT_FOV_DEGREES, DEFAULT_TRANSITION_MS, type CameraPreset, framing } from '../stage/camera';
 import { AdditivePose } from './additive-pose';
 import { ClipPlayer } from './clip-player';
 import { VrmFaceDriver } from './face';
-import { DEFAULT_STAGE_OPTIONS, type StageOptions, buildStage } from './stage';
+import type { CreateCanvas } from './display-board';
+import { DEFAULT_STAGE_OPTIONS, type StageBoards, type StageOptions, buildStage, stageBoards } from './stage';
 
 /**
  * What drawing needs from a WebGL renderer; `THREE.WebGLRenderer` is the real one.
@@ -36,12 +38,16 @@ export interface DrawingSurface {
   render(scene: THREE.Scene, camera: THREE.Camera): void;
   dispose(): void;
   shadowMap?: { enabled: boolean; type: number };
+  /** For the boards' texture anisotropy; `THREE.WebGLRenderer` has it, a fake surface need not. */
+  capabilities?: { getMaxAnisotropy(): number };
 }
 
 export interface VrmRendererDeps {
   createSurface(canvas: HTMLCanvasElement): DrawingSurface;
   loadGltf(url: string): Promise<GLTF>;
   pixelRatio(): number;
+  /** Makes the boards' drawing canvases (P5-T08). Absent where there is no DOM, and the boards then stay blank. */
+  createCanvas?: CreateCanvas | undefined;
 }
 
 function defaultDeps(): VrmRendererDeps {
@@ -58,6 +64,12 @@ function defaultDeps(): VrmRendererDeps {
     },
     loadGltf: (url) => loader.loadAsync(url),
     pixelRatio: () => globalThis.devicePixelRatio ?? 1,
+    createCanvas: (width, height) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      return canvas;
+    },
   };
 }
 
@@ -122,6 +134,9 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private gaze: GazeTarget = 'user';
   private gazeOffset: GazeOffset = [0, 0];
   private readonly stage: THREE.Group | null;
+  private readonly boards: StageBoards | null;
+  /** The last displays drawn, as a key, so an unchanged prop costs nothing. */
+  private displaysKey: string | null = null;
   private readonly rig: CameraRig;
   private cameraPreset: CameraPreset = 'bust';
   private shadowsOn: boolean;
@@ -135,10 +150,12 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
       // No room: keep a little ambient light so a model is still visible.
       this.scene.add(new THREE.AmbientLight(0xffffff, 1.2));
       this.stage = null;
+      this.boards = null;
       this.shadowsOn = false;
     } else {
       const stageOptions = options.stage ?? DEFAULT_STAGE_OPTIONS;
-      this.stage = buildStage(stageOptions);
+      this.stage = buildStage(stageOptions, { createCanvas: this.deps.createCanvas });
+      this.boards = stageBoards(this.stage);
       this.shadowsOn = stageOptions.shadows;
       this.scene.add(this.stage);
     }
@@ -156,6 +173,9 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     this.canvas = canvas;
     this.surface = this.deps.createSurface(canvas);
     this.surface.setPixelRatio(this.deps.pixelRatio());
+    const anisotropy = this.surface.capabilities?.getMaxAnisotropy() ?? 1;
+    this.boards?.whiteboard.setAnisotropy(anisotropy);
+    this.boards?.screen.setAnisotropy(anisotropy);
     this.size = [0, 0];
     return Promise.resolve();
   }
@@ -261,6 +281,8 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.boards?.whiteboard.dispose();
+    this.boards?.screen.dispose();
     this.unloadCharacter();
     this.surface?.dispose();
     this.surface = null;
@@ -297,6 +319,20 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     this.assertLive();
     this.cameraPreset = preset;
     this.rig.setGoal(framing(preset, this.bodyHeights(), DEFAULT_FOV_DEGREES), transitionMs);
+  }
+
+  /**
+   * What the whiteboard and the screen show (P5-T08, ADR-49). Redraws only when the content
+   * changed. `null` content: the whiteboard blank, the screen off. With no stage, or no canvas
+   * to draw on, nothing happens.
+   */
+  setDisplays(displays: Displays): void {
+    this.assertLive();
+    const key = JSON.stringify(displays);
+    if (key === this.displaysKey) return;
+    this.displaysKey = key;
+    this.boards?.whiteboard.show(displays.whiteboard === null ? null : whiteboardBlocks(displays.whiteboard));
+    this.boards?.screen.show(displays.screen === null ? null : screenBlocks(displays.screen));
   }
 
   /**

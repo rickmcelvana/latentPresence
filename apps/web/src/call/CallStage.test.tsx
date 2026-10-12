@@ -2,10 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
 import type { ConversationEvent, ConversationState, UserAffect } from '@latentpresence/protocol';
-import { FakeAvatarRenderer, ListeningReactor, type AffectInputs } from '@latentpresence/avatar';
+import { FakeAvatarRenderer, ListeningReactor, type AffectInputs, type Displays } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR_DESCRIPTOR } from './character-asset';
-import { CallStage } from './CallStage';
+import { CallStage, type CallStageRenderer } from './CallStage';
 
 afterEach(cleanup);
 
@@ -281,5 +281,49 @@ describe('CallStage — how she listens (P3-T08)', () => {
     expect(without.happy).toBeGreaterThan(0.2);
     expect(heard.happy ?? 0).toBeLessThan(0.02);
     expect(heard.sad).toBeGreaterThan(0.2);
+  });
+});
+
+class DisplayRenderer extends FakeAvatarRenderer {
+  readonly shown: Displays[] = [];
+  setDisplays(displays: Displays): void {
+    this.shown.push(displays);
+  }
+}
+
+const GARDEN: Displays = { whiteboard: { title: 'Garden', lines: [{ text: 'Prepare', kind: 'heading', done: false }] }, screen: null };
+const GARDEN_AND_MANUAL: Displays = {
+  whiteboard: GARDEN.whiteboard,
+  screen: { heading: 'Sources', items: [{ title: 'Manual', where: 'p. 12', text: 'Hold the button.' }] },
+};
+
+function stageWithDisplays(displays: Displays | undefined, renderer: CallStageRenderer) {
+  const consent = new ModelConsent(memoryStorage());
+  consent.grant([AVATAR_DESCRIPTOR]);
+  return <CallStage consent={consent} createRenderer={() => renderer} displays={displays} fetchModel={async () => new Uint8Array([1])} machine={machine()} voice={null} />;
+}
+
+describe('CallStage — the whiteboard and the screen (P5-T08)', () => {
+  it('hands the displays to the renderer once it is mounted, and again when they change', async () => {
+    const renderer = new DisplayRenderer();
+    const view = render(stageWithDisplays(GARDEN, renderer));
+    await waitFor(() => expect(renderer.shown.at(-1)).toBe(GARDEN));
+    await settle();
+
+    view.rerender(stageWithDisplays(GARDEN_AND_MANUAL, renderer));
+    await waitFor(() => expect(renderer.shown.at(-1)).toBe(GARDEN_AND_MANUAL));
+  });
+
+  it('shows empty displays when none are given', async () => {
+    const renderer = new DisplayRenderer();
+    render(stageWithDisplays(undefined, renderer));
+    await waitFor(() => expect(renderer.shown.length).toBeGreaterThan(0));
+    expect(renderer.shown.at(-1)).toEqual({ whiteboard: null, screen: null });
+  });
+
+  it('does not need a renderer that can draw them', async () => {
+    const renderer = new FakeAvatarRenderer();
+    render(stageWithDisplays(GARDEN, renderer));
+    await waitFor(() => expect(renderer.character).not.toBeNull());
   });
 });

@@ -5,7 +5,19 @@
 export { AdditivePose } from './additive-pose';
 export { ClipPlayer } from './clip-player';
 export { VrmFaceDriver, type VrmFace } from './face';
-export { STAGE_PALETTE, buildStage, DEFAULT_STAGE_OPTIONS, type StageOptions } from './stage';
+export {
+  SCREEN,
+  STAGE_PALETTE,
+  WHITEBOARD,
+  WINDOW,
+  buildStage,
+  stageBoards,
+  DEFAULT_STAGE_OPTIONS,
+  type StageBoards,
+  type StageDeps,
+  type StageOptions,
+} from './stage';
+export { DisplayBoard, drawBoard, hexColour, type BoardCanvas, type BoardPalette, type CreateCanvas } from './display-board';
 export {
   VrmAvatarRenderer,
   type DrawingSurface,
