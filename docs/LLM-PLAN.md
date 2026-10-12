@@ -399,9 +399,14 @@ aloud with a thinking fake: her lines show, the voice says only the answer, the 
 of it; `inner.test.ts` holds the bus and the next request clean (mutation-checked). `pnpm
 live:inner`: glm-5.2 20/20 by rule (`docs/runs/P6-T05-inner.md`). R-40 passed.
 
-### P6-T06 Multi-character — owner: sub
+### P6-T06 Multi-character — owner: sub (done 2026-10-12, `docs/briefs/P6-T06.md`, ADR-55 proposed)
 Character packs (VRM, persona, voice, memory namespace); switcher; per-character settings.
 Done when: two characters keep separate memories in one database.
+**Met:** `apps/web/src/characters` (packs, each character's voice), Theo (`personas/theo.persona.json`),
+"Talking to" in `/chat` and Settings → Character. `ChatPage.test.tsx`: one `FakeMemoryStore`, Alice
+told about Mira and Theo about the cello; after each switch each has only their own, in the prompt,
+the Memory view and the store (mutation-checked). The stores' namespaces were already held by the
+conformance suite (P4-T04). How it feels is R-41.
 
 ### P6-T07 Scheduler core — owner: main
 Depends: P4-T03. `packages/core/scheduler` per ADR-14: `Schedule` model (cron or one-shot, task prompt, allowed tools, delivery mode, catch-up policy), a tick loop with a fixed timestep, missed-run reconciliation on wake, execution through the normal agent loop with the schedule's tool allowlist, results stored as memory episodes. Companion endpoints `/schedules/*` and a `schedules` table; companion-side execution for tool-only jobs.

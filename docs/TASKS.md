@@ -190,6 +190,25 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-41 · Meet Theo · ~15 minutes, desktop
+**Why:** P6-T06 (ADR-55): a second character, Theo — calm, dry, practical, his own voice
+(Kokoro `am_michael`) — on the same placeholder body until P7, with memories of his own in the same
+database as Alice's. The separation is proved by test; whether he feels like someone else, and
+whether switching feels right, needs you.
+1. Pull, and restart `pnpm dev` (the persona file is new).
+2. Settings → **Character**: Alice's summary and "Voice for Alice". If you had chosen a Kokoro
+   voice before, it is still hers. Voice no longer has a Kokoro voice list: that is per character now.
+3. In `/chat`, **Talking to** (beside Speak replies) → Theo. A new visit starts: an empty
+   transcript, and Memory, Plans and Thoughts are his (empty at first).
+4. Turn Speak replies on, tell him two or three things about yourself, ask him something.
+5. Switch back to Alice: her transcript of before is gone from the screen (a new visit) but she
+   remembers you, and nothing you told Theo. Back to Theo: he has his, not hers.
+6. Optional: rewrite him in `personas/theo.persona.json` (name, summary, style, voice) and reload.
+
+**Pass:** Theo sounds and talks like a different person; neither knows what you told the other;
+switching is clear and quick. **Paste back:** what Theo was like, anything one knew that only the
+other was told, and whether you want him renamed or rewritten.
+
 ### R-37 · Come back to her · a minute at a time, desktop, over a day
 **Why:** P6-T02 (ADR-51): she knows how long it has been, and when you come back after an hour or
 more she speaks first — a greeting for the time of day, and one thing from last time (a due

@@ -794,3 +794,9 @@ Did: R-32 passed (D-50). P6-T05: ADR-54 proposed; measured first that Ollama 0.3
 Left: R-40 (new), R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. The Thoughts view was not looked at in the pane (needs a configured `/chat`) — R-40.
 Next: P6-T06 multi-character (owner sub) — needs a brief first.
 Decisions: ADR-54 proposed — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-54 accepted, R-40 passed; P6-T06 multi-character
+Did: ADR-54 accepted, R-40 passed (D-51). P6-T06: found the stores already namespaced by character (conformance since P4-T04); ADR-55 proposed; wrote Theo (`personas/theo.persona.json`) and `docs/briefs/P6-T06.md`; a Sonnet subagent built packs, per-character voice (per engine, persona default, migration keeping an older voice for Alice), Settings → Character, the "Talking to" switcher remounting the room, and the done-when test (one FakeMemoryStore, Mira for Alice, cello for Theo; mutation-checked). Review: removed Settings → Voice's Kokoro list, which no longer chose anyone's voice. Settings → Character looked at in the pane. Gate 1855.
+Left: R-41 (new), R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T07 scheduler core (main).
+Decisions: ADR-54 accepted; ADR-55 proposed — needs Rick's accept.

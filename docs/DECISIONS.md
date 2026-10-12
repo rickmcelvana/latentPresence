@@ -57,6 +57,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
 | ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
+| ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | proposed | 2026-10-12 |
 
 ---
 
@@ -2046,3 +2047,59 @@ repeated its answer — so the parser takes those off and the request ends `they
 else; neither, nor her line, is on the bus, in the transcript or in the next request
 (mutation-checked: without the tap, without the inline split, or asking with the panel closed,
 the tests fail).
+
+## ADR-55 Characters: packs, one database with a namespace each, and a switcher (proposed 2026-10-12)
+
+**Context.** P6-T06: character packs (VRM, persona, voice, memory namespace), a switcher,
+per-character settings; done when two characters keep separate memories in one database. One
+character exists (Alice, `personas/alice.persona.json`) and `/chat` reads her everywhere through
+`defaultPersona`. Every store call already carries a `characterId`, and the conformance suite has
+held all three stores to "nothing written for one character is read for another" since P4-T04
+(18/18 on the dev MariaDB) — episodes, facts, plans and self blocks (so `_mood`, `_initiative`,
+`_sleep` and her notes too). The namespace exists; nothing in the app ever uses a second one.
+
+**Decisions.**
+
+1. **A pack** is `personas/<id>.persona.json` (the protocol's `Persona`, unchanged) plus an app
+   entry in `apps/web/src/characters/packs.ts` naming its avatar (`AssetDownload` + consent
+   descriptor, as `call/character-asset.ts` has today). **No protocol change**: what the
+   companion or memory will read is still the persona; the body is the app's business until P7.
+2. **The namespace is the persona's `id`**, passed wherever `defaultPersona.id` is passed now.
+   One database (this browser's IndexedDB, or MariaDB through the companion) holds every
+   character; nothing new in any store.
+3. **Settings**: `character` (the active pack's id; an unknown id falls back to Alice) and
+   `characters: { [id]: { voice: { kind, voiceId, speed } } }` — **each character's voice**, kept
+   with the engine it was chosen for and used only while that engine is the one in use. With no
+   choice saved, a Kokoro voice comes from the persona (`voice`), any other engine uses the voice
+   chosen in Settings → Voice. A saved settings document that predates this keeps its voice for
+   Alice (its Kokoro voice is written as hers on first load). **Everything else stays global** —
+   the model, where memory lives, tools, documents, the Speaking-up dial, the camera: those are the
+   person's choices about their machine, not the character's.
+4. **The switcher** is in `/chat`'s control bar ("Talking to"), and in Settings as a Character
+   section beside Voice. Switching saves `character` and **remounts the chat** as a new visit:
+   a new session, the other character's transcript, memory, plans, notes, mood, initiative ledger
+   and rest. It is disabled while a call is open or an answer is streaming. The page title and every
+   "Alice" the page shows come from the active persona.
+5. **A second pack ships: Theo** (`personas/theo.persona.json`) — calm, dry-humoured, practical,
+   Kokoro `am_michael`, gestures rare. Both packs use the placeholder body (VRM1 Constraint Twist
+   Sample) until the character pipeline (P7, R-3) gives each its own. Rename or rewrite him freely.
+
+**Rejected.** *A database or IndexedDB per character* — the namespace already separates them and
+one store keeps the companion, backups and the memory browser simple. *Every setting per
+character* — a person does not want to set up their model or their tools twice. *Switching inside
+the live page* (swapping the persona under a running chat) — every attachment (memory, mood,
+initiative, rest, inner monologue) is built for one character at mount; a remount is the honest
+boundary, and a visit is what a switch is. *Personas edited in the app* — packs are files for now;
+an editor is its own task.
+
+**Done-when, as tested:** `/chat` with one shared store: Alice is told something and remembers it;
+switched to Theo, his prompt and his Memory view have none of it, and what he is told is his;
+switched back, Alice has hers and not his — one store, two namespaces.
+
+**In the build (2026-10-12).** Two calls the brief left open: a Kokoro voice taken from the persona
+plays at the speed set in Settings → Voice (the slider keeps working for everyone), and a saved
+choice keeps its own speed. On Kokoro, Settings → Voice no longer offers a voice — every character
+has one of their own, so a choice there would have changed nobody's; it says so and points to
+Character. The done-when test (`ChatPage.test.tsx`) failed, as it should, with the kernel's id
+hard-wired to Alice's ("Theo's Memory view has no Mira"); the voice tests failed with the
+speaker given the page's settings instead of the character's.
