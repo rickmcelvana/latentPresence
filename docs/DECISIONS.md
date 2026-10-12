@@ -51,7 +51,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-46 | The person's databases: first-party `sql:<name>` companion servers from `mcp.json`; read-only in three layers (sqlparser verdict, read-only transaction or file, time and row limits), plus a read-only user | accepted | 2026-10-11 |
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
-| ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | proposed | 2026-10-11 |
+| ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
 
 ---
 
@@ -1722,7 +1722,7 @@ Assistant's devices; Kitchen chosen; "Turn on the light, please." brought the ca
 Lights (Kitchen)* with **Always allow Kitchen Lights**; the light came on; "now turn it off
 again" ran with no card and changed only that light.
 
-## ADR-49 Diegetic displays: canvas-drawn boards on the back wall, fed by what she already has (proposed 2026-10-11)
+## ADR-49 Diegetic displays: canvas-drawn boards on the back wall, fed by what she already has (accepted 2026-10-12)
 
 **Context.** P5-T08: a screen and a whiteboard in the room rendering tool results and plans, by
 HTML-to-texture or canvas; done when a plan appears on the whiteboard and a search result on the

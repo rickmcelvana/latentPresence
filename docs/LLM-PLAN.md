@@ -345,7 +345,7 @@ the light came on, and after "Always allow Kitchen Lights" the next request ran 
 glm-5.2:cloud 25/25 and gemma4:31b-cloud 15/15 on five policy cases. **From voice is R-34** — the
 voice path is the typed one (P1-T12b), so it reaches the same card.
 
-### P5-T08 Diegetic displays — owner: sub (done 2026-10-11 by a Sonnet subagent from `docs/briefs/P5-T08.md`; ADR-49 proposed)
+### P5-T08 Diegetic displays — owner: sub (done 2026-10-11 by a Sonnet subagent from `docs/briefs/P5-T08.md`; ADR-49 accepted 2026-10-12)
 Depends: P2-T05. Screen and whiteboard objects rendering HTML-to-texture or canvas textures for tool results and plans.
 Done when: a plan appears on the whiteboard and a search result on the screen with readable text at the medium camera preset.
 **Met:** body text projects to 16.28 px at `medium`, 1920×1080 (a test, through the real framing);
