@@ -52,7 +52,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
-| ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | proposed | 2026-10-12 |
+| ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
 
 ---
 
@@ -1770,7 +1770,7 @@ the weather in Halifax?" (a stand-in SearXNG) put both results on the screen, re
 she saved appeared on the whiteboard with its phases and tasks. Lit by the room alone the
 whiteboard read mid-grey and its ink faint, so it now emits a little of its own picture (0.45).
 
-## ADR-50 Idle life: a utility planner in core, performed by the body she already has (proposed 2026-10-12)
+## ADR-50 Idle life: a utility planner in core, performed by the body she already has (accepted 2026-10-12)
 
 **Context.** P6-T01: a behaviour tree or utility system choosing idle activities by mood, time of
 day and elapsed idle time, hooked into clips and set props; done when an hour-long idle log shows

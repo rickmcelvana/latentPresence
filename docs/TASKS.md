@@ -189,26 +189,6 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-36 · Watch her when nobody is talking · ~15 minutes, desktop · **retry**
-**Why:** P6-T01 gives her an idle life (ADR-50): after 20 s of quiet she looks out of the window,
-reads the whiteboard, stretches, hums, yawns when it is late.
-
-**2026-10-12, first try:** every move looked right in `/dev/avatar`; in `/chat` she only glanced
-aside and down — her ordinary gaze, not the idle life. **Bug, fixed:** after a typed answer the
-call rests in *listening*, and idle only started in *idle*, so once you had said anything it never
-began. Waiting for you now counts as quiet. (Step 1 also named the wrong panel for Loop clip.)
-
-1. Optional, done already: `/dev/avatar` → **Gaze and clips** → **Loop clip**; Stage → Camera
-   **medium**; **Idle activity** → each one → **Perform**.
-2. `/chat` with the character showing: type a message, let her answer, then say nothing for five
-   minutes. Expect the unmistakable ones within that: a turn over the shoulder towards the window
-   or the whiteboard, a stretch, a sway while humming, a yawn if it is evening.
-3. Say something mid-activity: she should drop it and come back to you at once.
-
-**Pass:** she does things of her own after a typed answer, nothing looks broken, the pace feels
-like someone waiting rather than fidgeting, and she stops for you at once. **Paste back:** what
-you saw her do, and anything too often, too big or too small.
-
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
 The suites and a live run on a test database passed; a real schema is where she will stumble.
@@ -255,6 +235,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-47 · R-36: watch her when nobody is talking** — Rick 2026-10-12: **passed** on the retry —
+  every move looked right in `/dev/avatar`; in `/chat`, after a typed answer about Scandinavian
+  holidays, she idled on her own (a stretch seen). She also raised R-27's trip plan unprompted.
 - **D-46 · R-35: look at the whiteboard and the screen** — Rick 2026-10-12: **passed** — both
   look great and are readable; not crowded; it still looks like a room.
 - **D-45 · R-34: ask her to turn on a light** — Rick 2026-10-11: **passed** — his own Home
