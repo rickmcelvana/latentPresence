@@ -57,7 +57,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
 | ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
-| ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | proposed | 2026-10-12 |
+| ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
 
 ---
 
@@ -2048,7 +2048,7 @@ else; neither, nor her line, is on the bus, in the transcript or in the next req
 (mutation-checked: without the tap, without the inline split, or asking with the panel closed,
 the tests fail).
 
-## ADR-55 Characters: packs, one database with a namespace each, and a switcher (proposed 2026-10-12)
+## ADR-55 Characters: packs, one database with a namespace each, and a switcher (accepted 2026-10-12)
 
 **Context.** P6-T06: character packs (VRM, persona, voice, memory namespace), a switcher,
 per-character settings; done when two characters keep separate memories in one database. One

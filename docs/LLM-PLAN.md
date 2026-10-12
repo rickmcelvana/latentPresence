@@ -399,7 +399,7 @@ aloud with a thinking fake: her lines show, the voice says only the answer, the 
 of it; `inner.test.ts` holds the bus and the next request clean (mutation-checked). `pnpm
 live:inner`: glm-5.2 20/20 by rule (`docs/runs/P6-T05-inner.md`). R-40 passed.
 
-### P6-T06 Multi-character — owner: sub (done 2026-10-12, `docs/briefs/P6-T06.md`, ADR-55 proposed)
+### P6-T06 Multi-character — owner: sub (done 2026-10-12, `docs/briefs/P6-T06.md`, ADR-55 accepted)
 Character packs (VRM, persona, voice, memory namespace); switcher; per-character settings.
 Done when: two characters keep separate memories in one database.
 **Met:** `apps/web/src/characters` (packs, each character's voice), Theo (`personas/theo.persona.json`),

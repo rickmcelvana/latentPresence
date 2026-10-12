@@ -51,7 +51,9 @@ or a press wakes her and stops the sleep between steps.
 
 ## Namespaces
 
-A kernel belongs to one character; every read and write carries its `characterId`.
+A kernel belongs to one character; every read and write carries its `characterId` — the
+persona's `id` (ADR-55). Alice and Theo share one database (IndexedDB or MariaDB) and never see
+each other's turns, facts, plans or self blocks; the conformance suite holds every store to it.
 
 ## How it is checked
 

@@ -800,3 +800,9 @@ Did: ADR-54 accepted, R-40 passed (D-51). P6-T06: found the stores already names
 Left: R-41 (new), R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T07 scheduler core (main).
 Decisions: ADR-54 accepted; ADR-55 proposed — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-55 accepted; doc sweep
+Did: ADR-55 accepted. Sweep for staleness: **Phase 5 marked complete** (its three exit checks — R-31, R-32, R-34 — have all passed; R-32 and R-35 still showed "open" in the checklist); PROJECT's ADR-26 "proposed" (accepted 2026-09-13), the "Default character" line (now Alice and Theo), the test-count line (frozen at 2026-09-14; now 1855 TS + 147 Rust) and a backlog item done in P1-T02; README's status (still said Phase 3); TASKS' live-check list (8 of 26 scripts; now a table of all); memory.md's namespaces (two characters, one database).
+Left: R-41, R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T07 scheduler core (main), tonight.
+Decisions: ADR-55 accepted. None new.

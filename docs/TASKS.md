@@ -78,6 +78,32 @@ than it looks — read several.
 re-encoded from what our own decoder produced — so if they sound right, the adapter is
 right.
 
+**The rest** — each a task's done-when or a measurement behind an ADR, hand-run, never gated.
+The header comment of each script says what it needs (a key, Ollama, the companion) and which
+environment variables pick targets; most write to `live/out/` or `docs/runs/`.
+
+| Script | Task | What it checks |
+|---|---|---|
+| `pnpm live:kokoro` | C-5 | Kokoro `q8` against `fp32`: is the smaller download good enough |
+| `pnpm live:backchannel` | P1-T09 | what Kokoro actually says for each backchannel word |
+| `pnpm live:cues` | P2-T07 | a tag fires on its word, against a recogniser's word timings |
+| `pnpm live:affect` | P3-T03 | the same prompt in two moods comes back in different words |
+| `pnpm live:affect-voice` | P3-T03 | what a mood changes in her voice (pace, pauses), rendered |
+| `pnpm live:user-affect` | P3-T04 | the model's `[user:x]` reading on 100 labelled messages |
+| `pnpm live:ser` | P3-T05 | the voice-emotion models load and answer, and how fast on a CPU |
+| `pnpm live:face-set` | P3-T06 | makes the labelled face set on the local ComfyUI |
+| `pnpm live:memory` | P4-T03 | thirty turns through the real kernel, scored on what she believes |
+| `pnpm live:chat-cut` | P4-T03 | whether glm's reasoning cut reaches `/chat` |
+| `pnpm live:plan` | P4-T07 | "let's plan a vegetable garden" ends with a saved plan |
+| `pnpm live:mcp` | P5-T01 | a public MCP server's tools through the gate, with a real model |
+| `pnpm live:cite` | P5-T04 | five private-document questions cite the right chunk |
+| `pnpm idle:log` | P6-T01 | four simulated idle hours, for variety (deterministic) |
+| `pnpm live:opener` | P6-T02 | her opener at five moments: greeting, gap, one thing picked up |
+| `pnpm initiative:log` | P6-T03 | a simulated day at each setting, held to the budget (deterministic) |
+| `pnpm live:checkin` | P6-T03 | what she says when she speaks up, by rule |
+| `pnpm live:sleep` | P6-T04 | the long replay with and without sleep; `FORGETFUL=1` records the fixture |
+| `pnpm live:inner` | P6-T05 | her private lines behind five moments, by rule |
+
 ---
 
 ## Open — rick
