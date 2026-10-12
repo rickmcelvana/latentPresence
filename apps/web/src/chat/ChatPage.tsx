@@ -19,11 +19,14 @@ import {
   citedSources,
   withLocalTools,
   attachUserAffect,
+  lastConversation,
   renderSystemPrompt,
+  shouldOpen,
   type AttachedAffect,
   type AttachedMemory,
   type AttachedMood,
   type ConnectedToolServer,
+  type LastConversation,
   type LocalTool,
   type ChatVoice,
 } from '@latentpresence/core';
@@ -272,7 +275,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, webSources, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, timeHolder, webSources, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
@@ -285,6 +288,8 @@ function ConfiguredChatPage({
     // P5-T04 (ADR-45): her search of the person's documents, once the companion says it has
     // some (the effect below), and the hits she was given — what the transcript cites from.
     const builtDocsHolder: { connected: ConnectedDocuments | null } = { connected: null };
+    // P6-T02 (ADR-51): when they last talked, read from the store once it is chosen.
+    const builtTimeHolder: { since: LastConversation | null } = { since: null };
     // P5-T06 (ADR-47): what the web gave her to cite, beside her documents' hits.
     const builtWebSources = new Map<string, CitationSource>();
     const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
@@ -312,7 +317,7 @@ function ConfiguredChatPage({
     // this page is handed the same one, and a history that watched the bus twice would
     // count every message twice. Whoever creates it owns its subscription.
     const attached = attachHistory(builtMachine, {
-      system: () =>
+      system: (turn) =>
         renderSystemPrompt(defaultPersona, {
           now: new Date(),
           userName: null,
@@ -326,6 +331,8 @@ function ConfiguredChatPage({
           // P5-T07 (ADR-48): the room is read per request, so a change in Settings applies at once.
           home: homePrompt(builtToolsHolder.servers, loadSettings(deps.storage).tools.homeArea),
           documents: builtDocsHolder.connected?.tool != null,
+          since: builtTimeHolder.since,
+          opening: turn.opening,
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
@@ -354,6 +361,8 @@ function ConfiguredChatPage({
       sessionId: builtSessionId,
       machine: builtMachine,
       llm: builtChatLlm,
+      // P6-T02 (ADR-51): her opener is asked with no tools — nothing has been asked of her yet.
+      openingLlm: builtProvider,
       modelId,
       temperature,
       history: attached,
@@ -365,6 +374,7 @@ function ConfiguredChatPage({
       selfHolder: builtSelfHolder,
       toolsHolder: builtToolsHolder,
       docsHolder: builtDocsHolder,
+      timeHolder: builtTimeHolder,
       webSources: builtWebSources,
       permissionPrompts: builtPrompts,
       machine: builtMachine,
@@ -391,6 +401,8 @@ function ConfiguredChatPage({
   // The plans (P4-T07) for the panel: state, because the panel renders from it; `selfHolder`
   // holds the same object for the prompt, which reads it outside React.
   const [plans, setPlans] = useState<Plans | null>(null);
+  // P6-T02 (ADR-51): she does not speak first into an open voice panel — the call is theirs to start.
+  const voiceOpenRef = useRef(false);
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
@@ -414,16 +426,30 @@ function ConfiguredChatPage({
       // after every answer, and once more as the page goes (a best effort; a closing tab may
       // not wait for it).
       const notes = new SelfNotes({ store: choice.store, characterId: defaultPersona.id });
-      void notes.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'notes'));
+      const notesLoaded = notes.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'notes'));
       selfHolder.notes = notes;
       // P4-T07 (ADR-41): plans in the same store; follow-ups are facts, so they go through the kernel.
       const builtPlans = new Plans({ store: choice.store, characterId: defaultPersona.id, followUps: kernel });
-      void builtPlans.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'plans'));
+      const plansLoaded = builtPlans.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'plans'));
       selfHolder.plans = builtPlans;
       setPlans(builtPlans);
       selfHolder.tools = [...selfNoteTools(notes), ...planTools(builtPlans)];
       mood = attachMood(machine, { affect, notes, onError: (error) => warn(error, 'mood') });
       window.addEventListener('pagehide', saveMood);
+      // P6-T02 (ADR-51): when they last talked, then — with her notes, plans and facts in — whether
+      // she speaks first. A store that cannot say leaves both out.
+      const last = lastConversation(choice.store, defaultPersona.id, sessionId).catch((error: unknown) => {
+        warn(error instanceof Error ? error : new Error(String(error)), 'last conversation');
+        return null;
+      });
+      const memoryReady = attached.settled();
+      void Promise.all([last, notesLoaded, plansLoaded, memoryReady]).then(([since]) => {
+        if (!live) return;
+        timeHolder.since = since;
+        // She speaks first if they came back after an hour or more; `open` itself declines once
+        // anything has been said.
+        if (shouldOpen(since, new Date()) && !voiceOpenRef.current) chat.open();
+      });
     });
     return () => {
       live = false;
@@ -440,8 +466,9 @@ function ConfiguredChatPage({
       selfHolder.plans = null;
       setPlans(null);
       selfHolder.tools = [];
+      timeHolder.since = null;
     };
-  }, [affect, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, userAffect]);
+  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.
@@ -775,10 +802,12 @@ function ConfiguredChatPage({
    * ends when a call begins. */
   const openVoice = useCallback(() => {
     stopSpeaking();
+    voiceOpenRef.current = true;
     setVoiceOpen(true);
   }, [stopSpeaking]);
 
   const onVoiceEnd = useCallback(() => {
+    voiceOpenRef.current = false;
     setVoiceOpen(false);
     setCallActive(false);
   }, []);

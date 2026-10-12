@@ -53,6 +53,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
+| ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | proposed | 2026-10-12 |
 
 ---
 
@@ -1824,3 +1825,46 @@ glance at 110° showed the camera the back of her head and set the hair's spring
 **cut to 60°, the hips left out (they slide over planted feet), and a slower 1.4 s ease-in for a
 turn.** The pane was then hidden, which pauses animation, so the 60° turn and the other poses are
 R-36's to judge.
+
+## ADR-51 Time awareness: she knows how long it has been, and speaks first when they come back (proposed 2026-10-12)
+
+**Context.** P6-T02: greeting by time, elapsed-time phrasing, "last time we" openers from memory,
+plan follow-ups; done when reopening after a simulated week yields correct phrasing. Today her
+prompt has the clock (`RIGHT NOW`), recalled episodes say "3 days ago" by elapsed 24-hour blocks
+(so a talk at 23:00 is "earlier today" at 08:00 the next morning), follow-ups say only "(due now)",
+and she never speaks until spoken to: the conversation machine has no way for her to begin a turn.
+
+**Decisions.**
+
+1. **Time in words, in core** (`packages/core/src/time`): `sinceWords(then, now)` by **calendar
+   days and parts of the day** in the person's clock — "about twenty minutes ago", "earlier this
+   afternoon", "last night", "yesterday evening", "on Thursday evening, four days ago", "a week
+   ago, on Monday evening", "two weeks ago", "about a month ago", "in August". Never an exact
+   count of hours. Recalled episodes use the same words. `RIGHT NOW` gains the part of the day
+   ("8:30 in the morning"), so a greeting has it without arithmetic.
+2. **Last time** is read from the store she already has: the newest earlier session with a turn of
+   theirs in it (`listEpisodes`, first page), its last six turns. A new prompt field `since`
+   (`{ at, turns }`) renders as `LAST TIME YOU TALKED`: when, and how it ended. No new storage.
+3. **Follow-ups say how late they are**: "(due now)" gains "— it was for Friday, three days ago"
+   once a day has gone by, so a week away reads as a week late, not as on time.
+4. **She speaks first** when they come back **after an hour or more** (`OPENING_AFTER_MS`), once
+   per visit, before they have said anything, once memory and plans have loaded. Never on a first
+   meeting (they opened the app to talk; she lets them) and never within the hour (a reload is not
+   a return). The prompt field `opening` adds `YOU SPEAK FIRST`: greet for the time of day, pick
+   up one thing — a due follow-up first, else how it ended — in one to three sentences, and do not
+   recite.
+5. **How the turn is made**: `ChatSession.open()`. Models need a user turn to answer, so the
+   request carries a **cue turn** ("(The call has just connected …)") that never reaches the bus:
+   not shown, not remembered. The history keeps it in front of her opener on later requests
+   rather than dropping the opener (a conversation that begins with her is one she opened).
+   **Protocol**: a new event `assistant.opening` moves `idle`/`listening` to `thinking`, so the
+   body, the idle director and the transcript see her start a turn as they do after a message.
+6. **The dial is P6-T03's.** Proactive check-ins get a setting (off, rare, normal); "off" will also
+   turn off the opener. Until then it is on.
+
+**Rejected.** *A greeting from a template* ("Good morning! It's been 7 days.") — reads as a machine,
+and the model already has the persona's voice. *Telling her the gap in hours or days as a number*
+— models then say "it has been 167 hours"; the words are decided in code, once, and tested.
+*Opening on a first meeting* — an unprompted model call on a first visit, before the person has
+chosen to talk.
+

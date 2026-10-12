@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AffectStateSchema, UserAffectSchema } from './affect';
-import { IdSchema } from './common';
+import { IdSchema, TimestampSchema } from './common';
 import { MemoryEpisodeSchema, PlanDocumentSchema, SemanticFactSchema } from './memory';
 
 /**
@@ -160,6 +160,24 @@ export const PromptContextSchema = z.object({
     })
     .nullable()
     .default(null),
+  /**
+   * When they last talked and how it ended (P6-T02, ADR-51): the newest earlier session with a
+   * turn of theirs in it, its last turns oldest first. Rendered by core as `LAST TIME YOU
+   * TALKED`, the time in words; null leaves the prompt exactly as it was.
+   */
+  since: z
+    .object({
+      /** The last turn of that conversation. */
+      at: TimestampSchema,
+      turns: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string() })).max(12),
+    })
+    .nullable()
+    .default(null),
+  /**
+   * She is about to speak first (P6-T02, ADR-51): they have just come back and said nothing yet.
+   * Adds `YOU SPEAK FIRST`; false leaves the prompt exactly as it was.
+   */
+  opening: z.boolean().default(false),
 });
 export type PromptContext = z.infer<typeof PromptContextSchema>;
 /** What a caller passes: the nullable fields may be left out and mean null. */

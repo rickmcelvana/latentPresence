@@ -1,4 +1,5 @@
 import type { MemoryEpisode, RetrievalBundle, SelfModelBlock, SemanticFact, UserAffect } from '@latentpresence/protocol';
+import { sinceWords } from '../time/words';
 
 /**
  * What she remembers for this turn (P4-T03): the store's one answer (ADR-17), re-ranked by
@@ -92,13 +93,9 @@ export function rankRecall(bundle: RetrievalBundle, now: Date, params: RecallPar
   return { facts, episodes, blocks: bundle.blocks, vectorSearch: bundle.vectorSearch, elapsedMs: bundle.elapsedMs };
 }
 
+/** By calendar days and parts of the day since P6-T02 (ADR-51): 23:00 is "last night" at 08:00. */
 function when(at: string, now: Date): string {
-  const days = Math.floor((now.getTime() - Date.parse(at)) / DAY_MS);
-  if (days <= 0) return 'earlier today';
-  if (days === 1) return 'yesterday';
-  if (days < 14) return `${days} days ago`;
-  if (days < 60) return `${Math.round(days / 7)} weeks ago`;
-  return `on ${at.slice(0, 10)}`;
+  return sinceWords(new Date(at), now);
 }
 
 /** A fact as a line: "user lives in Halifax (since 2026-08-01)". */

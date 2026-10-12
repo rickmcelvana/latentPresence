@@ -27,8 +27,18 @@ import { emptyTranscript, reduceTranscript, type TranscriptLine, type Transcript
  * between turns. `docs/TASKS.md` D-21.
  */
 
-/** A fixed prompt, or one rendered each time a request is built. */
-export type SystemPrompt = string | (() => string);
+/**
+ * A fixed prompt, or one rendered each time a request is built. `opening` is true for the one
+ * request in which she speaks first (P6-T02, ADR-51).
+ */
+export type SystemPrompt = string | ((turn: { readonly opening: boolean }) => string);
+
+/**
+ * The turn that stands in for theirs when she speaks first (P6-T02, ADR-51). Models answer a
+ * user turn, so the opener's request needs one; it never reaches the bus — not shown, not
+ * remembered — and stays in front of her opener on later requests.
+ */
+export const OPENING_CUE = '(The call has just connected. They have not said anything yet: you speak first.)';
 
 export interface ConversationHistoryOptions {
   /**
@@ -56,6 +66,10 @@ const DEFAULT_MAX_MESSAGES = 40;
  */
 export function historyFromTranscript(lines: readonly TranscriptLine[], maxMessages = DEFAULT_MAX_MESSAGES): LlmMessage[] {
   const messages: LlmMessage[] = [];
+  // A conversation that begins with her is one she opened (ADR-51): its cue goes back in front,
+  // or `trim` would drop her opener as an answer to nothing.
+  const first = lines.find((line) => line.kind === 'user' || line.kind === 'assistant');
+  if (first?.kind === 'assistant') messages.push({ role: 'user', content: OPENING_CUE });
   for (const line of lines) {
     // A failure notice, or a tool she used (ADR-42): neither is something she said.
     if (line.kind === 'notice' || line.kind === 'tool') continue;
@@ -142,7 +156,19 @@ export class ConversationHistory {
     const said = pendingUser?.trim() ?? '';
     const messages = this.messages;
     if (said !== '') append(messages, { role: 'user', content: said });
-    const system = typeof this.system === 'function' ? this.system() : this.system;
+    return this.withSystem(messages, false);
+  }
+
+  /**
+   * The request in which she speaks first (P6-T02, ADR-51): the cue as their turn, and the
+   * system prompt rendered for an opening. Only before anything has been said.
+   */
+  openingRequest(): LlmMessage[] {
+    return this.withSystem([{ role: 'user', content: OPENING_CUE }], true);
+  }
+
+  private withSystem(messages: LlmMessage[], opening: boolean): LlmMessage[] {
+    const system = typeof this.system === 'function' ? this.system({ opening }) : this.system;
     return system === null ? messages : [{ role: 'system', content: system }, ...messages];
   }
 

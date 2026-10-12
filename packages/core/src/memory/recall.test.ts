@@ -51,12 +51,13 @@ describe('salience', () => {
 describe('renderMemory', () => {
   it('says what she knows and what was said, in plain lines', () => {
     const text = renderMemory(
-      { facts: [fact('Thai food', 0.9), fact('jazz', 0.4)], episodes: [episode('x', '2026-09-26T12:00:00Z')], blocks: [], vectorSearch: 'used', elapsedMs: 1 },
-      NOW,
+      // Local times: since P6-T02 the words are calendar days and parts of the day in her clock.
+      { facts: [fact('Thai food', 0.9), fact('jazz', 0.4)], episodes: [episode('x', new Date(2026, 8, 26, 10, 0).toISOString())], blocks: [], vectorSearch: 'used', elapsedMs: 1 },
+      new Date(2026, 8, 28, 9, 0),
     );
     expect(text).toContain('What you know about them:\n- user likes Thai food');
     expect(text).toContain('- user likes jazz (not sure)');
-    expect(text).toContain('- 2 days ago, they said: "said x"');
+    expect(text).toContain('- on Saturday morning, two days ago, they said: "said x"');
   });
 
   it('is empty when there is nothing to say', () => {

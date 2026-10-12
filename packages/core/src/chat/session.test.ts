@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CancellationSignal, ConversationEvent, LLMProvider, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import { ConversationMachine } from '../conversation/machine';
+import { ConversationHistory, OPENING_CUE } from '../history/history';
 import { deferred, ManualSink, ScriptedTTS, settle, text } from '../testing/scripted';
 import { emptyTranscript, reduceTranscript } from '../transcript/transcript';
 import { ChatSession, NO_TEXT_LENGTH_MESSAGE } from './session';
@@ -101,6 +102,86 @@ describe('ChatSession — a typed turn', () => {
       { role: 'user', content: 'two' },
     ]);
     expect(llm.requests[1]).toMatchObject({ modelId: 'm', temperature: 0.7, tools: [], maxOutputTokens: null });
+  });
+});
+
+describe('ChatSession — she speaks first (P6-T02, ADR-51)', () => {
+  it('opens with an answer to a cue turn that never reaches the bus, and keeps the cue in front of it after', async () => {
+    const llm = new ChatLLM([text('Morning! How did the trip planning go?'), text('Lovely.')]);
+    const r = rig(llm, { system: 'You are Alice.' });
+    expect(r.chat.open()).toBe(true);
+    expect(r.machine.getState()).toBe('thinking');
+    await settle();
+    expect(r.types()).toEqual(['session.started', 'assistant.opening', 'assistant.token', 'assistant.sentence', 'assistant.sentence', 'assistant.message']);
+    expect(r.of('user.message')).toEqual([]);
+    expect(llm.requests[0]?.messages).toEqual([
+      { role: 'system', content: 'You are Alice.' },
+      { role: 'user', content: OPENING_CUE },
+    ]);
+    expect(r.machine.getState()).toBe('listening');
+
+    r.chat.send('It went well!');
+    await settle();
+    expect(llm.requests[1]?.messages.slice(1).map((message) => [message.role, 'content' in message ? message.content : ''])).toEqual([
+      ['user', OPENING_CUE],
+      ['assistant', 'Morning! How did the trip planning go?'],
+      ['user', 'It went well!'],
+    ]);
+  });
+
+  it('renders the system prompt for an opening on that request only', async () => {
+    const turns: boolean[] = [];
+    const machine = new ConversationMachine({ sessionId: 'c', characterId: 'alice' });
+    const history = new ConversationHistory({ system: (turn) => (turns.push(turn.opening), 'You are Alice.') });
+    machine.subscribe((event) => history.observe(event));
+    const chat = new ChatSession({ sessionId: 'c', machine, llm: new ChatLLM([text('Hi again.'), text('Good.')]), modelId: 'm', history });
+    machine.start();
+    chat.open();
+    await settle();
+    chat.send('hello');
+    await settle();
+    expect(turns).toEqual([true, false]);
+  });
+
+  it('asks the opener of openingLlm — the model without her tools — and everything after of llm', async () => {
+    const plain = new ChatLLM([text('Morning!')]);
+    const tooled = new ChatLLM([text('Fine.')]);
+    const machine = new ConversationMachine({ sessionId: 'c', characterId: 'alice' });
+    const chat = new ChatSession({ sessionId: 'c', machine, llm: tooled, openingLlm: plain, modelId: 'm' });
+    machine.start();
+    chat.open();
+    await settle();
+    chat.send('hi');
+    await settle();
+    expect(plain.requests).toHaveLength(1);
+    expect(tooled.requests).toHaveLength(1);
+  });
+
+  it('declines once anything has been said, while an answer streams, and after dispose', async () => {
+    const gate = deferred();
+    const r = rig(new ChatLLM([text('Hi.', ' More.')], { promise: gate.promise, after: 1 }));
+    r.chat.send('hello');
+    expect(r.chat.open()).toBe(false);
+    gate.resolve();
+    await settle();
+    expect(r.chat.open()).toBe(false);
+    const fresh = rig(new ChatLLM([]));
+    fresh.chat.dispose();
+    expect(fresh.chat.open()).toBe(false);
+    expect(r.of('assistant.opening')).toEqual([]);
+  });
+
+  it('is stopped by their first message, as any answer is', async () => {
+    const gate = deferred();
+    const llm = new ChatLLM([text('Good morning! ', 'How was'), text('Sure.')], { promise: gate.promise, after: 1 });
+    const r = rig(llm);
+    r.chat.open();
+    await settle();
+    r.chat.send('sorry, quick question');
+    gate.resolve();
+    await settle();
+    expect(r.of('assistant.interrupted').map((event) => event.spokenPrefix.trim())).toEqual(['Good morning!']);
+    expect(r.of('assistant.message').map((event) => event.entry.text.trim())).toEqual(['Good morning!', 'Sure.']);
   });
 });
 

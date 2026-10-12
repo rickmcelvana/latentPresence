@@ -408,6 +408,51 @@ describe('ChatPage — the persona', () => {
     expect(whiteboard?.lines.map((line) => line.text)).toEqual(['Prepare the bed', 'Pick a sunny spot', 'Dig in compost', 'Plant', 'Buy seedlings']);
   });
 
+  it('speaks first when they come back after an hour or more, and not after a reload within it (P6-T02, ADR-51)', async () => {
+    const visit = async (lastSpokeMsAgo: number) => {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      const store = new FakeMemoryStore();
+      const at = new Date(Date.now() - lastSpokeMsAgo).toISOString();
+      await store.appendEpisode({ id: 'e1', sessionId: 'earlier', characterId: defaultPersona.id, role: 'user', text: "I'll know the travel dates by Friday.", interrupted: false, at, embedding: null, affect: null });
+      const chats: LlmRequest[] = [];
+      const provider = (): LLMProvider => ({
+        id: 'fake',
+        async listModels(): Promise<LlmModel[]> {
+          return [];
+        },
+        async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+          if (request.reasoning === 'off') {
+            yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+          } else {
+            chats.push(request);
+            yield { type: 'text-delta', text: 'Good to see you! Did the dates work out?' };
+          }
+          yield { type: 'finish', reason: 'stop', usage: null };
+        },
+      });
+      const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+      const page = render(<ChatPage buildProvider={provider} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+      await waitFor(() => expect(store.calls).toContain('listEpisodes'));
+      await act(() => settle());
+      return { page, chats };
+    };
+
+    const back = await visit(2 * 3_600_000);
+    await waitFor(() => expect(back.chats).toHaveLength(1));
+    expect(back.chats[0]?.messages.at(-1)).toEqual({ role: 'user', content: expect.stringContaining('you speak first') });
+    expect(systemOf(back.chats[0])).toContain('YOU SPEAK FIRST');
+    expect(systemOf(back.chats[0])).toContain('They said: "I\'ll know the travel dates by Friday."');
+    expect(await screen.findByText('Good to see you! Did the dates work out?')).toBeTruthy();
+    // The cue is never a line of theirs.
+    expect(screen.queryByText(/you speak first/)).toBeNull();
+    back.page.unmount();
+
+    const reload = await visit(10 * 60_000);
+    expect(reload.chats).toHaveLength(0);
+    reload.page.unmount();
+  });
+
   it('names the character from the persona file rather than a constant', () => {
     expect(CHAT_CHARACTER_NAME).toBe(defaultPersona.name);
   });

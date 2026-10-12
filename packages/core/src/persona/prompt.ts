@@ -8,6 +8,8 @@ import {
 import { describeFeeling, describeUser } from '../affect/express';
 import { renderMemory } from '../memory/recall';
 import { renderPlans } from '../plan/render';
+import { renderOpening, renderSince } from '../time/render';
+import { partOfDayWords } from '../time/words';
 import { renderHome } from './home';
 
 /**
@@ -149,6 +151,10 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     ...(context.home ? renderHome(context.home) : []),
     // P4-T07 (ADR-41): how to plan together, and the plans — after memory, before "right now".
     ...(context.plans ? renderPlans(context.plans, context.now) : []),
+    // P6-T02 (ADR-51): when they last talked, and how to open when she speaks first — just
+    // before "right now", which stays last.
+    ...(context.since ? renderSince(context.since, context.now) : []),
+    ...(context.opening === true ? renderOpening(context.now) : []),
     'RIGHT NOW',
     `- It is ${formatNow(context.now)}.`,
     ...(userName === null ? [] : [`- You are talking to ${userName}.`]),
@@ -171,5 +177,6 @@ function formatNow(now: Date): string {
   ];
   const hours = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, '0');
-  return `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${hours}:${minutes}`;
+  // P6-T02 (ADR-51): the part of the day in words, so a greeting has it without arithmetic.
+  return `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${hours}:${minutes} ${partOfDayWords(now)}`;
 }

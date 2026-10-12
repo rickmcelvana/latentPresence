@@ -36,6 +36,12 @@ describe('transition table', () => {
     expect(transition('listening', 'user.message')).toBe('thinking');
   });
 
+  it('lets her begin a turn of her own (P6-T02, ADR-51)', () => {
+    expect(transition('idle', 'assistant.opening')).toBe('thinking');
+    expect(transition('listening', 'assistant.opening')).toBe('thinking');
+    expect(transition('speaking', 'assistant.opening')).toBe('speaking');
+  });
+
   it('starts speaking when output becomes audible (thinking → speaking)', () => {
     expect(transition('thinking', 'assistant.audio.started')).toBe('speaking');
   });

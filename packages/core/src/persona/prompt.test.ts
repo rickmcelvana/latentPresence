@@ -142,14 +142,14 @@ describe('renderSystemPrompt', () => {
       expect(section).toContain('  Vegetable garden (id p1, active). Goal: A small bed of easy vegetables by spring.');
       expect(section).toContain('  Prepare the bed: Pick a sunny spot (done); Dig in compost (to do)');
       expect(section).toContain('  vegetable garden, on 21 September 2026: whether the compost went in (due now).');
-      expect(section).toContain('  tidy the shed, on 2 October 2026: how the shelves look.');
+      expect(section).toContain('  tidy the shed, on 2 October 2026: how the shelves look (not due yet).');
       expect(text.indexOf('PLANNING TOGETHER')).toBeGreaterThan(text.indexOf('WHAT YOU WILL NOT DO'));
     });
 
     it('says a follow-up time, and makes it due once the clock passes it, not before (R-27)', () => {
       const pots = (now: Date) =>
         renderSystemPrompt(persona, { now, userName: null, plans: { plans: [garden], focusId: null, followUps: [{ plan: 'herb garden', on: '2026-09-21 17:30', about: 'whether the pots are bought' }] } });
-      expect(pots(new Date(2026, 8, 21, 14, 5))).toContain('  herb garden, on 21 September 2026 at 17:30: whether the pots are bought.');
+      expect(pots(new Date(2026, 8, 21, 14, 5))).toContain('  herb garden, on 21 September 2026 at 17:30: whether the pots are bought (not due yet).');
       expect(pots(new Date(2026, 8, 21, 17, 31))).toContain('  herb garden, on 21 September 2026 at 17:30: whether the pots are bought (due now).');
     });
   });
@@ -189,7 +189,7 @@ describe('renderSystemPrompt', () => {
       const withMemory = renderSystemPrompt(persona, { now: at, userName: null, memory: { facts: [fact], episodes: [episode] } });
       const section = withMemory.slice(withMemory.indexOf('WHAT YOU REMEMBER ABOUT THEM'), withMemory.indexOf('RIGHT NOW'));
       expect(section).toContain('- user sister name Priya');
-      expect(section).toContain('- 3 days ago, they said: "The allotment flooded again"');
+      expect(section).toContain('- on Friday afternoon, three days ago, they said: "The allotment flooded again"');
       expect(withMemory.indexOf('WHAT YOU REMEMBER ABOUT THEM')).toBeGreaterThan(withMemory.indexOf('WHAT YOU WILL NOT DO'));
     });
   });

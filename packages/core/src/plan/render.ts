@@ -1,4 +1,5 @@
 import type { PlanDocument, PlanTask } from '@latentpresence/protocol';
+import { lateWords } from '../time/words';
 import type { PromptPlans } from './plans';
 
 /**
@@ -45,6 +46,12 @@ function inFull(plan: PlanDocument): string[] {
   ];
 }
 
+/** Due, and since P6-T02 (ADR-51) how late: a week away reads as a week late, not as on time. */
+function due(on: string, now: Date): string {
+  const late = lateWords(on, now);
+  return late === null ? ' (due now)' : ` (due now — ${late})`;
+}
+
 export function renderPlans(context: PromptPlans, now: Date): string[] {
   const focus = context.plans.find((plan) => plan.id === context.focusId) ?? null;
   const others = context.plans.filter((plan) => plan !== focus);
@@ -66,8 +73,10 @@ export function renderPlans(context: PromptPlans, now: Date): string[] {
     ...(context.followUps.length === 0
       ? []
       : [
-          '- Follow-ups you offered. Bring one up yourself when it is due, the way a friend would, then cancel it:',
-          ...context.followUps.map((follow) => `  ${follow.plan}, on ${sayDate(follow.on)}: ${follow.about}${follow.on <= day ? ' (due now)' : ''}.`),
+          // P6-T02 live check: after cancelling one in an opener she said so ("I cancelled the follow-up").
+          '- Follow-ups you offered. Bring one up yourself when it is due, the way a friend would, then',
+          '  cancel it without a word about it: the tools are yours, not something to talk about.',
+          ...context.followUps.map((follow) => `  ${follow.plan}, on ${sayDate(follow.on)}: ${follow.about}${follow.on <= day ? due(follow.on, now) : ' (not due yet)'}.`),
         ]),
     '',
   ];

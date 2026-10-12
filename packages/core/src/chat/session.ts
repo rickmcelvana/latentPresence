@@ -63,6 +63,12 @@ export interface ChatSessionOptions {
    * session keeps its own.
    */
   readonly history?: ConversationHistory;
+  /**
+   * What her opener is asked of (P6-T02, ADR-51): the same model **without her tools**. Nothing
+   * has been asked of her yet, and in the live check a follow-up cancelled mid-opener made glm
+   * say the greeting twice. Omitted: `llm`.
+   */
+  readonly openingLlm?: LLMProvider;
   /** Speak every answer from the first (P2-T08). Omitted: answers are text until `setVoice`. */
   readonly voice?: ChatVoice | null;
   /** Wall clock for event stamps. */
@@ -146,6 +152,24 @@ export class ChatSession {
     this.stop();
     // No push: `history` is watching the bus, and this dispatch is delivered synchronously.
     this.dispatch({ type: 'user.message', text: said });
+    this.answer(this.options.llm, () => this.history.request());
+    return true;
+  }
+
+  /**
+   * She speaks first (P6-T02, ADR-51): `assistant.opening` on the bus, then an answer to the
+   * history's cue turn, which never reaches the bus. Only before anything has been said and
+   * while nothing streams; otherwise false and nothing happens. Their first message stops it,
+   * as it would any answer.
+   */
+  open(): boolean {
+    if (this.disposed || this.streaming !== null || this.history.messages.length > 0) return false;
+    this.dispatch({ type: 'assistant.opening' });
+    this.answer(this.options.openingLlm ?? this.options.llm, () => this.history.openingRequest());
+    return true;
+  }
+
+  private answer(llm: LLMProvider, messages: () => LlmMessage[]): void {
     const streaming: Streaming = {
       id: `${this.options.sessionId}-reply-${(this.replies += 1)}`,
       cancellation: new Cancellation(),
@@ -156,9 +180,8 @@ export class ChatSession {
       fadeMs: this.voice?.fadeMs ?? 100,
     };
     this.streaming = streaming;
-    if (this.voice === null) void this.run(streaming);
-    else this.speak(streaming, this.voice);
-    return true;
+    if (this.voice === null) void this.run(streaming, llm, messages());
+    else this.speak(streaming, this.voice, llm, messages());
   }
 
   /**
@@ -192,11 +215,11 @@ export class ChatSession {
     this.disposed = true;
   }
 
-  private async run(streaming: Streaming): Promise<void> {
-    const { llm, modelId } = this.options;
+  private async run(streaming: Streaming, llm: LLMProvider, messages: LlmMessage[]): Promise<void> {
+    const { modelId } = this.options;
     const request = {
       modelId,
-      messages: this.history.request(),
+      messages,
       tools: [],
       temperature: this.options.temperature ?? null,
       maxOutputTokens: this.options.maxOutputTokens ?? null,
@@ -249,11 +272,11 @@ export class ChatSession {
    * A spoken answer (P2-T08): the `Reply` a call's turn gets, with no hold — a typed turn is
    * final the moment it is sent. Its events go on the bus as `VoiceSession` puts them there.
    */
-  private speak(streaming: Streaming, voice: ChatVoice): void {
-    const { llm, modelId } = this.options;
+  private speak(streaming: Streaming, voice: ChatVoice, llm: LLMProvider, messages: LlmMessage[]): void {
+    const { modelId } = this.options;
     const request = {
       modelId,
-      messages: this.history.request(),
+      messages,
       tools: [],
       temperature: this.options.temperature ?? null,
       maxOutputTokens: this.options.maxOutputTokens ?? null,

@@ -46,10 +46,13 @@ export const transitionTable: Readonly<
     'session.started': 'listening',
     'user.speech.started': 'listening',
     'user.message': 'thinking',
+    // P6-T02 (ADR-51): she speaks first.
+    'assistant.opening': 'thinking',
   },
   listening: {
     'user.turn.ended': 'thinking',
     'user.message': 'thinking',
+    'assistant.opening': 'thinking',
     'session.ended': 'idle',
   },
   thinking: {
