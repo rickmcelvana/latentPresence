@@ -189,6 +189,17 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-35 · Look at the whiteboard and the screen · ~5 minutes, desktop
+**Why:** P5-T08 puts a whiteboard and a screen in the room (ADR-49): her plan in focus on the
+board, the sources of her latest cited answer on the screen. Readable was measured at 1080p in the
+Browser pane; your monitor and your eyes are the real test.
+1. `/chat` with the character showing, in the window size you normally use.
+2. Ask her something she has to look up (the weather) — the screen on the right lists the sources.
+3. Open **Plans**, pick a plan (or ask her to make one) — the whiteboard on the left shows it.
+
+**Pass:** you can read both from where you sit, they do not crowd her, and the room still looks
+like a room. **Paste back:** pass/fail, your window size, and anything too small or too much.
+
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
 The suites and a live run on a test database passed; a real schema is where she will stumble.

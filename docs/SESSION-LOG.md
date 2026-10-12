@@ -746,3 +746,9 @@ Did: recorded R-34 (D-45: Rick's HA on a Raspberry Pi, HA OS 18.3, Core 2026.10.
 Left: R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P5-T08 diegetic displays (sub).
 Decisions: ADR-48 accepted.
+
+## 2026-10-11 claude — P5-T08 diegetic displays
+Did: measured `medium` on the back wall (507 px/m at 1080p, ±1.89 m seen, ±0.77 m behind her), ADR-49 proposed, `docs/briefs/P5-T08.md`; a Sonnet subagent built it (canvas layout pure and tested, `CanvasTexture` boards, window moved, `setDisplays`, `ChatPage` feeds plan and latest sources); reviewed; clearance on her z = 0 slice accepted; whiteboard made 0.45 emissive after the pane showed it grey. Pane at 1080p (stand-in SearXNG, placeholder VRM with Rick's OK): sources on the screen and a plan on the whiteboard, readable. Gate green, 1708 TS tests.
+Left: R-35 (new), R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T01 idle behaviour planner (main).
+Decisions: ADR-49 proposed — needs Rick's accept.

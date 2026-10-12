@@ -51,6 +51,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-46 | The person's databases: first-party `sql:<name>` companion servers from `mcp.json`; read-only in three layers (sqlparser verdict, read-only transaction or file, time and row limits), plus a read-only user | accepted | 2026-10-11 |
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
+| ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | proposed | 2026-10-11 |
 
 ---
 
@@ -1720,3 +1721,50 @@ allowed, and HA in the expected state each time. In the Browser pane: List showe
 Assistant's devices; Kitchen chosen; "Turn on the light, please." brought the card *Kitchen
 Lights (Kitchen)* with **Always allow Kitchen Lights**; the light came on; "now turn it off
 again" ran with no card and changed only that light.
+
+## ADR-49 Diegetic displays: canvas-drawn boards on the back wall, fed by what she already has (proposed 2026-10-11)
+
+**Context.** P5-T08: a screen and a whiteboard in the room rendering tool results and plans, by
+HTML-to-texture or canvas; done when a plan appears on the whiteboard and a search result on the
+screen with readable text at the medium camera preset. The room is P2-T05's (`buildStage`,
+primitives only); `/chat` frames the call at `medium`.
+
+**Measured first (2026-10-11, `framing('medium', …)` on the stage test's standard body).** The
+camera sits 1.8 m in front of her at 1.33 m; on the back wall (z = −2.17) a 1920×1080 frame sees
+x ±1.89 m, y 0.27–2.39 m, at **507 px per metre**; 16:10 sees ±1.70, 4:3 ±1.42. Her standing box
+(±0.35 m) hides x ±0.77 m of the wall behind her. The window (x 0.5–2.1) fills the right side.
+
+**Decisions.**
+
+1. **Canvas 2D into a `THREE.CanvasTexture`, not HTML-to-texture.** html2canvas-style capture
+   re-implements CSS, is slow and large, and an SVG `foreignObject` taints the canvas in some
+   browsers; what the boards show is a title and wrapped lines, which canvas draws directly with
+   the system font — nothing downloaded. Layout (wrapping, cutting with "…", "+N more") is a pure
+   function with an injected text measure, tested in node; only the drawing touches a canvas.
+2. **Both on the back wall, either side of her**: the whiteboard left (centre x −1.27, 0.84 ×
+   0.62 m), the screen right (centre x 1.27, 0.84 × 0.50 m), centred at y 1.45 — inside a 16:10
+   frame at `medium`, clear of her box. **The window moves right** (centre x 2.4, 1.1 m wide) so
+   the screen does not sit on it; it stays in the `full` preset.
+3. **Readable means body text at least 16 px tall at `medium`, 1920×1080** — 3.2 cm letters on
+   the board — and titles larger. A test projects each board through the real `framing` and
+   proves it is in frame, clear of her and of the window, and that its body text meets the bar.
+4. **Fed by what the page already has**: the whiteboard shows the plan in focus, else the newest
+   unarchived plan (title, then phases and their tasks, done ones ticked); the screen shows the
+   sources of her latest answer that cited any (title, where, a line of the text), up to three.
+   Empty, the board is blank and the screen is off. Nothing new is stored or sent.
+
+**Rejected.** *HTML-to-texture* — above. *A floating 2D overlay* — not diegetic, and the drawer
+already shows the same. *Boards on stands nearer the camera* — more pixels, but they would cross
+her in `full` and crowd a 4:3 frame. *Following the camera per preset* — a room whose furniture
+moves is not a room.
+
+**Measured 2026-10-11 (built by a Sonnet subagent from `docs/briefs/P5-T08.md`).** Projected
+through the real `framing('medium', …)`: body text **16.28 px** at 1920×1080; the whiteboard
+surface at x 100–527, y 321–637 px, the screen at x 1393–1821, y 351–606; both inside a 1920×1200
+frame (the whiteboard's 2 cm frame and the screen's bezel lose a few pixels at its edges). **The
+clearance test uses her box's z = 0 slice**, not its near face: the near face (z +0.3) projects
+to ±0.93 m on the wall, past the boards' ±0.85 m inner edges, but her shoulders and arms are at
+z ≈ 0 — and in the Browser pane at 1080p she covers neither board. **Seen in the pane:** "What's
+the weather in Halifax?" (a stand-in SearXNG) put both results on the screen, readable; a plan
+she saved appeared on the whiteboard with its phases and tasks. Lit by the room alone the
+whiteboard read mid-grey and its ink faint, so it now emits a little of its own picture (0.45).
