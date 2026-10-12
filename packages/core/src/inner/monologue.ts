@@ -107,12 +107,14 @@ function sentences(line: string): string[] {
 }
 
 /**
- * Her lines from the reply: bullets, numbering, quotes and a reasoning-voice "Okay," off; meta
- * talk and her answer again dropped; a paragraph taken a sentence at a time; at most three.
+ * Her lines from the reply: bullets, numbering, quotes, stray markup and a reasoning-voice "Okay,"
+ * off; meta talk and her answer again dropped; a paragraph taken a sentence at a time; three at most.
  */
 export function parseInnerLines(reply: string, said = ''): string[] {
   return reply
     .replaceAll(/<think>[\s\S]*?<\/think>/giu, '')
+    // deepseek-r1:8b ends lines with "<br><br>" (live, P6-T05).
+    .replaceAll(/<\/?[a-z]+\s*\/?>/giu, ' ')
     .split('\n')
     .map((line) =>
       line

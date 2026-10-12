@@ -211,7 +211,7 @@ describe('her lines', () => {
           'Thoughts:',
           'You have a DJI Neo and want to fly it by the water.',
           '<br>',
-          'I want to ask about the footage.',
+          'I want to ask about the footage. <br><br>',
           'One too many.',
         ].join('\n'),
         said,
