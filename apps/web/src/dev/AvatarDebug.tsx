@@ -30,7 +30,8 @@ import {
   tapAnalyser,
 } from '@latentpresence/avatar';
 import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
-import { AffectEngine, DEFAULT_AFFECT_PARAMS, dominantEmotion, initialAffect } from '@latentpresence/core';
+import { AffectEngine, DEFAULT_AFFECT_PARAMS, IDLE_ACTIVITIES, dominantEmotion, initialAffect } from '@latentpresence/core';
+import { IdlePerformer } from '@latentpresence/avatar';
 import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/providers';
 // Kokoro speech, generated for P1-T14's end-to-end test; dev-only, like this page.
 import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
@@ -80,6 +81,9 @@ import { AFFECT_REVIEW_STATES } from './affect-review';
 type Phase = 'consent' | 'loading' | 'ready' | 'failed';
 
 /** Only the character is fetched now: the clips are P2-T03's, served with the app. */
+/** Roughly where her head is, for the angle to a prop (P6-T01): she stands at the origin. */
+const IDLE_HEAD: readonly [number, number, number] = [0, 1.5, 0];
+
 const DOWNLOADS = [AVATAR];
 const CLIP_IDS = Object.keys(BASE_CLIP_URLS);
 /** Every tag the model can write, for playing one by hand (P2-T07). */
@@ -158,6 +162,9 @@ export function AvatarDebug(): ReactElement {
   // P2-T07's performer, the same one `/chat` drives from tags, played here by hand.
   const [performer] = useState(() => new CuePerformer());
   const [tagIndex, setTagIndex] = useState(0);
+  // P6-T01: her idle activities by hand, through the performer `/chat` uses when it is quiet.
+  const [idlePerformer] = useState(() => new IdlePerformer());
+  const [idleIndex, setIdleIndex] = useState(0);
 
   // P3-T02's Affect panel.
   const [affectSource, setAffectSource] = useState<AffectSource>('sliders');
@@ -246,9 +253,18 @@ export function AvatarDebug(): ReactElement {
           cueFace = faceFromCue;
         }
       }
+      const idling = idlePerformer.update(delta, IDLE_HEAD);
+      if (idling.cues?.gesture != null) performer.perform({ kind: 'gesture', value: idling.cues.gesture, known: idling.cues.gesture, offset: 0 });
+      if (idling.cues?.emote != null) performer.perform({ kind: 'emote', value: idling.cues.emote, known: idling.cues.emote, offset: 0 });
+      if (idling.ended) performer.release();
       if (live.current && lifeOnRef.current && layer !== null) {
-        const pose = layer.update(delta);
-        avatar.setLifePose(withGesture(pose, cues.additive));
+        if (idling.gazeBase !== null) layer.setGazeBase(idling.gazeBase);
+        let pose = withGesture(withGesture(layer.update(delta), cues.additive), idling.additive);
+        if (idling.lookAt !== null || idling.eyesClosed > 0) {
+          pose = { ...pose, blink: Math.max(pose.blink, idling.eyesClosed), gaze: idling.lookAt === null ? pose.gaze : { ...pose.gaze, point: idling.lookAt } };
+        }
+        avatar.setLifePose(pose);
+        if (idling.mouthOpen > 0) avatar.setViseme('aa', idling.mouthOpen);
         const c = counters.current;
         c.ms += delta;
         if (c.lastBlink < 0.5 && pose.blink >= 0.5) c.blinks += 1;
@@ -306,7 +322,7 @@ export function AvatarDebug(): ReactElement {
       avatar.dispose();
       renderer.current = null;
     };
-  }, [started, performer]);
+  }, [started, performer, idlePerformer]);
 
   // While cycling, one preset at full weight overrides the sliders; after, they apply again.
   const driven = useMemo<ExpressionWeights>(
@@ -327,6 +343,13 @@ export function AvatarDebug(): ReactElement {
     // As after an answer: the face holds the emote, then lets go.
     if (option.kind === 'emote') setTimeout(() => performer.release(), RELEASE_AFTER_MS);
   }, [performer, tagIndex]);
+
+  const performIdle = useCallback(() => {
+    const activity = IDLE_ACTIVITIES[idleIndex];
+    if (activity === undefined) return;
+    idlePerformer.start({ ...activity.perform, durationMs: activity.durationMs[1] });
+    setStatus(`She ${activity.label} (${Math.round(activity.durationMs[1] / 1000)} s).`);
+  }, [idlePerformer, idleIndex]);
 
   // One life layer for the page; made in an effect rather than during render.
   useEffect(() => {
@@ -753,6 +776,19 @@ export function AvatarDebug(): ReactElement {
               </label>
               <button className="btn" onClick={playTag} type="button">
                 Play tag
+              </button>
+              <label className="field">
+                <span className="field-label">Idle activity (P6-T01)</span>
+                <select className="select" onChange={(event) => setIdleIndex(Number(event.target.value))} value={idleIndex}>
+                  {IDLE_ACTIVITIES.map((activity, index) => (
+                    <option key={activity.id} value={index}>
+                      {activity.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="btn" onClick={performIdle} type="button">
+                Perform
               </button>
             </div>
           </section>

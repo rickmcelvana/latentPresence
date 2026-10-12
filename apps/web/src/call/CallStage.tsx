@@ -28,6 +28,7 @@ import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/cons
 import { ConsentScreen } from '../consent/ConsentScreen';
 import type { AudioOutputHandle } from '@latentpresence/providers';
 import { AVATAR, AVATAR_DESCRIPTOR } from './character-asset';
+import { IdleDirector } from './idle';
 import { BASE_CLIP_URLS } from './clips';
 import { computePixelRatio } from './pixel-ratio';
 
@@ -124,6 +125,9 @@ type CharacterPhase = 'consent' | 'loading' | 'ready' | 'declined' | 'failed';
 
 const EMPTY_DISPLAYS: Displays = { whiteboard: null, screen: null };
 
+/** Roughly where her head is, for the angle to a prop: she stands at the origin (P2-T05). */
+const IDLE_HEAD: readonly [number, number, number] = [0, 1.5, 0];
+
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
 
 export function CallStage({
@@ -149,6 +153,8 @@ export function CallStage({
   /** The mood the frame loop reads, with its baseline's gaze worked out once. */
   const affectRef = useRef<{ source: CallStageAffect; baselineGaze: GazeModulation } | null>(null);
   const listeningRef = useRef<CallStageListening | null>(null);
+  /** What the boards show, for the idle planner (P6-T01): reading a blank board is not a thing to do. */
+  const displaysRef = useRef<Displays>(displays);
 
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
@@ -164,6 +170,10 @@ export function CallStage({
   useEffect(() => {
     affectRef.current = affect === null ? null : { source: affect, baselineGaze: affectToBody(affect.baseline).gaze };
   }, [affect]);
+
+  useEffect(() => {
+    displaysRef.current = displays;
+  }, [displays]);
 
   useEffect(() => {
     listeningRef.current = listening;
@@ -186,7 +196,16 @@ export function CallStage({
     // written before, from the sentence timing each `assistant.audio.started` carries.
     const performer = new CuePerformer();
     const bridge = new TagBridge(performer);
+    // P6-T01 (ADR-50): her own idle life. Anything on the bus but the affect engines' own ticks,
+    // or a key or a press anywhere on the page, means someone is there: she stops at once.
+    const idle = new IdleDirector();
+    let idleEmote = false;
+    let idleMouth = 0;
+    const wake = (): void => idle.activity();
+    window.addEventListener('keydown', wake);
+    window.addEventListener('pointerdown', wake);
     const unsubscribe = machine.subscribe((event) => {
+      if (event.type !== 'affect.user.updated' && event.type !== 'affect.character.updated') idle.activity();
       bridge.handle(event, performance.now());
       listeningRef.current?.reactor.onEvent(event, performance.now());
       if (event.type !== 'state.changed') return;
@@ -209,6 +228,24 @@ export function CallStage({
         const listen = listeningRef.current;
         const reaction = listen === null ? null : listen.reactor.update(now, listen.userAffect());
         for (const gesture of reaction?.gestures ?? []) performer.perform({ kind: 'gesture', value: gesture, known: gesture, offset: 0 });
+        // P6-T01: what she does of her own, before the cue performer steps, so its gesture moves this frame.
+        const inputs = affectRef.current?.source.inputs() ?? null;
+        const shown = displaysRef.current;
+        const idling = idle.update(
+          delta,
+          { state: machine.getState(), pleasure: inputs?.mood.pleasure ?? 0, energy: inputs?.energy ?? 0.5, showing: { whiteboard: shown.whiteboard !== null, screen: shown.screen !== null }, now: new Date() },
+          IDLE_HEAD,
+        );
+        if (idling.cues?.gesture != null) performer.perform({ kind: 'gesture', value: idling.cues.gesture, known: idling.cues.gesture, offset: 0 });
+        if (idling.cues?.emote != null) {
+          performer.perform({ kind: 'emote', value: idling.cues.emote, known: idling.cues.emote, offset: 0 });
+          idleEmote = true;
+        }
+        if (idling.ended && idleEmote) {
+          performer.release();
+          idleEmote = false;
+        }
+        life.setGazeBase(idling.gazeBase ?? 'user');
         const cues = performer.update(delta);
         // P3-T09: the mood's resting face under the tags' faces, and its gaze habit on the
         // life layer — both before `life.update`, which reads the modulation this frame.
@@ -222,12 +259,19 @@ export function CallStage({
           life.setModulation(null);
         }
         if (reaction !== null) face = applyListening(face, reaction);
-        avatar.setLifePose?.(withGesture(life.update(delta), cues.additive));
+        let pose = withGesture(withGesture(life.update(delta), cues.additive), idling.additive);
+        if (idling.lookAt !== null || idling.eyesClosed > 0) {
+          pose = { ...pose, blink: Math.max(pose.blink, idling.eyesClosed), gaze: idling.lookAt === null ? pose.gaze : { ...pose.gaze, point: idling.lookAt } };
+        }
+        avatar.setLifePose?.(pose);
         avatar.setExpression(face);
         const lipSync = lipSyncRef.current;
         if (lipSync !== null) {
           for (const [shape, weight] of lipSync.update(delta, now)) avatar.setViseme(shape, weight);
         }
+        // A yawn's jaw (P6-T01), after lip sync so it wins, and back to closed once it is over.
+        if (idling.mouthOpen > 0 || idleMouth > 0) avatar.setViseme('aa', idling.mouthOpen);
+        idleMouth = idling.mouthOpen;
       }
       avatar.update(delta);
       frame = requestAnimationFrame(tick);
@@ -248,6 +292,8 @@ export function CallStage({
 
     return () => {
       cancelled = true;
+      window.removeEventListener('keydown', wake);
+      window.removeEventListener('pointerdown', wake);
       unsubscribe();
       cancelAnimationFrame(frame);
       avatar.dispose();

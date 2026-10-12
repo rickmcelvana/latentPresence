@@ -133,6 +133,8 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private loaded: Loaded | null = null;
   private gaze: GazeTarget = 'user';
   private gazeOffset: GazeOffset = [0, 0];
+  /** A world point the life pose asks the eyes for (a prop, P6-T01); null follows `gaze`. */
+  private gazeAt: Vec3 | null = null;
   private readonly stage: THREE.Group | null;
   private readonly boards: StageBoards | null;
   /** The last displays drawn, as a key, so an unchanged prop costs nothing. */
@@ -247,6 +249,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     this.character();
     this.gaze = target;
     this.gazeOffset = [0, 0];
+    this.gazeAt = null;
     this.placeGaze();
   }
 
@@ -397,6 +400,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     loaded.face.setBlink(life.blink);
     this.gaze = life.gaze.target;
     this.gazeOffset = life.gaze.offset;
+    this.gazeAt = life.gaze.point ?? null;
   }
 
   private unloadCharacter(): void {
@@ -460,7 +464,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     const head = this.headPosition();
     if (head === null) return;
     const { x, y, z } = this.camera.position;
-    const [px, py, pz] = gazePoint(this.gaze, head, [x, y, z], this.gazeOffset);
+    const [px, py, pz] = this.gazeAt ?? gazePoint(this.gaze, head, [x, y, z], this.gazeOffset);
     this.gazeObject.position.set(px, py, pz);
     this.gazeObject.updateMatrixWorld();
   }

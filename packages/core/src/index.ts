@@ -23,4 +23,5 @@ export * from './documents';
 export * from './plan';
 export * from './self';
 export * from './tools';
+export * from './idle';
 export { Cancellation } from './cancellation';

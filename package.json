@@ -27,6 +27,7 @@
     "e2e:fixture": "pnpm --filter @latentpresence/ml-web exec vite-node live/e2e-fixture.ts",
     "openapi": "vite-node packages/protocol/scripts/write-openapi.ts",
     "clips:build": "vite-node packages/avatar/tools/build-clips.ts",
+    "idle:log": "vite-node packages/core/scripts/idle-log.ts",
     "live:history": "pnpm --filter @latentpresence/providers exec vite-node live/history.ts",
     "live:persona": "pnpm --filter @latentpresence/providers exec vite-node live/persona.ts",
     "live:affect": "pnpm --filter @latentpresence/providers exec vite-node live/affect.ts",

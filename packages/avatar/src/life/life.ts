@@ -44,7 +44,8 @@ export interface LifePose {
   readonly hipsOffset: Vec3;
   /** 0 open, 1 shut. */
   readonly blink: number;
-  readonly gaze: { readonly target: GazeTarget; readonly offset: GazeOffset };
+  /** `point`, when set, is a world position the eyes find instead (an idle look at a prop, P6-T01). */
+  readonly gaze: { readonly target: GazeTarget; readonly offset: GazeOffset; readonly point?: Vec3 };
 }
 
 /**
