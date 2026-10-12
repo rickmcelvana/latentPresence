@@ -11,6 +11,15 @@ import type { Vec3 } from '@latentpresence/avatar';
 /** How long nothing must happen before she does anything of her own (ADR-50). */
 export const IDLE_QUIET_MS = 20_000;
 
+/**
+ * Waiting for them counts as quiet: after a typed answer `/chat`'s machine rests in `listening`
+ * (there is no idle timeout), so requiring `idle` meant she never did anything once they had
+ * spoken — R-36 found it. Thinking, speaking and being interrupted are not quiet.
+ */
+export function quietState(state: ConversationState): boolean {
+  return state === 'idle' || state === 'listening';
+}
+
 /** What the director reads each frame. */
 export interface IdleSituation {
   readonly state: ConversationState;
@@ -49,10 +58,11 @@ export class IdleDirector {
   }
 
   update(deltaMs: number, situation: IdleSituation, head: Vec3): IdleDirectorFrame {
-    if (situation.state === 'idle') this.quietMs += deltaMs;
+    const quiet = quietState(situation.state);
+    if (quiet) this.quietMs += deltaMs;
     else if (this.quietMs > 0 || this.performer.active) this.activity();
 
-    if (situation.state === 'idle' && !this.performer.active && this.quietMs >= this.nextAt) {
+    if (quiet && !this.performer.active && this.quietMs >= this.nextAt) {
       const context: IdleContext = { now: situation.now, quietMs: this.quietMs, pleasure: situation.pleasure, energy: situation.energy, showing: situation.showing };
       const choice = this.planner.choose(context);
       const rest = this.planner.restMs(context);

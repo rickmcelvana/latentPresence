@@ -51,9 +51,17 @@ describe('IdleDirector (P6-T01, ADR-50)', () => {
     expect(step(subject, IDLE_QUIET_MS - 1000).doing).toBeNull();
   });
 
-  it('is never idle while she is listening, thinking or speaking', () => {
+  it('is never idle while she is thinking, speaking or interrupted', () => {
     const subject = director();
     expect(step(subject, 5 * 60_000, { ...SITUATION, state: 'speaking' }).doing).toBeNull();
-    expect(step(subject, 5 * 60_000, { ...SITUATION, state: 'listening' }).doing).toBeNull();
+    expect(step(subject, 5 * 60_000, { ...SITUATION, state: 'thinking' }).doing).toBeNull();
+    expect(step(subject, 5 * 60_000, { ...SITUATION, state: 'interrupted' }).doing).toBeNull();
+  });
+
+  it("counts waiting for them as quiet: after a typed answer /chat rests in listening (R-36)", () => {
+    const subject = director();
+    let seen: string | null = null;
+    for (let seconds = 0; seen === null && seconds < 300; seconds += 1) seen = step(subject, 1000, { ...SITUATION, state: 'listening' }).doing;
+    expect(seen).toBe('looks out of the window');
   });
 });
