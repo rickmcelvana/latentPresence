@@ -53,7 +53,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
-| ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | proposed | 2026-10-12 |
+| ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
 
 ---
 
@@ -1826,7 +1826,7 @@ glance at 110° showed the camera the back of her head and set the hair's spring
 turn.** The pane was then hidden, which pauses animation, so the 60° turn and the other poses are
 R-36's to judge.
 
-## ADR-51 Time awareness: she knows how long it has been, and speaks first when they come back (proposed 2026-10-12)
+## ADR-51 Time awareness: she knows how long it has been, and speaks first when they come back (accepted 2026-10-12)
 
 **Context.** P6-T02: greeting by time, elapsed-time phrasing, "last time we" openers from memory,
 plan follow-ups; done when reopening after a simulated week yields correct phrasing. Today her

@@ -364,7 +364,7 @@ hours to no repeat within 10 minutes, at least eight different things, none over
 times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36 (moves passed in `/dev/avatar`;
 `/chat` retry after the listening fix).
 
-### P6-T02 Time awareness — owner: main (done 2026-10-12, ADR-51 proposed)
+### P6-T02 Time awareness — owner: main (done 2026-10-12, ADR-51 accepted)
 Greeting by time, elapsed-time phrasing, "last time we" openers from memory, plan follow-ups.
 Done when: reopening after a simulated week yields correct phrasing.
 **Met:** `packages/core/src/time` (`sinceWords`, `lateWords`, `lastConversation`, `shouldOpen`);
