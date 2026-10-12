@@ -190,47 +190,14 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-39 · Let her rest · ten quiet minutes, desktop
-**Why:** P6-T04 (ADR-53): after ten quiet minutes, when something new has gone into memory since she
-last slept, she rests — eyes closed, head a little down, a label at the top of the stage — and
-sorts through it (what was said twice in other words becomes one fact). Anything wakes her. The
-merging is proved by test; how the rest looks, and whether waking feels right, needs you.
-1. In `/chat`, tell her a couple of new things about yourself (so there is something to sort).
-2. Leave the tab open and don't touch it for ten minutes (another window is fine; a voice call,
-   a permission prompt or text in the box keeps her up).
-3. Look: she should be resting, with "Alice is resting, sorting through what you have talked
-   about" at the top. Nothing should look broken (head through the body, a twitch).
-4. Press a key or click anywhere: she should be up in a moment, looking at you.
-5. Open Memory: what you told her is there once, not twice.
-
-**Pass:** she rests only when it has been quiet, the rest looks like resting, she is awake the
-moment you are back, and memory has no doubles. **Paste back:** how the rest looked, how waking
-felt, and anything in Memory that is there twice.
-
-### R-38 · Let her speak up · an afternoon with `/chat` open, desktop
-**Why:** P6-T03 (ADR-52): with `/chat` open and quiet, she brings up a check-in she offered when
-it comes due, and at **Normally** now and then a plan's next step or something you told her —
-never while you talk or type, at most six turns of her own a day (two at **Rarely**), and not
-again until you answer. The budget is proved by a simulated day; whether it feels like company
-rather than a nag needs you.
-1. Settings → **Speaking up**: leave it on **Normally**. Memory where your conversations are.
-2. Ask her to check in with you "in an hour" about something real. Leave `/chat` open in a tab
-   and get on with your afternoon; don't type into the box.
-3. When the hour is up she should raise it on her own within a few minutes (it shows in the
-   transcript; with Speak replies on, you hear it). Answer, or don't.
-4. Later, with nothing due, after twenty minutes or more of quiet she may mention your plan or
-   something you told her — twice a day at most.
-5. Optional: **Never (off)** — she says nothing first, and does not greet you on return either.
-
-**Pass:** what she raises is real and on time, short, never cuts in while you type, and the pace
-feels like someone in the room rather than notifications. **Paste back:** what she said and when,
-and anything that felt like too much.
-
 ### R-37 · Come back to her · a minute at a time, desktop, over a day
 **Why:** P6-T02 (ADR-51): she knows how long it has been, and when you come back after an hour or
 more she speaks first — a greeting for the time of day, and one thing from last time (a due
 follow-up first). The phrasing is proved by test and by a real model; whether it feels like being
 remembered, rather than like a notification, needs you.
+**2026-10-12:** during R-38/R-39 she once asked the same question twice, three minutes apart,
+around a relaunch — an opener you had not answered, then a second on the reload. Fixed (06bb3cb):
+step 2 now covers her own unanswered opener too. Pull and restart `pnpm dev` before step 1.
 
 Memory must be where your conversations are (Settings → Memory, as for R-27). Speak replies can be
 off: her opener appears in the transcript.
@@ -291,6 +258,14 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-49 · R-39: let her rest** — Rick 2026-10-12: **passed** — head down, "Alice is resting,
+  sorting through what you have talked about" at the top; a mouse click woke her fast; it felt
+  good, and nothing in Memory was there twice. ADR-53 accepted.
+- **D-48 · R-38: let her speak up** — Rick 2026-10-12: **passed** — asked to check back in an
+  hour after a meeting, she did ("meeting done? Did you get those Helsinki dates from your
+  co-workers?"); unprompted, twice: the Traficom drone map before flying near the waterfront (the
+  plan's drone step), and, after new dates, that a two-week stay from 26 October would meet Kekri
+  in early November (from his earlier question about pagan-themed holidays). Real, short, on time.
 - **D-47 · R-36: watch her when nobody is talking** — Rick 2026-10-12: **passed** on the retry —
   every move looked right in `/dev/avatar`; in `/chat`, after a typed answer about Scandinavian
   holidays, she idled on her own (a stretch seen). She also raised R-27's trip plan unprompted.

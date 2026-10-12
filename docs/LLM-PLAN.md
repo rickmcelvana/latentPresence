@@ -273,7 +273,7 @@ Depends: P4-T01. REST and WS endpoints for turns, facts (with supersede), self b
 Done when: OpenAPI generated from the zod schema matches; integration tests pass in CI with a MariaDB service container.
 **Met locally, CI on the next push:** `companionOpenApi()` generates OpenAPI 3.1 from `companionRoutes` (committed, drift-tested); the companion's 14 integration tests validate every response body against it and pass against the dev MariaDB; CI's `vector` job runs them against MariaDB 11.8.8. The contract was reconciled with the schema first (ADR-36, migration 0003); the routes were built by a Sonnet subagent from `docs/briefs/P4-T02.md`, and review made retrieval one round trip (a registry cache), ranked keyword hits, and made the tests stop racing and leaking on the global model registry.
 
-### P4-T03 Memory kernel — owner: main (done 2026-09-28; `packages/core/src/memory`, ADR-37 proposed, `docs/memory.md`)
+### P4-T03 Memory kernel — owner: main (done 2026-09-28; `packages/core/src/memory`, ADR-37 accepted, `docs/memory.md`)
 `packages/core/memory`: extract facts after a turn (LLM structured output), retrieve before a turn (hybrid search, recency, importance), consolidation job, forgetting policy, memory namespaces per character.
 Done when: unit tests with `FakeMemoryStore`; a replay of 30 turns yields the expected fact set.
 **Met:** 46 unit tests over `FakeMemoryStore`; the thirty-exchange replay (replies recorded from glm-5.2:cloud by `pnpm live:memory`) yields 12/12 expected facts and 5/5 replaced ones closed, mutation-checked three ways; live, three runs of three met it. Found on the way: glm through Ollama cutting the start off its answers with reasoning on — `LlmRequest.reasoning: 'off'` (ADR-37). The companion's `dbExpireFact`/`dbCurrentFacts` and wiring into `/chat` go to P4-T04.
@@ -283,17 +283,17 @@ Depends: P4-T02. `mariadb` (companion client), `indexeddb` (web-only, brute-forc
 Done when: the adapter conformance test suite passes for both implemented stores.
 **Met:** the conformance suite (`@latentpresence/core/memory-conformance`, 16 cases: namespaces, idempotent episodes, the asking session left out, `since` and limits, facts upserted, superseded, expired, `not_found`, blocks, versioned plans with `conflict`, schedules where kept, vectors nearest first and `vectorSearch`'s reasons) passes on `FakeMemoryStore`, `IndexedDbMemoryStore` (fake-indexeddb) and `CompanionMemoryStore` against a running companion on the dev MariaDB 11.8.8 — twice, over the first run's leftovers; CI's `vector` job runs it too. The companion gained `dbExpireFact` (a second expiry keeps the first) and `dbCurrentFacts`; every refusal is a `MemoryStoreError` with the contract's code. Local ranking moved to `local-search.ts`, shared by the fake and IndexedDB. Adapters by a Sonnet subagent from the brief; the architect wrote the routes, the suite and the errors.
 
-### P4-T04b Memory in the call — owner: main (done 2026-09-28; `attachMemory`, `apps/web/src/chat/chat-memory.ts`, ADR-38 proposed)
+### P4-T04b Memory in the call — owner: main (done 2026-09-28; `attachMemory`, `apps/web/src/chat/chat-memory.ts`, ADR-38 accepted)
 Added 2026-09-28 (proposed; flagged in the session note): the stores and the kernel exist but nothing in `/chat` remembers. One `MemoryKernel` per `/chat` page over the store settings choose (IndexedDB by default; the companion when its `/health` says a database is connected), fed by the bus (the user's turn; the assistant's **heard** text, P1-T12b), extraction on the page's model with reasoning off (ADR-37). The prompt gains a memory section: known facts from the kernel's cache (no round trip), and past turns recalled in the background after each user message — one turn behind, never awaited on the speaking path (ADR-17, ADR-25). Needs an ADR (the prompt field is protocol).
 Done when: in `/chat`, a fact told in one visit ("my sister is Priya") is used in the next visit's answer, on both stores, with no change to time-to-first-audio.
 **Met (Browser pane, glm-5.2:cloud, 2026-09-28):** this browser — told "my sister Priya is coming to visit next month, and I just adopted a grey cat called Pixel", then after a reload asked: *"Pixel's your cat — the grey one. And your sister Priya's planning to visit next month."* The companion on the dev MariaDB (chosen by *Automatic*) — Tomas, Lisbon and the tortoise Biscuit: *"Lisbon, and the tortoise is called Biscuit."* Enter → the chat request leaving: 3–7 ms with memory on and off alike (nothing waits); first byte 1.4–2.0 s on, 2.8–6.0 s off — glm's own variance. Found: `/chat` used one fixed session id, which would have hidden every earlier visit from recall. R-26 asks Rick whether it feels like being remembered.
 
-### P4-T05 Memory browser UI — owner: sub (done 2026-09-28; `apps/web/src/memory/MemoryPanel.tsx`, `docs/briefs/P4-T05.md`, ADR-39 proposed)
+### P4-T05 Memory browser UI — owner: sub (done 2026-09-28; `apps/web/src/memory/MemoryPanel.tsx`, `docs/briefs/P4-T05.md`, ADR-39 accepted)
 List, search, edit, delete facts and turns; show what was injected into the last prompt.
 Done when: deleting a fact removes it from the next retrieval.
 **Met:** the contract first (architect, a0135f8): `listEpisodes`, and `deleteFact`/`deleteEpisode` as hard deletes (ADR-39), in the companion and all three stores — conformance 18/18 on the dev MariaDB — with edits through the kernel so its cache and the prompt note follow. The panel by a Sonnet subagent: a **Memory** button beside Transcript; what she was told last, what she knows (edit, delete with an in-place confirm), conversations by visit with search and older pages. Tested through the UI (deleting a fact, then `kernel.recall` without it) and live in the Browser pane with glm-5.2:cloud: "I'm learning the cello…", deleted the cello fact from the panel, and the next request carried only the risotto.
 
-### P4-T06 Self-model blocks and mood persistence — owner: main (done 2026-09-28; `packages/core/src/self`, ADR-40 proposed)
+### P4-T06 Self-model blocks and mood persistence — owner: main (done 2026-09-28; `packages/core/src/self`, ADR-40 accepted)
 Depends: P3-T01, P4-T03. Agent tools `self.read_block`, `self.write_block`; mood snapshot on session end and load on start with elapsed-time decay.
 Done when: mood carries across a restart in a scripted test.
 **Met:** `self/mood.test.ts` — a visit that ends sad starts the next still sad a minute later, exactly where an engine left running would be, and herself again after a week; `ChatPage.test.tsx` does it through `/chat` with a remount. The mood is the system block `_mood`, saved after every answer; her notes are the other blocks, in her prompt, kept with `self_read_block`/`self_write_block` run by `withLocalTools`, a provider wrapper every path shares. Live (glm-5.2:cloud): she wrote her own note from a stated preference, and was still sad after a reload.
@@ -322,12 +322,12 @@ Depends: P4-T01. Rust extractors (PDF, MD, DOCX, HTML, TXT), chunker with overla
 Done when: 1,000-page PDF set indexes without errors; re-running is a no-op.
 **Met:** 24 PDFs, 1,274 pages (the repo's docs printed by headless Edge) in a folder named in `documents.json`, Ollama `nomic-embed-text`, the dev MariaDB: 6,622 chunks embedded, no failures, 81 s; a second scan indexed 0 in 102 ms. The watcher indexed a dropped-in PDF and removed it when deleted. **The page never names a path** (ADR-44): `/ingest/status`, `/ingest/scan`, Settings → Documents.
 
-### P5-T04 Cited answers — owner: main (done 2026-10-09; sources list and switch by sub from `docs/briefs/P5-T04.md`, ADR-45 proposed)
+### P5-T04 Cited answers — owner: main (done 2026-10-09; sources list and switch by sub from `docs/briefs/P5-T04.md`, ADR-45 accepted)
 Depends: P5-T03. Retrieval tool returning chunks with ids; prompt policy for citations; citation renderer in transcript and on the in-world screen.
 Done when: answers to five private-document questions cite the right chunk.
 **Met:** `pnpm live:cite` — five invented facts across PDF (p. 7, p. 3), DOCX, Markdown and text, glm-5.2:cloud: 20/20 cited the right chunk over four runs; in `/chat` the transcript listed the source with its page. **The in-world screen is P5-T08's** (diegetic displays), from the same hits.
 
-### P5-T05 Custom database connector — owner: main (done 2026-10-10, ADR-46 proposed)
+### P5-T05 Custom database connector — owner: main (done 2026-10-10, ADR-46 accepted)
 Register MariaDB, MySQL, Postgres, SQLite sources; schema introspection with sampling; read-only text-to-SQL tool with preview and confirm; row and time limits.
 Done when: SQL injection test-suite passes; no write statement can execute.
 **Met:** the guard refuses every case of the suite in every dialect; past the guard every write fails at MariaDB 11.8.8 and SQLite with the rows unchanged (Postgres 17.11 in CI), and a slow query stops at its limit. Live, glm-5.2:cloud 10/10 on a SQLite garden, never attempting a write and ignoring an instruction planted in a row.
@@ -356,13 +356,12 @@ screen, both readable, neither behind her. How it reads on Rick's own screen is 
 
 ## Phase 6 — Presence, life and schedules
 
-### P6-T01 Idle behaviour planner — owner: main (done 2026-10-12, ADR-50 proposed)
+### P6-T01 Idle behaviour planner — owner: main (done 2026-10-12, ADR-50 accepted)
 Behaviour tree or utility system selecting idle activities by mood, time of day and elapsed idle time; hooks into clips and set props.
 Done when: an hour-long idle log shows varied, plausible activity with no repeats within 10 minutes.
 **Met:** `docs/runs/P6-T01-idle-hours.md` (`pnpm idle:log`), four hours; the test holds 80 simulated
 hours to no repeat within 10 minutes, at least eight different things, none over a fifth or five
-times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36 (moves passed in `/dev/avatar`;
-`/chat` retry after the listening fix).
+times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; R-36 passed (in `/dev/avatar`, and in `/chat` on the retry).
 
 ### P6-T02 Time awareness — owner: main (done 2026-10-12, ADR-51 accepted)
 Greeting by time, elapsed-time phrasing, "last time we" openers from memory, plan follow-ups.
@@ -371,7 +370,7 @@ Done when: reopening after a simulated week yields correct phrasing.
 `time.test.ts` reopens a stored Monday-evening conversation a week later and pins the prompt ("a
 week ago, on Monday evening", "it is the morning", Friday's follow-up "three days ago"); `pnpm
 live:opener` asks a real model at five moments — greeting and gap right in 20/20
-(`docs/runs/P6-T02-openers.md`). How it feels in `/chat` is R-37.
+(`docs/runs/P6-T02-openers.md`). How it feels in `/chat` is R-37 (a repeat opener on a reload fixed in 06bb3cb).
 
 ### P6-T03 Proactive check-ins — owner: main (done 2026-10-12, ADR-52 accepted)
 Rate-limited initiative with a user dial (off, rare, normal), grounded in memory and plans, never during user speech.
@@ -379,16 +378,16 @@ Done when: budget never exceeded in a 24 h simulated run.
 **Met:** `packages/core/src/initiative` — `simulateInitiativeDay` drives the real attachment over a
 modelled day; `initiative.test.ts` holds 30 days at each setting and ten 3-day runs to the budget
 and every rule (0 broken; `pnpm initiative:log` → `docs/runs/P6-T03-initiative-day.md`). Settings →
-Speaking up. `pnpm live:checkin` 11/12. How it feels is R-38.
+Speaking up. `pnpm live:checkin` 11/12. R-38 passed.
 
-### P6-T04 Sleep and consolidation — owner: main (done 2026-10-12, ADR-53 proposed)
+### P6-T04 Sleep and consolidation — owner: main (done 2026-10-12, ADR-53 accepted)
 Depends: P4-T03. Idle-triggered consolidation with a visible resting state; wake on user activity.
 Done when: fact count grows sublinearly over a long transcript replay; duplicates merge.
 **Met:** `long-replay.test.ts` — Sam's twelve evenings (106 exchanges) with a forgetful extractor,
 slept on after each, glm's merges recorded: 25 facts at the end (the twenty things and five new
 ones, each once) against 33 without sleep; the second half adds facts at a fifth of the first
-half's rate. Real extraction made no duplicates to merge (`docs/runs/P6-T04-sleep.md`). The rest
-in `/chat` is R-39.
+half's rate. Real extraction made no duplicates to merge (`docs/runs/P6-T04-sleep.md`). R-39
+passed: the rest in `/chat` looked right, a click woke her, nothing in Memory twice.
 
 ### P6-T05 Inner monologue — owner: main
 Private reasoning channel (model thinking or a separate short call) summarised into a peekable panel; never spoken.

@@ -782,3 +782,9 @@ Did: ADR-52 accepted. P6-T04: ADR-53 proposed; core `memory/sleep.ts` (rule merg
 Left: R-39 (new), R-38, R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7. The rest was not looked at in the pane (needs a configured `/chat` with memory and ten quiet minutes) — R-39.
 Next: P6-T05 inner monologue (main).
 Decisions: ADR-52 accepted; ADR-53 proposed — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-53 accepted; R-38, R-39 passed; repeat opener fixed
+Did: ADR-53 accepted. R-38 passed (D-48: the hour check-in, two grounded thoughts — the drone map, Kekri), R-39 passed (D-49: the rest looked right, a click woke her, no doubles). Rick saw one question asked twice three minutes apart around a relaunch: an unanswered opener is invisible to `lastConversation`, so the reload opened again; `attachInitiative.open` now holds back when the ledger has an opener within the hour (06bb3cb, test mutation-checked; ADR-51 amended). Doc sweep: LLM-PLAN's stale "ADR-37/38/39/40/45/46/50 proposed" marks now accepted; PROJECT's open-for-Rick list was missing R-32 and R-37.
+Left: R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T05 inner monologue (main).
+Decisions: ADR-53 accepted; ADR-51 amended (the reload rule covers her own unanswered opener).

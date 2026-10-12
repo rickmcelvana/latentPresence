@@ -55,7 +55,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
 | ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
 | ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
-| ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | proposed | 2026-10-12 |
+| ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
 
 ---
 
@@ -1885,6 +1885,13 @@ a follow-up not yet due says **"(not due yet)"** (one opener talked as if Friday
 later read "it's been a little while" and went straight to the travel dates; 19 of 20 picked up
 one thing — the miss greeted Tuesday morning correctly and asked how it was starting.
 
+**Amended 2026-10-12 (a reload after an unanswered opener).** Rick saw her ask the same question
+twice, three minutes apart, around a relaunch: an opener nobody answered is a visit where only
+she spoke, which `lastConversation` skips by design, so the reload still saw the conversation of
+hours before and opened again. The opener now also holds back when the `_initiative` ledger
+(ADR-52) has an opener of hers within `OPENING_AFTER_MS` — "within the hour, a reload is not a
+return" now covers her own unanswered opener (`fix:` 06bb3cb, tested in `initiative.test.ts`).
+
 ## ADR-52 Proactive check-ins: a dial, a budget she cannot exceed, and something real to say (accepted 2026-10-12)
 
 **Context.** P6-T03: rate-limited initiative with a user dial (off, rare, normal), grounded in memory
@@ -1936,7 +1943,7 @@ the garden as **hers** ("I should dig it in this weekend") — it now says "the 
 with them … their next step", and all four plan check-ins asked about theirs. 11/12; the miss asked
 two questions in a row (`docs/runs/P6-T03-checkins.md`).
 
-## ADR-53 Sleep: she rests when it is quiet, and what was said twice in other words becomes one fact (proposed 2026-10-12)
+## ADR-53 Sleep: she rests when it is quiet, and what was said twice in other words becomes one fact (accepted 2026-10-12)
 
 **Context.** P6-T04 (depends P4-T03): idle-triggered consolidation with a visible resting state,
 wake on user activity; done when the fact count grows sublinearly over a long transcript replay

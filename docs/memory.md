@@ -40,6 +40,15 @@ expired), a single-valued predicate keeps its latest value, and a fact under 0.3
 recorded more than 30 days ago is expired. **Nothing is deleted**: expired and superseded facts
 stay, and what she believed on any day can still be asked.
 
+**Sleep (P6-T04, ADR-53)** runs it in `/chat`: `MemoryKernel.sleep()` first merges what was said
+twice in other words — by rule (one subject, predicates of one family such as likes/loves/is_into,
+the same object once case and articles are gone), then by the extraction model one subject at a
+time, reasoning off, answering only with ids it was shown and never touching a follow-up — then
+`consolidate()`. A merge keeps one fact, reinforced and true from the earliest start, and expires
+the rest. `attachRest` (`packages/core/src/rest`) starts it after ten quiet minutes when facts are
+new since the last sleep (the `_sleep` block); she rests visibly, and anything on the bus, a key
+or a press wakes her and stops the sleep between steps.
+
 ## Namespaces
 
 A kernel belongs to one character; every read and write carries its `characterId`.
@@ -51,6 +60,9 @@ A kernel belongs to one character; every read and write carries its `characterId
   expected facts, 5/5 replaced ones closed, three runs of three (after the prompt was tuned once),
   7–11 extra facts, all true.
 - `replay.test.ts` — the same thirty exchanges with the recorded replies and no model.
+- `pnpm live:sleep` and `long-replay.test.ts` — twelve evenings (106 exchanges), slept on after
+  each. Real extraction made no duplicates; an extractor that ignores the known facts ends at 25
+  facts with sleep against 33 without (`docs/runs/P6-T04-sleep.md`).
 
 ## Not yet
 
