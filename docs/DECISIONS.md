@@ -52,6 +52,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-47 | The web: a first-party `web` companion server (SearXNG, Tavily or Brave from `mcp.json`) with `search` and `read_page` behind the gate; results carry refs `w`+6 hex cited into the Sources list; `read_page` reaches public addresses only, checked after DNS and on every redirect | accepted | 2026-10-11 |
 | ADR-48 | Home Assistant: a first-party `homeassistant` companion server from `mcp.json` (url, long-lived token); HA's Assist prompt as her map of the home; actions decided per device (ask, auto, never), a call naming no device always asks, locks, alarms, covers and valves always ask; area-aware prompt | accepted | 2026-10-11 |
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
+| ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | proposed | 2026-10-12 |
 
 ---
 
@@ -1768,3 +1769,56 @@ z ≈ 0 — and in the Browser pane at 1080p she covers neither board. **Seen in
 the weather in Halifax?" (a stand-in SearXNG) put both results on the screen, readable; a plan
 she saved appeared on the whiteboard with its phases and tasks. Lit by the room alone the
 whiteboard read mid-grey and its ink faint, so it now emits a little of its own picture (0.45).
+
+## ADR-50 Idle life: a utility planner in core, performed by the body she already has (proposed 2026-10-12)
+
+**Context.** P6-T01: a behaviour tree or utility system choosing idle activities by mood, time of
+day and elapsed idle time, hooked into clips and set props; done when an hour-long idle log shows
+varied, plausible activity with no repeats within 10 minutes. Today, idle is P2-T02's life layer
+(breathing, blinks, gaze drift, weight shifts) over the idle clip, the mood's gaze habit (P3-T09)
+and procedural gestures (P2-T07). The room has a window, a desk, a whiteboard and a screen —
+**all behind her** (the back wall, z −2.2; she faces the camera at +Z). The free clip pack has no
+activity clips (P2-T03).
+
+**Decisions.**
+
+1. **A utility system, not a behaviour tree.** Idle has no goals to sequence, only "what would
+   she plausibly do now"; a score per activity reads better and tests better. Score = weight ×
+   fit to mood (pleasure) × fit to energy × time of day (morning, afternoon, evening, night) ×
+   how long it has been quiet × novelty (half for the same kind as the last one), then a seeded
+   weighted draw. **An activity done in the last 10 minutes scores zero** — the done-when is a
+   rule, not a likelihood. Nothing eligible: she rests (the life layer alone) and asks again.
+2. **Pure and in core** (`packages/core/src/idle`): the catalogue, the planner and an hour's
+   simulation, clock and randomness injected; the log is written by a script.
+3. **Performed with what exists, through the avatar package** (`IdlePerformer`): a gaze target or
+   a **prop**, an existing gesture, an emotion, and a few **procedural poses** (turn towards a
+   prop, stretch, sway, sigh, yawn, roll the shoulders, doze) as additive bone rotations eased in
+   and out. **A prop behind her is a look over the shoulder**: spine, chest, neck and head share
+   at most **60°** of turn and the eyes take the rest (amended in the build: see below). Each activity names the clip a later
+   pack would give it (`clip`); with none loaded it is procedural — that is the clips hook.
+4. **Props feed the planner**: reading the whiteboard and checking the screen weigh more when they
+   show something (ADR-49).
+5. **When she is idle**: the conversation state is `idle` and nothing has happened for 20 s. Any
+   event — their voice, a key in the text box, her own answer — ends the activity at once (eased
+   out in ~250 ms) and resets the clock.
+
+**Rejected.** *A behaviour tree* — above. *A new protocol gaze target per prop* — props are the
+stage's, not the conversation's; the life layer takes a world point instead. *Turning her whole
+body to face a prop* — feet that do not move under a body that spins read as a turntable.
+
+**Measured and amended in the build (2026-10-12).** The first simulation held 57–71 activities an
+hour with 15–45 s rests — fidgeting — and with the full weight back at ten minutes each activity
+recurred right on its cooldown, a cycle you could see. So: **rests of 45–120 s** (up to 1.8× when
+tired); **odds that come back over 30 minutes**, not at once; **stillness competes in the draw**
+(score 1.5), which is what kept a late, low hour from cycling its few eligible activities; and
+**longer cooldowns** for what a body does rarely (yawn and stretch 15 min, sigh 12, doze 20).
+Result, 20 seeds × four hours (a bright morning, a flat afternoon, a tiring evening, late and low):
+**15–37 things an hour, 9–12 different, none again within 10 minutes, none more than a fifth of
+the hour or five times**, busy 3–7% of the time; doze only late and low, hum only when bright
+(`pnpm idle:log` writes `docs/runs/P6-T01-idle-hours.md`). **The variety bar was first one sixth;
+an hour of ~20 things with ten eligible put one at 4 of 22, which is not repetition, so the bar is
+a fifth and five times.** In the Browser pane (`/dev/avatar`, the new idle picker) the window
+glance at 110° showed the camera the back of her head and set the hair's spring bones flailing:
+**cut to 60°, the hips left out (they slide over planted feet), and a slower 1.4 s ease-in for a
+turn.** The pane was then hidden, which pauses animation, so the 60° turn and the other poses are
+R-36's to judge.

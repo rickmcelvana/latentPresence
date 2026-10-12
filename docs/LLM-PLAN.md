@@ -356,9 +356,12 @@ screen, both readable, neither behind her. How it reads on Rick's own screen is 
 
 ## Phase 6 — Presence, life and schedules
 
-### P6-T01 Idle behaviour planner — owner: main
+### P6-T01 Idle behaviour planner — owner: main (done 2026-10-12, ADR-50 proposed)
 Behaviour tree or utility system selecting idle activities by mood, time of day and elapsed idle time; hooks into clips and set props.
 Done when: an hour-long idle log shows varied, plausible activity with no repeats within 10 minutes.
+**Met:** `docs/runs/P6-T01-idle-hours.md` (`pnpm idle:log`), four hours; the test holds 80 simulated
+hours to no repeat within 10 minutes, at least eight different things, none over a fifth or five
+times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36.
 
 ### P6-T02 Time awareness — owner: main
 Greeting by time, elapsed-time phrasing, "last time we" openers from memory, plan follow-ups.

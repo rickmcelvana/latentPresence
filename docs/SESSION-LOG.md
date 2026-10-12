@@ -752,3 +752,9 @@ Did: measured `medium` on the back wall (507 px/m at 1080p, ±1.89 m seen, ±0.7
 Left: R-35 (new), R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T01 idle behaviour planner (main).
 Decisions: ADR-49 proposed — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-49 accepted; P6-T01 idle behaviour planner
+Did: ADR-49 accepted. P6-T01: ADR-50 proposed; core `idle` (catalogue of 16, `IdlePlanner` utility with 10-min rule, freshness, stillness, per-activity cooldowns; `simulateIdle`, `pnpm idle:log`), avatar `IdlePerformer` (props as a look over the shoulder, procedural poses, gaze point through the life pose), `IdleDirector` in `/chat` (20 s quiet, any event or key stops it), `/dev/avatar` idle picker. Tuned by simulation (fidgety 57–71/h → 15–37/h) and by one look in the pane (110° turn → 60°); the pane then went hidden (rAF paused), so the poses are R-36.
+Left: R-36 (new), R-35, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T02 time awareness (main).
+Decisions: ADR-49 accepted; ADR-50 proposed — needs Rick's accept.

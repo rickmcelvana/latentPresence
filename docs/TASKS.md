@@ -189,6 +189,20 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-36 · Watch her when nobody is talking · ~15 minutes, desktop
+**Why:** P6-T01 gives her an idle life (ADR-50): after 20 s of quiet she looks out of the window,
+reads the whiteboard, stretches, hums, yawns when it is late. The planner is proved by test; how
+the moves *look* was only half checked — the pane was hidden, which pauses animation.
+1. `/dev/avatar` → Stage → Camera **medium** → **Loop clip**. Under the tags, **Idle activity**:
+   pick each one and **Perform**. Watch especially *looks out of the window*, *reads over the plan*
+   (a turn over the shoulder, 60°), *stretches*, *yawns*, *drifts off for a moment*.
+2. `/chat` with the character showing: say nothing for a few minutes and watch.
+3. Say something mid-activity: she should drop it and come back to you at once.
+
+**Pass:** nothing looks broken (limbs through the body, a spin, hair flying), the turns read as a
+glance back, and the pace feels like someone waiting rather than fidgeting. **Paste back:** pass or
+fail per move, and which ones to change (too big, too small, too often).
+
 ### R-35 · Look at the whiteboard and the screen · ~5 minutes, desktop
 **Why:** P5-T08 puts a whiteboard and a screen in the room (ADR-49): her plan in focus on the
 board, the sources of her latest cited answer on the screen. Readable was measured at 1080p in the
