@@ -373,9 +373,13 @@ week ago, on Monday evening", "it is the morning", Friday's follow-up "three day
 live:opener` asks a real model at five moments — greeting and gap right in 20/20
 (`docs/runs/P6-T02-openers.md`). How it feels in `/chat` is R-37.
 
-### P6-T03 Proactive check-ins — owner: main
+### P6-T03 Proactive check-ins — owner: main (done 2026-10-12, ADR-52 proposed)
 Rate-limited initiative with a user dial (off, rare, normal), grounded in memory and plans, never during user speech.
 Done when: budget never exceeded in a 24 h simulated run.
+**Met:** `packages/core/src/initiative` — `simulateInitiativeDay` drives the real attachment over a
+modelled day; `initiative.test.ts` holds 30 days at each setting and ten 3-day runs to the budget
+and every rule (0 broken; `pnpm initiative:log` → `docs/runs/P6-T03-initiative-day.md`). Settings →
+Speaking up. `pnpm live:checkin` 11/12. How it feels is R-38.
 
 ### P6-T04 Sleep and consolidation — owner: main
 Depends: P4-T03. Idle-triggered consolidation with a visible resting state; wake on user activity.

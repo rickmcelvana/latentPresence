@@ -190,6 +190,25 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-38 · Let her speak up · an afternoon with `/chat` open, desktop
+**Why:** P6-T03 (ADR-52): with `/chat` open and quiet, she brings up a check-in she offered when
+it comes due, and at **Normally** now and then a plan's next step or something you told her —
+never while you talk or type, at most six turns of her own a day (two at **Rarely**), and not
+again until you answer. The budget is proved by a simulated day; whether it feels like company
+rather than a nag needs you.
+1. Settings → **Speaking up**: leave it on **Normally**. Memory where your conversations are.
+2. Ask her to check in with you "in an hour" about something real. Leave `/chat` open in a tab
+   and get on with your afternoon; don't type into the box.
+3. When the hour is up she should raise it on her own within a few minutes (it shows in the
+   transcript; with Speak replies on, you hear it). Answer, or don't.
+4. Later, with nothing due, after twenty minutes or more of quiet she may mention your plan or
+   something you told her — twice a day at most.
+5. Optional: **Never (off)** — she says nothing first, and does not greet you on return either.
+
+**Pass:** what she raises is real and on time, short, never cuts in while you type, and the pace
+feels like someone in the room rather than notifications. **Paste back:** what she said and when,
+and anything that felt like too much.
+
 ### R-37 · Come back to her · a minute at a time, desktop, over a day
 **Why:** P6-T02 (ADR-51): she knows how long it has been, and when you come back after an hour or
 more she speaks first — a greeting for the time of day, and one thing from last time (a due

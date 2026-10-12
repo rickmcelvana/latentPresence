@@ -770,3 +770,9 @@ Did: ADR-50 accepted, R-36 passed (D-47). P6-T02: ADR-51 proposed; core `time` (
 Left: R-37 (new), R-27 retry (tonight at seven), R-32; laptop session (R-13, R-1, R-9); R-3; C-7. Not seen in the pane: `/chat` against Rick's store would have written her opener into his memory — R-37 is the look.
 Next: P6-T03 proactive check-ins (main); its dial also governs the opener.
 Decisions: ADR-50 accepted; ADR-51 proposed (amended in the build: opener without tools, "(not due yet)", silent cancel) — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-51 accepted; P6-T03 proactive check-ins
+Did: ADR-51 accepted. P6-T03: ADR-52 proposed; core `initiative` (`decideInitiative` budget/gap/quiet/night/one-unanswered rules, due follow-ups then thoughts from plans and facts, ledger parse/serialize; `attachInitiative` on the bus with a timer, the opener through it; `simulateInitiativeDay` driving the real attachment on a simulated clock), `ChatSession.speakUp`, Settings → Speaking up (`initiative`: normal, rare, off), `/chat` wiring (blocked by typing, a voice panel, a permission prompt). Simulation found thoughts eating the budget (capped at two a day) and a reload forgetting "unanswered" (kept in the ledger); two deliberate breaks were caught. `pnpm initiative:log`, `pnpm live:checkin` 11/12 ("your plan" → theirs).
+Left: R-38 (new), R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T04 sleep and consolidation (main).
+Decisions: ADR-51 accepted; ADR-52 proposed (amended in the build) — needs Rick's accept.

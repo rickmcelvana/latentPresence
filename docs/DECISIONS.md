@@ -1920,3 +1920,17 @@ speak* — every request answers something; silence has to be decided before the
 a voice call* — the call is a live conversation; its pauses are theirs (P1-T09's backchannels cover
 listening).
 
+**Measured and amended in the build (2026-10-12).** The simulated day (`simulateInitiativeDay`,
+the real `attachInitiative` on a real machine and a simulated clock) found two things on its first
+runs: **normal spent its whole budget on thoughts by noon** — four of them an hour apart — and had
+nothing left for a follow-up due at five, so **thoughts are capped at two a day** (follow-ups keep
+the rest); and **a reload forgot that her last check-in was unanswered**, so the ledger now keeps
+`answered` with each entry. **The opener is exempt from "one unanswered"**: coming back to the page
+is their answer. Two deliberate breaks (ignoring typing, dropping the budget test) were each
+caught by the run. Final: **30 days at each setting and ten 3-day runs, 0 rules broken**; normal
+started 5–6 turns a day, rare 2, off none (`docs/runs/P6-T03-initiative-day.md`). `pnpm
+live:checkin` (glm-5.2:cloud) asked the cues of a real model: follow-ups came out as one short
+question ("Hey — did you ever nail down those Norway dates?"); a cue saying "your plan" had her take
+the garden as **hers** ("I should dig it in this weekend") — it now says "the plan you are making
+with them … their next step", and all four plan check-ins asked about theirs. 11/12; the miss asked
+two questions in a row (`docs/runs/P6-T03-checkins.md`).
