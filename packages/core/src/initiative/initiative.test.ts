@@ -214,6 +214,20 @@ describe('attachInitiative', () => {
     initiative.open(since);
     expect(initiative.entries()[0]).toMatchObject({ kind: 'opener', key: 'follow:Norway trip:2026-10-12' });
   });
+
+  it('does not open again on a reload within the hour of an opener they have not answered', () => {
+    const since = { at: new Date(NOW - 2 * HOUR).toISOString(), turns: [] };
+    const r = rig();
+    const first = r.build();
+    expect(first.open(since)).toBe(true);
+    first.detach();
+    // Reloaded three minutes later: their last conversation is still two hours old.
+    r.advance(3 * MINUTE);
+    expect(r.build().open(since)).toBe(false);
+    // Gone an hour and more, it is a return again.
+    r.advance(HOUR);
+    expect(r.build().open(since)).toBe(true);
+  });
 });
 
 describe('a simulated day (the done-when)', () => {

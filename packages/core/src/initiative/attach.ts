@@ -1,7 +1,7 @@
 import type { ConversationEvent, ConversationState, PlanDocument, SemanticFact } from '@latentpresence/protocol';
 import type { Scheduler } from '../conversation/machine';
 import type { PromptPlans } from '../plan/plans';
-import { shouldOpen, type LastConversation } from '../time/last';
+import { OPENING_AFTER_MS, shouldOpen, type LastConversation } from '../time/last';
 import {
   decideInitiative,
   dueFollowUps,
@@ -149,10 +149,13 @@ export function attachInitiative(
   schedule();
 
   return {
-    // Not held to "one unanswered at a time": coming back to the page is their answer.
+    // Not held to "one unanswered at a time": coming back to the page is their answer. But an
+    // opener of hers within the hour is not a conversation `since` can see (only she spoke), so a
+    // reload after it would greet them again with the same question — the ledger remembers it.
     open(since) {
       const at = now();
       if (options.dial() === 'off' || !shouldOpen(since, new Date(at)) || !withinBudget(options.dial(), ledger, at) || options.blocked()) return false;
+      if (ledger.some((entry) => entry.kind === 'opener' && at - entry.at < OPENING_AFTER_MS)) return false;
       if (!options.chat.open()) return false;
       // The opener picks up a due follow-up first (ADR-51), so that one is raised.
       record('opener', dueFollowUps(options.followUps(), new Date(at))[0]?.key ?? null);
