@@ -13,6 +13,7 @@ import {
   attachAffect,
   attachHistory,
   attachInitiative,
+  attachInnerMonologue,
   attachMemory,
   attachRest,
   attachMood,
@@ -22,6 +23,7 @@ import {
   toolResultOf,
   citedSources,
   withLocalTools,
+  withThinking,
   attachUserAffect,
   lastConversation,
   renderSystemPrompt,
@@ -43,6 +45,7 @@ import { TranscriptPanel, type CitationSource } from '../transcript/TranscriptPa
 import { useTranscript } from '../transcript/useTranscript';
 import { MemoryPanel } from '../memory/MemoryPanel';
 import { PlansPanel } from '../plan/PlansPanel';
+import { InnerPanel } from '../inner/InnerPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, type Settings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
@@ -280,7 +283,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, timeHolder, webSources, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, timeHolder, inner, webSources, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
@@ -341,6 +344,17 @@ function ConfiguredChatPage({
         }),
     }).history;
     const builtProvider = buildProvider({ endpointId: endpoint, baseUrl, companionUrl, deps });
+    // P6-T05 (ADR-54): her inner monologue, for the page's life as the chat is. Her answers'
+    // thinking — the model's reasoning, and any <think> a server leaves in the words — goes to it
+    // and never into what is shown or spoken; her lines are asked of the bare provider (as
+    // extraction and sleep are) only while the Thoughts view is showing.
+    const builtInner = attachInnerMonologue(builtMachine, {
+      llm: builtProvider,
+      modelId,
+      character: { name: defaultPersona.name, summary: defaultPersona.summary },
+      onError: (error) => console.warn(`thoughts: ${error.message}`),
+    });
+    const thinkingProvider = withThinking(builtProvider, (text) => builtInner.hear(text));
     // P4-T06 (ADR-40): every answer — typed, spoken or in a call — may keep a note; the tools
     // are read per request, so they arrive when the store does. Extraction keeps the bare one.
     // P5-T01 (ADR-42): the MCP tools join hers, built per request so a policy set to never in
@@ -351,7 +365,7 @@ function ConfiguredChatPage({
     // call that ran nothing is never invisible.
     const outside = (name: string): boolean => !builtSelfHolder.tools.some((tool) => tool.definition.name === name);
     const docsTool = (): LocalTool[] => (builtDocsHolder.connected?.tool == null ? [] : [builtDocsHolder.connected.tool]);
-    const builtChatLlm = withLocalTools(builtProvider, () => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
+    const builtChatLlm = withLocalTools(thinkingProvider, () => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
       onCallStart: (call) => {
         if (outside(call.name)) builtMachine.dispatch({ type: 'tool.call', sessionId: builtSessionId, at: new Date().toISOString(), call });
       },
@@ -367,7 +381,7 @@ function ConfiguredChatPage({
       machine: builtMachine,
       llm: builtChatLlm,
       // P6-T02 (ADR-51): her opener is asked with no tools — nothing has been asked of her yet.
-      openingLlm: builtProvider,
+      openingLlm: thinkingProvider,
       modelId,
       temperature,
       history: attached,
@@ -380,6 +394,7 @@ function ConfiguredChatPage({
       toolsHolder: builtToolsHolder,
       docsHolder: builtDocsHolder,
       timeHolder: builtTimeHolder,
+      inner: builtInner,
       webSources: builtWebSources,
       permissionPrompts: builtPrompts,
       machine: builtMachine,
@@ -594,11 +609,11 @@ function ConfiguredChatPage({
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
   // Which view the drawer shows (P4-T05, P4-T07). Always transcript at first, per the
   // rule above — Memory and Plans only open the drawer when a person asks it to.
-  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans'>('transcript');
-  /** The Transcript, Memory and Plans buttons share this: pressing the view already showing
+  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'thoughts'>('transcript');
+  /** The Transcript, Memory, Plans and Thoughts buttons share this: pressing the view already showing
    * closes the drawer, pressing the other switches to it (opening the drawer if closed). */
   const toggleDrawerView = useCallback(
-    (view: 'transcript' | 'memory' | 'plans') => {
+    (view: 'transcript' | 'memory' | 'plans' | 'thoughts') => {
       if (drawerOpen && drawerView === view) {
         setDrawerOpen(false);
         return;
@@ -608,6 +623,11 @@ function ConfiguredChatPage({
     },
     [drawerOpen, drawerView],
   );
+  // P6-T05 (ADR-54): her lines are only asked of the model while the Thoughts view is showing.
+  const thoughtsShowing = drawerOpen && drawerView === 'thoughts';
+  useEffect(() => {
+    inner.look(thoughtsShowing);
+  }, [inner, thoughtsShowing]);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const pipVideoRef = useRef<HTMLVideoElement | null>(null);
   const userCamera = useUserCamera(cameraDeps);
@@ -936,6 +956,8 @@ function ConfiguredChatPage({
           <MemoryPanel characterName={CHAT_CHARACTER_NAME} memory={memory} subscribe={subscribe} where={memoryWhere} />
         ) : drawerView === 'plans' ? (
           <PlansPanel characterName={CHAT_CHARACTER_NAME} plans={plans} />
+        ) : drawerView === 'thoughts' ? (
+          <InnerPanel characterName={CHAT_CHARACTER_NAME} inner={inner} />
         ) : (
           <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} sources={citationSource} />
         )}
@@ -1095,6 +1117,9 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={drawerOpen && drawerView === 'plans'} className="btn call-control-btn" onClick={() => toggleDrawerView('plans')} type="button">
           Plans
+        </button>
+        <button aria-pressed={thoughtsShowing} className="btn call-control-btn" onClick={() => toggleDrawerView('thoughts')} title="Her private thoughts — never said aloud" type="button">
+          Thoughts
         </button>
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings

@@ -38,6 +38,7 @@
     "live:opener": "pnpm --filter @latentpresence/providers exec vite-node live/opener.ts",
     "live:checkin": "pnpm --filter @latentpresence/providers exec vite-node live/checkin.ts",
     "live:sleep": "pnpm --filter @latentpresence/providers exec vite-node live/sleep.ts",
+    "live:inner": "pnpm --filter @latentpresence/providers exec vite-node live/inner.ts",
     "live:mcp": "pnpm --filter @latentpresence/providers exec vite-node live/mcp.ts",
     "live:cite": "pnpm --filter @latentpresence/providers exec vite-node live/cite.ts",
     "live:user-affect": "pnpm --filter @latentpresence/providers exec vite-node live/user-affect.ts",

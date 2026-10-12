@@ -27,4 +27,5 @@ export * from './idle';
 export * from './time';
 export * from './initiative';
 export * from './rest';
+export * from './inner';
 export { Cancellation } from './cancellation';

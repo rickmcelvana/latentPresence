@@ -1792,6 +1792,98 @@ kbd {
   max-height: none;
 }
 
+/* --- Thoughts panel (P6-T05, ADR-54) ----------------------------------------
+   Her inner monologue in the drawer: newest first, each moment a quiet line of
+   context, her lines in italics on a teal rule, the model's raw reasoning
+   folded away beneath. Scrolls like the plans body. */
+
+.inner-panel {
+  min-height: 0;
+}
+
+.inner-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  max-height: 480px;
+  padding-right: var(--gap-xs);
+  overflow-y: auto;
+}
+
+.inner-empty,
+.inner-state {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.inner-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inner-moment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding-left: var(--gap-sm);
+  border-left: 2px solid var(--accent-dim);
+}
+
+.inner-after {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.inner-line {
+  margin: 0;
+  color: var(--text);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.inner-reasoning {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.inner-reasoning > summary {
+  cursor: pointer;
+}
+
+.inner-reasoning > summary:hover {
+  color: var(--accent-hover);
+}
+
+.inner-reasoning-text {
+  max-height: 200px;
+  margin: var(--gap-xs) 0 0;
+  padding: var(--gap-sm);
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.call-drawer .inner-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.call-drawer .inner-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 /* --- Chat (P1-T11) ----------------------------------------------------------
    `/chat`: the transcript above, this box below. Ships in production. */
 

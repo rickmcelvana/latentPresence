@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer, type Displays } from '@latentpresence/avatar';
-import { FakeMemoryStore, replayFusion, type FusionRecording } from '@latentpresence/core';
+import { FakeMemoryStore, INNER_MARKER, replayFusion, type FusionRecording } from '@latentpresence/core';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
@@ -750,7 +750,8 @@ describe('ChatPage — the call layout (P2-T06)', () => {
  * none ever ends, so an answer stays audible until something stops it — which is the state
  * Stop has to handle.
  */
-function fakeSpeaker() {
+/** `plays` true: every sentence plays to its end at once, so a spoken answer settles (P6-T05). */
+function fakeSpeaker(plays = false) {
   const log: string[] = [];
   const tts = new FakeTTSProvider('fake-tts', { msPerChar: 1 });
   const listeners = new Set<(event: PlaybackEvent) => void>();
@@ -763,6 +764,7 @@ function fakeSpeaker() {
       playing = id;
       queueMicrotask(() => {
         for (const listener of listeners) listener({ type: 'started', id, at: 0 });
+        if (plays) for (const listener of listeners) listener({ type: 'ended', id, at: 0 });
       });
       return id;
     },
@@ -1207,5 +1209,73 @@ describe('ChatPage — cited answers (P5-T04, ADR-45)', () => {
     // The screen in the room shows the source she was given, not the one she made up (P5-T08).
     await waitFor(() => expect(stage.shown.at(-1)?.screen?.items.map((item) => item.title)).toEqual(['Boiler manual']));
     expect(stage.shown.at(-1)?.screen?.items[0]).toMatchObject({ where: 'p. 7', text: 'Hold the green reset button for eleven seconds.' });
+  });
+});
+
+/** P6-T05: her answers think aloud to the model; her thoughts are asked for with `INNER_MARKER`. */
+function thinker(): { build: (options: ChatLlmOptions) => LLMProvider; inner: LlmRequest[] } {
+  const inner: LlmRequest[] = [];
+  const build = (): LLMProvider => ({
+    id: 'thinker',
+    async listModels(): Promise<LlmModel[]> {
+      return [];
+    },
+    async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+      if (systemOf(request).includes(INNER_MARKER)) {
+        inner.push(request);
+        yield { type: 'text-delta', text: 'They sound worn out, PRIVATE-LINE.\nI want to ask about it later.' };
+      } else {
+        yield { type: 'reasoning-delta', text: 'SECRET-PLAN: the user is tired. ' };
+        yield { type: 'text-delta', text: '<think>HIDDEN-THOUGHT</think>Long day? ' };
+        yield { type: 'text-delta', text: 'Sit down a minute.' };
+      }
+      yield { type: 'finish', reason: 'stop', usage: null };
+    },
+  });
+  return { build, inner };
+}
+
+describe('ChatPage — her thoughts (P6-T05, ADR-54)', () => {
+  it('Thoughts shows her private lines behind a spoken answer; the voice and the transcript never have them', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const deps = testDeps({ storage });
+    deps.consent.grant([kokoroModel('fp32')]);
+    const speaker = fakeSpeaker(true);
+    const model = thinker();
+    const { container } = render(<ChatPage buildProvider={model.build} createRenderer={fakeCreateRenderer} deps={deps} loadSpeaker={speaker.loadSpeaker} />);
+    fireEvent.click(speakButton());
+    await waitFor(() => expect(speakButton().getAttribute('aria-pressed')).toBe('true'));
+
+    const thoughts = screen.getByRole('button', { name: 'Thoughts' });
+    fireEvent.click(thoughts);
+    expect(thoughts.getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('.inner-panel')).toBeTruthy();
+    expect(screen.getByText(/Nothing yet/u)).toBeTruthy();
+
+    await type('long day');
+    await waitFor(() => expect(screen.getByText('They sound worn out, PRIVATE-LINE.')).toBeTruthy());
+    expect(screen.getByText('I want to ask about it later.')).toBeTruthy();
+    // What the model reasoned is there to peek at too, folded away.
+    expect(container.querySelector('.inner-reasoning-text')?.textContent).toBe('SECRET-PLAN: the user is tired. HIDDEN-THOUGHT');
+    await waitFor(() => expect(speaker.tts.requests.map((request) => request.text)).toEqual(['Long day?', 'Sit down a minute.']));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+    const drawer = container.querySelector('.call-drawer');
+    expect(drawer?.textContent).toContain('Sit down a minute.');
+    for (const secret of ['SECRET-PLAN', 'HIDDEN-THOUGHT', 'PRIVATE-LINE']) {
+      expect(drawer?.textContent, secret).not.toContain(secret);
+      expect(speaker.tts.requests.some((request) => request.text.includes(secret)), secret).toBe(false);
+    }
+
+    // Closed, nothing more is asked of the model for her thoughts.
+    expect(model.inner).toHaveLength(1);
+    await type('yes');
+    expect(model.inner).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Thoughts' }));
+    await waitFor(() => expect(model.inner).toHaveLength(2));
+    fireEvent.click(screen.getByRole('button', { name: 'Thoughts' }));
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
   });
 });
