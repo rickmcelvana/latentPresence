@@ -185,6 +185,39 @@ describe('ChatSession — she speaks first (P6-T02, ADR-51)', () => {
   });
 });
 
+describe('ChatSession — she speaks up (P6-T03, ADR-52)', () => {
+  it('answers a hidden cue mid-conversation, asked of openingLlm; the cue never reaches the bus', async () => {
+    const plain = new ChatLLM([text('So, did the dates come through?')]);
+    const tooled = new ChatLLM([text('Hi.')]);
+    const machine = new ConversationMachine({ sessionId: 'c', characterId: 'alice' });
+    const events: ConversationEvent[] = [];
+    machine.subscribe((event) => events.push(event));
+    const chat = new ChatSession({ sessionId: 'c', machine, llm: tooled, openingLlm: plain, modelId: 'm', system: 'You are Alice.' });
+    machine.start();
+    chat.send('hello');
+    await settle();
+    expect(chat.speakUp('(A follow-up is due now.)')).toBe(true);
+    expect(machine.getState()).toBe('thinking');
+    await settle();
+    expect(plain.requests[0]?.messages.map((message) => message.role)).toEqual(['system', 'user', 'assistant', 'user']);
+    expect(plain.requests[0]?.messages.at(-1)).toEqual({ role: 'user', content: '(A follow-up is due now.)' });
+    expect(events.filter((event) => event.type === 'user.message')).toHaveLength(1);
+    expect(events.filter((event) => event.type === 'assistant.message').map((event) => (event.type === 'assistant.message' ? event.entry.text : ''))).toEqual(['Hi.', 'So, did the dates come through?']);
+  });
+
+  it('declines while an answer streams, with a blank cue, and after dispose', () => {
+    const gate = deferred();
+    const r = rig(new ChatLLM([text('Hi.', ' More.')], { promise: gate.promise, after: 1 }));
+    r.chat.send('hello');
+    expect(r.chat.speakUp('(cue)')).toBe(false);
+    gate.resolve();
+    const fresh = rig(new ChatLLM([]));
+    expect(fresh.chat.speakUp('  ')).toBe(false);
+    fresh.chat.dispose();
+    expect(fresh.chat.speakUp('(cue)')).toBe(false);
+  });
+});
+
 describe('ChatSession — stopping', () => {
   it('cuts the answer where it is, marks what was shown, stops the model and returns to listening', async () => {
     const gate = deferred();

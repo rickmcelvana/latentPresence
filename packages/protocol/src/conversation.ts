@@ -153,9 +153,9 @@ export const ConversationEventSchema = z.discriminatedUnion('type', [
   z.object({ ...eventBase, type: z.literal('user.message'), text: z.string().min(1) }),
 
   /**
-   * She begins a turn nobody asked for (P6-T02, ADR-51): the opener when they come back. Moves
-   * `idle` and `listening` to `thinking`, as a message does; the answer then arrives as any
-   * other. Additive, so `PROTOCOL_VERSION` stays 1.
+   * She begins a turn nobody asked for: the opener when they come back (P6-T02, ADR-51) or a
+   * check-in (P6-T03, ADR-52). Moves `idle` and `listening` to `thinking`, as a message does;
+   * the answer then arrives as any other. Additive, so `PROTOCOL_VERSION` stays 1.
    */
   z.object({ ...eventBase, type: z.literal('assistant.opening') }),
   /** Tag-free since P1-T12: `TagFilter` holds a partial tag back rather than streaming it. */

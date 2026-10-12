@@ -408,10 +408,12 @@ describe('ChatPage — the persona', () => {
     expect(whiteboard?.lines.map((line) => line.text)).toEqual(['Prepare the bed', 'Pick a sunny spot', 'Dig in compost', 'Plant', 'Buy seedlings']);
   });
 
-  it('speaks first when they come back after an hour or more, and not after a reload within it (P6-T02, ADR-51)', async () => {
-    const visit = async (lastSpokeMsAgo: number) => {
+  it('speaks first when they come back after an hour or more, not after a reload within it, and never when Speaking up is off (P6-T02, P6-T03)', async () => {
+    const visit = async (lastSpokeMsAgo: number, initiative: 'off' | 'normal' = 'normal') => {
       const storage = memoryStorage();
       seedConfigured(storage);
+      const seeded = JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as Record<string, unknown>;
+      storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...seeded, initiative }));
       const store = new FakeMemoryStore();
       const at = new Date(Date.now() - lastSpokeMsAgo).toISOString();
       await store.appendEpisode({ id: 'e1', sessionId: 'earlier', characterId: defaultPersona.id, role: 'user', text: "I'll know the travel dates by Friday.", interrupted: false, at, embedding: null, affect: null });
@@ -451,6 +453,11 @@ describe('ChatPage — the persona', () => {
     const reload = await visit(10 * 60_000);
     expect(reload.chats).toHaveLength(0);
     reload.page.unmount();
+
+    // P6-T03 (ADR-52): Settings → Speaking up → Never turns the opener off too.
+    const off = await visit(2 * 3_600_000, 'off');
+    expect(off.chats).toHaveLength(0);
+    off.page.unmount();
   });
 
   it('names the character from the persona file rather than a constant', () => {

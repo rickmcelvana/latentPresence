@@ -54,6 +54,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
 | ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
+| ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | proposed | 2026-10-12 |
 
 ---
 
@@ -1882,3 +1883,40 @@ a follow-up not yet due says **"(not due yet)"** (one opener talked as if Friday
 (`docs/runs/P6-T02-openers.md`): **the greeting and the gap were right in 20 of 20**, the week
 later read "it's been a little while" and went straight to the travel dates; 19 of 20 picked up
 one thing — the miss greeted Tuesday morning correctly and asked how it was starting.
+
+## ADR-52 Proactive check-ins: a dial, a budget she cannot exceed, and something real to say (proposed 2026-10-12)
+
+**Context.** P6-T03: rate-limited initiative with a user dial (off, rare, normal), grounded in memory
+and plans, never during user speech; done when the budget is never exceeded in a 24 h simulated run.
+P6-T02 gave her a way to start a turn (`ChatSession.open`, `assistant.opening`) and an opener when
+they come back; a follow-up that comes due while the page is open still waits for them to speak.
+
+**Decisions.**
+
+1. **The dial** is a setting, `initiative`: `off`, `rare`, `normal` (default normal). **Off means
+   she never starts a turn** — no check-ins and no opener (ADR-51's dial).
+2. **The budget**, per rolling 24 hours, counting every turn she starts, the opener included:
+   rare 2, normal 6; at least 3 h (rare) or 45 min (normal) between check-ins (the opener is exempt
+   from the gap, not the count — they have just come back). **One unanswered at a time**: after
+   she speaks up she does not again until they have said something.
+3. **Never while**: they are speaking (between `user.speech.started` and its end), typing (a draft
+   in the box), a voice panel is open, a permission prompt is waiting, or she is not quiet
+   (`idle`/`listening`). And only after quiet: 2 min (normal) or 5 min (rare) for a due follow-up,
+   20 min for anything else.
+4. **Grounded, in this order**: (a) **a follow-up that has come due** and has not been raised this
+   day; (b) at `normal` and **not at night**, **a thought**: an active plan's next open task, else
+   a fact she knows about them, one not raised in the last 24 h. Nothing to say: she stays quiet.
+   A follow-up set for a time is allowed at night (they asked for that time); a day is not.
+5. **How**: `ChatSession.speakUp(cue)` — `assistant.opening`, then an answer to a hidden cue turn
+   naming the reason (core renders it), asked without tools as the opener is. The cue never
+   reaches the bus.
+6. **The ledger** (what she started, when, about what) is a `_initiative` system block beside
+   `_mood`, pruned to 24 h, so a reload does not reset the budget. Pure decision in core
+   (`decideInitiative`), attached to the bus by `attachInitiative`; a simulated day drives the real
+   attach with a simulated clock, and the done-when is a test over many seeds and all three dials.
+
+**Rejected.** *A per-visit budget* — a reload would refill it. *Letting the model decide whether to
+speak* — every request answers something; silence has to be decided before the call. *Check-ins in
+a voice call* — the call is a live conversation; its pauses are theirs (P1-T09's backchannels cover
+listening).
+

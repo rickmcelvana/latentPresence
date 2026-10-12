@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
+import { InitiativeSection } from './InitiativeSection';
 import { LanguageModelSection } from './LanguageModelSection';
 import { DocumentsSection } from './DocumentsSection';
 import { MemorySection } from './MemorySection';
@@ -11,7 +12,7 @@ import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
 
 /**
- * The settings content (P1-T10): Language model, Voice, Hearing, Memory and Tools, plus the Companion
+ * The settings content (P1-T10): Language model, Voice, Hearing, Memory, Speaking up and Tools, plus the Companion
  * field the Language model section shows when it needs one. A bare component rather than
  * a page, so Phase 2 can mount it inside `.drawer` without dragging a page layout along.
  *
@@ -54,6 +55,8 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
       <HearingSection deps={deps} onChange={(stt: SttSettings) => setSettings((prev) => ({ ...prev, stt }))} stt={settings.stt} />
 
       <MemorySection memory={settings.memory} onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))} />
+
+      <InitiativeSection initiative={settings.initiative} onChange={(initiative) => setSettings((prev) => ({ ...prev, initiative }))} />
 
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 

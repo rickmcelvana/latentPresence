@@ -54,6 +54,7 @@ describe('loadSettings', () => {
       version: 1,
       companionUrl: 'http://127.0.0.1:9999',
       memory: 'browser',
+      initiative: 'rare',
       tools: {
         servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },

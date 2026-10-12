@@ -138,6 +138,13 @@ export const DocumentsSettingsSchema = z.object({
 });
 export type DocumentsSettings = z.infer<typeof DocumentsSettingsSchema>;
 
+/**
+ * How often she speaks up on her own (P6-T03, ADR-52): off, rare or normal. Off also turns off
+ * the opener when they come back (ADR-51). Defaulted, so a document saved before P6 loads.
+ */
+export const InitiativeSettingSchema = z.enum(['off', 'rare', 'normal']);
+export type InitiativeSetting = z.infer<typeof InitiativeSettingSchema>;
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   companionUrl: z.string(),
@@ -146,6 +153,8 @@ export const SettingsSchema = z.object({
   tools: ToolsSettingsSchema.default({ servers: [], grants: {}, companion: false, homeArea: null }),
   /** P5-T04, ADR-45: off by default, no unasked request to `127.0.0.1`. */
   documents: DocumentsSettingsSchema.default({ search: false }),
+  /** P6-T03, ADR-52. */
+  initiative: InitiativeSettingSchema.default('normal'),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -160,6 +169,7 @@ export const DEFAULT_SETTINGS: Settings = {
   memory: 'browser',
   tools: { servers: [], grants: {}, companion: false, homeArea: null },
   documents: { search: false },
+  initiative: 'normal',
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },

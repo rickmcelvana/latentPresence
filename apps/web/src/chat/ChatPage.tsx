@@ -4,12 +4,14 @@ import {
   ChatSession,
   ConversationMachine,
   DEFAULT_AFFECT_PARAMS,
+  INITIATIVE_BLOCK,
   MemoryKernel,
   Plans,
   PermissionPrompts,
   SelfNotes,
   attachAffect,
   attachHistory,
+  attachInitiative,
   attachMemory,
   attachMood,
   mcpTools,
@@ -21,8 +23,8 @@ import {
   attachUserAffect,
   lastConversation,
   renderSystemPrompt,
-  shouldOpen,
   type AttachedAffect,
+  type AttachedInitiative,
   type AttachedMemory,
   type AttachedMood,
   type ConnectedToolServer,
@@ -401,12 +403,15 @@ function ConfiguredChatPage({
   // The plans (P4-T07) for the panel: state, because the panel renders from it; `selfHolder`
   // holds the same object for the prompt, which reads it outside React.
   const [plans, setPlans] = useState<Plans | null>(null);
-  // P6-T02 (ADR-51): she does not speak first into an open voice panel — the call is theirs to start.
+  // P6-T02, P6-T03 (ADR-51, ADR-52): she does not speak first into an open voice panel — the call
+  // is theirs to start — nor while they are typing.
   const voiceOpenRef = useRef(false);
+  const draftRef = useRef('');
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
     let mood: AttachedMood | null = null;
+    let initiative: AttachedInitiative | null = null;
     const saveMood = (): void => void mood?.save();
     void chooseMemory({
       setting: settings.memory,
@@ -446,13 +451,25 @@ function ConfiguredChatPage({
       void Promise.all([last, notesLoaded, plansLoaded, memoryReady]).then(([since]) => {
         if (!live) return;
         timeHolder.since = since;
-        // She speaks first if they came back after an hour or more; `open` itself declines once
-        // anything has been said.
-        if (shouldOpen(since, new Date()) && !voiceOpenRef.current) chat.open();
+        // P6-T03 (ADR-52): her initiative — the opener if they came back after an hour (ADR-51),
+        // then check-ins — on the dial in Settings, read each time, and a budget kept with her notes.
+        initiative = attachInitiative(machine, {
+          chat,
+          dial: () => loadSettings(deps.storage).initiative,
+          blocked: () => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0,
+          followUps: () => builtPlans.promptContext().followUps,
+          plans: () => builtPlans.snapshot().plans,
+          facts: () => attached?.context()?.facts ?? [],
+          ledger: { read: () => notes.system(INITIATIVE_BLOCK), write: (text) => notes.writeSystem(INITIATIVE_BLOCK, text) },
+          scheduler: hostTimers(),
+          onError: (error) => warn(error, 'initiative'),
+        });
+        initiative.open(since);
       });
     });
     return () => {
       live = false;
+      initiative?.detach();
       attached?.detach();
       memoryHolder.current = null;
       setMemory(null);
@@ -468,7 +485,7 @@ function ConfiguredChatPage({
       selfHolder.tools = [];
       timeHolder.since = null;
     };
-  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, machine, memoryHolder, modelId, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
+  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.
@@ -835,6 +852,7 @@ function ConfiguredChatPage({
     if (draft.trim() === '') return;
     if (chat.send(draft)) {
       setDraft('');
+      draftRef.current = '';
       // Busy from the moment it is sent, not from the first token: a model still loading can
       // take seconds to say anything, and Stop has to be there for that wait.
       setBusy(chat.busy);
@@ -972,7 +990,10 @@ function ConfiguredChatPage({
         <div className="call-text-dock">
           <textarea
             className="textarea chat-textarea"
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              draftRef.current = event.target.value;
+            }}
             onKeyDown={onKeyDown}
             placeholder="Say something…"
             ref={inputRef}

@@ -169,6 +169,19 @@ export class ChatSession {
     return true;
   }
 
+  /**
+   * She speaks up mid-conversation (P6-T03, ADR-52): `assistant.opening`, then an answer to `cue`
+   * — a hidden turn naming why, which never reaches the bus — asked without tools, as the opener
+   * is. Declines while an answer streams or after dispose. Whether she should is `attachInitiative`'s
+   * to decide, not this.
+   */
+  speakUp(cue: string): boolean {
+    if (this.disposed || this.streaming !== null || cue.trim() === '') return false;
+    this.dispatch({ type: 'assistant.opening' });
+    this.answer(this.options.openingLlm ?? this.options.llm, () => this.history.request(cue));
+    return true;
+  }
+
   private answer(llm: LLMProvider, messages: () => LlmMessage[]): void {
     const streaming: Streaming = {
       id: `${this.options.sessionId}-reply-${(this.replies += 1)}`,
