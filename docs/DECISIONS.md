@@ -54,7 +54,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-49 | Diegetic displays: canvas-drawn `CanvasTexture` boards (no HTML-to-texture) on the back wall either side of her, the window moved right; readable = body text ≥ 16 px at `medium` 1080p, proved by projection; whiteboard = the plan in focus, screen = her latest answer's sources | accepted | 2026-10-12 |
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
 | ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
-| ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | proposed | 2026-10-12 |
+| ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
 
 ---
 
@@ -1884,7 +1884,7 @@ a follow-up not yet due says **"(not due yet)"** (one opener talked as if Friday
 later read "it's been a little while" and went straight to the travel dates; 19 of 20 picked up
 one thing — the miss greeted Tuesday morning correctly and asked how it was starting.
 
-## ADR-52 Proactive check-ins: a dial, a budget she cannot exceed, and something real to say (proposed 2026-10-12)
+## ADR-52 Proactive check-ins: a dial, a budget she cannot exceed, and something real to say (accepted 2026-10-12)
 
 **Context.** P6-T03: rate-limited initiative with a user dial (off, rare, normal), grounded in memory
 and plans, never during user speech; done when the budget is never exceeded in a 24 h simulated run.

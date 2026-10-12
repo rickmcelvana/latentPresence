@@ -373,7 +373,7 @@ week ago, on Monday evening", "it is the morning", Friday's follow-up "three day
 live:opener` asks a real model at five moments — greeting and gap right in 20/20
 (`docs/runs/P6-T02-openers.md`). How it feels in `/chat` is R-37.
 
-### P6-T03 Proactive check-ins — owner: main (done 2026-10-12, ADR-52 proposed)
+### P6-T03 Proactive check-ins — owner: main (done 2026-10-12, ADR-52 accepted)
 Rate-limited initiative with a user dial (off, rare, normal), grounded in memory and plans, never during user speech.
 Done when: budget never exceeded in a 24 h simulated run.
 **Met:** `packages/core/src/initiative` — `simulateInitiativeDay` drives the real attachment over a
