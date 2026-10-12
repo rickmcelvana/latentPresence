@@ -381,9 +381,14 @@ modelled day; `initiative.test.ts` holds 30 days at each setting and ten 3-day r
 and every rule (0 broken; `pnpm initiative:log` → `docs/runs/P6-T03-initiative-day.md`). Settings →
 Speaking up. `pnpm live:checkin` 11/12. How it feels is R-38.
 
-### P6-T04 Sleep and consolidation — owner: main
+### P6-T04 Sleep and consolidation — owner: main (done 2026-10-12, ADR-53 proposed)
 Depends: P4-T03. Idle-triggered consolidation with a visible resting state; wake on user activity.
 Done when: fact count grows sublinearly over a long transcript replay; duplicates merge.
+**Met:** `long-replay.test.ts` — Sam's twelve evenings (106 exchanges) with a forgetful extractor,
+slept on after each, glm's merges recorded: 25 facts at the end (the twenty things and five new
+ones, each once) against 33 without sleep; the second half adds facts at a fifth of the first
+half's rate. Real extraction made no duplicates to merge (`docs/runs/P6-T04-sleep.md`). The rest
+in `/chat` is R-39.
 
 ### P6-T05 Inner monologue — owner: main
 Private reasoning channel (model thinking or a separate short call) summarised into a peekable panel; never spoken.

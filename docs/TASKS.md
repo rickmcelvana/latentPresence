@@ -190,6 +190,23 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
+### R-39 · Let her rest · ten quiet minutes, desktop
+**Why:** P6-T04 (ADR-53): after ten quiet minutes, when something new has gone into memory since she
+last slept, she rests — eyes closed, head a little down, a label at the top of the stage — and
+sorts through it (what was said twice in other words becomes one fact). Anything wakes her. The
+merging is proved by test; how the rest looks, and whether waking feels right, needs you.
+1. In `/chat`, tell her a couple of new things about yourself (so there is something to sort).
+2. Leave the tab open and don't touch it for ten minutes (another window is fine; a voice call,
+   a permission prompt or text in the box keeps her up).
+3. Look: she should be resting, with "Alice is resting, sorting through what you have talked
+   about" at the top. Nothing should look broken (head through the body, a twitch).
+4. Press a key or click anywhere: she should be up in a moment, looking at you.
+5. Open Memory: what you told her is there once, not twice.
+
+**Pass:** she rests only when it has been quiet, the rest looks like resting, she is awake the
+moment you are back, and memory has no doubles. **Paste back:** how the rest looked, how waking
+felt, and anything in Memory that is there twice.
+
 ### R-38 · Let her speak up · an afternoon with `/chat` open, desktop
 **Why:** P6-T03 (ADR-52): with `/chat` open and quiet, she brings up a check-in she offered when
 it comes due, and at **Normally** now and then a plan's next step or something you told her —

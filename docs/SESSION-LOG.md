@@ -776,3 +776,9 @@ Did: ADR-51 accepted. P6-T03: ADR-52 proposed; core `initiative` (`decideInitiat
 Left: R-38 (new), R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T04 sleep and consolidation (main).
 Decisions: ADR-51 accepted; ADR-52 proposed (amended in the build) — needs Rick's accept.
+
+## 2026-10-12 claude — ADR-52 accepted; P6-T04 sleep and consolidation
+Did: ADR-52 accepted. P6-T04: ADR-53 proposed; core `memory/sleep.ts` (rule merges by predicate family and plain object, model merges per subject with validated groups, `applyMerges`), `MemoryKernel.sleep` (cancellable between steps), `rest/attachRest` (10 quiet min, facts new since `_sleep`, wake on anything); avatar `restFrame`/`restLevel`; `/chat` stage rest and label. Long replay fixture (Sam, 12 evenings, 106 exchanges) and `pnpm live:sleep`: real extraction made no duplicates (glm-5.2 27 facts, glm-5.3-flash 28; Rick's store 20, none); forgetful extractor + glm merges 25 vs 33 without sleep, recorded and replayed in `long-replay.test.ts`, mutation-checked.
+Left: R-39 (new), R-38, R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7. The rest was not looked at in the pane (needs a configured `/chat` with memory and ten quiet minutes) — R-39.
+Next: P6-T05 inner monologue (main).
+Decisions: ADR-52 accepted; ADR-53 proposed — needs Rick's accept.
