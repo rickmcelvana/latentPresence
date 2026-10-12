@@ -55,6 +55,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-50 | Idle life: a seeded utility planner in core (mood, energy, time of day, quiet time, novelty; an activity done in the last 10 min scores zero) performed by the avatar with gaze, gestures, emotions, props behind her as looks over the shoulder, and procedural poses; each activity names its future clip | accepted | 2026-10-12 |
 | ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
 | ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
+| ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | proposed | 2026-10-12 |
 
 ---
 
@@ -1934,3 +1935,52 @@ question ("Hey — did you ever nail down those Norway dates?"); a cue saying "y
 the garden as **hers** ("I should dig it in this weekend") — it now says "the plan you are making
 with them … their next step", and all four plan check-ins asked about theirs. 11/12; the miss asked
 two questions in a row (`docs/runs/P6-T03-checkins.md`).
+
+## ADR-53 Sleep: she rests when it is quiet, and what was said twice in other words becomes one fact (proposed 2026-10-12)
+
+**Context.** P6-T04 (depends P4-T03): idle-triggered consolidation with a visible resting state,
+wake on user activity; done when the fact count grows sublinearly over a long transcript replay
+and duplicates merge. P4-T03's `consolidateFacts` merges only facts that are word for word the
+same, closes single-valued rivals and forgets weak old facts; nothing calls it in `/chat`.
+
+**Measured first (2026-10-12).** A long replay — Sam over twelve evenings, about twenty things
+retold in other words, 106 exchanges — through real extraction, **without** sleep: glm-5.2:cloud
+ended at **27 facts, no duplicates**; glm-5.3-flash:cloud at **28, none**; Rick's own store (the
+companion, weeks of use) holds 20 facts and **no duplicates** by rule. Extraction is shown the known
+facts (P4-T03) and a strong model does not restate them. Duplicates come from an extractor that
+ignores them — a small local model — or from two tabs extracting at once, each with its own cache.
+
+**Decisions.**
+
+1. **`MemoryKernel.sleep`**, queued behind writes: (a) **merge by rule** — same subject, predicates
+   of one family (likes/loves/enjoys/is_into…, job/occupation/profession/works_as…, lives_in/
+   location…), the same object once case, punctuation and leading articles are gone; (b) **merge
+   by the model**, one subject at a time (40 facts a request), reasoning off as extraction is
+   (ADR-37), answering `{"groups":[{"keep","merge":[…]}]}` — only ids it was shown, each once,
+   never a follow-up; (c) P4-T03's pass. A merge keeps one fact, reinforced by the others and true
+   from the earliest start, and **expires** the rest. A wake stops it between steps; each step's
+   writes land whole.
+2. **When she rests** (`attachRest`): 10 quiet minutes (nothing on the bus, no key or press), the
+   conversation idle or listening, nothing typed, no voice panel or permission prompt, and **facts
+   recorded since she last slept** (a `_sleep` system block; never slept: two facts). A quiet page
+   with nothing new is not a page that is always asleep.
+3. **Visible**: she settles over 2.5 s into a held rest — eyes closed, head a little down, gaze
+   down, her idle life paused — and a label at the top of the stage says she is resting, sorting
+   through what you have talked about. **Anything wakes her** — the bus, a key, a press — out of the
+   pose in 0.35 s; a sleep still running stops. She stays resting after the sleep until then. Her
+   own initiative (ADR-52) wakes her too: a check-in is a bus event.
+
+**Rejected.** *Embedding similarity for merging* — the browser store often has no vectors, and
+"likes Montreal" sits close to "lives in Montreal" in any embedding; the model reads the meaning,
+and the live runs show it declining exactly those. *Sleeping on a timer regardless of what is new*
+— a model call per idle stretch for nothing. *Merging in extraction* (asking it harder not to
+restate) — the known list is already there; a weak model ignores it, which is the case sleep is for.
+
+**Measured in the build (2026-10-12).** `FORGETFUL=1 pnpm live:sleep`: the long replay with an
+extractor that writes every line's facts in its own wording, slept on after each evening, glm-5.2
+merging: **25 facts at the end — exactly the twenty things in Sam's life and the five late ones —
+against 33 without sleep**; the curve 4 7 10 14 17 20 20 21 22 23 24 25, the second half adding
+facts at a fifth of the first half's rate. Recorded and replayed in `long-replay.test.ts`
+(mutation-checked: a merge that expires nothing fails four of five). With real extraction and
+sleep (glm-5.3-flash, 16 merge requests), the model answered "nothing to merge" every time — no
+false merges of "likes Montreal" into "lives in Montreal". `docs/runs/P6-T04-sleep.md`.

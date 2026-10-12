@@ -12,6 +12,8 @@ import {
   applyListening,
   mergeExpressionsMax,
   relativeGaze,
+  restFrame,
+  restLevel,
   withGesture,
   LipSync,
   MOUTH_SHAPES,
@@ -106,6 +108,8 @@ export interface CallStageProps {
   readonly listening?: CallStageListening | null;
   /** What the whiteboard and the screen in the room show (P5-T08); omitted, they stay blank and dark. */
   readonly displays?: Displays | undefined;
+  /** Whether she is resting (P6-T04, ADR-53), read every frame; omitted or null, she never does. */
+  readonly rest?: { resting(): boolean } | null;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -137,6 +141,7 @@ export function CallStage({
   affect = null,
   listening = null,
   displays = EMPTY_DISPLAYS,
+  rest = null,
   createRenderer = defaultCreateRenderer,
   fetchModel = cachedModelFetch,
 }: CallStageProps): ReactElement {
@@ -155,6 +160,7 @@ export function CallStage({
   const listeningRef = useRef<CallStageListening | null>(null);
   /** What the boards show, for the idle planner (P6-T01): reading a blank board is not a thing to do. */
   const displaysRef = useRef<Displays>(displays);
+  const restRef = useRef<{ resting(): boolean } | null>(rest);
 
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
@@ -174,6 +180,10 @@ export function CallStage({
   useEffect(() => {
     displaysRef.current = displays;
   }, [displays]);
+
+  useEffect(() => {
+    restRef.current = rest;
+  }, [rest]);
 
   useEffect(() => {
     listeningRef.current = listening;
@@ -201,6 +211,8 @@ export function CallStage({
     const idle = new IdleDirector();
     let idleEmote = false;
     let idleMouth = 0;
+    // P6-T04 (ADR-53): how far into her rest she is, 0 awake to 1 asleep.
+    let resting = 0;
     const wake = (): void => idle.activity();
     window.addEventListener('keydown', wake);
     window.addEventListener('pointerdown', wake);
@@ -229,6 +241,10 @@ export function CallStage({
         const reaction = listen === null ? null : listen.reactor.update(now, listen.userAffect());
         for (const gesture of reaction?.gestures ?? []) performer.perform({ kind: 'gesture', value: gesture, known: gesture, offset: 0 });
         // P6-T01: what she does of her own, before the cue performer steps, so its gesture moves this frame.
+        // P6-T04: resting, her idle life waits — the rest is held, eyes closed, head a little down.
+        const asleep = restRef.current?.resting() === true;
+        resting = restLevel(resting, asleep, delta);
+        if (asleep) idle.activity();
         const inputs = affectRef.current?.source.inputs() ?? null;
         const shown = displaysRef.current;
         const idling = idle.update(
@@ -245,7 +261,7 @@ export function CallStage({
           performer.release();
           idleEmote = false;
         }
-        life.setGazeBase(idling.gazeBase ?? 'user');
+        life.setGazeBase(asleep ? 'down' : (idling.gazeBase ?? 'user'));
         const cues = performer.update(delta);
         // P3-T09: the mood's resting face under the tags' faces, and its gaze habit on the
         // life layer — both before `life.update`, which reads the modulation this frame.
@@ -262,6 +278,10 @@ export function CallStage({
         let pose = withGesture(withGesture(life.update(delta), cues.additive), idling.additive);
         if (idling.lookAt !== null || idling.eyesClosed > 0) {
           pose = { ...pose, blink: Math.max(pose.blink, idling.eyesClosed), gaze: idling.lookAt === null ? pose.gaze : { ...pose.gaze, point: idling.lookAt } };
+        }
+        if (resting > 0) {
+          const settled = restFrame(resting);
+          pose = { ...withGesture(pose, settled.additive), blink: Math.max(pose.blink, settled.eyesClosed) };
         }
         avatar.setLifePose?.(pose);
         avatar.setExpression(face);

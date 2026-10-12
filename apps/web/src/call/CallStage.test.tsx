@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
 import type { ConversationEvent, ConversationState, UserAffect } from '@latentpresence/protocol';
-import { FakeAvatarRenderer, ListeningReactor, type AffectInputs, type Displays } from '@latentpresence/avatar';
+import { FakeAvatarRenderer, ListeningReactor, type AffectInputs, type Displays, type LifePose } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR_DESCRIPTOR } from './character-asset';
 import { CallStage, type CallStageRenderer } from './CallStage';
@@ -325,5 +325,41 @@ describe('CallStage — the whiteboard and the screen (P5-T08)', () => {
     const renderer = new FakeAvatarRenderer();
     render(stageWithDisplays(GARDEN, renderer));
     await waitFor(() => expect(renderer.character).not.toBeNull());
+  });
+});
+
+class PoseRenderer extends FakeAvatarRenderer {
+  readonly poses: LifePose[] = [];
+  setLifePose(pose: LifePose): void {
+    this.poses.push(pose);
+  }
+}
+
+describe('CallStage — her rest (P6-T04, ADR-53)', () => {
+  it('settles into the rest while resting — eyes shut, head down — and is out of it a moment after waking', async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new PoseRenderer();
+    const state = { resting: true };
+    render(<CallStage consent={consent} createRenderer={() => renderer} fetchModel={async () => new Uint8Array([1])} machine={machine()} rest={{ resting: () => state.resting }} voice={null} />);
+    await waitFor(() => expect(renderer.character).not.toBeNull());
+    await settle();
+    let now = 0;
+    const run = (seconds: number): void => {
+      for (let i = 0; i < seconds * 60; i += 1) {
+        now += 1000 / 60;
+        for (const frame of frames.splice(0)) frame(now);
+      }
+    };
+    run(3);
+    const asleep = renderer.poses.at(-1);
+    expect(asleep?.blink).toBe(1);
+    expect(asleep?.additive.head?.[0]).toBeGreaterThan(0.2);
+    state.resting = false;
+    run(0.5);
+    expect(renderer.poses.at(-1)?.additive.head?.[0] ?? 0).toBeLessThan(0.1);
   });
 });

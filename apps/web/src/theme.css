@@ -2191,6 +2191,20 @@ kbd {
   box-shadow: 0 0 6px var(--accent-glow-strong);
 }
 
+/* P6-T04 (ADR-53): she is resting and sorting through what was said — a quiet label at the top. */
+.call-rest-indicator {
+  position: absolute;
+  top: var(--gap-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px var(--gap-md);
+  border-radius: 999px;
+  background: var(--scrim);
+  color: var(--text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+
 .call-face-error {
   position: absolute;
   left: var(--gap-lg);

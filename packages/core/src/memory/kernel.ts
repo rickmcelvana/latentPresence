@@ -1,8 +1,9 @@
-import type { Embedding, EmbeddingModelRef, EmbeddingProvider, LLMProvider, MemoryEpisode, MemoryStore, SemanticFact, UserAffect } from '@latentpresence/protocol';
+import type { CancellationSignal, Embedding, EmbeddingModelRef, EmbeddingProvider, LLMProvider, LlmMessage, MemoryEpisode, MemoryStore, SemanticFact, UserAffect } from '@latentpresence/protocol';
 import { consolidateFacts, DEFAULT_FORGETTING, type ConsolidationPlan, type ForgettingPolicy } from './consolidate';
 import { extractionMessages, parseExtraction, type Exchange } from './extract';
 import { planFactWrites, type ExtractedFact } from './facts';
 import { DEFAULT_RECALL_PARAMS, rankRecall, type MemoryContext, type RecallParams } from './recall';
+import { applyMerges, mergeBatches, mergeMessages, parseMerges, ruleMerges } from './sleep';
 
 /**
  * The memory kernel (P4-T03): what one character remembers of the person, written after
@@ -49,7 +50,21 @@ export interface ExtractionRecord {
   readonly dropped: number | null;
 }
 
-export type MemoryErrorStage = 'append' | 'embed' | 'extract' | 'apply' | 'consolidate';
+export type MemoryErrorStage = 'append' | 'embed' | 'extract' | 'apply' | 'consolidate' | 'sleep';
+
+/** What a sleep did (P6-T04, ADR-53). */
+export interface SleepReport {
+  /** Current facts before and after. */
+  readonly before: number;
+  readonly after: number;
+  /** Facts folded into another: by rule, and by the model. */
+  readonly mergedByRule: number;
+  readonly mergedByModel: number;
+  /** P4-T03's pass, or null when the sleep was stopped before it. */
+  readonly consolidated: ConsolidationPlan | null;
+  /** Woken part way: what was done is written, the rest is left for next time. */
+  readonly stopped: boolean;
+}
 
 export interface MemoryKernelOptions {
   readonly store: MemoryStore;
@@ -237,6 +252,67 @@ export class MemoryKernel {
         }
       });
     });
+  }
+
+  /**
+   * Sleep (P6-T04, ADR-53): what was said twice in other words becomes one fact — by rule, then
+   * by the model, one subject at a time — and then P4-T03's pass. Queued behind any writes.
+   * `signal` (a wake) stops it between steps; each step's writes land whole, so a stopped sleep
+   * leaves memory consistent, with the rest for next time.
+   */
+  sleep(options: { readonly signal?: CancellationSignal } = {}): Promise<SleepReport> {
+    const stopped = (): boolean => options.signal?.aborted === true;
+    return new Promise((resolve, reject) => {
+      this.enqueue(async () => {
+        try {
+          this.known = null;
+          const facts = await this.knownFacts();
+          const rule = applyMerges(facts, ruleMerges(facts), this.now());
+          await this.apply(rule.upserts, [], rule.expire);
+          let byModel = 0;
+          const extractor = this.options.extractor;
+          if (extractor !== null) {
+            for (const batch of mergeBatches(await this.knownFacts())) {
+              if (stopped()) break;
+              const reply = await this.ask(extractor, mergeMessages(batch.subject, batch.facts), options.signal);
+              if (reply === null || stopped()) continue;
+              const merges = applyMerges(batch.facts, parseMerges(reply, new Set(batch.facts.map((fact) => fact.id))), this.now());
+              await this.apply(merges.upserts, [], merges.expire);
+              byModel += merges.expire.length;
+            }
+          }
+          let consolidated: ConsolidationPlan | null = null;
+          if (!stopped()) {
+            this.known = null;
+            consolidated = consolidateFacts(await this.knownFacts(), this.now(), this.options.forgetting ?? DEFAULT_FORGETTING);
+            await this.apply(consolidated.upserts, consolidated.supersede, consolidated.expire);
+          }
+          const after = (await this.knownFacts()).length;
+          resolve({ before: facts.length, after, mergedByRule: rule.expire.length, mergedByModel: byModel, consolidated, stopped: stopped() });
+        } catch (error) {
+          this.report(error, 'sleep');
+          reject(asError(error));
+        }
+      });
+    });
+  }
+
+  /** One background question to the extraction model, reasoning off (ADR-37); null on failure. */
+  private async ask(extractor: { readonly llm: LLMProvider; readonly modelId: string }, messages: LlmMessage[], signal: CancellationSignal | undefined): Promise<string | null> {
+    let reply = '';
+    try {
+      for await (const chunk of extractor.llm.stream(
+        { modelId: extractor.modelId, messages, tools: [], temperature: null, maxOutputTokens: null, reasoning: 'off' },
+        signal === undefined ? {} : { signal },
+      )) {
+        if (chunk.type === 'text-delta') reply += chunk.text;
+        if (chunk.type === 'finish' && chunk.reason === 'error') throw new Error('the merge stream ended in error');
+      }
+    } catch (error) {
+      if (signal?.aborted !== true) this.report(error, 'sleep');
+      return null;
+    }
+    return reply;
   }
 
   /** A queued job whose outcome the caller awaits — the person is waiting on it, so it rejects rather than only reporting. */

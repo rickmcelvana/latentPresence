@@ -5,6 +5,7 @@ import {
   ConversationMachine,
   DEFAULT_AFFECT_PARAMS,
   INITIATIVE_BLOCK,
+  REST_BLOCK,
   MemoryKernel,
   Plans,
   PermissionPrompts,
@@ -13,6 +14,7 @@ import {
   attachHistory,
   attachInitiative,
   attachMemory,
+  attachRest,
   attachMood,
   mcpTools,
   planTools,
@@ -25,6 +27,7 @@ import {
   renderSystemPrompt,
   type AttachedAffect,
   type AttachedInitiative,
+  type AttachedRest,
   type AttachedMemory,
   type AttachedMood,
   type ConnectedToolServer,
@@ -407,11 +410,17 @@ function ConfiguredChatPage({
   // is theirs to start — nor while they are typing.
   const voiceOpenRef = useRef(false);
   const draftRef = useRef('');
+  // P6-T04 (ADR-53): her rest, for the stage (read every frame) and the label (state).
+  const [rest, setRest] = useState<AttachedRest | null>(null);
+  const [restingNow, setRestingNow] = useState(false);
   useEffect(() => {
     let live = true;
     let attached: AttachedMemory | null = null;
     let mood: AttachedMood | null = null;
     let initiative: AttachedInitiative | null = null;
+    let resting: AttachedRest | null = null;
+    let stopResting = (): void => {};
+    const wakeHer = (): void => resting?.wake();
     const saveMood = (): void => void mood?.save();
     void chooseMemory({
       setting: settings.memory,
@@ -465,11 +474,30 @@ function ConfiguredChatPage({
           onError: (error) => warn(error, 'initiative'),
         });
         initiative.open(since);
+        // P6-T04 (ADR-53): after ten quiet minutes with something new to sort, she rests and
+        // sleeps on it; anything — the bus, a key, a press — wakes her.
+        resting = attachRest(machine, {
+          kernel,
+          blocked: () => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0,
+          ledger: { read: () => notes.system(REST_BLOCK), write: (text) => notes.writeSystem(REST_BLOCK, text) },
+          scheduler: hostTimers(),
+          onError: (error) => warn(error, 'sleep'),
+        });
+        stopResting = resting.subscribe(setRestingNow);
+        window.addEventListener('keydown', wakeHer);
+        window.addEventListener('pointerdown', wakeHer);
+        setRest(resting);
       });
     });
     return () => {
       live = false;
       initiative?.detach();
+      stopResting();
+      resting?.detach();
+      window.removeEventListener('keydown', wakeHer);
+      window.removeEventListener('pointerdown', wakeHer);
+      setRest(null);
+      setRestingNow(false);
       attached?.detach();
       memoryHolder.current = null;
       setMemory(null);
@@ -889,10 +917,17 @@ function ConfiguredChatPage({
           createRenderer={createRenderer}
           displays={displays}
           listening={listening}
+          rest={rest}
           machine={machine}
           voice={voiceOutput}
         />
       </Suspense>
+
+      {restingNow && (
+        <p className="call-rest-indicator" role="status">
+          {CHAT_CHARACTER_NAME} is resting, sorting through what you have talked about
+        </p>
+      )}
 
       {showAffectOverlay && <AffectOverlay affect={affect} listening={listening.reactor} userAffect={userAffect} />}
 

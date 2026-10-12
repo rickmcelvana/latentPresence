@@ -35,7 +35,9 @@ export {
   type MemoryErrorStage,
   type MemoryKernelOptions,
   type MemoryTurn,
+  type SleepReport,
 } from './kernel';
+export { MERGE_MARKER, MERGE_SYSTEM, applyMerges, mergeBatches, mergeKey, mergeMessages, parseMerges, plainObject, ruleMerges, type MergeGroup } from './sleep';
 export {
   DEFAULT_RECALL_PARAMS,
   factLine,
