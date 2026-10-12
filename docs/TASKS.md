@@ -183,11 +183,31 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
    you are actually going to do. Talk it through; say when you like where it's going.
 3. Ask her to check in on it — "in a few hours" works now (a time), or a day. Later, tell her a step is done.
 4. In the panel: change a task, add one, **Save**; then **Download .md** and open the file.
-5. After the time she set, open `/chat` (or come back to the open tab) and just say hello.
+5. After the time she set, open `/chat` (or reload the tab) and **say nothing**: since P6-T02 she
+   speaks first when you come back after an hour or more, and a due follow-up is what she picks up.
 
 **Pass:** she asks before she plans and saves it once it has a shape; she never reads the plan
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
+
+### R-37 · Come back to her · a minute at a time, desktop, over a day
+**Why:** P6-T02 (ADR-51): she knows how long it has been, and when you come back after an hour or
+more she speaks first — a greeting for the time of day, and one thing from last time (a due
+follow-up first). The phrasing is proved by test and by a real model; whether it feels like being
+remembered, rather than like a notification, needs you.
+
+Memory must be where your conversations are (Settings → Memory, as for R-27). Speak replies can be
+off: her opener appears in the transcript.
+1. **This evening** (R-27's check-in is due at seven): reload `/chat` after seven and **say
+   nothing**. Expect an evening greeting and the trip — the follow-up she set.
+2. Reload within the hour: she should **not** greet you again.
+3. **Tomorrow morning**, after the first time you have talked: open `/chat` and say nothing.
+   Expect a morning greeting and something from last night — never "today" for last night.
+4. Any time after a longer gap (a few days), the same.
+
+**Pass:** the greeting fits the time of day, the gap is said the way a person would ("last
+night", "it's been a few days"), she picks up one real thing, it is short, and she does not greet
+twice in an hour. **Paste back:** her openers word for word, and when you opened.
 
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).

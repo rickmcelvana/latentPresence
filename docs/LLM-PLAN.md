@@ -364,9 +364,14 @@ hours to no repeat within 10 minutes, at least eight different things, none over
 times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36 (moves passed in `/dev/avatar`;
 `/chat` retry after the listening fix).
 
-### P6-T02 Time awareness — owner: main
+### P6-T02 Time awareness — owner: main (done 2026-10-12, ADR-51 proposed)
 Greeting by time, elapsed-time phrasing, "last time we" openers from memory, plan follow-ups.
 Done when: reopening after a simulated week yields correct phrasing.
+**Met:** `packages/core/src/time` (`sinceWords`, `lateWords`, `lastConversation`, `shouldOpen`);
+`time.test.ts` reopens a stored Monday-evening conversation a week later and pins the prompt ("a
+week ago, on Monday evening", "it is the morning", Friday's follow-up "three days ago"); `pnpm
+live:opener` asks a real model at five moments — greeting and gap right in 20/20
+(`docs/runs/P6-T02-openers.md`). How it feels in `/chat` is R-37.
 
 ### P6-T03 Proactive check-ins — owner: main
 Rate-limited initiative with a user dial (off, rare, normal), grounded in memory and plans, never during user speech.

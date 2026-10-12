@@ -764,3 +764,9 @@ Did: R-35 passed (D-46). R-36: the moves looked right in `/dev/avatar`, but `/ch
 Left: R-36 retry, R-27 retry (this evening), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T02 time awareness (main).
 Decisions: ADR-50 amended (idle or listening); still proposed.
+
+## 2026-10-12 claude — ADR-50 accepted, R-36 passed; P6-T02 time awareness
+Did: ADR-50 accepted, R-36 passed (D-47). P6-T02: ADR-51 proposed; core `time` (`sinceWords` by calendar day and part of day, `lateWords`, `lastConversation`, `shouldOpen` after an hour), prompt sections `LAST TIME YOU TALKED` and `YOU SPEAK FIRST`, part of day in RIGHT NOW, recall and follow-ups in the same words; `ChatSession.open()` with a hidden cue turn (history keeps it in front of her opener), `openingLlm` without tools, protocol `assistant.opening` (idle/listening → thinking); `/chat` opens once memory and plans are in. `pnpm live:opener`: greeting and gap 20/20, one thing picked up 19/20.
+Left: R-37 (new), R-27 retry (tonight at seven), R-32; laptop session (R-13, R-1, R-9); R-3; C-7. Not seen in the pane: `/chat` against Rick's store would have written her opener into his memory — R-37 is the look.
+Next: P6-T03 proactive check-ins (main); its dial also governs the opener.
+Decisions: ADR-50 accepted; ADR-51 proposed (amended in the build: opener without tools, "(not due yet)", silent cancel) — needs Rick's accept.

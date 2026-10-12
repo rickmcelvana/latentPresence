@@ -1868,3 +1868,17 @@ and the model already has the persona's voice. *Telling her the gap in hours or 
 *Opening on a first meeting* — an unprompted model call on a first visit, before the person has
 chosen to talk.
 
+**Measured and amended in the build (2026-10-12).** `pnpm live:opener` (glm-5.2:cloud) reopens one
+conversation — Monday evening, a Norway trip, the dates promised by Friday, a follow-up set for
+Friday — at five moments, each opener checked by rule. The first run: the time words were already
+right, but with her plan tools on she **cancelled the follow-up mid-opener and then said the
+greeting twice** (3 of 15), and once announced it ("I cancelled the follow-up"); asked with no
+tools at all, one run wrote a tool call out as text. So: **the opener is asked of the model without
+her tools** (`ChatSession`'s `openingLlm`; nothing has been asked of her yet), a follow-up she
+brings up **stays until they have answered**, follow-ups are cancelled **without a word about it**,
+a follow-up not yet due says **"(not due yet)"** (one opener talked as if Friday had passed), and
+"pick up how it ended" became **"pick up one thing from last time … what you were talking about"**
+(it had produced "How's your Tuesday starting off?"). Final run, four per moment
+(`docs/runs/P6-T02-openers.md`): **the greeting and the gap were right in 20 of 20**, the week
+later read "it's been a little while" and went straight to the travel dates; 19 of 20 picked up
+one thing — the miss greeted Tuesday morning correctly and asked how it was starting.
