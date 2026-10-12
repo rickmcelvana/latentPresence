@@ -2215,6 +2215,26 @@ kbd {
   color: var(--accent);
 }
 
+/* "Talking to" (P6-T06, ADR-55): a select that sits in the bar like the buttons around it —
+   their padding, line height, font and border — instead of the form field's full width. */
+.call-character-select {
+  width: auto;
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--panel-hover);
+  border-color: var(--border-bright);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.call-character-select:hover:not(:disabled) {
+  background: var(--panel);
+  border-color: var(--accent-dim);
+}
+
+.call-character-select:disabled {
+  cursor: not-allowed;
+}
+
 /* Everything floating over the stage is sized in px for 1080p; on a 1440p or 4K screen it
    would sit tiny in the middle of the picture (P2-T06's done-when is 1024 px to 4K). One
    zoom per step scales each overlay whole — text, padding and its offset from the bar

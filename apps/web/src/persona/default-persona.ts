@@ -1,14 +1,12 @@
-import { PersonaSchema, type Persona } from '@latentpresence/protocol';
-import alice from '../../../../personas/alice.persona.json' with { type: 'json' };
+import type { Persona } from '@latentpresence/protocol';
+import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
 
 /**
- * The persona the app ships with (P1-T12).
+ * The persona the app ships with (P1-T12): Alice, the first pack (P6-T06).
  *
- * Parsed rather than trusted: the file is content at the repo root, editable by anyone
- * with a text editor and no typechecker, so the schema is the only thing standing between
- * a typo and a character with no boundaries. Parsing at module load makes a broken file a
- * loud failure at startup rather than a strange answer three turns in.
- *
- * Multiple personas, and choosing between them in settings, are not this task's (P1-T12).
+ * Parsed, not trusted, in `characters/packs.ts` — the file is content at the repo root,
+ * editable by anyone with a text editor and no typechecker, so the schema is the only thing
+ * standing between a typo and a character with no boundaries. `/chat` now reads the active
+ * pack's persona; this stays for what has only ever meant Alice (the dev pages, the tests).
  */
-export const defaultPersona: Persona = PersonaSchema.parse(alice);
+export const defaultPersona: Persona = packFor(DEFAULT_CHARACTER_ID).persona;

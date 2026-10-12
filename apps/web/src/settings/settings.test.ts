@@ -55,6 +55,8 @@ describe('loadSettings', () => {
       companionUrl: 'http://127.0.0.1:9999',
       memory: 'browser',
       initiative: 'rare',
+      character: 'theo',
+      characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.95 } }, alice: { voice: null } },
       tools: {
         servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
@@ -92,6 +94,35 @@ describe('loadSettings', () => {
     const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeT04) });
     expect(loadSettings(storage)).toEqual(settings);
     expect(settings.documents).toEqual({ search: false });
+  });
+
+  it('loads a document saved before characters existed, as Alice with no voices chosen (P6-T06, ADR-55)', () => {
+    const settings: Settings = { ...DEFAULT_SETTINGS, companionUrl: 'http://127.0.0.1:9999' };
+    const { character: _character, characters: _characters, ...beforeT06 } = settings;
+    const storage = memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeT06) });
+    expect(loadSettings(storage)).toEqual(settings);
+    expect(settings.character).toBe('alice');
+    expect(settings.characters).toEqual({});
+  });
+
+  it("keeps a Kokoro voice picked before characters existed as Alice's own, once (P6-T06, ADR-55)", () => {
+    const { character: _character, characters: _characters, ...beforeT06 } = DEFAULT_SETTINGS;
+    const picked = { ...beforeT06, tts: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 } };
+    const loaded = loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(picked) }));
+    expect(loaded.characters).toEqual({ alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 } } });
+    expect(loaded.tts.voiceId).toBe('bf_emma');
+    // Saved again, it has a characters key, so what she has is not written over by a later load.
+    const storage = memoryStorage();
+    saveSettings({ ...loaded, characters: { alice: { voice: null } } }, storage);
+    expect(loadSettings(storage).characters).toEqual({ alice: { voice: null } });
+  });
+
+  it("writes no migrated voice when the old voice already is Alice's, or the engine is a server (P6-T06)", () => {
+    const { character: _character, characters: _characters, ...beforeT06 } = DEFAULT_SETTINGS;
+    const alices = loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeT06) }));
+    expect(alices.characters).toEqual({});
+    const server = { ...beforeT06, tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1 } };
+    expect(loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(server) })).characters).toEqual({});
   });
 
   it('defaults the companion URL to the documented default', () => {

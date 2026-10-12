@@ -180,3 +180,65 @@ describe('SettingsPanel — Voice', () => {
     expect(screen.getByRole('button', { name: 'Play sample' })).toBeTruthy();
   });
 });
+
+function stored(storage: Storage): Record<string, unknown> {
+  return JSON.parse(storage.getItem('latentpresence.settings.v1') ?? '{}') as Record<string, unknown>;
+}
+
+describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
+  it('offers every character, with Alice active and her summary shown', () => {
+    render(<SettingsPanel deps={testDeps()} />);
+    const picker = screen.getByLabelText('Talking to') as HTMLSelectElement;
+    expect([...picker.options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
+    expect(picker.value).toBe('alice');
+    expect(screen.getByText(/^Alice is /)).toBeTruthy();
+  });
+
+  it('choosing Theo is saved as the active character and shows his summary and his own voice', async () => {
+    const storage = memoryStorage();
+    render(<SettingsPanel deps={testDeps({ storage })} />);
+    fireEvent.change(screen.getByLabelText('Talking to'), { target: { value: 'theo' } });
+    await waitFor(() => expect(stored(storage).character).toBe('theo'));
+    expect(screen.getByText(/^Theo is /)).toBeTruthy();
+    expect(screen.getByRole('option', { name: "Theo's own (am_michael)" })).toBeTruthy();
+  });
+
+  it("a Kokoro voice chosen for Theo is saved under his id with the engine's kind, and the first option clears it", async () => {
+    const storage = memoryStorage();
+    render(<SettingsPanel deps={testDeps({ storage })} />);
+    fireEvent.change(screen.getByLabelText('Talking to'), { target: { value: 'theo' } });
+    const voice = screen.getByLabelText('Voice for Theo') as HTMLSelectElement;
+    expect(voice.value).toBe('');
+    fireEvent.change(voice, { target: { value: 'bm_george' } });
+    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 1 } } }));
+    expect((screen.getByLabelText('Voice for Theo') as HTMLSelectElement).value).toBe('bm_george');
+    fireEvent.change(screen.getByLabelText('Voice for Theo'), { target: { value: '' } });
+    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: null } }));
+  });
+
+  it("on a server it is a voice id for the character, blank meaning the one in Voice, and a Kokoro choice is not shown there", async () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      'latentpresence.settings.v1',
+      JSON.stringify({
+        version: 1,
+        companionUrl: 'http://127.0.0.1:8787',
+        llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
+        tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1 },
+        stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
+        characters: { alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1 } } },
+      }),
+    );
+    render(<SettingsPanel deps={testDeps({ storage })} />);
+    const voice = screen.getByLabelText('Voice for Alice') as HTMLInputElement;
+    expect(voice.value).toBe('');
+    fireEvent.change(voice, { target: { value: 'nova' } });
+    await waitFor(() =>
+      expect(stored(storage).characters).toEqual({
+        alice: { voice: { kind: 'openai-compatible', voiceId: 'nova', speed: 1 } },
+      }),
+    );
+    fireEvent.change(screen.getByLabelText('Voice for Alice'), { target: { value: '' } });
+    await waitFor(() => expect(stored(storage).characters).toEqual({ alice: { voice: null } }));
+  });
+});

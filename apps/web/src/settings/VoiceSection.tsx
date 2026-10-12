@@ -19,7 +19,7 @@ export interface VoiceSectionProps {
 const SAMPLE_TEXT = 'Hello, can you hear me?';
 const BROWSER_VOICES = toTtsVoices(kokoroVoices);
 
-function languageLabel(code: string): string {
+export function languageLabel(code: string): string {
   return code === 'en-us' ? 'English (US)' : code === 'en-gb' ? 'English (UK)' : code;
 }
 
@@ -27,7 +27,7 @@ function languageLabel(code: string): string {
  * `kokoroVoices` (whose `language` is always a real BCP-47 string) rather than the
  * `TtsVoice[]` `toTtsVoices` returns, whose `language` field is nullable for backends
  * that do not state one. */
-const BROWSER_VOICE_GROUPS: readonly { readonly language: string; readonly voices: readonly TtsVoice[] }[] = (() => {
+export const BROWSER_VOICE_GROUPS: readonly { readonly language: string; readonly voices: readonly TtsVoice[] }[] = (() => {
   const order: string[] = [];
   const byLanguage = new Map<string, TtsVoice[]>();
   kokoroVoices.forEach((voice, index) => {
@@ -142,27 +142,9 @@ export function VoiceSection({ tts, onChange, deps }: VoiceSectionProps): ReactE
             Runs on this computer&apos;s GPU. It downloads the first time a call starts, once you agree — nothing is
             fetched from this page.
           </p>
-          <div className="field">
-            <label className="field-label" htmlFor="settings-tts-voice">
-              Voice
-            </label>
-            <select
-              className="select"
-              id="settings-tts-voice"
-              onChange={(event) => onChange({ ...tts, voiceId: event.target.value })}
-              value={tts.voiceId}
-            >
-              {BROWSER_VOICE_GROUPS.map(({ language, voices: groupVoices }) => (
-                <optgroup key={language} label={languageLabel(language)}>
-                  {groupVoices.map((voice) => (
-                    <option key={voice.id} value={voice.id}>
-                      {voice.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+          {/* P6-T06 (ADR-55): on Kokoro each character speaks with their own voice, so the one
+              choice here would change nobody's — it is made per character, under Character. */}
+          <p className="field-hint">Each character speaks with their own voice: choose it under Character, above.</p>
         </>
       )}
 

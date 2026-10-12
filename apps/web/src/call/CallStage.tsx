@@ -29,7 +29,7 @@ import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/consent';
 import { ConsentScreen } from '../consent/ConsentScreen';
 import type { AudioOutputHandle } from '@latentpresence/providers';
-import { AVATAR, AVATAR_DESCRIPTOR } from './character-asset';
+import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from './character-asset';
 import { IdleDirector } from './idle';
 import { BASE_CLIP_URLS } from './clips';
 import { computePixelRatio } from './pixel-ratio';
@@ -110,6 +110,9 @@ export interface CallStageProps {
   readonly displays?: Displays | undefined;
   /** Whether she is resting (P6-T04, ADR-53), read every frame; omitted or null, she never does. */
   readonly rest?: { resting(): boolean } | null;
+  /** The body to load and its consent entry (P6-T06, ADR-55: each character's pack names its own); omitted, the placeholder. */
+  readonly avatar?: AssetDownload;
+  readonly avatarDescriptor?: ModelDescriptor;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -142,6 +145,8 @@ export function CallStage({
   listening = null,
   displays = EMPTY_DISPLAYS,
   rest = null,
+  avatar: asset = AVATAR,
+  avatarDescriptor = AVATAR_DESCRIPTOR,
   createRenderer = defaultCreateRenderer,
   fetchModel = cachedModelFetch,
 }: CallStageProps): ReactElement {
@@ -165,7 +170,7 @@ export function CallStage({
   // A previously granted descriptor skips the panel entirely — read once, not watched:
   // consent granted mid-session (there is no UI for that here) would not retroactively
   // start a fetch this render already decided against.
-  const [phase, setPhase] = useState<CharacterPhase>(() => (consent.has([AVATAR_DESCRIPTOR]) ? 'loading' : 'consent'));
+  const [phase, setPhase] = useState<CharacterPhase>(() => (consent.has([avatarDescriptor]) ? 'loading' : 'consent'));
   const [status, setStatus] = useState('');
   const [mounted, setMounted] = useState(false);
 
@@ -356,11 +361,11 @@ export function CallStage({
       const avatar = rendererRef.current;
       if (avatar === null) return;
       try {
-        const bytes = await fetchModel(AVATAR.downloadUrl, AVATAR_DESCRIPTOR);
+        const bytes = await fetchModel(asset.downloadUrl, avatarDescriptor);
         if (cancelled) return;
         const blobUrl = URL.createObjectURL(new Blob([bytes as BlobPart]));
         try {
-          await avatar.loadCharacter({ id: 'placeholder', url: blobUrl, format: 'vrm', licence: AVATAR.licence, attribution: AVATAR.author });
+          await avatar.loadCharacter({ id: 'placeholder', url: blobUrl, format: 'vrm', licence: asset.licence, attribution: asset.author });
         } finally {
           URL.revokeObjectURL(blobUrl);
         }
@@ -390,7 +395,7 @@ export function CallStage({
     return () => {
       cancelled = true;
     };
-  }, [mounted, phase, fetchModel, machine]);
+  }, [mounted, phase, fetchModel, machine, asset, avatarDescriptor]);
 
   // Follows `voice`: taps its output node for lip sync while there is one, and shuts the
   // mouth again — every viseme to 0 — the moment there is not (decision 5).
@@ -413,7 +418,7 @@ export function CallStage({
   }, [voice]);
 
   function agree(): void {
-    consent.grant([AVATAR_DESCRIPTOR]);
+    consent.grant([avatarDescriptor]);
     setPhase('loading');
   }
 
@@ -433,7 +438,7 @@ export function CallStage({
           <ConsentScreen
             agreeLabel="Show the character"
             cancelLabel="Not now"
-            descriptors={[AVATAR_DESCRIPTOR]}
+            descriptors={[avatarDescriptor]}
             heading="This will download the character"
             intro="This comes from GitHub to this computer. It stays in this browser — nothing is sent anywhere."
             onAgree={agree}

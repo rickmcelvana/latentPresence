@@ -47,8 +47,9 @@ import { MemoryPanel } from '../memory/MemoryPanel';
 import { PlansPanel } from '../plan/PlansPanel';
 import { InnerPanel } from '../inner/InnerPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
-import { loadSettings, type Settings } from '../settings/settings';
-import { defaultPersona } from '../persona/default-persona';
+import { loadSettings, saveSettings, type Settings } from '../settings/settings';
+import { DEFAULT_CHARACTER_ID, PACKS, packFor, type CharacterPack } from '../characters/packs';
+import { withCharacterVoice } from '../characters/voice';
 import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { latestCitedSources, pickPlan, planToWhiteboard, sourcesToScreen } from '../call/displays';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
@@ -62,8 +63,8 @@ import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments
 import { hostTimers } from './host-timers';
 import { PermissionPrompt } from './PermissionPrompt';
 
-/** The character's name comes from the persona file now (P1-T12), not a constant. */
-export const CHAT_CHARACTER_NAME = defaultPersona.name;
+/** Alice's name, the default character's (P1-T12); the page itself reads the active pack's persona (P6-T06). */
+export const CHAT_CHARACTER_NAME = packFor(DEFAULT_CHARACTER_ID).persona.name;
 /**
  * One session per visit (P4-T04b): memory recall leaves out the asking session, because the
  * history already carries it — so a fixed id would hide every earlier visit from her.
@@ -207,6 +208,16 @@ export function ChatPage({
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
+  // P6-T06 (ADR-55): who she is this visit. Read once; a switch saves it and remounts the room below.
+  const [characterId, setCharacterId] = useState(() => settings.character);
+  const pack = packFor(characterId);
+  const switchCharacter = useCallback(
+    (id: string) => {
+      saveSettings({ ...loadSettings(deps.storage), character: id }, deps.storage);
+      setCharacterId(id);
+    },
+    [deps.storage],
+  );
   const { llm, companionUrl } = settings;
 
   if (llm.endpoint === null || llm.modelId === null) {
@@ -224,6 +235,7 @@ export function ChatPage({
 
   return (
     <ConfiguredChatPage
+      key={pack.persona.id}
       baseUrl={llm.baseUrl}
       buildProvider={buildProvider}
       camera={camera}
@@ -237,6 +249,8 @@ export function ChatPage({
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
+      onSwitch={switchCharacter}
+      pack={pack}
       settings={settings}
       temperature={llm.temperature}
     />
@@ -251,6 +265,10 @@ interface ConfiguredChatPageProps {
   readonly temperature: number | null;
   readonly companionUrl: string;
   readonly settings: Settings;
+  /** P6-T06 (ADR-55): who this room is for, and how to change that. The room is keyed by the pack's id,
+   * so a switch mounts a new one: a new session, with everything below built for the new character. */
+  readonly pack: CharacterPack;
+  readonly onSwitch: (id: string) => void;
   readonly buildProvider: (options: ChatLlmOptions) => LLMProvider;
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
   readonly camera?: UseUserCameraDeps | undefined;
@@ -269,6 +287,8 @@ function ConfiguredChatPage({
   temperature,
   companionUrl,
   settings,
+  pack,
+  onSwitch,
   buildProvider,
   createRenderer,
   camera: cameraDeps,
@@ -304,7 +324,7 @@ function ConfiguredChatPage({
     const grants = settingsToolGrants(deps.storage);
     const builtMachine = new ConversationMachine({
       sessionId: builtSessionId,
-      characterId: defaultPersona.id,
+      characterId: pack.persona.id,
       // P1-T15. Without this the machine sticks on `interrupted` after a barge-in or a
       // typed Stop — see `host-timers.ts`, which is a comment about exactly this trap.
       scheduler: hostTimers(),
@@ -312,7 +332,7 @@ function ConfiguredChatPage({
     // P3-T09: one affect engine for the page, fed by the same bus — `[emote:x]` tags now,
     // the user's affect from P3-T07. It starts at her baseline and takes the saved mood, aged by
     // the time away, once the store answers (P4-T06, the effect below).
-    const builtAffect = attachAffect(builtMachine, { characterId: defaultPersona.id });
+    const builtAffect = attachAffect(builtMachine, { characterId: pack.persona.id });
     // P3-T07: how the user seems, fused from their words, voice and face, on the same bus —
     // what it publishes the engine above takes in by empathy, and the prompt says in a line.
     const builtUserAffect = attachUserAffect(builtMachine, { sessionId: builtSessionId });
@@ -326,7 +346,7 @@ function ConfiguredChatPage({
     // count every message twice. Whoever creates it owns its subscription.
     const attached = attachHistory(builtMachine, {
       system: (turn) =>
-        renderSystemPrompt(defaultPersona, {
+        renderSystemPrompt(pack.persona, {
           now: new Date(),
           userName: null,
           affect: builtAffect.state(),
@@ -351,7 +371,7 @@ function ConfiguredChatPage({
     const builtInner = attachInnerMonologue(builtMachine, {
       llm: builtProvider,
       modelId,
-      character: { name: defaultPersona.name, summary: defaultPersona.summary },
+      character: { name: pack.persona.name, summary: pack.persona.summary },
       onError: (error) => console.warn(`thoughts: ${error.message}`),
     });
     const thinkingProvider = withThinking(builtProvider, (text) => builtInner.hear(text));
@@ -445,7 +465,7 @@ function ConfiguredChatPage({
     }).then((choice) => {
       if (!live || choice === null) return;
       const warn = (error: Error, stage: string): void => console.warn(`memory (${stage}, ${choice.kind}): ${error.message}`);
-      const kernel = new MemoryKernel({ store: choice.store, characterId: defaultPersona.id, extractor: { llm: rawLlm, modelId }, onError: warn });
+      const kernel = new MemoryKernel({ store: choice.store, characterId: pack.persona.id, extractor: { llm: rawLlm, modelId }, onError: warn });
       attached = attachMemory(machine, { kernel, sessionId, userAffect: () => userAffect.fusion.last(), onError: (error) => warn(error, 'recall') });
       memoryHolder.current = attached;
       setMemory(attached);
@@ -454,11 +474,11 @@ function ConfiguredChatPage({
       // P4-T06 (ADR-40): her notes, and her mood as she left it, aged by the time away — saved
       // after every answer, and once more as the page goes (a best effort; a closing tab may
       // not wait for it).
-      const notes = new SelfNotes({ store: choice.store, characterId: defaultPersona.id });
+      const notes = new SelfNotes({ store: choice.store, characterId: pack.persona.id });
       const notesLoaded = notes.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'notes'));
       selfHolder.notes = notes;
       // P4-T07 (ADR-41): plans in the same store; follow-ups are facts, so they go through the kernel.
-      const builtPlans = new Plans({ store: choice.store, characterId: defaultPersona.id, followUps: kernel });
+      const builtPlans = new Plans({ store: choice.store, characterId: pack.persona.id, followUps: kernel });
       const plansLoaded = builtPlans.load().catch((error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'plans'));
       selfHolder.plans = builtPlans;
       setPlans(builtPlans);
@@ -467,7 +487,7 @@ function ConfiguredChatPage({
       window.addEventListener('pagehide', saveMood);
       // P6-T02 (ADR-51): when they last talked, then — with her notes, plans and facts in — whether
       // she speaks first. A store that cannot say leaves both out.
-      const last = lastConversation(choice.store, defaultPersona.id, sessionId).catch((error: unknown) => {
+      const last = lastConversation(choice.store, pack.persona.id, sessionId).catch((error: unknown) => {
         warn(error instanceof Error ? error : new Error(String(error)), 'last conversation');
         return null;
       });
@@ -528,7 +548,7 @@ function ConfiguredChatPage({
       selfHolder.tools = [];
       timeHolder.since = null;
     };
-  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
+  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, pack.persona.id, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.
@@ -634,6 +654,9 @@ function ConfiguredChatPage({
 
   // Typed replies spoken aloud (P2-T08). `speaker` is state for the stage's lip sync;
   // `speakerRef` is the same object for teardown, which must not wait on a render.
+  // Her voice (P6-T06, ADR-55): the settings the speaker and the voice panel get have this character's
+  // voice in them — the one saved for her on this engine, else her persona's, else the one in Voice.
+  const voiceSettings = useMemo(() => withCharacterVoice(settings, pack.persona), [settings, pack]);
   const [speak, setSpeak] = useState<SpeakPhase>('off');
   const [speaker, setSpeaker] = useState<SpeakerLike | null>(null);
   const [speakStatus, setSpeakStatus] = useState<string | null>(null);
@@ -812,7 +835,7 @@ function ConfiguredChatPage({
       setSpeak('starting');
       setSpeakStatus('Loading the voice…');
       try {
-        const started = await loader.start({ settings, deps, consent: deps.consent });
+        const started = await loader.start({ settings: voiceSettings, deps, consent: deps.consent });
         if (!aliveRef.current) {
           void started.stop();
           return;
@@ -828,7 +851,7 @@ function ConfiguredChatPage({
         setSpeakStatus(error instanceof Error ? error.message : String(error));
       }
     },
-    [affect, chat, deps, settings],
+    [affect, chat, deps, voiceSettings],
   );
 
   /** Back to text. `setVoice(null)` first: it stops an answer that is still speaking. */
@@ -854,14 +877,14 @@ function ConfiguredChatPage({
     if (speak !== 'off') return;
     setSpeakStatus(null);
     const loader = await loadSpeaker();
-    const models = loader.voiceModelsFor(settings);
+    const models = loader.voiceModelsFor(voiceSettings);
     if (deps.consent.has(models)) {
       await startSpeaking(loader);
     } else {
       setSpeakConsent({ loader, models });
       setSpeak('consent');
     }
-  }, [deps.consent, loadSpeaker, settings, speak, startSpeaking, stopSpeaking]);
+  }, [deps.consent, loadSpeaker, voiceSettings, speak, startSpeaking, stopSpeaking]);
 
   /** A call brings its own voice, and two would load Kokoro twice: speaking typed replies
    * ends when a call begins. */
@@ -933,6 +956,8 @@ function ConfiguredChatPage({
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
         <CallStage
           affect={stageAffect}
+          avatar={pack.avatar}
+          avatarDescriptor={pack.avatarDescriptor}
           consent={deps.consent}
           createRenderer={createRenderer}
           displays={displays}
@@ -945,7 +970,7 @@ function ConfiguredChatPage({
 
       {restingNow && (
         <p className="call-rest-indicator" role="status">
-          {CHAT_CHARACTER_NAME} is resting, sorting through what you have talked about
+          {pack.persona.name} is resting, sorting through what you have talked about
         </p>
       )}
 
@@ -953,13 +978,13 @@ function ConfiguredChatPage({
 
       <aside className={`call-drawer ${drawerOpen ? '' : 'call-drawer-closed'}`} hidden={!drawerOpen}>
         {drawerView === 'memory' ? (
-          <MemoryPanel characterName={CHAT_CHARACTER_NAME} memory={memory} subscribe={subscribe} where={memoryWhere} />
+          <MemoryPanel characterName={pack.persona.name} memory={memory} subscribe={subscribe} where={memoryWhere} />
         ) : drawerView === 'plans' ? (
-          <PlansPanel characterName={CHAT_CHARACTER_NAME} plans={plans} />
+          <PlansPanel characterName={pack.persona.name} plans={plans} />
         ) : drawerView === 'thoughts' ? (
-          <InnerPanel characterName={CHAT_CHARACTER_NAME} inner={inner} />
+          <InnerPanel characterName={pack.persona.name} inner={inner} />
         ) : (
-          <TranscriptPanel characterName={CHAT_CHARACTER_NAME} lines={lines} onClear={clear} sources={citationSource} />
+          <TranscriptPanel characterName={pack.persona.name} lines={lines} onClear={clear} sources={citationSource} />
         )}
       </aside>
 
@@ -998,7 +1023,7 @@ function ConfiguredChatPage({
               onActive={onVoiceActive}
               onCallStarted={onCallStarted}
               onEnd={onVoiceEnd}
-              settings={settings}
+              settings={voiceSettings}
               temperature={temperature}
               userAffect={userAffect}
               voiceStyle={affect.voiceStyle}
@@ -1030,7 +1055,7 @@ function ConfiguredChatPage({
             cancelLabel="Not now"
             descriptors={faceConsent.models}
             heading="Read your expression from the camera?"
-            intro={`${CHAT_CHARACTER_NAME} can watch your expression through your camera to tell how you seem. A model running in this browser reads each frame and drops it at once: no frame is saved or sent anywhere, and only a mood estimate is kept. It is off until you turn it on, and a light on your picture shows while it runs. Agreeing turns on the camera and downloads this model:`}
+            intro={`${pack.persona.name} can watch your expression through your camera to tell how you seem. A model running in this browser reads each frame and drops it at once: no frame is saved or sent anywhere, and only a mood estimate is kept. It is off until you turn it on, and a light on your picture shows while it runs. Agreeing turns on the camera and downloads this model:`}
             onAgree={() => {
               deps.consent.grant(faceConsent.models);
               beginFace(faceConsent.loader);
@@ -1072,7 +1097,7 @@ function ConfiguredChatPage({
       )}
 
       {/* After the docks it may sit above: the stylesheet lifts it clear of whichever is open. */}
-      <PermissionPrompt characterName={CHAT_CHARACTER_NAME} prompts={permissionPrompts} />
+      <PermissionPrompt characterName={pack.persona.name} prompts={permissionPrompts} />
 
       <div className="call-controls-bar">
         {!voiceOpen && (
@@ -1109,6 +1134,20 @@ function ConfiguredChatPage({
         >
           {speak === 'starting' ? 'Loading voice…' : 'Speak replies'}
         </button>
+        <select
+          aria-label="Talking to"
+          className="select call-character-select"
+          disabled={voiceOpen || busy}
+          onChange={(event) => onSwitch(event.target.value)}
+          title="Who you are talking to. Switching starts a new visit."
+          value={pack.persona.id}
+        >
+          {PACKS.map((candidate) => (
+            <option key={candidate.persona.id} value={candidate.persona.id}>
+              {candidate.persona.name}
+            </option>
+          ))}
+        </select>
         <button aria-pressed={drawerOpen && drawerView === 'transcript'} className="btn call-control-btn" onClick={() => toggleDrawerView('transcript')} type="button">
           Transcript
         </button>

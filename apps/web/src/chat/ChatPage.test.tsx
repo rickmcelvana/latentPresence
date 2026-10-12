@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { FakeAvatarRenderer, type Displays } from '@latentpresence/avatar';
-import { FakeMemoryStore, INNER_MARKER, replayFusion, type FusionRecording } from '@latentpresence/core';
+import { EXTRACTION_SYSTEM, FakeMemoryStore, INNER_MARKER, replayFusion, type FusionRecording } from '@latentpresence/core';
 import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
@@ -1277,5 +1277,259 @@ describe('ChatPage — her thoughts (P6-T05, ADR-54)', () => {
     await waitFor(() => expect(model.inner).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: 'Thoughts' }));
     expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+  });
+});
+
+/** Merges `extra` into the settings document `seedConfigured` wrote. */
+function seedSettings(storage: Storage, extra: Record<string, unknown>): void {
+  storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}'), ...extra }));
+}
+
+function savedCharacter(storage: Storage): unknown {
+  return (JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as { character?: unknown }).character;
+}
+
+/** `type`, for a page with the Memory view open: it has a search box of its own. */
+async function sayInRoom(text: string): Promise<void> {
+  const textbox = screen.getByPlaceholderText('Say something…');
+  fireEvent.change(textbox, { target: { value: text } });
+  fireEvent.keyDown(textbox, { key: 'Enter' });
+  await act(() => settle());
+}
+
+function talkingTo(): HTMLSelectElement {
+  return screen.getByLabelText('Talking to') as HTMLSelectElement;
+}
+
+/** Everything a drawer shows a person: its text and the values in its fields (facts are inputs). */
+function drawerShows(container: HTMLElement): string {
+  const drawer = container.querySelector('.call-drawer');
+  const values = [...(drawer?.querySelectorAll('input, textarea') ?? [])].map((field) => (field as HTMLInputElement).value);
+  return [drawer?.textContent ?? '', ...values].join('\n');
+}
+
+/**
+ * A model that answers chat with a line, and reads facts out of what was said (the memory
+ * extractor's system prompt is `EXTRACTION_SYSTEM`): "Mira" is a sister, "cello" is played.
+ */
+function rememberingModel(): { build: (options: ChatLlmOptions) => LLMProvider; chats: LlmRequest[] } {
+  const chats: LlmRequest[] = [];
+  const build = (): LLMProvider => ({
+    id: 'remembering',
+    async listModels(): Promise<LlmModel[]> {
+      return [];
+    },
+    async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+      if (systemOf(request) === EXTRACTION_SYSTEM) {
+        const said = request.messages.find((message) => message.role === 'user')?.content ?? '';
+        const facts = [
+          ...(said.includes('Mira') ? [{ subject: 'sister', predicate: 'name', object: 'Mira', confidence: 0.9, validFrom: null, replaces: null }] : []),
+          ...(said.includes('cello') ? [{ subject: 'user', predicate: 'plays', object: 'cello', confidence: 0.9, validFrom: null, replaces: null }] : []),
+        ];
+        yield { type: 'text-delta', text: JSON.stringify({ facts, ended: [] }) };
+      } else {
+        chats.push(request);
+        yield { type: 'text-delta', text: 'I see.' };
+      }
+      yield { type: 'finish', reason: 'stop', usage: null };
+    },
+  });
+  return { build, chats };
+}
+
+/** A promise that waits until `release()` is called. */
+function openGate(): { promise: Promise<void>; release: () => void } {
+  let open: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, release: () => open?.() };
+}
+
+/** A speaker loader that records the voice and speed the page asked for, and otherwise is `fakeSpeaker`'s. */
+function recordingSpeaker(): { loadSpeaker: () => Promise<SpeakerLoader>; started: { voiceId: string; speed: number }[] } {
+  const speaker = fakeSpeaker();
+  const started: { voiceId: string; speed: number }[] = [];
+  const loadSpeaker = async (): Promise<SpeakerLoader> => {
+    const loader = await speaker.loadSpeaker();
+    return {
+      voiceModelsFor: (settings) => loader.voiceModelsFor(settings),
+      start: (options) => {
+        started.push({ voiceId: options.settings.tts.voiceId, speed: options.settings.tts.speed });
+        return loader.start(options);
+      },
+    };
+  };
+  return { loadSpeaker, started };
+}
+
+describe('ChatPage — characters (P6-T06, ADR-55)', () => {
+  it("keeps two characters' memories apart in one store: Alice's is hers, Theo's is his, and each comes back as it was", async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    const model = rememberingModel();
+    let chosen = 0;
+    const chooseMemory = async () => {
+      chosen += 1;
+      return { store, kind: 'browser' as const, reason: 'a test store' };
+    };
+    const { container } = render(<ChatPage buildProvider={model.build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const hasFact = async (characterId: string, object: string): Promise<boolean> => (await store.currentFacts(characterId)).some((fact) => fact.object === object);
+    /** A new visit has chosen its store and read it: say nothing before that. */
+    const arrived = async (visits: number): Promise<void> => {
+      await waitFor(() => expect(chosen).toBe(visits));
+      await waitFor(() => expect(store.calls.filter((call) => call === 'currentFacts').length).toBeGreaterThanOrEqual(visits));
+      await act(() => settle());
+    };
+    const switchTo = async (id: string): Promise<void> => {
+      await waitFor(() => expect(talkingTo().disabled).toBe(false));
+      fireEvent.change(talkingTo(), { target: { value: id } });
+    };
+    await arrived(1);
+
+    // 1. As Alice, they tell her about their sister.
+    expect(talkingTo().value).toBe('alice');
+    await sayInRoom('my sister is called Mira');
+    await waitFor(async () => expect(await hasFact('alice', 'Mira')).toBe(true));
+    expect(systemOf(model.chats[0])).toContain('You are Alice.');
+
+    // 2. Theo has none of it: not in his prompt, not in his store, not in his Memory view.
+    await switchTo('theo');
+    expect(savedCharacter(storage)).toBe('theo');
+    await arrived(2);
+    expect(talkingTo().value).toBe('theo');
+    fireEvent.click(screen.getByRole('button', { name: 'Memory' }));
+    await waitFor(() => expect(drawerShows(container)).toContain('Kept in a test store'));
+    await act(() => settle());
+    expect(drawerShows(container)).not.toContain('Mira');
+    expect(await store.currentFacts('theo')).toEqual([]);
+    await sayInRoom('hello');
+    await waitFor(() => expect(model.chats).toHaveLength(2));
+    expect(systemOf(model.chats[1])).toContain('You are Theo.');
+    expect(systemOf(model.chats[1])).not.toContain('Mira');
+    expect(systemOf(model.chats[1])).not.toContain('You are Alice.');
+
+    // 3. What Theo is told is his.
+    await sayInRoom('I play the cello');
+    await waitFor(async () => expect(await hasFact('theo', 'cello')).toBe(true));
+
+    // 4. Back to Alice: hers, and not his.
+    await switchTo('alice');
+    expect(savedCharacter(storage)).toBe('alice');
+    await arrived(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Memory' }));
+    await waitFor(() => expect(drawerShows(container)).toContain('Mira'));
+    expect(drawerShows(container)).not.toContain('cello');
+    await sayInRoom('hello again');
+    await waitFor(() => expect(model.chats).toHaveLength(4));
+    expect(systemOf(model.chats[3])).toContain('You are Alice.');
+    expect(systemOf(model.chats[3])).toContain('Mira');
+    expect(systemOf(model.chats[3])).not.toContain('cello');
+    expect(await hasFact('alice', 'cello')).toBe(false);
+    expect(await hasFact('theo', 'Mira')).toBe(false);
+    expect((await store.currentFacts('alice')).map((fact) => fact.characterId)).toEqual(['alice']);
+    expect((await store.currentFacts('theo')).map((fact) => fact.characterId)).toEqual(['theo']);
+    // What Theo was told went down under his name.
+    expect(new Set(store.rows.episodes.filter(({ episode }) => episode.text === 'I play the cello').map(({ episode }) => episode.characterId))).toEqual(new Set(['theo']));
+  });
+
+  it('opens as the character saved in Settings, and as Alice when that is one it does not have', async () => {
+    for (const [saved, name] of [
+      ['theo', 'Theo'],
+      ['nobody', 'Alice'],
+    ] as const) {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      seedSettings(storage, { character: saved });
+      const seen: LlmRequest[] = [];
+      const provider = (): LLMProvider => ({
+        id: 'fake',
+        async listModels(): Promise<LlmModel[]> {
+          return [];
+        },
+        async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+          seen.push(request);
+          yield { type: 'text-delta', text: 'Hi.' };
+          yield { type: 'finish', reason: 'stop', usage: null };
+        },
+      });
+      const view = render(<ChatPage buildProvider={provider} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+      expect([...talkingTo().options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
+      expect(talkingTo().value).toBe(name.toLowerCase());
+      await sayInRoom('hello');
+      await waitFor(() => expect(seen).toHaveLength(1));
+      expect(systemOf(seen[0])).toContain(`You are ${name}.`);
+      view.unmount();
+    }
+  });
+
+  it('cannot be switched while an answer is streaming, and can once it has finished', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const gate = openGate();
+    const script: LlmStreamChunk[] = [
+      { type: 'text-delta', text: 'One moment. ' },
+      { type: 'text-delta', text: 'There.' },
+      { type: 'finish', reason: 'stop', usage: null },
+    ];
+    render(<ChatPage buildProvider={scriptedProvider(script, { promise: gate.promise, after: 1 })} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    expect(talkingTo().disabled).toBe(false);
+    await sayInRoom('hi');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop' })).toBeTruthy());
+    expect(talkingTo().disabled).toBe(true);
+
+    gate.release();
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull());
+    await waitFor(() => expect(talkingTo().disabled).toBe(false));
+  });
+
+  it('cannot be switched while a voice call is open', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage buildProvider={scriptedProvider([])} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    expect(talkingTo().disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await act(() => settle());
+    expect(talkingTo().disabled).toBe(true);
+  });
+
+  it("speaks in the character's own voice: the one saved for Theo on Kokoro, else his persona's", async () => {
+    for (const [saved, voiceId, speed] of [
+      [{ theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 } } }, 'bm_george', 0.9],
+      [{ theo: { voice: null } }, 'am_michael', 1],
+      [{ alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 } } }, 'am_michael', 1],
+    ] as const) {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      seedSettings(storage, { character: 'theo', characters: saved });
+      const deps = testDeps({ storage });
+      deps.consent.grant([kokoroModel('fp32')]);
+      const speaker = recordingSpeaker();
+      const view = render(<ChatPage buildProvider={scriptedProvider([])} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={deps} loadSpeaker={speaker.loadSpeaker} />);
+      fireEvent.click(speakButton());
+      await waitFor(() => expect(speakButton().getAttribute('aria-pressed')).toBe('true'));
+      expect(speaker.started).toEqual([{ voiceId, speed }]);
+      view.unmount();
+    }
+  });
+
+  it("speaks as Alice with her persona's voice when nothing is saved, and with her saved one when something is", async () => {
+    for (const [saved, voiceId] of [
+      [{}, 'af_heart'],
+      [{ alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 } } }, 'bf_emma'],
+    ] as const) {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      seedSettings(storage, { characters: saved });
+      const deps = testDeps({ storage });
+      deps.consent.grant([kokoroModel('fp32')]);
+      const speaker = recordingSpeaker();
+      const view = render(<ChatPage buildProvider={scriptedProvider([])} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={deps} loadSpeaker={speaker.loadSpeaker} />);
+      fireEvent.click(speakButton());
+      await waitFor(() => expect(speakButton().getAttribute('aria-pressed')).toBe('true'));
+      expect(speaker.started.map((call) => call.voiceId)).toEqual([voiceId]);
+      view.unmount();
+    }
   });
 });

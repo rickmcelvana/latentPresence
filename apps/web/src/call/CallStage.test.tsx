@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationMachine } from '@latentpresence/core';
-import type { ConversationEvent, ConversationState, UserAffect } from '@latentpresence/protocol';
+import type { ConversationEvent, ConversationState, ModelDescriptor, UserAffect } from '@latentpresence/protocol';
 import { FakeAvatarRenderer, ListeningReactor, type AffectInputs, type Displays, type LifePose } from '@latentpresence/avatar';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
-import { AVATAR_DESCRIPTOR } from './character-asset';
+import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from './character-asset';
 import { CallStage, type CallStageRenderer } from './CallStage';
 
 afterEach(cleanup);
@@ -91,6 +91,25 @@ describe('CallStage — consent gates the fetch', () => {
     await waitFor(() => expect(fetchModel).toHaveBeenCalledTimes(1));
     await settle();
     expect(renderer.character?.url).toBe('blob:test-character');
+  });
+
+  it("loads the body a character's pack names, and asks consent for that one (P6-T06)", async () => {
+    const other: AssetDownload = { ...AVATAR, label: 'Theo', downloadUrl: 'https://example.test/theo.vrm', bytes: 42 };
+    const otherDescriptor = { ...AVATAR_DESCRIPTOR, id: 'example/theo.vrm', label: 'Theo', sizeBytes: 42 };
+    const consent = new ModelConsent(memoryStorage());
+    // The placeholder is agreed to already; a different body is a different agreement.
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor) => new Uint8Array([1, 2, 3]));
+    render(
+      <CallStage avatar={other} avatarDescriptor={otherDescriptor} voice={null} consent={consent} createRenderer={() => new FakeAvatarRenderer()} fetchModel={fetchModel} machine={machine()} />,
+    );
+    await settle();
+    expect(fetchModel).not.toHaveBeenCalled();
+    expect(screen.getByText('Theo')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show the character' }));
+    await waitFor(() => expect(fetchModel).toHaveBeenCalledWith('https://example.test/theo.vrm', otherDescriptor));
+    expect(consent.has([otherDescriptor])).toBe(true);
   });
 
   it('"Not now" leaves the stage empty with a button, and fetches nothing', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
+import { CharacterSection } from './CharacterSection';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { InitiativeSection } from './InitiativeSection';
@@ -12,7 +13,7 @@ import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
 
 /**
- * The settings content (P1-T10): Language model, Voice, Hearing, Memory, Speaking up and Tools, plus the Companion
+ * The settings content (P1-T10): Language model, Character, Voice, Hearing, Memory, Speaking up and Tools, plus the Companion
  * field the Language model section shows when it needs one. A bare component rather than
  * a page, so Phase 2 can mount it inside `.drawer` without dragging a page layout along.
  *
@@ -48,6 +49,14 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
         llm={settings.llm}
         onChangeCompanionUrl={(companionUrl) => setSettings((prev) => ({ ...prev, companionUrl }))}
         onChangeLlm={updateLlm}
+      />
+
+      <CharacterSection
+        character={settings.character}
+        characters={settings.characters}
+        onSelect={(character) => setSettings((prev) => ({ ...prev, character }))}
+        onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { voice } } }))}
+        tts={settings.tts}
       />
 
       <VoiceSection deps={deps} onChange={(tts: TtsSettings) => setSettings((prev) => ({ ...prev, tts }))} tts={settings.tts} />

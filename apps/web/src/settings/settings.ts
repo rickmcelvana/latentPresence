@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { McpTransportSchema } from '@latentpresence/protocol';
 import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
+import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
 
 /**
  * The settings document (P1-T10).
@@ -145,6 +146,22 @@ export type DocumentsSettings = z.infer<typeof DocumentsSettingsSchema>;
 export const InitiativeSettingSchema = z.enum(['off', 'rare', 'normal']);
 export type InitiativeSetting = z.infer<typeof InitiativeSettingSchema>;
 
+/**
+ * One character's own voice (P6-T06, ADR-55): the engine it was chosen for, and the voice and
+ * speed on it. Used only while that engine is the one in use (`characterVoice`). `null` is no
+ * choice: the persona's voice on Kokoro, the one in Settings → Voice on any other engine.
+ */
+export const CharacterSettingsSchema = z.object({
+  voice: z
+    .object({
+      kind: z.enum(['kokoro-browser', 'openai-compatible']),
+      voiceId: z.string().min(1),
+      speed: SpeedSchema,
+    })
+    .nullable(),
+});
+export type CharacterSettings = z.infer<typeof CharacterSettingsSchema>;
+
 export const SettingsSchema = z.object({
   version: z.literal(1),
   companionUrl: z.string(),
@@ -155,6 +172,9 @@ export const SettingsSchema = z.object({
   documents: DocumentsSettingsSchema.default({ search: false }),
   /** P6-T03, ADR-52. */
   initiative: InitiativeSettingSchema.default('normal'),
+  /** P6-T06, ADR-55: the active character's id (an unknown one is Alice's) and each one's voice. Defaulted. */
+  character: z.string().min(1).default(DEFAULT_CHARACTER_ID),
+  characters: z.record(z.string(), CharacterSettingsSchema).default({}),
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
@@ -170,6 +190,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tools: { servers: [], grants: {}, companion: false, homeArea: null },
   documents: { search: false },
   initiative: 'normal',
+  character: DEFAULT_CHARACTER_ID,
+  characters: {},
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
@@ -193,14 +215,32 @@ export function mcpKeyRef(serverId: string): string {
   return `mcp:${serverId}`;
 }
 
+function hasCharacters(stored: unknown): boolean {
+  return typeof stored === 'object' && stored !== null && 'characters' in stored;
+}
+
+/**
+ * A document saved before characters (P6-T06, ADR-55) chose its Kokoro voice for the one
+ * character there was. Written as hers on first load, so Alice keeps it and Theo gets his own.
+ * A voice that is already Alice's own needs no saved choice; another engine is one voice for
+ * all, as it still is.
+ */
+function keepVoiceForAlice(settings: Settings): Settings {
+  const { tts } = settings;
+  if (tts.kind !== 'kokoro-browser' || tts.voiceId === packFor(DEFAULT_CHARACTER_ID).persona.voice.voiceId) return settings;
+  return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
+}
+
 /** Load the settings document, falling back to defaults on missing or corrupt JSON —
  * never throws, so a wiped or hand-edited localStorage cannot crash the boot screen. */
 export function loadSettings(storage: Pick<Storage, 'getItem'> = window.localStorage): Settings {
   try {
     const raw = storage.getItem(SETTINGS_STORAGE_KEY);
     if (raw === null) return DEFAULT_SETTINGS;
-    const parsed = SettingsSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : DEFAULT_SETTINGS;
+    const stored: unknown = JSON.parse(raw);
+    const parsed = SettingsSchema.safeParse(stored);
+    if (!parsed.success) return DEFAULT_SETTINGS;
+    return hasCharacters(stored) ? parsed.data : keepVoiceForAlice(parsed.data);
   } catch {
     return DEFAULT_SETTINGS;
   }
