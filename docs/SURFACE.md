@@ -2374,3 +2374,18 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
 - **HA Core 2026.10.1 (Home Assistant OS 18.3, Raspberry Pi) — Rick, live, 2026-10-11 (R-34,
   D-45):** the same entry (url, long-lived token) connected and worked by voice with the card;
   the 2026.10 admin requirement did not get in the way of his own (owner) token.
+
+## Thinking models' reasoning through Ollama's OpenAI endpoint — measured 2026-10-12 (P6-T05)
+
+- **Ollama 0.34.0**, `/v1/chat/completions`, `stream: true`, no reasoning option: a thinking model
+  streams its reasoning in **`choices[0].delta.reasoning`** and its answer in `delta.content`;
+  none of the reasoning appears in `content` and no `<think>` tags are sent. glm-5.2:cloud 255
+  reasoning deltas then 37 content; deepseek-r1:8b 176 / 41; qwen3.5:9b 347 reasoning and **no
+  content at all within `max_tokens: 400`** (it reasons for 3,000–13,000 characters).
+- **`@ai-sdk/openai-compatible` 3.0.47** reads `delta.reasoning_content ?? delta.reasoning`
+  (and the same on a whole message) into its reasoning part, which our mapping makes
+  `reasoning-delta`. Sending history, it would put an assistant message's reasoning in
+  `reasoning_content` — ours never carries any.
+- The reasoning reads as planning in another voice ("**Analyze the Input:** … Persona: Alice",
+  "Okay, the user is feeling down…"), not as the character's thoughts.
+

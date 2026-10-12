@@ -788,3 +788,9 @@ Did: ADR-53 accepted. R-38 passed (D-48: the hour check-in, two grounded thought
 Left: R-37, R-27 retry (tonight), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T05 inner monologue (main).
 Decisions: ADR-53 accepted; ADR-51 amended (the reload rule covers her own unanswered opener).
+
+## 2026-10-12 claude — R-32 passed; P6-T05 inner monologue
+Did: R-32 passed (D-50). P6-T05: ADR-54 proposed; measured first that Ollama 0.34 streams reasoning in `delta.reasoning`, apart from the answer, and the AI SDK maps it (SURFACE). Core `inner/`: `withThinking` (reasoning and inline `<think>` off every chat answer), `attachInnerMonologue` (a moment per settled answer, never on the bus; lines asked of the bare model, reasoning off, only while Thoughts is open; parsed by rule). `/chat` drawer gains Thoughts. `pnpm live:inner`: glm-5.2 20/20 after "they" and the small-model parser fixes; deepseek-r1:8b 7/10, qwen3.5:9b 9/10 (`docs/runs/P6-T05-inner.md`). Page and core tests keep reasoning and lines out of the voice, transcript, bus and next request (mutation-checked). A session crash mid-task lost nothing; the stopped gate and small-model runs were rerun.
+Left: R-40 (new), R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7. The Thoughts view was not looked at in the pane (needs a configured `/chat`) — R-40.
+Next: P6-T06 multi-character (owner sub) — needs a brief first.
+Decisions: ADR-54 proposed — needs Rick's accept.

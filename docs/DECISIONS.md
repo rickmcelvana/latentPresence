@@ -56,6 +56,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-51 | Time awareness: core phrases time the way people do (calendar days and parts of the day, never a count of hours), her prompt says when they last talked and how it ended, follow-ups say how late they are; **she speaks first** when they come back after an hour or more — a hidden cue turn, never shown or stored, and a new `assistant.opening` event that moves the machine to `thinking` | accepted | 2026-10-12 |
 | ADR-52 | Proactive check-ins: a dial (off, rare, normal) and a budget per rolling 24 h (rare 2, normal 6, the opener included), a minimum gap, one unanswered at a time, never while they speak, type or wait on her; grounded in a due follow-up or, at normal and by day, a plan or a fact not raised in a day; the ledger kept in a `_initiative` system block so a reload does not reset it | accepted | 2026-10-12 |
 | ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
+| ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | proposed | 2026-10-12 |
 
 ---
 
@@ -1991,3 +1992,57 @@ facts at a fifth of the first half's rate. Recorded and replayed in `long-replay
 (mutation-checked: a merge that expires nothing fails four of five). With real extraction and
 sleep (glm-5.3-flash, 16 merge requests), the model answered "nothing to merge" every time — no
 false merges of "likes Montreal" into "lives in Montreal". `docs/runs/P6-T04-sleep.md`.
+
+## ADR-54 Inner monologue: her thinking is taken off the answer, and put into her own words only while someone looks (proposed 2026-10-12)
+
+**Context.** P6-T05: a private reasoning channel (model thinking or a separate short call)
+summarised into a peekable panel, never spoken; done when toggling the panel shows current private
+notes and TTS never includes them. `LlmStreamChunk` has had `reasoning-delta` since P1-T02, and
+nothing that shows or speaks an answer reads it — but nothing kept it either.
+
+**Measured first (2026-10-12).** Ollama 0.34's OpenAI-compatible stream puts a thinking model's
+reasoning in `delta.reasoning` and none of it in `content` (glm-5.2:cloud 255 reasoning deltas to
+37 content; deepseek-r1:8b 176/41; qwen3.5:9b 347 and, at 400 tokens, no content at all).
+`@ai-sdk/openai-compatible` 3.0.47 reads `reasoning_content ?? reasoning` into `reasoning-delta`.
+The reasoning itself is planning in another voice — "**Analyze the Input:** User had a bad
+meeting… Persona: Alice" — not something to show as hers.
+
+**Decisions.**
+
+1. **`withThinking(llm, sink)`** (core) wraps the provider under the chat's tools and opener:
+   reasoning goes to the sink as it streams, and `<think>…</think>` written into the text (a
+   server that does not split it) is moved to `reasoning-delta` before the tool loop, the tag
+   filter or the sentence chunker see it — so "reasoning is never text" holds for both. Extraction,
+   sleep and the summaries keep the bare provider.
+2. **A moment per settled answer** (`attachInnerMonologue`, core): what they said (null when she
+   spoke first), what she said, the reasoning (clipped to 6,000 characters). The newest eight are
+   kept, in the page only: **never dispatched on the bus**, so the voice, the transcript, the
+   history and memory — which all read the bus — cannot carry them. A reload forgets them.
+3. **Her lines are written after the fact, by a short call** — the page's model, reasoning off,
+   no tools (as ADR-37's side calls), told who she is (the persona's summary), what was said and
+   the reasoning if any: one to three first-person lines about what she noticed, is unsure of, or
+   means to do; "they", never "he", "she" or "the user"; nothing invented; not her answer again.
+   Parsed by rule: bullets, quotes and a leading "Okay," off; meta talk and six-word repeats of her
+   answer dropped; a paragraph taken a sentence at a time; three at most. With no reasoning (a
+   model that does not think) the lines come from the exchange alone.
+4. **Only while someone looks.** The call is made for each new moment while the Thoughts view of
+   the drawer is open, and for the newest moment when it opens; closed, nothing is asked. The
+   panel shows her lines in italics and, folded beneath, what the model reasoned.
+
+**Rejected.** *Showing the raw reasoning as her thoughts* — it is about "the user" and "the
+persona". *A summary after every answer* — a model call per answer nobody reads. *Asking for the
+thoughts inside the answer* (a tagged aside the chunker strips) — one slip and the voice reads her
+private thoughts aloud, and it changes the answer. *Storing them* — "private" should mean she does
+not keep a diary the person did not ask for; memory is for what they told her.
+
+**Measured in the build (2026-10-12).** `pnpm live:inner`, five moments (a bad meeting, slow
+Helsinki dates, a brother they won't discuss, "do you remember the drone?", an opener), with and
+without the model's reasoning, checked by rule. First run: glm-5.2 10/10 but "he" for Rick in 3;
+deepseek-r1:8b and qwen3.5:9b wrote paragraphs, "Okay, …" in the reasoning's voice, and qwen once
+repeated its answer — so the parser takes those off and the request ends `they are "they"`. Final:
+**glm-5.2 20 of 20** over two runs, "they" throughout; the small models in
+`docs/runs/P6-T05-inner.md`. In tests, a spoken answer that thought ("SECRET-PLAN") and wrote a
+`<think>` ("HIDDEN-THOUGHT") reached the voice as "Long day?" and "Sit down a minute." and nothing
+else; neither, nor her line, is on the bus, in the transcript or in the next request
+(mutation-checked: without the tap, without the inline split, or asking with the panel closed,
+the tests fail).

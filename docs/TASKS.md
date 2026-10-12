@@ -212,29 +212,22 @@ off: her opener appears in the transcript.
 night", "it's been a few days"), she picks up one real thing, it is short, and she does not greet
 twice in an hour. **Paste back:** her openers word for word, and when you opened.
 
-### R-32 · Ask her about a database of yours · ~15 minutes, desktop
-**Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
-The suites and a live run on a test database passed; a real schema is where she will stumble.
-1. If it is Postgres or MySQL/MariaDB, make a user that may only read (the fourth layer). For
-   MariaDB, as an admin:
-   ```sql
-   CREATE USER 'reader'@'%' IDENTIFIED BY 'choose-a-password';
-   GRANT SELECT ON yourdb.* TO 'reader'@'%';
-   ```
-   (A SQLite file needs nothing: it is opened read-only.)
-2. Add it to `mcp.json` (`notepad "$env:APPDATA\latentPresence\mcp.json"`), beside `files`:
-   ```json
-   "databases": {
-     "mine": { "url": "mysql://reader:choose-a-password@your-server/yourdb", "description": "what it holds" }
-   }
-   ```
-   or `"mine": { "path": "C:/path/to/file.sqlite" }`. Restart the companion.
-3. `/settings` → **Tools** → *From the companion* → **List**: "mine" (2 tools), ready.
-4. In `/chat`, ask her three things the database can answer, then ask her to delete something.
+### R-40 · Peek at her thoughts · ~10 minutes, desktop
+**Why:** P6-T05 (ADR-54): behind each answer, a few private lines in her own voice — what she
+noticed, what she is unsure of, what she means to do — shown only in a **Thoughts** view and never
+said aloud. A real model writes them well in the live check; whether they read like her, and
+whether peeking feels right rather than creepy or like a debug log, needs you.
+1. In `/chat`, press **Thoughts** (beside Plans). It says nothing yet.
+2. Turn **Speak replies** on and talk to her for a few turns about something real.
+3. Under each answer's line in Thoughts: one to three lines in italics, after "Putting it into
+   words…". If your model thinks (glm-5.2 does), "What the model reasoned" unfolds the raw notes.
+4. Listen: nothing from the Thoughts view is ever spoken, and the Transcript has none of it.
+5. Close Thoughts and talk a turn: that answer says "Not put into words — this panel was closed".
+   Open it again: the newest is put into words then.
 
-**Pass:** each card shows her SQL readably before it runs; her answers match the data; she
-refuses the delete and nothing changed. **Paste back:** pass/fail per question, any SQL she got
-wrong (the card shows it), and anything in `/mcp/tools` or her answers that showed the password.
+**Pass:** the lines sound like her, fit what was said, invent nothing, say "they" (never "he" or
+"the user"), and none of it is heard or in the transcript. **Paste back:** two or three moments
+word for word, anything she invented, and whether the raw reasoning was worth having there.
 
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
@@ -258,6 +251,10 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-50 · R-32: ask her about a database of yours** — Rick 2026-10-12: **passed** — a Postgres
+  user and server added to `mcp.json` (Postgres reached through his tunnel); she read the database
+  without trouble; asked to delete, she said she only had read-only access and did not try. The
+  cards showed her SQL as expected.
 - **D-49 · R-39: let her rest** — Rick 2026-10-12: **passed** — head down, "Alice is resting,
   sorting through what you have talked about" at the top; a mouse click woke her fast; it felt
   good, and nothing in Memory was there twice. ADR-53 accepted.
