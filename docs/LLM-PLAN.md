@@ -389,7 +389,7 @@ ones, each once) against 33 without sleep; the second half adds facts at a fifth
 half's rate. Real extraction made no duplicates to merge (`docs/runs/P6-T04-sleep.md`). R-39
 passed: the rest in `/chat` looked right, a click woke her, nothing in Memory twice.
 
-### P6-T05 Inner monologue — owner: main (done 2026-10-12, ADR-54 proposed)
+### P6-T05 Inner monologue — owner: main (done 2026-10-12, ADR-54 accepted)
 Private reasoning channel (model thinking or a separate short call) summarised into a peekable panel; never spoken.
 Done when: toggling the panel shows current private notes; TTS never includes them.
 **Met:** `packages/core/src/inner` — `withThinking` takes reasoning and inline `<think>` off every
@@ -397,7 +397,7 @@ chat answer; `attachInnerMonologue` keeps a moment per answer, off the bus, and 
 put it into her lines while the Thoughts view is open. `ChatPage.test.tsx` opens Thoughts, answers
 aloud with a thinking fake: her lines show, the voice says only the answer, the transcript has none
 of it; `inner.test.ts` holds the bus and the next request clean (mutation-checked). `pnpm
-live:inner`: glm-5.2 20/20 by rule (`docs/runs/P6-T05-inner.md`). How it reads is R-40.
+live:inner`: glm-5.2 20/20 by rule (`docs/runs/P6-T05-inner.md`). R-40 passed.
 
 ### P6-T06 Multi-character — owner: sub
 Character packs (VRM, persona, voice, memory namespace); switcher; per-character settings.

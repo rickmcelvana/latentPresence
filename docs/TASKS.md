@@ -212,23 +212,6 @@ off: her opener appears in the transcript.
 night", "it's been a few days"), she picks up one real thing, it is short, and she does not greet
 twice in an hour. **Paste back:** her openers word for word, and when you opened.
 
-### R-40 · Peek at her thoughts · ~10 minutes, desktop
-**Why:** P6-T05 (ADR-54): behind each answer, a few private lines in her own voice — what she
-noticed, what she is unsure of, what she means to do — shown only in a **Thoughts** view and never
-said aloud. A real model writes them well in the live check; whether they read like her, and
-whether peeking feels right rather than creepy or like a debug log, needs you.
-1. In `/chat`, press **Thoughts** (beside Plans). It says nothing yet.
-2. Turn **Speak replies** on and talk to her for a few turns about something real.
-3. Under each answer's line in Thoughts: one to three lines in italics, after "Putting it into
-   words…". If your model thinks (glm-5.2 does), "What the model reasoned" unfolds the raw notes.
-4. Listen: nothing from the Thoughts view is ever spoken, and the Transcript has none of it.
-5. Close Thoughts and talk a turn: that answer says "Not put into words — this panel was closed".
-   Open it again: the newest is put into words then.
-
-**Pass:** the lines sound like her, fit what was said, invent nothing, say "they" (never "he" or
-"the user"), and none of it is heard or in the transcript. **Paste back:** two or three moments
-word for word, anything she invented, and whether the raw reasoning was worth having there.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -251,6 +234,12 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-51 · R-40: peek at her thoughts** — Rick 2026-10-12: **passed** — the lines sound like her
+  ("quirky attitude of sorts"), one "eerily intuitive"; worth having there. Two quoted: after he
+  said "as usual", *"They said 'as usual' like it's a small joke between us, and I liked that more
+  than I probably should"*; after a 👍 on his way out for fajitas, *"I got a 👍 instead of a
+  sentence — small thing but I noticed the shift to shorthand"* and *"Chill server day is my
+  guess, not something they said"*. "They" throughout. ADR-54 accepted.
 - **D-50 · R-32: ask her about a database of yours** — Rick 2026-10-12: **passed** — a Postgres
   user and server added to `mcp.json` (Postgres reached through his tunnel); she read the database
   without trouble; asked to delete, she said she only had read-only access and did not try. The
