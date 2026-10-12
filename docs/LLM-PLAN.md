@@ -361,7 +361,8 @@ Behaviour tree or utility system selecting idle activities by mood, time of day 
 Done when: an hour-long idle log shows varied, plausible activity with no repeats within 10 minutes.
 **Met:** `docs/runs/P6-T01-idle-hours.md` (`pnpm idle:log`), four hours; the test holds 80 simulated
 hours to no repeat within 10 minutes, at least eight different things, none over a fifth or five
-times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36.
+times, and the plausibility rules. Performed in `/chat` after 20 s of quiet; how it looks is R-36 (moves passed in `/dev/avatar`;
+`/chat` retry after the listening fix).
 
 ### P6-T02 Time awareness — owner: main
 Greeting by time, elapsed-time phrasing, "last time we" openers from memory, plan follow-ups.

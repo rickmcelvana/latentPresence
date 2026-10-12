@@ -758,3 +758,9 @@ Did: ADR-49 accepted. P6-T01: ADR-50 proposed; core `idle` (catalogue of 16, `Id
 Left: R-36 (new), R-35, R-32, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T02 time awareness (main).
 Decisions: ADR-49 accepted; ADR-50 proposed — needs Rick's accept.
+
+## 2026-10-12 claude — R-35 passed; R-36's idle bug
+Did: R-35 passed (D-46). R-36: the moves looked right in `/dev/avatar`, but `/chat` never idled after a typed answer — the machine rests in `listening` (no idle timeout) and the director required `idle`. Fixed: `quietState` counts idle and listening; tests for both and for thinking/speaking/interrupted. R-36 rewritten as a retry (Loop clip is under Gaze and clips).
+Left: R-36 retry, R-27 retry (this evening), R-32; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T02 time awareness (main).
+Decisions: ADR-50 amended (idle or listening); still proposed.

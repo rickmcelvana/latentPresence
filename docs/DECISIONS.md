@@ -1798,7 +1798,9 @@ activity clips (P2-T03).
    pack would give it (`clip`); with none loaded it is procedural — that is the clips hook.
 4. **Props feed the planner**: reading the whiteboard and checking the screen weigh more when they
    show something (ADR-49).
-5. **When she is idle**: the conversation state is `idle` and nothing has happened for 20 s. Any
+5. **When she is idle**: the conversation state is `idle` **or `listening`** (amended after R-36:
+   a typed chat rests in `listening` for good, so `idle` alone meant never) and nothing has
+   happened for 20 s. Any
    event — their voice, a key in the text box, her own answer — ends the activity at once (eased
    out in ~250 ms) and resets the clock.
 

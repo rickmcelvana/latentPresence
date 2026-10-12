@@ -189,30 +189,25 @@ so in the transcript, plans retry once the companion is up, and a check-in can b
 out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
 brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
 
-### R-36 · Watch her when nobody is talking · ~15 minutes, desktop
+### R-36 · Watch her when nobody is talking · ~15 minutes, desktop · **retry**
 **Why:** P6-T01 gives her an idle life (ADR-50): after 20 s of quiet she looks out of the window,
-reads the whiteboard, stretches, hums, yawns when it is late. The planner is proved by test; how
-the moves *look* was only half checked — the pane was hidden, which pauses animation.
-1. `/dev/avatar` → Stage → Camera **medium** → **Loop clip**. Under the tags, **Idle activity**:
-   pick each one and **Perform**. Watch especially *looks out of the window*, *reads over the plan*
-   (a turn over the shoulder, 60°), *stretches*, *yawns*, *drifts off for a moment*.
-2. `/chat` with the character showing: say nothing for a few minutes and watch.
+reads the whiteboard, stretches, hums, yawns when it is late.
+
+**2026-10-12, first try:** every move looked right in `/dev/avatar`; in `/chat` she only glanced
+aside and down — her ordinary gaze, not the idle life. **Bug, fixed:** after a typed answer the
+call rests in *listening*, and idle only started in *idle*, so once you had said anything it never
+began. Waiting for you now counts as quiet. (Step 1 also named the wrong panel for Loop clip.)
+
+1. Optional, done already: `/dev/avatar` → **Gaze and clips** → **Loop clip**; Stage → Camera
+   **medium**; **Idle activity** → each one → **Perform**.
+2. `/chat` with the character showing: type a message, let her answer, then say nothing for five
+   minutes. Expect the unmistakable ones within that: a turn over the shoulder towards the window
+   or the whiteboard, a stretch, a sway while humming, a yawn if it is evening.
 3. Say something mid-activity: she should drop it and come back to you at once.
 
-**Pass:** nothing looks broken (limbs through the body, a spin, hair flying), the turns read as a
-glance back, and the pace feels like someone waiting rather than fidgeting. **Paste back:** pass or
-fail per move, and which ones to change (too big, too small, too often).
-
-### R-35 · Look at the whiteboard and the screen · ~5 minutes, desktop
-**Why:** P5-T08 puts a whiteboard and a screen in the room (ADR-49): her plan in focus on the
-board, the sources of her latest cited answer on the screen. Readable was measured at 1080p in the
-Browser pane; your monitor and your eyes are the real test.
-1. `/chat` with the character showing, in the window size you normally use.
-2. Ask her something she has to look up (the weather) — the screen on the right lists the sources.
-3. Open **Plans**, pick a plan (or ask her to make one) — the whiteboard on the left shows it.
-
-**Pass:** you can read both from where you sit, they do not crowd her, and the room still looks
-like a room. **Paste back:** pass/fail, your window size, and anything too small or too much.
+**Pass:** she does things of her own after a typed answer, nothing looks broken, the pace feels
+like someone waiting rather than fidgeting, and she stops for you at once. **Paste back:** what
+you saw her do, and anything too often, too big or too small.
 
 ### R-32 · Ask her about a database of yours · ~15 minutes, desktop
 **Why:** P5-T05 lets her read a database you list for the companion, never write it (ADR-46).
@@ -260,6 +255,8 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-46 · R-35: look at the whiteboard and the screen** — Rick 2026-10-12: **passed** — both
+  look great and are readable; not crowded; it still looks like a room.
 - **D-45 · R-34: ask her to turn on a light** — Rick 2026-10-11: **passed** — his own Home
   Assistant on a Raspberry Pi (Home Assistant OS 18.3, Core 2026.10.1), a few devices moved onto
   its network so far; more to follow as he moves them.
