@@ -195,6 +195,18 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-42 · Restart the companion on the new build · two minutes, desktop — **before its next restart**
+**Why:** P6-T07b added the companion's `schedules` table (migration 0005), and **it is already
+applied to the dev MariaDB** (the query cache is checked against it). The companion running now
+keeps working; but **an older companion binary will refuse to start** against this database
+("migration 5 was previously applied but is missing"), so the next restart must be the new build.
+1. `git pull`, then stop the companion (Ctrl+C in its terminal).
+2. `pnpm companion` — it builds the new version and starts.
+3. Its log should show nothing about migrations; `/settings` → Memory → *The companion* still says
+   it is connected.
+
+**Pass:** it starts and `/chat` remembers as before. **Paste back:** only if it does not start.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

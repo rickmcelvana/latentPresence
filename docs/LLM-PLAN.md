@@ -415,13 +415,17 @@ Done when: unit tests cover cron parsing, next-run computation across DST, each 
 covers cron, DST both ways, every policy and every delivery; `pnpm schedule:log` replays a week in
 Toronto across the fall-back night identically (`docs/runs/P6-T07-week.md`).
 
-### P6-T07b Companion schedules — owner: main
+### P6-T07b Companion schedules — owner: main (done 2026-10-13, ADR-57 proposed)
 Depends: P6-T07. Split out by ADR-56. The `schedules` table and the `/schedules/*` routes already in
 `companionRoutes`, `CompanionMemoryStore`'s schedules (refused today) held to the conformance suite;
 `runOn: companion` tool-only jobs run by the companion with the app closed — a Rust cron held to the
 same firing fixtures as croner, and the protocol's tool-only call (an ADR).
 Done when: the memory conformance suite's schedules pass on MariaDB through the companion, and a
 companion job fires on time with no page open, its run kept and told at the next session.
+**Met:** conformance 20/20 through a companion on the dev MariaDB; `tests/memory_api.rs` runs
+companion jobs on time with a fake MCP host; live, a reminder fired 1 s after due with no page
+open, waiting to be told (the core's `pendingDeliveries` tells it). Both schedulers held to one
+fixture file (254 firings, 11 plans); the core's cron is now its own (ADR-57).
 
 ### P6-T08 Schedule tools and panel — owner: sub
 Depends: P6-T07. Agent tools `schedule.create`, `schedule.list`, `schedule.cancel`, `schedule.run_now`; natural-language time parsing with the character reading back the interpreted time before confirming; Schedules panel listing upcoming runs, last results, pause and cancel; OS notification delivery in the desktop app.

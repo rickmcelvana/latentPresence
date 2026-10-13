@@ -59,6 +59,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
+| ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | proposed | 2026-10-13 |
 
 ---
 
@@ -2165,7 +2166,72 @@ history store* — the panel needs the last result and memory keeps every result
 **Measured in the build (2026-10-13).** `pnpm schedule:log` (`docs/runs/P6-T07-week.md`): a week in
 Toronto across the fall-back night — open by day, closed at night, away Saturday, open overnight
 Saturday to Sunday — with eight schedules covering every policy and delivery, a failure, a
-blocked notification and a paused job: 174 runs (167 ok, 1 failed, 6 skipped), 7 things said, 1
+blocked notification and a paused job: 174 runs (167 ok, 1 failed, 6 skipped; 175 since ADR-57), 7 things said, 1
 notification, 168 episodes; run twice, identical. `scheduler.test.ts`, 23 tests, mutation-checked
 seven ways (no grace, no `run_once`, no claim, no re-read, silent not told, six fields, no
 allowlist); a runner that repeats itself now fails the week at 2,000 runs instead of hanging it.
+
+**Amended 2026-10-13 by ADR-57 (P6-T07b): croner is gone.** Held to croner-rust, croner 10.0.1 gave
+different answers at the clock changes (below); the core's `cron.ts` is now its own five-field
+cron, keeping croner-rust's rules — a skipped fixed time runs when the gap ends (03:00, not 03:30),
+an interval job runs in both halves of a repeated hour. The week log gained the hourly job's 01:00
+EST run: 175 runs.
+
+## ADR-57 Companion schedules: a table, three routes, its own tool-only jobs, and one rule for when things fire (proposed 2026-10-13)
+
+**Context.** P6-T07b, split out of P6-T07 by ADR-56: the `schedules` table and the `/schedules/*`
+routes, `CompanionMemoryStore`'s schedules (refused until now), and `runOn: companion` tool-only
+jobs that run with the app closed — a Rust cron held to the same answers as the core's. Done when
+the memory conformance suite's schedules pass on MariaDB through the companion and a companion job
+fires on time with no page open, its run kept and told at the next session.
+
+**Measured first (2026-10-13).** croner-rust 4.0.1 (MIT, 2026-10-02; with chrono-tz 0.10.4,
+MIT/Apache-2.0) against the core's croner 10.0.1 on fourteen hand-picked cases: they agreed on
+eleven and **differed at every clock change** — on the spring-forward night a fixed 02:30 ran at
+03:00 in Rust and 03:30 in JS; on the fall-back night `*/30` and hourly jobs ran in both halves of
+the repeated hour in Rust and in neither second half in JS (an hourly job lost an hour). croner-rust
+documents its rules (`JobType::FixedTime` / `IntervalWildcard`): Vixie cron's, the better ones.
+
+**Decisions.**
+
+1. **One rule for when things fire, croner-rust's**: a fixed-time job (one minute, one hour) whose
+   time the clocks skip runs at the first real instant after the gap, and one whose time happens
+   twice runs once, the first time; an interval job follows real time — skipped times do not run,
+   repeated ones run twice. **The core's `cron.ts` is now its own** (five fields, names, steps,
+   lists, `?`; `L`, `W`, `#`, seconds and a step from a single value refused in words), and croner
+   leaves the core. A wall-clock day with no change is computed directly; a day the clocks change
+   resolves each candidate minute against the zone.
+2. **One fixture file holds both schedulers**: `pnpm schedule:fixtures` writes the core's answers
+   for 14 named cases, **240 seeded cases** (18 patterns, eight zones including Lord Howe's
+   half-hour change and Chatham's +12:45, 60% within hours of a clock change) and 11 catch-up plans
+   to `packages/core/src/scheduler/fixtures/firings.json`; the core's test and the companion's
+   Rust test both read it. All agree.
+3. **Storage**: migration 0005, `schedules` — the protocol's `Schedule` kept whole as JSON (`body`)
+   beside the columns it is found by (`character_id`; `run_on`, `status`, `next_run_at` for the
+   runner). Routes `GET`/`POST /schedules`, `DELETE /schedules/{id}` (idempotent: cancelling twice
+   is not an error), validated as zod would and against the OpenAPI file. **Protocol**: the unserved
+   `schedulesDue` and `schedulesRecordRun` routes are dropped (runs live on the schedule, ADR-56);
+   **`Schedule.toolCall`** (`serverId`, `name`, `arguments`), additive and defaulted.
+4. **The companion's jobs**: every 30 s it asks the table for due `runOn: companion` jobs, plans
+   them (`plan_schedule`, the core's policy, held to the fixtures), **claims** them, and runs each:
+   its one tool call through the MCP host (`McpHost::call_tool`, as `/mcp/call`), or — no call, no
+   task prompt — a reminder whose description is the message; a job that needs a model fails, saying
+   so. The run is kept on the schedule, its summary is an episode in `schedule-<id>`, and anything
+   meant for the person waits (`deliveredAt` null) for the page to say it: the companion has no
+   voice and, until P8, no notifications. A companion job exists only where memory is the companion.
+
+**Rejected.** *Keeping croner in the core and patching its clock changes* — three special cases
+around a library is harder to hold than forty lines of our own, checked against an independent
+implementation. *The JS rules in Rust* — losing an hour of an hourly job is the worse behaviour.
+*A model in the companion* — a tool-only job is what runs with no page open; anything that needs
+her thinking runs in the core when she is awake.
+
+**Measured in the build (2026-10-13).** Fixtures: 254 firings and 11 plans agree between the core
+and croner-rust; three mutations of the core's cron (no gap run, interval once in a repeated hour,
+day-of-month AND day-of-week) each fail the tests. `tests/memory_api.rs` on the dev MariaDB: the
+routes round-trip a schedule with its tool call and validate against OpenAPI; the runner, with a
+fake MCP host, runs a tool job, a reminder and a failing call on time, leaves the core's job alone,
+writes three episodes, and runs nothing twice when asked again. The memory conformance suite
+through a companion on MariaDB: **20/20** (both schedule tests now run). Live: a reminder posted to
+a companion due 40 s later fired at +1 s with no page open, kept as `ok`, waiting to be said. Migration
+0005 is applied to the dev MariaDB.

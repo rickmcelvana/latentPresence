@@ -2403,3 +2403,19 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
   - `61 * * * *` throws "CronPattern: Invalid value for minute: 61"; an unknown zone throws on the
     first `nextRun` ("Invalid timezone"), so zones are checked with `Intl.DateTimeFormat` first.
 
+## croner-rust and chrono-tz, the companion's cron — measured 2026-10-13 (P6-T07b)
+
+- **croner 4.0.1** (crates.io, MIT, 2026-10-02) with **chrono-tz 0.10.4** (MIT OR Apache-2.0):
+  `CronParser::builder().seconds(Seconds::Disallowed).year(Year::Disallowed).dom_and_dow(false)
+  .build().parse(…)`, `find_next_occurrence(&DateTime<Tz>, inclusive)`. Default parser takes
+  seconds as optional; `dom_and_dow` false is OR.
+- Its clock-change rules are explicit (`determine_job_type`): a pattern with one second, one minute
+  and one hour is `FixedTime`, anything else `IntervalWildcard`. In a gap a fixed job runs at the
+  first real instant after it; in a repeated range a fixed job runs at the earlier instant and an
+  interval job at both. Measured against croner 10.0.1 (JS) on the same cases: 02:30 on
+  2026-03-08 Toronto → 03:00 EDT (JS 03:30); `0 * * * *` on 2026-11-01 → 05:00Z, **06:00Z**,
+  07:00Z (JS skips 06:00Z); `*/30` likewise. **The core no longer uses croner (JS)** — its own
+  `cron.ts` keeps these rules and is held to croner-rust by `fixtures/firings.json`.
+- `cargo sqlx prepare --workspace` writes the cache to the workspace root (`companion/.sqlx`); this
+  repo keeps it in `companion/crates/db/.sqlx` — move the new files there.
+

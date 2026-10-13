@@ -812,3 +812,9 @@ Did: R-27 (D-52), R-37 (D-53; a gap of days not yet tried), R-41 (D-54) passed �
 Left: P6-T07b (companion schedules), P6-T08; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T07b (main).
 Decisions: ADR-56 proposed (with the split into T07b) — needs Rick's accept.
+
+## 2026-10-13 claude — ADR-56 accepted; P6-T07b companion schedules
+Did: ADR-56 accepted. P6-T07b: ADR-57 proposed. Measured croner-rust 4.0.1 against croner 10.0.1 — they differ at clock changes; the core's cron rewritten to croner-rust's (Vixie) rules, croner dropped; `pnpm schedule:fixtures` (254 firings incl. 240 seeded, 11 plans) read by TS and Rust tests, all agree, mutation-checked. Rust: `schedules/` (cron, plan, model, runner), migration 0005 (applied to the dev MariaDB; sqlx cache refreshed), `/schedules` routes, `McpHost::call_tool`, the runner spawned in main. Protocol: `toolCall`; due/runs routes dropped; OpenAPI regenerated. `CompanionMemoryStore` schedules. Conformance 20/20 through a test companion on :8799 (empty MCP/document configs); a live reminder fired at +1 s. `registering_a_model…first_time` fails on the dev DB (Rick's real model is registered) — environmental, passes on CI's fresh database.
+Left: R-42 (restart the companion on the new build before its next restart); P6-T08; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T08 schedule tools and panel (sub, brief first).
+Decisions: ADR-56 accepted (amended: croner gone); ADR-57 proposed — needs Rick's accept.
