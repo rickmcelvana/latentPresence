@@ -58,7 +58,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
-| ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | proposed | 2026-10-13 |
+| ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
 
 ---
 
@@ -2105,7 +2105,7 @@ Character. The done-when test (`ChatPage.test.tsx`) failed, as it should, with t
 hard-wired to Alice's ("Theo's Memory view has no Mira"); the voice tests failed with the
 speaker given the page's settings instead of the character's.
 
-## ADR-56 Scheduler core: when it fires, what a missed firing does, and how a result reaches them (proposed 2026-10-13)
+## ADR-56 Scheduler core: when it fires, what a missed firing does, and how a result reaches them (accepted 2026-10-13)
 
 **Context.** P6-T07 (ADR-14): `packages/core/scheduler` — schedules (cron or one-shot, a task prompt,
 allowed tools, delivery, catch-up), a fixed-timestep tick, missed runs reconciled on waking,

@@ -408,7 +408,7 @@ told about Mira and Theo about the cello; after each switch each has only their 
 the Memory view and the store (mutation-checked). The stores' namespaces were already held by the
 conformance suite (P4-T04). How it feels is R-41.
 
-### P6-T07 Scheduler core — owner: main (core done 2026-10-13, ADR-56 proposed; the companion's half is P6-T07b)
+### P6-T07 Scheduler core — owner: main (core done 2026-10-13, ADR-56 accepted; the companion's half is P6-T07b)
 Depends: P4-T03. `packages/core/scheduler` per ADR-14: `Schedule` model (cron or one-shot, task prompt, allowed tools, delivery mode, catch-up policy), a tick loop with a fixed timestep, missed-run reconciliation on wake, execution through the normal agent loop with the schedule's tool allowlist, results stored as memory episodes. Companion endpoints `/schedules/*` and a `schedules` table; companion-side execution for tool-only jobs.
 Done when: unit tests cover cron parsing, next-run computation across DST, each catch-up policy, and delivery routing; a simulated week replays deterministically.
 **Met:** `packages/core/src/scheduler` (croner 10.0.1) — `scheduler.test.ts` (23, mutation-checked)
