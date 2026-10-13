@@ -207,6 +207,25 @@ keeps working; but **an older companion binary will refuse to start** against th
 
 **Pass:** it starts and `/chat` remembers as before. **Paste back:** only if it does not start.
 
+### R-43 · Reminders, said and notified · ten minutes, desktop — **after R-42**
+**Why:** P6-T08's done-when is half yours: a reminder that fires while you are away is said when
+you come back, and one that fires while the tab is hidden pops up as a Windows notification. With
+memory on the companion, a reminder runs there, so the companion must be the new build (R-42).
+1. In `/chat` (Alice), say or type: *"Remind me in 3 minutes to stretch."* She should say the time
+   back (the clock time, three minutes from now). Open **Schedules**: the reminder is there with
+   its next run in words and "runs on the companion".
+2. Close the tab. Wait **five** minutes. Open `/chat` again: **she should open with the reminder**
+   (and say it was due a couple of minutes ago, while you were away) — not with a "welcome back"
+   on top of it. In Schedules it is under **Finished** with its last result.
+3. In Schedules, press **Let her notify you** and allow it. Then: *"Remind me in 2 minutes to check
+   the oven."* Switch to another tab or minimise the browser. **A Windows notification from Alice
+   should appear within about a minute of the time.** Come back: she does **not** say it again.
+4. *"Remind me Thursday at 9 to call the vet."* — Schedules shows Thursday 15 October at 09:00.
+   Then *"Actually, cancel the vet reminder."* — it moves to Finished.
+
+**Pass:** all four. **Paste back:** any time she read back that was not the time asked for, and
+anything said twice or not at all.
+
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.

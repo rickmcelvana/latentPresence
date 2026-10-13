@@ -818,3 +818,9 @@ Did: ADR-56 accepted. P6-T07b: ADR-57 proposed. Measured croner-rust 4.0.1 again
 Left: R-42 (restart the companion on the new build before its next restart); P6-T08; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T08 schedule tools and panel (sub, brief first).
 Decisions: ADR-56 accepted (amended: croner gone); ADR-57 proposed — needs Rick's accept.
+
+## 2026-10-13 claude — ADR-57 accepted; P6-T08 schedule tools and panel
+Did: ADR-57 accepted. P6-T08: ADR-58 proposed and a brief; `wallTimeToInstant` (core cron, mine); a Sonnet subagent built the holder, four tools, `runNow`, deliveries, the page wiring and the Schedules panel; reviewed, gated (1964 TS, 152 Rust), committed. Live `pnpm live:schedule` 12/12 right and read back; in `/chat` the reminder reached the panel; fixed a clipped next-run label. fix: `useUserCamera.start()` opened a second stream on a camera already on but not yet rendered (the load-only flake).
+Left: R-42, R-43; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
+Decisions: ADR-58 proposed — needs Rick's accept.

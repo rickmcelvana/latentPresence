@@ -427,9 +427,14 @@ companion jobs on time with a fake MCP host; live, a reminder fired 1 s after du
 open, waiting to be told (the core's `pendingDeliveries` tells it). Both schedulers held to one
 fixture file (254 firings, 11 plans); the core's cron is now its own (ADR-57).
 
-### P6-T08 Schedule tools and panel — owner: sub
+### P6-T08 Schedule tools and panel — owner: sub (done 2026-10-13, ADR-58 proposed)
 Depends: P6-T07. Agent tools `schedule.create`, `schedule.list`, `schedule.cancel`, `schedule.run_now`; natural-language time parsing with the character reading back the interpreted time before confirming; Schedules panel listing upcoming runs, last results, pause and cancel; OS notification delivery in the desktop app.
 Done when: "remind me Thursday at 9 to call the vet" creates a schedule the panel shows with the right next run, and the reminder is spoken at the next session after it fires.
+**Landed (99d5828):** four tools; she gives a wall-clock time in the person's zone, the code makes
+the trigger (`wallTimeToInstant`) and hands back the time in its own words to read back; reminders
+run on the companion where memory is; pending runs are an OS notification while the page is hidden,
+else said in one turn, outside the initiative budget; a Schedules drawer view. Live 12/12 right and
+read back (`docs/runs/P6-T08-schedule.md`). Rick's check: R-43.
 
 ---
 

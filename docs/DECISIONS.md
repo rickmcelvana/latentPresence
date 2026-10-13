@@ -2293,3 +2293,15 @@ date from RIGHT NOW. *A two-step confirm (a draft, then "yes" saves it)* — a m
 second call loses the reminder without a word; reading back what was saved gives the person the
 same chance to correct it. *Counting a delivery against the initiative budget* — a reminder they
 asked for is not her starting a conversation, and the dial's "off" must not silence it.
+
+**Measured in the build (2026-10-13).** A Sonnet subagent built it from the brief; reviewed,
+gated and committed here (99d5828). `wallTimeToInstant` holds Chicago's spring gap (02:30 → 03:00
+CDT), its repeated hour (the first 01:30), Chatham's +13:45 and 30 February to the cron's rules.
+`pnpm live:schedule` (glm-5.2:cloud, America/Chicago, in-memory store), four asks three times each —
+"Thursday at 9", "in 20 minutes", "every weekday at 7:30", "tomorrow evening at half past six":
+**12/12 saved at the right instant, 12/12 read back** (she speaks times as words — "nine in the
+morning", "seven forty-seven" — so the check reads words). In `/chat` (browser pane, its own
+store) the reminder was saved, read back as "Thursday the fifteenth of October at nine in the
+morning", listed in the Schedules view, and cancelled with the two-press Cancel into Finished; the
+next-run label first rendered as a pill that clipped, and now wraps. P8 must check that Web
+Notifications show from inside WebView2 before the tray app relies on them.
