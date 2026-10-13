@@ -261,6 +261,7 @@ describe('CompanionMemoryStore', () => {
           lastRunAt: null,
           nextRunAt: null,
           createdAt: '2026-01-01T00:00:00.000Z',
+          lastRun: null,
         }),
       ).rejects.toMatchObject({ code: 'unavailable' });
       await expect(store.deleteSchedule('s-1')).rejects.toMatchObject({ code: 'unavailable' });
