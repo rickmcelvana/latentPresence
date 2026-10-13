@@ -824,3 +824,9 @@ Did: ADR-57 accepted. P6-T08: ADR-58 proposed and a brief; `wallTimeToInstant` (
 Left: R-42, R-43; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
 Decisions: ADR-58 proposed — needs Rick's accept.
+
+## 2026-10-13 claude — ADR-58 accepted, R-42 passed; docs sweep
+Did: ADR-58 accepted; R-42 passed (D-55). Sweep: README status (Phase 6 built, schedules), `docs/memory.md` (where schedules and their runs live), TASKS live-check table (`schedule:log`, `schedule:fixtures`, `live:schedule`), R-43 now sets the reminder by voice (Phase 6's exit criterion), PROJECT backlog replaced with what is actually deferred (tool-only schedules from her tools, WebView2 notifications in P8, time-bound facts). CI green on the P6-T08 push.
+Left: R-43; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
+Decisions: none new.

@@ -60,7 +60,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
-| ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | proposed | 2026-10-13 |
+| ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
 
 ---
 
@@ -2237,7 +2237,7 @@ through a companion on MariaDB: **20/20** (both schedule tests now run). Live: a
 a companion due 40 s later fired at +1 s with no page open, kept as `ok`, waiting to be said. Migration
 0005 is applied to the dev MariaDB.
 
-## ADR-58 Schedule tools and panel: how she makes a schedule, reads it back, and tells you (proposed 2026-10-13)
+## ADR-58 Schedule tools and panel: how she makes a schedule, reads it back, and tells you (accepted 2026-10-13)
 
 **Context.** P6-T08: agent tools `schedule.create`, `schedule.list`, `schedule.cancel`,
 `schedule.run_now`; natural-language times with the time read back before it is settled; a

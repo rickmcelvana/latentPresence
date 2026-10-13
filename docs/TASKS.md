@@ -103,6 +103,9 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 | `pnpm live:checkin` | P6-T03 | what she says when she speaks up, by rule |
 | `pnpm live:sleep` | P6-T04 | the long replay with and without sleep; `FORGETFUL=1` records the fixture |
 | `pnpm live:inner` | P6-T05 | her private lines behind five moments, by rule |
+| `pnpm schedule:log` | P6-T07 | a simulated week of schedules: catch-up, delivery, a blocked notification (deterministic) |
+| `pnpm schedule:fixtures` | P6-T07b | rewrites the firing fixtures the core and the companion are both held to (run after a cron change) |
+| `pnpm live:schedule` | P6-T08 | four "remind me…" asks: saved at the right instant and read back (in-memory store, never the companion) |
 
 ---
 
@@ -195,24 +198,13 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-42 · Restart the companion on the new build · two minutes, desktop — **before its next restart**
-**Why:** P6-T07b added the companion's `schedules` table (migration 0005), and **it is already
-applied to the dev MariaDB** (the query cache is checked against it). The companion running now
-keeps working; but **an older companion binary will refuse to start** against this database
-("migration 5 was previously applied but is missing"), so the next restart must be the new build.
-1. `git pull`, then stop the companion (Ctrl+C in its terminal).
-2. `pnpm companion` — it builds the new version and starts.
-3. Its log should show nothing about migrations; `/settings` → Memory → *The companion* still says
-   it is connected.
-
-**Pass:** it starts and `/chat` remembers as before. **Paste back:** only if it does not start.
-
-### R-43 · Reminders, said and notified · ten minutes, desktop — **after R-42**
+### R-43 · Reminders, said and notified · ten minutes, desktop
 **Why:** P6-T08's done-when is half yours: a reminder that fires while you are away is said when
 you come back, and one that fires while the tab is hidden pops up as a Windows notification. With
-memory on the companion, a reminder runs there, so the companion must be the new build (R-42).
-1. In `/chat` (Alice), say or type: *"Remind me in 3 minutes to stretch."* She should say the time
-   back (the clock time, three minutes from now). Open **Schedules**: the reminder is there with
+memory on the companion, a reminder runs there (the companion is on the new build: R-42, D-55).
+1. In `/chat` (Alice), **start a voice call and say it out loud** — Phase 6's exit criterion is a
+   reminder set by voice that fires on time: *"Remind me in 3 minutes to stretch."* She should say
+   the time back (the clock time, three minutes from now). End the call. Open **Schedules**: the reminder is there with
    its next run in words and "runs on the companion".
 2. Close the tab. Wait **five** minutes. Open `/chat` again: **she should open with the reminder**
    (and say it was due a couple of minutes ago, while you were away) — not with a "welcome back"
@@ -248,6 +240,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-55 · R-42: restart the companion on the new build** — Rick 2026-10-13: **passed** — the
+  companion restarted on the P6-T07b build (migration 0005) before P6-T08's gate ran, and `/chat`
+  remembers as before.
 - **D-54 · R-41: meet Theo** — Rick 2026-10-13: **passed** — Theo sounds and talks differently, "a
   totally different vibe than Alice", calm and matter of fact; neither knew what Rick told the
   other; switching is quick. Research and tools with him worked; memories stayed apart. No change

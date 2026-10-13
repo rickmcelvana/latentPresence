@@ -55,6 +55,15 @@ A kernel belongs to one character; every read and write carries its `characterId
 persona's `id` (ADR-55). Alice and Theo share one database (IndexedDB or MariaDB) and never see
 each other's turns, facts, plans or self blocks; the conformance suite holds every store to it.
 
+## Schedules
+
+Schedules live in the same store, under the same `characterId` (ADR-56, ADR-57): IndexedDB in the
+browser, the `schedules` table through the companion. Each keeps its newest run (`lastRun`), and
+**every run's summary is also an episode**, in a session of its own (`schedule-<id>`), so she can
+recall what a job found later the way she recalls a conversation. A run waits to be told while its
+`deliveredAt` is null; the page says it or shows a notification and sets it (ADR-58). Cancelling
+keeps the schedule, so its history stays.
+
 ## How it is checked
 
 - `pnpm live:memory` — thirty exchanges over a month through the real kernel and a real model,
