@@ -30,16 +30,19 @@ function schedule(overrides: Partial<Schedule> = {}): Schedule {
     lastRunAt: null,
     nextRunAt: null,
     createdAt: '2026-10-01T00:00:00.000Z',
+    toolCall: null,
     lastRun: null,
     ...overrides,
   };
 }
 
-describe('cron (five fields, a zone, croner underneath)', () => {
+describe('cron (five fields, a zone, and the rules the companion keeps at clock changes)', () => {
   it('takes five fields in a zone, and refuses seconds, bad fields and unknown zones in words', () => {
     expect(parseCron('0 9 * * 1-5', TZ).next(at('2026-10-09T14:00:00Z'))?.toISOString()).toBe('2026-10-12T13:00:00.000Z');
     expect(() => parseCron('0 0 9 * * *', TZ)).toThrow(/six fields|6 fields/u);
     expect(() => parseCron('61 * * * *', TZ)).toThrow(CronError);
+    expect(() => parseCron('0 9 L * *', TZ)).toThrow(/L, W or #/u);
+    expect(() => parseCron('5/15 * * * *', TZ)).toThrow(/steps from a single value/u);
     expect(() => parseCron('0 9 * * *', 'Mars/Base')).toThrow(/not a time zone/u);
   });
 
@@ -56,21 +59,22 @@ describe('cron (five fields, a zone, croner underneath)', () => {
     expect(nextFiring({ kind: 'once', at: '2026-10-15T13:00:00.000Z' }, at('2026-10-15T13:00:00Z'))).toBeNull();
   });
 
-  it('across the spring change: a time the clocks skip fires once, an hour later; every 30 minutes steps over the gap', () => {
+  it('across the spring change: a fixed time the clocks skip runs when the gap ends; every 30 minutes steps over it', () => {
     const daily = parseCron('30 2 * * *', TZ);
-    expect(daily.next(at('2026-03-07T12:00:00Z'))?.toISOString()).toBe('2026-03-08T07:30:00.000Z'); // 03:30 EDT
+    expect(daily.next(at('2026-03-07T12:00:00Z'))?.toISOString()).toBe('2026-03-08T07:00:00.000Z'); // 03:00 EDT
+    expect(daily.next(at('2026-03-08T07:00:00Z'))?.toISOString()).toBe('2026-03-09T06:30:00.000Z'); // and not again at 03:30
     expect(daily.next(at('2026-03-08T07:30:00Z'))?.toISOString()).toBe('2026-03-09T06:30:00.000Z'); // 02:30 EDT
     const half = firingsBetween({ kind: 'cron', expression: '*/30 * * * *', timeZone: TZ }, at('2026-03-08T06:30:00Z'), at('2026-03-08T08:00:00Z'), 10);
     expect(half.times.map((time) => time.toISOString())).toEqual(['2026-03-08T06:30:00.000Z', '2026-03-08T07:00:00.000Z', '2026-03-08T07:30:00.000Z', '2026-03-08T08:00:00.000Z']);
   });
 
-  it('across the fall change: a time that happens twice fires once, the first time', () => {
+  it('across the fall change: a fixed time that happens twice runs once, the first time; an interval job follows real time', () => {
     const daily = parseCron('30 1 * * *', TZ);
     expect(daily.next(at('2026-10-31T12:00:00Z'))?.toISOString()).toBe('2026-11-01T05:30:00.000Z'); // 01:30 EDT
     expect(daily.next(at('2026-11-01T05:30:00Z'))?.toISOString()).toBe('2026-11-02T06:30:00.000Z'); // 01:30 EST, next day
     const hourly = firingsBetween({ kind: 'cron', expression: '0 * * * *', timeZone: TZ }, at('2026-11-01T04:00:00Z'), at('2026-11-01T08:00:00Z'), 10);
-    // 00:00 EDT, 01:00 EDT, then 02:00 EST and 03:00 EST: each wall-clock hour once.
-    expect(hourly.times.map((time) => time.toISOString())).toEqual(['2026-11-01T04:00:00.000Z', '2026-11-01T05:00:00.000Z', '2026-11-01T07:00:00.000Z', '2026-11-01T08:00:00.000Z']);
+    // 00:00 EDT, 01:00 EDT, 01:00 EST, 02:00 EST, 03:00 EST: every real hour, as Vixie cron and croner-rust.
+    expect(hourly.times.map((time) => time.toISOString())).toEqual(['2026-11-01T04:00:00.000Z', '2026-11-01T05:00:00.000Z', '2026-11-01T06:00:00.000Z', '2026-11-01T07:00:00.000Z', '2026-11-01T08:00:00.000Z']);
   });
 });
 

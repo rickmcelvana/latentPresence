@@ -38,6 +38,7 @@ describe('SqliteMemoryStore', () => {
           lastRunAt: null,
           nextRunAt: null,
           createdAt: '2026-01-01T00:00:00.000Z',
+          toolCall: null,
           lastRun: null,
         }),
       () => store.deleteSchedule('s'),

@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT body FROM schedules WHERE character_id = ? ORDER BY uid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "body",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.schedules",
+            "name": "body"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7874422e3f596e5624a00bdc92a9e2e83833159c364d336d154ed530cadd5190"
+}

@@ -53,7 +53,7 @@ export class CompanionMemoryStore implements MemoryStore {
 
   async capabilities(): Promise<MemoryCapabilities> {
     // No round trip: what a companion supports is fixed by this adapter, not discovered.
-    return { vectorSearch: true, dimensions: null, bitemporalFacts: true, plans: true, schedules: false, remote: true };
+    return { vectorSearch: true, dimensions: null, bitemporalFacts: true, plans: true, schedules: true, remote: true };
   }
 
   async retrieve(request: RetrievalRequest): Promise<RetrievalBundle> {
@@ -112,22 +112,18 @@ export class CompanionMemoryStore implements MemoryStore {
     return plans;
   }
 
-  // The companion has no schedule routes yet (brief, P4-T04): refuse without a request
-  // rather than call a route that does not exist.
-  async listSchedules(_characterId: string): Promise<Schedule[]> {
-    throw CompanionMemoryStore.noSchedules();
+  // P6-T07b (ADR-57): the companion keeps schedules, and runs its own tool-only ones.
+  async listSchedules(characterId: string): Promise<Schedule[]> {
+    const { schedules } = await this.call('schedulesList', { query: { characterId } });
+    return schedules;
   }
 
-  async saveSchedule(_schedule: Schedule): Promise<void> {
-    throw CompanionMemoryStore.noSchedules();
+  async saveSchedule(schedule: Schedule): Promise<void> {
+    await this.call('schedulesSave', { body: schedule });
   }
 
-  async deleteSchedule(_id: string): Promise<void> {
-    throw CompanionMemoryStore.noSchedules();
-  }
-
-  private static noSchedules(): MemoryStoreError {
-    return new MemoryStoreError('unavailable', 'this companion does not keep schedules yet');
+  async deleteSchedule(id: string): Promise<void> {
+    await this.call('schedulesDelete', { params: { id } });
   }
 
   /**

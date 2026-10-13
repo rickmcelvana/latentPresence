@@ -16,6 +16,8 @@ use latentpresence_db::{DbError, time as time_util};
 use serde::{Deserialize, Serialize};
 use sqlx::mysql::MySqlPool;
 
+use crate::schedules::model::Schedule;
+
 /// Held by the router: `pool` is `None` when there is no database, or connecting failed.
 /// `registry` caches the active embedding models so retrieval is one round trip (ADR-17).
 #[derive(Clone, Default)]
@@ -63,6 +65,11 @@ pub enum ApiError {
 }
 
 impl ApiError {
+    /// What went wrong, in the words the response would carry.
+    pub fn message(&self) -> String {
+        self.parts().2
+    }
+
     fn parts(&self) -> (StatusCode, &'static str, String) {
         match self {
             Self::BadRequest(message) => (StatusCode::BAD_REQUEST, "bad_request", message.clone()),
@@ -667,6 +674,71 @@ async fn save_plan(
 }
 
 // ---------------------------------------------------------------------------------------
+// Schedules (P6-T07b, ADR-57): `schedulesList`, `schedulesSave`, `schedulesDelete`
+// ---------------------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+struct SchedulesResponse {
+    schedules: Vec<Schedule>,
+}
+
+/// A stored schedule, as it was saved; one the companion cannot read back is skipped, not fatal.
+fn stored_schedule(body: &str) -> Option<Schedule> {
+    serde_json::from_str(body).ok()
+}
+
+/// The row a schedule is kept in.
+pub(crate) fn schedule_row(schedule: &Schedule) -> Result<store::ScheduleRow, ApiError> {
+    schedule.validate().map_err(ApiError::BadRequest)?;
+    Ok(store::ScheduleRow {
+        uid: schedule.id.clone(),
+        character_id: schedule.character_id.clone(),
+        run_on: schedule.run_on.clone(),
+        status: schedule.status.clone(),
+        next_run_at: schedule
+            .next_run_at
+            .as_deref()
+            .map(parse_time)
+            .transpose()?,
+        body: serde_json::to_string(schedule)
+            .map_err(|error| ApiError::Internal(error.to_string()))?,
+    })
+}
+
+async fn list_schedules(
+    State(state): State<MemoryState>,
+    Query(query): Query<CharacterQuery>,
+) -> Result<Json<SchedulesResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    let bodies = store::list_schedules(pool, &query.character_id).await?;
+    Ok(Json(SchedulesResponse {
+        schedules: bodies
+            .iter()
+            .filter_map(|body| stored_schedule(body))
+            .collect(),
+    }))
+}
+
+async fn save_schedule(
+    State(state): State<MemoryState>,
+    ApiJson(body): ApiJson<Schedule>,
+) -> Result<Json<Schedule>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    let row = schedule_row(&body)?;
+    store::save_schedule(pool, &row, chrono::Utc::now().naive_utc()).await?;
+    Ok(Json(body))
+}
+
+async fn delete_schedule(
+    State(state): State<MemoryState>,
+    Path(id): Path<String>,
+) -> Result<Json<OkResponse>, ApiError> {
+    let pool = pool_or_unavailable(&state)?;
+    store::delete_schedule(pool, &id).await?;
+    Ok(Json(OkResponse::ok()))
+}
+
+// ---------------------------------------------------------------------------------------
 // dbRetrieve
 // ---------------------------------------------------------------------------------------
 
@@ -827,6 +899,8 @@ pub fn router(state: MemoryState, has_database_url: bool) -> Router {
                 .route("/db/collections/activate", post(activate_collection))
                 .route("/db/blocks", get(read_blocks).put(write_block))
                 .route("/db/plans", get(list_plans).post(save_plan))
+                .route("/schedules", get(list_schedules).post(save_schedule))
+                .route("/schedules/{id}", delete(delete_schedule))
                 .with_state(state),
         )
 }

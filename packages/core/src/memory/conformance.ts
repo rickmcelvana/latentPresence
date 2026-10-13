@@ -389,12 +389,41 @@ export function describeMemoryStoreConformance(target: ConformanceTarget): void 
           lastRunAt: null,
           nextRunAt: days(1),
           createdAt: days(-1),
+          toolCall: null,
           lastRun: null,
         };
         await store.saveSchedule(schedule);
         await store.saveSchedule({ ...schedule, status: 'paused' });
         expect(await store.listSchedules(characterId)).toEqual([expect.objectContaining({ id: schedule.id, status: 'paused' })]);
         await store.deleteSchedule(schedule.id);
+        expect(await store.listSchedules(characterId)).toEqual([]);
+      });
+
+      it('keep a run and a tool call whole, and a second delete is not an error (ADR-56, ADR-57)', async (context) => {
+        if (!(await store.capabilities()).schedules) context.skip();
+        const characterId = random('conformance');
+        const id = random('schedule');
+        const schedule: Schedule = {
+          id,
+          characterId,
+          description: 'Turn the grow light on',
+          trigger: { kind: 'once', at: days(1) },
+          taskPrompt: '',
+          allowedTools: [],
+          delivery: 'speak_next_session',
+          catchUp: 'run_once',
+          runOn: 'companion',
+          status: 'completed',
+          lastRunAt: days(-1),
+          nextRunAt: null,
+          createdAt: days(-2),
+          toolCall: { serverId: 'home', name: 'HassTurnOn', arguments: { name: 'grow light', domain: ['light'] } },
+          lastRun: { id: random('run'), scheduleId: id, startedAt: days(-1), finishedAt: days(-1), outcome: 'ok', summary: 'The grow light is on.', error: null, scheduledFor: days(-1), deliveredAt: null },
+        };
+        await store.saveSchedule(schedule);
+        expect(await store.listSchedules(characterId)).toEqual([schedule]);
+        await store.deleteSchedule(id);
+        await store.deleteSchedule(id);
         expect(await store.listSchedules(characterId)).toEqual([]);
       });
     });

@@ -1,4 +1,4 @@
-import { companionRoutes, type MemoryEpisode, type PlanDocument, type RetrievalRequest, type SelfModelBlock, type SemanticFact } from '@latentpresence/protocol';
+import { companionRoutes, type MemoryEpisode, type PlanDocument, type RetrievalRequest, type Schedule, type SelfModelBlock, type SemanticFact } from '@latentpresence/protocol';
 import { MemoryStoreError } from '@latentpresence/core';
 import { describe, expect, it, vi } from 'vitest';
 import { CompanionMemoryStore } from './companion';
@@ -82,7 +82,7 @@ describe('CompanionMemoryStore', () => {
     });
     const store = new CompanionMemoryStore({ baseUrl: BASE_URL, fetch });
     expect(store.id).toBe('mariadb');
-    expect(await store.capabilities()).toEqual({ vectorSearch: true, dimensions: null, bitemporalFacts: true, plans: true, schedules: false, remote: true });
+    expect(await store.capabilities()).toEqual({ vectorSearch: true, dimensions: null, bitemporalFacts: true, plans: true, schedules: true, remote: true });
   });
 
   it('retrieve calls dbRetrieve with the request as the body', async () => {
@@ -239,32 +239,37 @@ describe('CompanionMemoryStore', () => {
     expect((error as MemoryStoreError).message).toContain(BASE_URL);
   });
 
-  describe('schedules', () => {
-    it('refuse with unavailable, without ever fetching', async () => {
-      const { fetch } = fakeFetch(() => {
-        throw new Error('should not be called');
-      });
+  describe('schedules (P6-T07b, ADR-57)', () => {
+    const job: Schedule = {
+      id: 's-1',
+      characterId: 'char-1',
+      description: 'Water the seedlings',
+      trigger: { kind: 'cron', expression: '0 8 * * *', timeZone: 'America/Toronto' },
+      taskPrompt: '',
+      allowedTools: [],
+      delivery: 'notify',
+      catchUp: 'skip',
+      runOn: 'companion',
+      status: 'active',
+      lastRunAt: null,
+      nextRunAt: '2026-01-02T13:00:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      toolCall: { serverId: 'home', name: 'HassTurnOn', arguments: { name: 'grow light' } },
+      lastRun: null,
+    };
+
+    it('list, save and delete through the routes the protocol names', async () => {
+      const { fetch, requests } = fakeFetch((request) => (request.method === 'GET' ? ok({ schedules: [job] }) : request.method === 'POST' ? ok(job) : ok({ ok: true })));
       const store = new CompanionMemoryStore({ baseUrl: BASE_URL, fetch });
-      await expect(store.listSchedules('char-1')).rejects.toMatchObject({ code: 'unavailable' });
-      await expect(
-        store.saveSchedule({
-          id: 's-1',
-          characterId: 'char-1',
-          description: 'Water the seedlings',
-          trigger: { kind: 'cron', expression: '0 8 * * *', timeZone: 'America/Toronto' },
-          taskPrompt: '',
-          allowedTools: [],
-          delivery: 'notify',
-          catchUp: 'skip',
-          runOn: 'core',
-          status: 'active',
-          lastRunAt: null,
-          nextRunAt: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          lastRun: null,
-        }),
-      ).rejects.toMatchObject({ code: 'unavailable' });
-      await expect(store.deleteSchedule('s-1')).rejects.toMatchObject({ code: 'unavailable' });
+      expect(await store.listSchedules('char-1')).toEqual([job]);
+      await store.saveSchedule(job);
+      await store.deleteSchedule('s-1');
+      expect(requests.map((request) => [request.method, request.url.pathname + request.url.search])).toEqual([
+        ['GET', '/schedules?characterId=char-1'],
+        ['POST', '/schedules'],
+        ['DELETE', '/schedules/s-1'],
+      ]);
+      expect(requests[1]?.body).toEqual(job);
     });
   });
 });

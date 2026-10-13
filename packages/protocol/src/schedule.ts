@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IdSchema, TimestampSchema } from './common';
+import { IdSchema, JsonObjectSchema, TimestampSchema } from './common';
 
 /**
  * When a schedule fires. A cron expression carries its own time zone because the user
@@ -39,6 +39,18 @@ export type ScheduleStatus = z.infer<typeof ScheduleStatusSchema>;
  */
 export const ScheduleRunnerSchema = z.enum(['core', 'companion']);
 export type ScheduleRunner = z.infer<typeof ScheduleRunnerSchema>;
+
+/**
+ * A tool-only job's one call (ADR-57): which of the companion's servers, which tool, with what.
+ * The companion runs it with no page open and no model — so the arguments are fixed when the
+ * schedule is made.
+ */
+export const ScheduleToolCallSchema = z.object({
+  serverId: z.string().min(1),
+  name: z.string().min(1),
+  arguments: JsonObjectSchema,
+});
+export type ScheduleToolCall = z.infer<typeof ScheduleToolCallSchema>;
 
 /** The outcome of one firing, kept so the character can say what happened and when. */
 export const ScheduleRunSchema = z.object({
@@ -81,6 +93,8 @@ export const ScheduleSchema = z.object({
   lastRunAt: TimestampSchema.nullable(),
   nextRunAt: TimestampSchema.nullable(),
   createdAt: TimestampSchema,
+  /** For `runOn: 'companion'`: the call it makes (ADR-57). Null for a job the core runs. */
+  toolCall: ScheduleToolCallSchema.nullable().default(null),
   /** The newest run, with whether it has been told (ADR-56); every run is also a memory episode. */
   lastRun: ScheduleRunSchema.nullable().default(null),
 });

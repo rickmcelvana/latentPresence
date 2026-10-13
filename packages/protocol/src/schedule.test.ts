@@ -15,6 +15,7 @@ const schedule = {
   lastRunAt: null,
   nextRunAt: '2026-09-09T12:00:00Z',
   createdAt: '2026-09-08T10:00:00Z',
+  toolCall: null,
   lastRun: null,
 };
 

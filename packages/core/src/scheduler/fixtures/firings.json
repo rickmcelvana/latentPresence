@@ -1,0 +1,3498 @@
+{
+  "firings": [
+    {
+      "name": "spring forward: a skipped 02:30 fires an hour later",
+      "expression": "30 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-07T12:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-03-08T07:00:00.000Z",
+        "2026-03-09T06:30:00.000Z",
+        "2026-03-10T06:30:00.000Z"
+      ]
+    },
+    {
+      "name": "fall back: a repeated 01:30 fires once, the first",
+      "expression": "30 1 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-31T12:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-11-01T05:30:00.000Z",
+        "2026-11-02T06:30:00.000Z",
+        "2026-11-03T06:30:00.000Z"
+      ]
+    },
+    {
+      "name": "every 30 minutes across fall back",
+      "expression": "*/30 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-01T04:45:00.000Z",
+      "count": 6,
+      "next": [
+        "2026-11-01T05:00:00.000Z",
+        "2026-11-01T05:30:00.000Z",
+        "2026-11-01T06:00:00.000Z",
+        "2026-11-01T06:30:00.000Z",
+        "2026-11-01T07:00:00.000Z",
+        "2026-11-01T07:30:00.000Z"
+      ]
+    },
+    {
+      "name": "every 30 minutes across spring forward",
+      "expression": "*/30 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-08T06:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T06:30:00.000Z",
+        "2026-03-08T07:00:00.000Z",
+        "2026-03-08T07:30:00.000Z",
+        "2026-03-08T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "hourly across fall back",
+      "expression": "0 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-01T03:30:00.000Z",
+      "count": 5,
+      "next": [
+        "2026-11-01T04:00:00.000Z",
+        "2026-11-01T05:00:00.000Z",
+        "2026-11-01T06:00:00.000Z",
+        "2026-11-01T07:00:00.000Z",
+        "2026-11-01T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "weekdays at 8 over a weekend",
+      "expression": "0 8 * * 1-5",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-09T13:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-10-12T12:00:00.000Z",
+        "2026-10-13T12:00:00.000Z",
+        "2026-10-14T12:00:00.000Z"
+      ]
+    },
+    {
+      "name": "weekday names",
+      "expression": "0 9 * * MON,FRI",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-12T14:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-10-16T13:00:00.000Z",
+        "2026-10-19T13:00:00.000Z",
+        "2026-10-23T13:00:00.000Z"
+      ]
+    },
+    {
+      "name": "day of month OR day of week",
+      "expression": "0 9 13 * 1",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-12T14:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-10-13T13:00:00.000Z",
+        "2026-10-19T13:00:00.000Z",
+        "2026-10-26T13:00:00.000Z"
+      ]
+    },
+    {
+      "name": "strictly after a firing",
+      "expression": "0 9 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-13T13:00:00.000Z",
+      "count": 1,
+      "next": [
+        "2026-10-14T13:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Helsinki across its October change",
+      "expression": "0 9 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-24T00:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-10-24T06:00:00.000Z",
+        "2026-10-25T07:00:00.000Z",
+        "2026-10-26T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Sydney across its October change",
+      "expression": "15 3 * * 0",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-09-26T00:00:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-09-26T17:15:00.000Z",
+        "2026-10-03T16:15:00.000Z",
+        "2026-10-10T16:15:00.000Z"
+      ]
+    },
+    {
+      "name": "first of the month, over a year end",
+      "expression": "0 0 1 * *",
+      "timeZone": "UTC",
+      "after": "2026-12-15T00:00:00.000Z",
+      "count": 2,
+      "next": [
+        "2027-01-01T00:00:00.000Z",
+        "2027-02-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "the 29th of February",
+      "expression": "0 12 29 2 *",
+      "timeZone": "UTC",
+      "after": "2026-01-01T00:00:00.000Z",
+      "count": 1,
+      "next": [
+        "2028-02-29T12:00:00.000Z"
+      ]
+    },
+    {
+      "name": "every 15 minutes in working hours",
+      "expression": "*/15 9-17 * * 1-5",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-13T21:40:00.000Z",
+      "count": 3,
+      "next": [
+        "2026-10-13T21:45:00.000Z",
+        "2026-10-14T13:00:00.000Z",
+        "2026-10-14T13:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 1: 30 2 * * * in Australia/Lord_Howe after 2026-08-11T03:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-08-11T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-08-11T16:00:00.000Z",
+        "2026-08-12T16:00:00.000Z",
+        "2026-08-13T16:00:00.000Z",
+        "2026-08-14T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 2: 0 8 1,15 * * in Europe/London after 2026-10-03T16:00:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T16:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-15T07:00:00.000Z",
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-15T08:00:00.000Z",
+        "2026-12-01T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 3: 15 2,14 * * * in America/Los_Angeles after 2026-10-03T15:45:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-03T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T21:15:00.000Z",
+        "2026-10-04T09:15:00.000Z",
+        "2026-10-04T21:15:00.000Z",
+        "2026-10-05T09:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 4: 15 2,14 * * * in America/Los_Angeles after 2028-04-12T03:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2028-04-12T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-04-12T09:15:00.000Z",
+        "2028-04-12T21:15:00.000Z",
+        "2028-04-13T09:15:00.000Z",
+        "2028-04-13T21:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 5: 0 1-3 * * * in Australia/Lord_Howe after 2028-08-24T10:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-08-24T10:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-08-24T14:30:00.000Z",
+        "2028-08-24T15:30:00.000Z",
+        "2028-08-24T16:30:00.000Z",
+        "2028-08-25T14:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 6: 0 */6 * * * in America/Los_Angeles after 2026-03-07T21:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-03-07T21:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T02:00:00.000Z",
+        "2026-03-08T08:00:00.000Z",
+        "2026-03-08T13:00:00.000Z",
+        "2026-03-08T19:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 7: 0 3 * * * in Australia/Sydney after 2026-08-04T09:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-08-04T09:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-08-04T17:00:00.000Z",
+        "2026-08-05T17:00:00.000Z",
+        "2026-08-06T17:00:00.000Z",
+        "2026-08-07T17:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 8: 0 3 * * * in Australia/Sydney after 2026-02-01T02:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-02-01T02:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-02-01T16:00:00.000Z",
+        "2026-02-02T16:00:00.000Z",
+        "2026-02-03T16:00:00.000Z",
+        "2026-02-04T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 9: */20 1-3 * * * in Europe/London after 2026-03-28T23:45:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-03-28T23:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T01:00:00.000Z",
+        "2026-03-29T01:20:00.000Z",
+        "2026-03-29T01:40:00.000Z",
+        "2026-03-29T02:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 10: 0 3 * * * in America/Toronto after 2026-10-03T18:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-03T18:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T07:00:00.000Z",
+        "2026-10-05T07:00:00.000Z",
+        "2026-10-06T07:00:00.000Z",
+        "2026-10-07T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 11: 0 1-3 * * * in Asia/Kolkata after 2027-03-25T13:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2027-03-25T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-03-25T19:30:00.000Z",
+        "2027-03-25T20:30:00.000Z",
+        "2027-03-25T21:30:00.000Z",
+        "2027-03-26T19:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 12: 0 1-3 * * * in America/Toronto after 2026-10-11T06:30:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-11T06:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-11T07:00:00.000Z",
+        "2026-10-12T05:00:00.000Z",
+        "2026-10-12T06:00:00.000Z",
+        "2026-10-12T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 13: 0 3 * * * in Europe/Helsinki after 2027-10-27T02:30:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-10-27T02:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-10-28T00:00:00.000Z",
+        "2027-10-29T00:00:00.000Z",
+        "2027-10-30T00:00:00.000Z",
+        "2027-10-31T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 14: 0 9 * * 1-5 in Europe/London after 2026-10-03T18:00:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T18:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-05T08:00:00.000Z",
+        "2026-10-06T08:00:00.000Z",
+        "2026-10-07T08:00:00.000Z",
+        "2026-10-08T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 15: 45 1 * * * in Asia/Kolkata after 2026-05-07T18:00:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-05-07T18:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-05-07T20:15:00.000Z",
+        "2026-05-08T20:15:00.000Z",
+        "2026-05-09T20:15:00.000Z",
+        "2026-05-10T20:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 16: 45 1 * * * in Australia/Sydney after 2026-10-25T01:45:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-25T01:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T14:45:00.000Z",
+        "2026-10-26T14:45:00.000Z",
+        "2026-10-27T14:45:00.000Z",
+        "2026-10-28T14:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 17: 15 2,14 * * * in Australia/Sydney after 2026-03-07T21:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-03-07T21:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T03:15:00.000Z",
+        "2026-03-08T15:15:00.000Z",
+        "2026-03-09T03:15:00.000Z",
+        "2026-03-09T15:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 18: 0 */6 * * * in Europe/Helsinki after 2026-08-10T17:00:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-08-10T17:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-08-10T21:00:00.000Z",
+        "2026-08-11T03:00:00.000Z",
+        "2026-08-11T09:00:00.000Z",
+        "2026-08-11T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 19: 0 * * * * in Asia/Kolkata after 2026-10-03T15:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-10-03T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T16:30:00.000Z",
+        "2026-10-03T17:30:00.000Z",
+        "2026-10-03T18:30:00.000Z",
+        "2026-10-03T19:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 20: 0 */6 * * * in Australia/Lord_Howe after 2028-01-07T20:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-01-07T20:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-08T01:00:00.000Z",
+        "2028-01-08T07:00:00.000Z",
+        "2028-01-08T13:00:00.000Z",
+        "2028-01-08T19:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 21: 15 2,14 * * * in Europe/Helsinki after 2027-09-06T17:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-09-06T17:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-09-06T23:15:00.000Z",
+        "2027-09-07T11:15:00.000Z",
+        "2027-09-07T23:15:00.000Z",
+        "2027-09-08T11:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 22: 0 3 * * * in Australia/Sydney after 2026-04-04T15:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-04-04T15:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T17:00:00.000Z",
+        "2026-04-05T17:00:00.000Z",
+        "2026-04-06T17:00:00.000Z",
+        "2026-04-07T17:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 23: 30 2 * * * in Australia/Lord_Howe after 2026-11-08T16:30:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-11-08T16:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-09T15:30:00.000Z",
+        "2026-11-10T15:30:00.000Z",
+        "2026-11-11T15:30:00.000Z",
+        "2026-11-12T15:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 24: 15 2,14 * * * in Asia/Kolkata after 2026-03-08T06:15:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-08T06:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T08:45:00.000Z",
+        "2026-03-08T20:45:00.000Z",
+        "2026-03-09T08:45:00.000Z",
+        "2026-03-09T20:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 25: 0 */6 * * * in America/Los_Angeles after 2026-11-01T10:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-11-01T10:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T14:00:00.000Z",
+        "2026-11-01T20:00:00.000Z",
+        "2026-11-02T02:00:00.000Z",
+        "2026-11-02T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 26: 0 */6 * * * in America/Los_Angeles after 2027-09-16T08:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2027-09-16T08:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-09-16T13:00:00.000Z",
+        "2027-09-16T19:00:00.000Z",
+        "2027-09-17T01:00:00.000Z",
+        "2027-09-17T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 27: 0 9 * * 1-5 in Australia/Lord_Howe after 2026-02-20T07:45:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-02-20T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-02-22T22:00:00.000Z",
+        "2026-02-23T22:00:00.000Z",
+        "2026-02-24T22:00:00.000Z",
+        "2026-02-25T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 28: 0 1-3 * * * in Australia/Sydney after 2026-10-24T22:00:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-24T22:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T14:00:00.000Z",
+        "2026-10-25T15:00:00.000Z",
+        "2026-10-25T16:00:00.000Z",
+        "2026-10-26T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 29: 45 1 * * * in Asia/Kolkata after 2026-11-01T06:15:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-11-01T06:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T20:15:00.000Z",
+        "2026-11-02T20:15:00.000Z",
+        "2026-11-03T20:15:00.000Z",
+        "2026-11-04T20:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 30: 0 1-3 * * * in Pacific/Chatham after 2026-11-01T06:00:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-11-01T06:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T11:15:00.000Z",
+        "2026-11-01T12:15:00.000Z",
+        "2026-11-01T13:15:00.000Z",
+        "2026-11-02T11:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 31: 10-20/5 2 * * * in Asia/Kolkata after 2026-07-06T12:30:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-07-06T12:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-06T20:40:00.000Z",
+        "2026-07-06T20:45:00.000Z",
+        "2026-07-06T20:50:00.000Z",
+        "2026-07-07T20:40:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 32: 30 2 * * * in Asia/Kolkata after 2026-10-03T15:30:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-10-03T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T21:00:00.000Z",
+        "2026-10-04T21:00:00.000Z",
+        "2026-10-05T21:00:00.000Z",
+        "2026-10-06T21:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 33: 0 0 * * * in Europe/London after 2026-03-29T01:15:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-03-29T01:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T23:00:00.000Z",
+        "2026-03-30T23:00:00.000Z",
+        "2026-03-31T23:00:00.000Z",
+        "2026-04-01T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 34: 0 */6 * * * in Europe/Helsinki after 2027-01-21T11:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-01-21T11:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-21T16:00:00.000Z",
+        "2027-01-21T22:00:00.000Z",
+        "2027-01-22T04:00:00.000Z",
+        "2027-01-22T10:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 35: */20 1-3 * * * in Pacific/Chatham after 2026-03-01T07:00:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-03-01T07:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-01T11:15:00.000Z",
+        "2026-03-01T11:35:00.000Z",
+        "2026-03-01T11:55:00.000Z",
+        "2026-03-01T12:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 36: 0 * * * * in America/Los_Angeles after 2028-01-15T00:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2028-01-15T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-15T01:00:00.000Z",
+        "2028-01-15T02:00:00.000Z",
+        "2028-01-15T03:00:00.000Z",
+        "2028-01-15T04:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 37: 0 * * * * in Australia/Lord_Howe after 2026-03-28T22:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-03-28T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-28T23:00:00.000Z",
+        "2026-03-29T00:00:00.000Z",
+        "2026-03-29T01:00:00.000Z",
+        "2026-03-29T02:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 38: 5 4 * * SUN in Australia/Sydney after 2026-10-24T22:45:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-24T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-31T17:05:00.000Z",
+        "2026-11-07T17:05:00.000Z",
+        "2026-11-14T17:05:00.000Z",
+        "2026-11-21T17:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 39: 59 23 31 12 * in Asia/Kolkata after 2026-09-26T14:15:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-09-26T14:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-31T18:29:00.000Z",
+        "2027-12-31T18:29:00.000Z",
+        "2028-12-31T18:29:00.000Z",
+        "2029-12-31T18:29:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 40: 10-20/5 2 * * * in Asia/Kolkata after 2027-09-20T19:30:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2027-09-20T19:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-09-20T20:40:00.000Z",
+        "2027-09-20T20:45:00.000Z",
+        "2027-09-20T20:50:00.000Z",
+        "2027-09-21T20:40:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 41: 30 2 * * * in Australia/Lord_Howe after 2028-05-23T22:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-05-23T22:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-05-24T16:00:00.000Z",
+        "2028-05-25T16:00:00.000Z",
+        "2028-05-26T16:00:00.000Z",
+        "2028-05-27T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 42: 0 8 1,15 * * in Europe/London after 2026-10-03T14:45:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T14:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-15T07:00:00.000Z",
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-15T08:00:00.000Z",
+        "2026-12-01T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 43: 30 2 * * * in America/Toronto after 2026-04-04T15:45:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-04-04T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T06:30:00.000Z",
+        "2026-04-06T06:30:00.000Z",
+        "2026-04-07T06:30:00.000Z",
+        "2026-04-08T06:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 44: 0 2 * * * in Europe/London after 2026-11-01T00:30:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-11-01T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T02:00:00.000Z",
+        "2026-11-02T02:00:00.000Z",
+        "2026-11-03T02:00:00.000Z",
+        "2026-11-04T02:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 45: 30 1 1 * 1 in Pacific/Chatham after 2026-04-04T15:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-04-04T15:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T12:45:00.000Z",
+        "2026-04-12T12:45:00.000Z",
+        "2026-04-19T12:45:00.000Z",
+        "2026-04-26T12:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 46: 15 2,14 * * * in Europe/Helsinki after 2027-01-16T17:45:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-01-16T17:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-17T00:15:00.000Z",
+        "2027-01-17T12:15:00.000Z",
+        "2027-01-18T00:15:00.000Z",
+        "2027-01-18T12:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 47: 0 3 * * * in Europe/Helsinki after 2026-10-24T22:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-24T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T00:00:00.000Z",
+        "2026-10-26T01:00:00.000Z",
+        "2026-10-27T01:00:00.000Z",
+        "2026-10-28T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 48: 30 2 * * * in Europe/London after 2026-10-25T02:45:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-25T02:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-26T02:30:00.000Z",
+        "2026-10-27T02:30:00.000Z",
+        "2026-10-28T02:30:00.000Z",
+        "2026-10-29T02:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 49: 0 * * * * in Europe/London after 2028-08-28T05:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/London",
+      "after": "2028-08-28T05:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-08-28T06:00:00.000Z",
+        "2028-08-28T07:00:00.000Z",
+        "2028-08-28T08:00:00.000Z",
+        "2028-08-28T09:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 50: 15 2,14 * * * in Asia/Kolkata after 2026-04-04T16:15:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-04-04T16:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T20:45:00.000Z",
+        "2026-04-05T08:45:00.000Z",
+        "2026-04-05T20:45:00.000Z",
+        "2026-04-06T08:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 51: 30 1 1 * 1 in America/Toronto after 2026-09-26T13:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "America/Toronto",
+      "after": "2026-09-26T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-28T05:30:00.000Z",
+        "2026-10-01T05:30:00.000Z",
+        "2026-10-05T05:30:00.000Z",
+        "2026-10-12T05:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 52: 0 * * * * in Europe/London after 2026-11-01T01:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-11-01T01:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T02:00:00.000Z",
+        "2026-11-01T03:00:00.000Z",
+        "2026-11-01T04:00:00.000Z",
+        "2026-11-01T05:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 53: 0 12 * JAN,JUL * in Australia/Lord_Howe after 2026-10-03T17:30:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-10-03T17:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T01:00:00.000Z",
+        "2027-01-02T01:00:00.000Z",
+        "2027-01-03T01:00:00.000Z",
+        "2027-01-04T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 54: 0 12 * JAN,JUL * in Australia/Sydney after 2027-01-16T01:00:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Australia/Sydney",
+      "after": "2027-01-16T01:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-17T01:00:00.000Z",
+        "2027-01-18T01:00:00.000Z",
+        "2027-01-19T01:00:00.000Z",
+        "2027-01-20T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 55: */15 * * * * in Europe/Helsinki after 2026-03-07T21:00:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-07T21:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-07T21:15:00.000Z",
+        "2026-03-07T21:30:00.000Z",
+        "2026-03-07T21:45:00.000Z",
+        "2026-03-07T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 56: */15 * * * * in Australia/Sydney after 2026-11-01T07:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-11-01T07:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T07:30:00.000Z",
+        "2026-11-01T07:45:00.000Z",
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-01T08:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 57: 0 8 1,15 * * in America/Toronto after 2026-03-08T05:45:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-08T05:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-15T12:00:00.000Z",
+        "2026-04-01T12:00:00.000Z",
+        "2026-04-15T12:00:00.000Z",
+        "2026-05-01T12:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 58: 30 2 * * * in Europe/London after 2028-10-11T14:45:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2028-10-11T14:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-10-12T01:30:00.000Z",
+        "2028-10-13T01:30:00.000Z",
+        "2028-10-14T01:30:00.000Z",
+        "2028-10-15T01:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 59: 45 1 * * * in Australia/Sydney after 2026-11-01T07:00:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-11-01T07:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T14:45:00.000Z",
+        "2026-11-02T14:45:00.000Z",
+        "2026-11-03T14:45:00.000Z",
+        "2026-11-04T14:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 60: 15 2,14 * * * in Europe/Helsinki after 2026-10-03T17:30:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-03T17:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T23:15:00.000Z",
+        "2026-10-04T11:15:00.000Z",
+        "2026-10-04T23:15:00.000Z",
+        "2026-10-05T11:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 61: 45 1 * * * in Europe/Helsinki after 2028-09-22T01:15:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-09-22T01:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-09-22T22:45:00.000Z",
+        "2028-09-23T22:45:00.000Z",
+        "2028-09-24T22:45:00.000Z",
+        "2028-09-25T22:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 62: 0 12 * JAN,JUL * in Pacific/Chatham after 2026-04-04T17:15:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-04-04T17:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-06-30T23:15:00.000Z",
+        "2026-07-01T23:15:00.000Z",
+        "2026-07-02T23:15:00.000Z",
+        "2026-07-03T23:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 63: 0 9 * * 1-5 in Australia/Sydney after 2026-10-03T17:15:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-03T17:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T22:00:00.000Z",
+        "2026-10-05T22:00:00.000Z",
+        "2026-10-06T22:00:00.000Z",
+        "2026-10-07T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 64: 0 9 * * 1-5 in America/Toronto after 2026-10-31T23:15:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-31T23:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-02T14:00:00.000Z",
+        "2026-11-03T14:00:00.000Z",
+        "2026-11-04T14:00:00.000Z",
+        "2026-11-05T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 65: 0 2 * * * in Australia/Lord_Howe after 2027-01-14T09:00:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2027-01-14T09:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-14T15:00:00.000Z",
+        "2027-01-15T15:00:00.000Z",
+        "2027-01-16T15:00:00.000Z",
+        "2027-01-17T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 66: 0 12 * JAN,JUL * in America/Toronto after 2028-04-25T10:00:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "America/Toronto",
+      "after": "2028-04-25T10:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-07-01T16:00:00.000Z",
+        "2028-07-02T16:00:00.000Z",
+        "2028-07-03T16:00:00.000Z",
+        "2028-07-04T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 67: 30 1 1 * 1 in Australia/Lord_Howe after 2026-03-28T22:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-03-28T22:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T14:30:00.000Z",
+        "2026-03-31T14:30:00.000Z",
+        "2026-04-05T15:00:00.000Z",
+        "2026-04-12T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 68: 0 */6 * * * in Europe/London after 2026-01-17T07:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-01-17T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-01-17T12:00:00.000Z",
+        "2026-01-17T18:00:00.000Z",
+        "2026-01-18T00:00:00.000Z",
+        "2026-01-18T06:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 69: 30 2 * * * in America/Toronto after 2026-03-29T02:30:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-29T02:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T06:30:00.000Z",
+        "2026-03-30T06:30:00.000Z",
+        "2026-03-31T06:30:00.000Z",
+        "2026-04-01T06:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 70: 0 2 * * * in Pacific/Chatham after 2026-04-04T15:15:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-04-04T15:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T13:15:00.000Z",
+        "2026-04-06T13:15:00.000Z",
+        "2026-04-07T13:15:00.000Z",
+        "2026-04-08T13:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 71: 0 */6 * * * in America/Toronto after 2026-06-07T13:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-06-07T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-06-07T16:00:00.000Z",
+        "2026-06-07T22:00:00.000Z",
+        "2026-06-08T04:00:00.000Z",
+        "2026-06-08T10:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 72: 0 3 * * * in Europe/London after 2027-08-30T04:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Europe/London",
+      "after": "2027-08-30T04:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-08-31T02:00:00.000Z",
+        "2027-09-01T02:00:00.000Z",
+        "2027-09-02T02:00:00.000Z",
+        "2027-09-03T02:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 73: 0 12 * JAN,JUL * in Europe/London after 2026-03-08T05:45:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/London",
+      "after": "2026-03-08T05:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-01T11:00:00.000Z",
+        "2026-07-02T11:00:00.000Z",
+        "2026-07-03T11:00:00.000Z",
+        "2026-07-04T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 74: 0 */6 * * * in Australia/Lord_Howe after 2026-11-01T05:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-11-01T05:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T07:00:00.000Z",
+        "2026-11-01T13:00:00.000Z",
+        "2026-11-01T19:00:00.000Z",
+        "2026-11-02T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 75: 0 * * * * in Pacific/Chatham after 2026-03-08T05:00:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-03-08T05:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T05:15:00.000Z",
+        "2026-03-08T06:15:00.000Z",
+        "2026-03-08T07:15:00.000Z",
+        "2026-03-08T08:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 76: 0 12 * JAN,JUL * in Asia/Kolkata after 2027-08-19T08:00:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2027-08-19T08:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-01T06:30:00.000Z",
+        "2028-01-02T06:30:00.000Z",
+        "2028-01-03T06:30:00.000Z",
+        "2028-01-04T06:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 77: 30 2 * * * in Europe/Helsinki after 2026-03-08T05:15:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-08T05:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-09T00:30:00.000Z",
+        "2026-03-10T00:30:00.000Z",
+        "2026-03-11T00:30:00.000Z",
+        "2026-03-12T00:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 78: */15 * * * * in Australia/Sydney after 2026-09-15T04:00:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-09-15T04:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-15T04:15:00.000Z",
+        "2026-09-15T04:30:00.000Z",
+        "2026-09-15T04:45:00.000Z",
+        "2026-09-15T05:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 79: 0 0 * * * in Asia/Kolkata after 2026-10-03T15:15:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-10-03T15:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T18:30:00.000Z",
+        "2026-10-04T18:30:00.000Z",
+        "2026-10-05T18:30:00.000Z",
+        "2026-10-06T18:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 80: 0 3 * * * in Europe/Helsinki after 2026-04-04T17:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-04-04T17:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T00:00:00.000Z",
+        "2026-04-06T00:00:00.000Z",
+        "2026-04-07T00:00:00.000Z",
+        "2026-04-08T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 81: 15 2,14 * * * in Australia/Sydney after 2026-04-04T17:45:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-04-04T17:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T04:15:00.000Z",
+        "2026-04-05T16:15:00.000Z",
+        "2026-04-06T04:15:00.000Z",
+        "2026-04-06T16:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 82: 0 9 * * 1-5 in Europe/London after 2026-11-01T06:45:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Europe/London",
+      "after": "2026-11-01T06:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-02T09:00:00.000Z",
+        "2026-11-03T09:00:00.000Z",
+        "2026-11-04T09:00:00.000Z",
+        "2026-11-05T09:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 83: 0 */6 * * * in Europe/Helsinki after 2026-03-29T01:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-29T01:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T03:00:00.000Z",
+        "2026-03-29T09:00:00.000Z",
+        "2026-03-29T15:00:00.000Z",
+        "2026-03-29T21:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 84: 30 2 * * * in Australia/Sydney after 2027-06-30T13:15:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2027-06-30T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-06-30T16:30:00.000Z",
+        "2027-07-01T16:30:00.000Z",
+        "2027-07-02T16:30:00.000Z",
+        "2027-07-03T16:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 85: 15 2,14 * * * in Pacific/Chatham after 2026-10-30T21:30:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-10-30T21:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-31T00:30:00.000Z",
+        "2026-10-31T12:30:00.000Z",
+        "2026-11-01T00:30:00.000Z",
+        "2026-11-01T12:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 86: 0 12 * JAN,JUL * in Europe/Helsinki after 2026-11-01T06:30:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T06:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T10:00:00.000Z",
+        "2027-01-02T10:00:00.000Z",
+        "2027-01-03T10:00:00.000Z",
+        "2027-01-04T10:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 87: 15 2,14 * * * in America/Toronto after 2026-04-04T16:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-04-04T16:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T18:15:00.000Z",
+        "2026-04-05T06:15:00.000Z",
+        "2026-04-05T18:15:00.000Z",
+        "2026-04-06T06:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 88: 10-20/5 2 * * * in America/Toronto after 2028-06-27T07:00:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2028-06-27T07:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-06-28T06:10:00.000Z",
+        "2028-06-28T06:15:00.000Z",
+        "2028-06-28T06:20:00.000Z",
+        "2028-06-29T06:10:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 89: */15 * * * * in Europe/Helsinki after 2026-02-26T12:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-02-26T12:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-02-26T12:30:00.000Z",
+        "2026-02-26T12:45:00.000Z",
+        "2026-02-26T13:00:00.000Z",
+        "2026-02-26T13:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 90: 45 1 * * * in Asia/Kolkata after 2026-11-01T06:45:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-11-01T06:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T20:15:00.000Z",
+        "2026-11-02T20:15:00.000Z",
+        "2026-11-03T20:15:00.000Z",
+        "2026-11-04T20:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 91: 5 4 * * SUN in Asia/Kolkata after 2026-03-29T00:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-29T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T22:35:00.000Z",
+        "2026-04-11T22:35:00.000Z",
+        "2026-04-18T22:35:00.000Z",
+        "2026-04-25T22:35:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 92: 0 3 * * * in Pacific/Chatham after 2026-10-27T20:30:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-10-27T20:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-28T13:15:00.000Z",
+        "2026-10-29T13:15:00.000Z",
+        "2026-10-30T13:15:00.000Z",
+        "2026-10-31T13:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 93: 0 1-3 * * * in America/Los_Angeles after 2026-04-26T21:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-04-26T21:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-27T08:00:00.000Z",
+        "2026-04-27T09:00:00.000Z",
+        "2026-04-27T10:00:00.000Z",
+        "2026-04-28T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 94: 0 * * * * in Europe/Helsinki after 2026-11-01T07:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-01T09:00:00.000Z",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 95: 0 0 * * * in Europe/London after 2026-04-04T15:30:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-04-04T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T23:00:00.000Z",
+        "2026-04-05T23:00:00.000Z",
+        "2026-04-06T23:00:00.000Z",
+        "2026-04-07T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 96: 0 8 1,15 * * in Asia/Kolkata after 2026-04-04T14:45:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-04-04T14:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-15T02:30:00.000Z",
+        "2026-05-01T02:30:00.000Z",
+        "2026-05-15T02:30:00.000Z",
+        "2026-06-01T02:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 97: 15 2,14 * * * in Asia/Kolkata after 2026-11-01T07:30:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-11-01T07:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T08:45:00.000Z",
+        "2026-11-01T20:45:00.000Z",
+        "2026-11-02T08:45:00.000Z",
+        "2026-11-02T20:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 98: 0 1-3 * * * in Australia/Sydney after 2028-11-27T08:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2028-11-27T08:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-11-27T14:00:00.000Z",
+        "2028-11-27T15:00:00.000Z",
+        "2028-11-27T16:00:00.000Z",
+        "2028-11-28T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 99: 0 2 * * * in Australia/Sydney after 2026-03-07T21:15:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-03-07T21:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T15:00:00.000Z",
+        "2026-03-09T15:00:00.000Z",
+        "2026-03-10T15:00:00.000Z",
+        "2026-03-11T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 100: 5 4 * * SUN in America/Los_Angeles after 2026-10-24T22:45:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-24T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T11:05:00.000Z",
+        "2026-11-01T12:05:00.000Z",
+        "2026-11-08T12:05:00.000Z",
+        "2026-11-15T12:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 101: 30 1 1 * 1 in America/Los_Angeles after 2027-06-15T01:00:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "America/Los_Angeles",
+      "after": "2027-06-15T01:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-06-21T08:30:00.000Z",
+        "2027-06-28T08:30:00.000Z",
+        "2027-07-01T08:30:00.000Z",
+        "2027-07-05T08:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 102: 0 1-3 * * * in Australia/Lord_Howe after 2027-09-23T14:00:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2027-09-23T14:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-09-23T14:30:00.000Z",
+        "2027-09-23T15:30:00.000Z",
+        "2027-09-23T16:30:00.000Z",
+        "2027-09-24T14:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 103: 0 1-3 * * * in America/Los_Angeles after 2026-11-01T01:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-11-01T01:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-01T09:00:00.000Z",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 104: 0 9 * * 1-5 in Australia/Lord_Howe after 2026-04-04T16:30:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-04-04T16:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T22:30:00.000Z",
+        "2026-04-06T22:30:00.000Z",
+        "2026-04-07T22:30:00.000Z",
+        "2026-04-08T22:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 105: 0 3 * * * in Asia/Kolkata after 2028-08-24T03:30:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2028-08-24T03:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-08-24T21:30:00.000Z",
+        "2028-08-25T21:30:00.000Z",
+        "2028-08-26T21:30:00.000Z",
+        "2028-08-27T21:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 106: 0 8 1,15 * * in Asia/Kolkata after 2026-03-07T20:00:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-07T20:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-15T02:30:00.000Z",
+        "2026-04-01T02:30:00.000Z",
+        "2026-04-15T02:30:00.000Z",
+        "2026-05-01T02:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 107: 0 */6 * * * in Pacific/Chatham after 2027-07-31T07:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2027-07-31T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-07-31T11:15:00.000Z",
+        "2027-07-31T17:15:00.000Z",
+        "2027-07-31T23:15:00.000Z",
+        "2027-08-01T05:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 108: */15 * * * * in America/Los_Angeles after 2026-11-01T00:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-11-01T00:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T00:30:00.000Z",
+        "2026-11-01T00:45:00.000Z",
+        "2026-11-01T01:00:00.000Z",
+        "2026-11-01T01:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 109: 0 1-3 * * * in Pacific/Chatham after 2026-01-13T22:00:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-01-13T22:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-01-14T11:15:00.000Z",
+        "2026-01-14T12:15:00.000Z",
+        "2026-01-14T13:15:00.000Z",
+        "2026-01-15T11:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 110: 59 23 31 12 * in America/Los_Angeles after 2026-03-08T07:15:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-03-08T07:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T07:59:00.000Z",
+        "2028-01-01T07:59:00.000Z",
+        "2029-01-01T07:59:00.000Z",
+        "2030-01-01T07:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 111: 30 1 1 * 1 in Australia/Lord_Howe after 2026-04-04T13:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-04-04T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T15:00:00.000Z",
+        "2026-04-12T15:00:00.000Z",
+        "2026-04-19T15:00:00.000Z",
+        "2026-04-26T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 112: 30 2 * * * in Europe/Helsinki after 2026-10-24T23:15:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-24T23:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-24T23:30:00.000Z",
+        "2026-10-26T00:30:00.000Z",
+        "2026-10-27T00:30:00.000Z",
+        "2026-10-28T00:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 113: 0 8 1,15 * * in Europe/London after 2027-02-06T17:30:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Europe/London",
+      "after": "2027-02-06T17:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-02-15T08:00:00.000Z",
+        "2027-03-01T08:00:00.000Z",
+        "2027-03-15T08:00:00.000Z",
+        "2027-04-01T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 114: 0 12 * JAN,JUL * in Australia/Lord_Howe after 2028-08-06T21:45:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-08-06T21:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2029-01-01T01:00:00.000Z",
+        "2029-01-02T01:00:00.000Z",
+        "2029-01-03T01:00:00.000Z",
+        "2029-01-04T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 115: 30 1 1 * 1 in America/Toronto after 2026-10-03T16:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-03T16:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-05T05:30:00.000Z",
+        "2026-10-12T05:30:00.000Z",
+        "2026-10-19T05:30:00.000Z",
+        "2026-10-26T05:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 116: 30 1 1 * 1 in Europe/London after 2026-03-07T21:30:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Europe/London",
+      "after": "2026-03-07T21:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-09T01:30:00.000Z",
+        "2026-03-16T01:30:00.000Z",
+        "2026-03-23T01:30:00.000Z",
+        "2026-03-30T00:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 117: 0 3 * * * in America/Toronto after 2026-03-22T01:30:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-22T01:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-22T07:00:00.000Z",
+        "2026-03-23T07:00:00.000Z",
+        "2026-03-24T07:00:00.000Z",
+        "2026-03-25T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 118: 0 3 * * * in Australia/Lord_Howe after 2026-04-04T13:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-04-04T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T16:30:00.000Z",
+        "2026-04-05T16:30:00.000Z",
+        "2026-04-06T16:30:00.000Z",
+        "2026-04-07T16:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 119: 30 2 * * * in America/Los_Angeles after 2026-03-08T06:45:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-03-08T06:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T10:00:00.000Z",
+        "2026-03-09T09:30:00.000Z",
+        "2026-03-10T09:30:00.000Z",
+        "2026-03-11T09:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 120: 0 9 * * 1-5 in Australia/Lord_Howe after 2026-04-12T13:00:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-04-12T13:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-12T22:30:00.000Z",
+        "2026-04-13T22:30:00.000Z",
+        "2026-04-14T22:30:00.000Z",
+        "2026-04-15T22:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 121: 59 23 31 12 * in Asia/Kolkata after 2026-06-29T06:45:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-06-29T06:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-31T18:29:00.000Z",
+        "2027-12-31T18:29:00.000Z",
+        "2028-12-31T18:29:00.000Z",
+        "2029-12-31T18:29:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 122: 30 1 1 * 1 in Australia/Lord_Howe after 2026-11-01T09:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-11-01T09:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T14:30:00.000Z",
+        "2026-11-08T14:30:00.000Z",
+        "2026-11-15T14:30:00.000Z",
+        "2026-11-22T14:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 123: 0 8 1,15 * * in Europe/London after 2027-03-10T09:15:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Europe/London",
+      "after": "2027-03-10T09:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-03-15T08:00:00.000Z",
+        "2027-04-01T07:00:00.000Z",
+        "2027-04-15T07:00:00.000Z",
+        "2027-05-01T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 124: 0 2 * * * in Europe/Helsinki after 2026-11-01T11:15:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T11:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-02T00:00:00.000Z",
+        "2026-11-03T00:00:00.000Z",
+        "2026-11-04T00:00:00.000Z",
+        "2026-11-05T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 125: 5 4 * * SUN in America/Toronto after 2027-11-29T03:00:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "America/Toronto",
+      "after": "2027-11-29T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-12-05T09:05:00.000Z",
+        "2027-12-12T09:05:00.000Z",
+        "2027-12-19T09:05:00.000Z",
+        "2027-12-26T09:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 126: 30 1 1 * 1 in Europe/London after 2026-10-24T22:45:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Europe/London",
+      "after": "2026-10-24T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-26T01:30:00.000Z",
+        "2026-11-01T01:30:00.000Z",
+        "2026-11-02T01:30:00.000Z",
+        "2026-11-09T01:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 127: 59 23 31 12 * in America/Los_Angeles after 2026-10-24T23:30:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-24T23:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T07:59:00.000Z",
+        "2028-01-01T07:59:00.000Z",
+        "2029-01-01T07:59:00.000Z",
+        "2030-01-01T07:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 128: 0 9 * * 1-5 in Europe/Helsinki after 2026-03-28T23:45:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-28T23:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-30T06:00:00.000Z",
+        "2026-03-31T06:00:00.000Z",
+        "2026-04-01T06:00:00.000Z",
+        "2026-04-02T06:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 129: 30 1 1 * 1 in Pacific/Chatham after 2026-10-24T22:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-10-24T22:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T11:45:00.000Z",
+        "2026-10-31T11:45:00.000Z",
+        "2026-11-01T11:45:00.000Z",
+        "2026-11-08T11:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 130: 10-20/5 2 * * * in America/Toronto after 2026-03-29T02:00:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-29T02:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T06:10:00.000Z",
+        "2026-03-29T06:15:00.000Z",
+        "2026-03-29T06:20:00.000Z",
+        "2026-03-30T06:10:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 131: 30 2 * * * in Europe/London after 2026-10-03T16:15:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T16:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T01:30:00.000Z",
+        "2026-10-05T01:30:00.000Z",
+        "2026-10-06T01:30:00.000Z",
+        "2026-10-07T01:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 132: */20 1-3 * * * in America/Toronto after 2027-06-02T15:30:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2027-06-02T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-06-03T05:00:00.000Z",
+        "2027-06-03T05:20:00.000Z",
+        "2027-06-03T05:40:00.000Z",
+        "2027-06-03T06:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 133: 0 3 * * * in Europe/Helsinki after 2026-03-29T01:00:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-29T01:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-30T00:00:00.000Z",
+        "2026-03-31T00:00:00.000Z",
+        "2026-04-01T00:00:00.000Z",
+        "2026-04-02T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 134: 5 4 * * SUN in Australia/Sydney after 2026-10-03T17:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-03T17:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-10T17:05:00.000Z",
+        "2026-10-17T17:05:00.000Z",
+        "2026-10-24T17:05:00.000Z",
+        "2026-10-31T17:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 135: 0 12 * JAN,JUL * in Pacific/Chatham after 2026-03-07T21:15:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-03-07T21:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-06-30T23:15:00.000Z",
+        "2026-07-01T23:15:00.000Z",
+        "2026-07-02T23:15:00.000Z",
+        "2026-07-03T23:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 136: 0 0 * * * in Australia/Sydney after 2028-01-03T02:30:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2028-01-03T02:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-03T13:00:00.000Z",
+        "2028-01-04T13:00:00.000Z",
+        "2028-01-05T13:00:00.000Z",
+        "2028-01-06T13:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 137: 5 4 * * SUN in Australia/Lord_Howe after 2026-11-01T11:00:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-11-01T11:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-07T17:05:00.000Z",
+        "2026-11-14T17:05:00.000Z",
+        "2026-11-21T17:05:00.000Z",
+        "2026-11-28T17:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 138: 0 9 * * 1-5 in America/Toronto after 2026-11-01T07:30:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-01T07:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-02T14:00:00.000Z",
+        "2026-11-03T14:00:00.000Z",
+        "2026-11-04T14:00:00.000Z",
+        "2026-11-05T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 139: 30 2 * * * in Australia/Sydney after 2026-10-03T17:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-03T17:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T15:30:00.000Z",
+        "2026-10-05T15:30:00.000Z",
+        "2026-10-06T15:30:00.000Z",
+        "2026-10-07T15:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 140: 0 * * * * in Asia/Kolkata after 2026-11-01T10:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-11-01T10:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T11:30:00.000Z",
+        "2026-11-01T12:30:00.000Z",
+        "2026-11-01T13:30:00.000Z",
+        "2026-11-01T14:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 141: 30 2 * * * in Asia/Kolkata after 2028-09-04T18:45:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2028-09-04T18:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-09-04T21:00:00.000Z",
+        "2028-09-05T21:00:00.000Z",
+        "2028-09-06T21:00:00.000Z",
+        "2028-09-07T21:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 142: 0 9 * * 1-5 in America/Los_Angeles after 2028-04-30T21:15:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "America/Los_Angeles",
+      "after": "2028-04-30T21:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-05-01T16:00:00.000Z",
+        "2028-05-02T16:00:00.000Z",
+        "2028-05-03T16:00:00.000Z",
+        "2028-05-04T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 143: 0 */6 * * * in Asia/Kolkata after 2028-02-05T16:00:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2028-02-05T16:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-02-05T18:30:00.000Z",
+        "2028-02-06T00:30:00.000Z",
+        "2028-02-06T06:30:00.000Z",
+        "2028-02-06T12:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 144: 5 4 * * SUN in Europe/Helsinki after 2026-11-01T07:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T07:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-08T02:05:00.000Z",
+        "2026-11-15T02:05:00.000Z",
+        "2026-11-22T02:05:00.000Z",
+        "2026-11-29T02:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 145: 0 * * * * in Pacific/Chatham after 2026-10-26T06:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-10-26T06:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-26T07:15:00.000Z",
+        "2026-10-26T08:15:00.000Z",
+        "2026-10-26T09:15:00.000Z",
+        "2026-10-26T10:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 146: */20 1-3 * * * in America/Los_Angeles after 2027-10-13T09:00:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2027-10-13T09:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-10-13T09:20:00.000Z",
+        "2027-10-13T09:40:00.000Z",
+        "2027-10-13T10:00:00.000Z",
+        "2027-10-13T10:20:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 147: 0 12 * JAN,JUL * in Europe/London after 2026-06-06T18:15:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/London",
+      "after": "2026-06-06T18:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-01T11:00:00.000Z",
+        "2026-07-02T11:00:00.000Z",
+        "2026-07-03T11:00:00.000Z",
+        "2026-07-04T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 148: 0 * * * * in America/Toronto after 2027-04-26T18:15:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2027-04-26T18:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-04-26T19:00:00.000Z",
+        "2027-04-26T20:00:00.000Z",
+        "2027-04-26T21:00:00.000Z",
+        "2027-04-26T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 149: 0 9 * * 1-5 in Asia/Kolkata after 2026-11-01T00:00:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-11-01T00:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-02T03:30:00.000Z",
+        "2026-11-03T03:30:00.000Z",
+        "2026-11-04T03:30:00.000Z",
+        "2026-11-05T03:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 150: 0 0 * * * in Asia/Kolkata after 2026-09-26T13:00:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-09-26T13:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T18:30:00.000Z",
+        "2026-09-27T18:30:00.000Z",
+        "2026-09-28T18:30:00.000Z",
+        "2026-09-29T18:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 151: 0 * * * * in Australia/Lord_Howe after 2026-10-25T03:00:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-10-25T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T04:00:00.000Z",
+        "2026-10-25T05:00:00.000Z",
+        "2026-10-25T06:00:00.000Z",
+        "2026-10-25T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 152: 5 4 * * SUN in Asia/Kolkata after 2026-04-04T16:45:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-04-04T16:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T22:35:00.000Z",
+        "2026-04-11T22:35:00.000Z",
+        "2026-04-18T22:35:00.000Z",
+        "2026-04-25T22:35:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 153: 0 * * * * in Europe/London after 2026-10-03T14:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T14:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T15:00:00.000Z",
+        "2026-10-03T16:00:00.000Z",
+        "2026-10-03T17:00:00.000Z",
+        "2026-10-03T18:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 154: 0 * * * * in Australia/Lord_Howe after 2026-09-26T14:15:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-09-26T14:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T14:30:00.000Z",
+        "2026-09-26T15:30:00.000Z",
+        "2026-09-26T16:30:00.000Z",
+        "2026-09-26T17:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 155: 0 12 * JAN,JUL * in Europe/London after 2026-09-23T12:15:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/London",
+      "after": "2026-09-23T12:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T12:00:00.000Z",
+        "2027-01-02T12:00:00.000Z",
+        "2027-01-03T12:00:00.000Z",
+        "2027-01-04T12:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 156: 0 0 * * * in Pacific/Chatham after 2026-10-31T23:30:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-10-31T23:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T10:15:00.000Z",
+        "2026-11-02T10:15:00.000Z",
+        "2026-11-03T10:15:00.000Z",
+        "2026-11-04T10:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 157: */20 1-3 * * * in Asia/Kolkata after 2026-03-08T07:45:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-08T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T19:30:00.000Z",
+        "2026-03-08T19:50:00.000Z",
+        "2026-03-08T20:10:00.000Z",
+        "2026-03-08T20:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 158: 0 */6 * * * in Australia/Sydney after 2026-11-24T05:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-11-24T05:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-24T07:00:00.000Z",
+        "2026-11-24T13:00:00.000Z",
+        "2026-11-24T19:00:00.000Z",
+        "2026-11-25T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 159: 5 4 * * SUN in Pacific/Chatham after 2026-09-26T13:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-09-26T13:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T14:20:00.000Z",
+        "2026-10-03T14:20:00.000Z",
+        "2026-10-10T14:20:00.000Z",
+        "2026-10-17T14:20:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 160: 0 9 * * 1-5 in Australia/Sydney after 2028-10-04T00:45:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Australia/Sydney",
+      "after": "2028-10-04T00:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-10-04T22:00:00.000Z",
+        "2028-10-05T22:00:00.000Z",
+        "2028-10-08T22:00:00.000Z",
+        "2028-10-09T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 161: 0 12 * JAN,JUL * in Pacific/Chatham after 2026-11-01T07:00:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-11-01T07:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-31T22:15:00.000Z",
+        "2027-01-01T22:15:00.000Z",
+        "2027-01-02T22:15:00.000Z",
+        "2027-01-03T22:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 162: 0 2 * * * in Europe/London after 2026-10-03T15:30:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-10-03T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T01:00:00.000Z",
+        "2026-10-05T01:00:00.000Z",
+        "2026-10-06T01:00:00.000Z",
+        "2026-10-07T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 163: 0 2 * * * in America/Toronto after 2026-11-01T00:30:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-01T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T07:00:00.000Z",
+        "2026-11-02T07:00:00.000Z",
+        "2026-11-03T07:00:00.000Z",
+        "2026-11-04T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 164: */15 * * * * in Europe/Helsinki after 2026-05-20T03:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-05-20T03:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-05-20T03:30:00.000Z",
+        "2026-05-20T03:45:00.000Z",
+        "2026-05-20T04:00:00.000Z",
+        "2026-05-20T04:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 165: 30 2 * * * in Pacific/Chatham after 2026-11-01T01:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-11-01T01:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T12:45:00.000Z",
+        "2026-11-02T12:45:00.000Z",
+        "2026-11-03T12:45:00.000Z",
+        "2026-11-04T12:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 166: 15 2,14 * * * in Europe/Helsinki after 2026-07-05T08:15:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-07-05T08:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-05T11:15:00.000Z",
+        "2026-07-05T23:15:00.000Z",
+        "2026-07-06T11:15:00.000Z",
+        "2026-07-06T23:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 167: 0 2 * * * in Australia/Lord_Howe after 2026-04-04T15:00:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-04-04T15:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T15:30:00.000Z",
+        "2026-04-05T15:30:00.000Z",
+        "2026-04-06T15:30:00.000Z",
+        "2026-04-07T15:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 168: 0 3 * * * in Australia/Lord_Howe after 2028-03-31T20:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-03-31T20:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-04-01T16:30:00.000Z",
+        "2028-04-02T16:30:00.000Z",
+        "2028-04-03T16:30:00.000Z",
+        "2028-04-04T16:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 169: 0 1-3 * * * in America/Los_Angeles after 2027-06-22T15:30:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2027-06-22T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-06-23T08:00:00.000Z",
+        "2027-06-23T09:00:00.000Z",
+        "2027-06-23T10:00:00.000Z",
+        "2027-06-24T08:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 170: 0 8 1,15 * * in America/Toronto after 2027-02-24T01:45:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "America/Toronto",
+      "after": "2027-02-24T01:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-03-01T13:00:00.000Z",
+        "2027-03-15T12:00:00.000Z",
+        "2027-04-01T12:00:00.000Z",
+        "2027-04-15T12:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 171: 0 3 * * * in Australia/Lord_Howe after 2026-10-25T00:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-10-25T00:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T16:00:00.000Z",
+        "2026-10-26T16:00:00.000Z",
+        "2026-10-27T16:00:00.000Z",
+        "2026-10-28T16:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 172: 0 0 * * * in Europe/London after 2027-07-02T16:00:00.000Z",
+      "expression": "0 0 * * *",
+      "timeZone": "Europe/London",
+      "after": "2027-07-02T16:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-07-02T23:00:00.000Z",
+        "2027-07-03T23:00:00.000Z",
+        "2027-07-04T23:00:00.000Z",
+        "2027-07-05T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 173: 0 3 * * * in America/Toronto after 2026-03-07T22:15:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-07T22:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T07:00:00.000Z",
+        "2026-03-09T07:00:00.000Z",
+        "2026-03-10T07:00:00.000Z",
+        "2026-03-11T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 174: */15 * * * * in America/Toronto after 2026-10-03T15:45:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-03T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T16:00:00.000Z",
+        "2026-10-03T16:15:00.000Z",
+        "2026-10-03T16:30:00.000Z",
+        "2026-10-03T16:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 175: 5 4 * * SUN in Europe/Helsinki after 2026-11-01T01:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T01:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T02:05:00.000Z",
+        "2026-11-08T02:05:00.000Z",
+        "2026-11-15T02:05:00.000Z",
+        "2026-11-22T02:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 176: 30 1 1 * 1 in Europe/London after 2027-06-03T14:00:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Europe/London",
+      "after": "2027-06-03T14:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-06-07T00:30:00.000Z",
+        "2027-06-14T00:30:00.000Z",
+        "2027-06-21T00:30:00.000Z",
+        "2027-06-28T00:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 177: */15 * * * * in America/Toronto after 2026-03-11T21:00:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-11T21:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-11T21:15:00.000Z",
+        "2026-03-11T21:30:00.000Z",
+        "2026-03-11T21:45:00.000Z",
+        "2026-03-11T22:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 178: 0 * * * * in America/Los_Angeles after 2027-08-24T10:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2027-08-24T10:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-08-24T11:00:00.000Z",
+        "2027-08-24T12:00:00.000Z",
+        "2027-08-24T13:00:00.000Z",
+        "2027-08-24T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 179: 5 4 * * SUN in Europe/Helsinki after 2028-09-08T07:45:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-09-08T07:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-09-10T01:05:00.000Z",
+        "2028-09-17T01:05:00.000Z",
+        "2028-09-24T01:05:00.000Z",
+        "2028-10-01T01:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 180: 0 1-3 * * * in Europe/Helsinki after 2026-10-24T22:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-24T22:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-24T23:00:00.000Z",
+        "2026-10-25T00:00:00.000Z",
+        "2026-10-25T01:00:00.000Z",
+        "2026-10-25T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 181: */15 * * * * in Europe/Helsinki after 2026-10-25T03:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-25T03:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T03:30:00.000Z",
+        "2026-10-25T03:45:00.000Z",
+        "2026-10-25T04:00:00.000Z",
+        "2026-10-25T04:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 182: 30 2 * * * in Europe/Helsinki after 2026-10-03T16:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-03T16:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T23:30:00.000Z",
+        "2026-10-04T23:30:00.000Z",
+        "2026-10-05T23:30:00.000Z",
+        "2026-10-06T23:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 183: 0 1-3 * * * in Pacific/Chatham after 2026-03-29T00:30:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-03-29T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T11:15:00.000Z",
+        "2026-03-29T12:15:00.000Z",
+        "2026-03-29T13:15:00.000Z",
+        "2026-03-30T11:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 184: 0 9 * * 1-5 in Europe/London after 2028-03-18T05:30:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Europe/London",
+      "after": "2028-03-18T05:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-03-20T09:00:00.000Z",
+        "2028-03-21T09:00:00.000Z",
+        "2028-03-22T09:00:00.000Z",
+        "2028-03-23T09:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 185: 0 * * * * in Europe/Helsinki after 2026-09-26T13:15:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-09-26T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T14:00:00.000Z",
+        "2026-09-26T15:00:00.000Z",
+        "2026-09-26T16:00:00.000Z",
+        "2026-09-26T17:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 186: 0 1-3 * * * in Europe/Helsinki after 2027-01-31T14:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-01-31T14:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-31T23:00:00.000Z",
+        "2027-02-01T00:00:00.000Z",
+        "2027-02-01T01:00:00.000Z",
+        "2027-02-01T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 187: 0 * * * * in America/Toronto after 2026-04-04T16:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-04-04T16:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T17:00:00.000Z",
+        "2026-04-04T18:00:00.000Z",
+        "2026-04-04T19:00:00.000Z",
+        "2026-04-04T20:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 188: 45 1 * * * in America/Los_Angeles after 2028-05-08T04:15:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2028-05-08T04:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-05-08T08:45:00.000Z",
+        "2028-05-09T08:45:00.000Z",
+        "2028-05-10T08:45:00.000Z",
+        "2028-05-11T08:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 189: 10-20/5 2 * * * in Europe/Helsinki after 2027-02-23T10:00:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-02-23T10:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-02-24T00:10:00.000Z",
+        "2027-02-24T00:15:00.000Z",
+        "2027-02-24T00:20:00.000Z",
+        "2027-02-25T00:10:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 190: 30 2 * * * in Europe/London after 2026-03-29T03:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-03-29T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-30T01:30:00.000Z",
+        "2026-03-31T01:30:00.000Z",
+        "2026-04-01T01:30:00.000Z",
+        "2026-04-02T01:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 191: 59 23 31 12 * in Australia/Lord_Howe after 2026-07-07T17:00:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-07-07T17:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-31T12:59:00.000Z",
+        "2027-12-31T12:59:00.000Z",
+        "2028-12-31T12:59:00.000Z",
+        "2029-12-31T12:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 192: 0 8 1,15 * * in Asia/Kolkata after 2026-03-08T05:30:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-08T05:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-15T02:30:00.000Z",
+        "2026-04-01T02:30:00.000Z",
+        "2026-04-15T02:30:00.000Z",
+        "2026-05-01T02:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 193: 45 1 * * * in Australia/Sydney after 2026-09-23T10:15:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-09-23T10:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-23T15:45:00.000Z",
+        "2026-09-24T15:45:00.000Z",
+        "2026-09-25T15:45:00.000Z",
+        "2026-09-26T15:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 194: 0 3 * * * in Asia/Kolkata after 2026-03-29T02:45:00.000Z",
+      "expression": "0 3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-29T02:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T21:30:00.000Z",
+        "2026-03-30T21:30:00.000Z",
+        "2026-03-31T21:30:00.000Z",
+        "2026-04-01T21:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 195: 15 2,14 * * * in Pacific/Chatham after 2026-04-04T15:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2026-04-04T15:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-05T01:30:00.000Z",
+        "2026-04-05T13:30:00.000Z",
+        "2026-04-06T01:30:00.000Z",
+        "2026-04-06T13:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 196: */15 * * * * in Australia/Lord_Howe after 2026-12-03T00:15:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-12-03T00:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-03T00:30:00.000Z",
+        "2026-12-03T00:45:00.000Z",
+        "2026-12-03T01:00:00.000Z",
+        "2026-12-03T01:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 197: 15 2,14 * * * in Australia/Lord_Howe after 2026-10-31T23:30:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-10-31T23:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T03:15:00.000Z",
+        "2026-11-01T15:15:00.000Z",
+        "2026-11-02T03:15:00.000Z",
+        "2026-11-02T15:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 198: 0 12 * JAN,JUL * in Europe/Helsinki after 2028-09-23T16:45:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-09-23T16:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2029-01-01T10:00:00.000Z",
+        "2029-01-02T10:00:00.000Z",
+        "2029-01-03T10:00:00.000Z",
+        "2029-01-04T10:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 199: 30 2 * * * in Australia/Sydney after 2026-03-07T21:00:00.000Z",
+      "expression": "30 2 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-03-07T21:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T15:30:00.000Z",
+        "2026-03-09T15:30:00.000Z",
+        "2026-03-10T15:30:00.000Z",
+        "2026-03-11T15:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 200: 0 */6 * * * in America/Toronto after 2026-11-24T11:30:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-24T11:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-24T17:00:00.000Z",
+        "2026-11-24T23:00:00.000Z",
+        "2026-11-25T05:00:00.000Z",
+        "2026-11-25T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 201: 30 1 1 * 1 in Europe/Helsinki after 2026-09-26T15:45:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-09-26T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-27T22:30:00.000Z",
+        "2026-09-30T22:30:00.000Z",
+        "2026-10-04T22:30:00.000Z",
+        "2026-10-11T22:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 202: 59 23 31 12 * in America/Toronto after 2027-11-29T06:15:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "America/Toronto",
+      "after": "2027-11-29T06:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-01T04:59:00.000Z",
+        "2029-01-01T04:59:00.000Z",
+        "2030-01-01T04:59:00.000Z",
+        "2031-01-01T04:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 203: 45 1 * * * in Asia/Kolkata after 2026-09-26T13:45:00.000Z",
+      "expression": "45 1 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-09-26T13:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T20:15:00.000Z",
+        "2026-09-27T20:15:00.000Z",
+        "2026-09-28T20:15:00.000Z",
+        "2026-09-29T20:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 204: 10-20/5 2 * * * in Asia/Kolkata after 2026-04-15T02:30:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-04-15T02:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-15T20:40:00.000Z",
+        "2026-04-15T20:45:00.000Z",
+        "2026-04-15T20:50:00.000Z",
+        "2026-04-16T20:40:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 205: 0 */6 * * * in Australia/Sydney after 2026-03-28T22:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-03-28T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T01:00:00.000Z",
+        "2026-03-29T07:00:00.000Z",
+        "2026-03-29T13:00:00.000Z",
+        "2026-03-29T19:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 206: 30 1 1 * 1 in America/Los_Angeles after 2026-01-25T08:30:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-01-25T08:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-01-26T09:30:00.000Z",
+        "2026-02-01T09:30:00.000Z",
+        "2026-02-02T09:30:00.000Z",
+        "2026-02-09T09:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 207: 0 12 * JAN,JUL * in Australia/Lord_Howe after 2026-03-29T00:30:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2026-03-29T00:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-01T01:30:00.000Z",
+        "2026-07-02T01:30:00.000Z",
+        "2026-07-03T01:30:00.000Z",
+        "2026-07-04T01:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 208: 10-20/5 2 * * * in Australia/Sydney after 2026-09-26T15:15:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-09-26T15:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T16:10:00.000Z",
+        "2026-09-26T16:15:00.000Z",
+        "2026-09-26T16:20:00.000Z",
+        "2026-09-27T16:10:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 209: 0 * * * * in America/Toronto after 2026-10-25T03:00:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-25T03:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-25T04:00:00.000Z",
+        "2026-10-25T05:00:00.000Z",
+        "2026-10-25T06:00:00.000Z",
+        "2026-10-25T07:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 210: 15 2,14 * * * in America/Los_Angeles after 2026-10-03T16:45:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-03T16:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T21:15:00.000Z",
+        "2026-10-04T09:15:00.000Z",
+        "2026-10-04T21:15:00.000Z",
+        "2026-10-05T09:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 211: 0 2 * * * in Europe/Helsinki after 2026-09-26T14:30:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-09-26T14:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T23:00:00.000Z",
+        "2026-09-27T23:00:00.000Z",
+        "2026-09-28T23:00:00.000Z",
+        "2026-09-29T23:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 212: */20 1-3 * * * in Europe/Helsinki after 2028-01-30T13:00:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-01-30T13:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-30T23:00:00.000Z",
+        "2028-01-30T23:20:00.000Z",
+        "2028-01-30T23:40:00.000Z",
+        "2028-01-31T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 213: 5 4 * * SUN in Australia/Sydney after 2026-10-24T22:30:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-10-24T22:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-31T17:05:00.000Z",
+        "2026-11-07T17:05:00.000Z",
+        "2026-11-14T17:05:00.000Z",
+        "2026-11-21T17:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 214: 5 4 * * SUN in Europe/London after 2027-03-12T22:45:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "Europe/London",
+      "after": "2027-03-12T22:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-03-14T04:05:00.000Z",
+        "2027-03-21T04:05:00.000Z",
+        "2027-03-28T03:05:00.000Z",
+        "2027-04-04T03:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 215: 0 * * * * in Europe/Helsinki after 2026-03-29T00:45:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-29T00:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T01:00:00.000Z",
+        "2026-03-29T02:00:00.000Z",
+        "2026-03-29T03:00:00.000Z",
+        "2026-03-29T04:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 216: 0 1-3 * * * in Asia/Kolkata after 2026-09-26T13:15:00.000Z",
+      "expression": "0 1-3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-09-26T13:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-09-26T19:30:00.000Z",
+        "2026-09-26T20:30:00.000Z",
+        "2026-09-26T21:30:00.000Z",
+        "2026-09-27T19:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 217: 10-20/5 2 * * * in America/Toronto after 2028-06-25T05:30:00.000Z",
+      "expression": "10-20/5 2 * * *",
+      "timeZone": "America/Toronto",
+      "after": "2028-06-25T05:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-06-25T06:10:00.000Z",
+        "2028-06-25T06:15:00.000Z",
+        "2028-06-25T06:20:00.000Z",
+        "2028-06-26T06:10:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 218: 30 1 1 * 1 in Europe/Helsinki after 2026-11-01T09:45:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-11-01T09:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T23:30:00.000Z",
+        "2026-11-08T23:30:00.000Z",
+        "2026-11-15T23:30:00.000Z",
+        "2026-11-22T23:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 219: 59 23 31 12 * in Europe/Helsinki after 2026-03-28T23:15:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-03-28T23:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-12-31T21:59:00.000Z",
+        "2027-12-31T21:59:00.000Z",
+        "2028-12-31T21:59:00.000Z",
+        "2029-12-31T21:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 220: 0 * * * * in Europe/Helsinki after 2026-10-03T14:00:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-10-03T14:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-03T15:00:00.000Z",
+        "2026-10-03T16:00:00.000Z",
+        "2026-10-03T17:00:00.000Z",
+        "2026-10-03T18:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 221: */15 * * * * in Pacific/Chatham after 2027-08-11T19:00:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2027-08-11T19:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-08-11T19:15:00.000Z",
+        "2027-08-11T19:30:00.000Z",
+        "2027-08-11T19:45:00.000Z",
+        "2027-08-11T20:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 222: 15 2,14 * * * in Europe/Helsinki after 2028-11-11T11:00:00.000Z",
+      "expression": "15 2,14 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-11-11T11:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-11-11T12:15:00.000Z",
+        "2028-11-12T00:15:00.000Z",
+        "2028-11-12T12:15:00.000Z",
+        "2028-11-13T00:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 223: 30 1 1 * 1 in Australia/Lord_Howe after 2028-04-30T18:15:00.000Z",
+      "expression": "30 1 1 * 1",
+      "timeZone": "Australia/Lord_Howe",
+      "after": "2028-04-30T18:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-05-07T15:00:00.000Z",
+        "2028-05-14T15:00:00.000Z",
+        "2028-05-21T15:00:00.000Z",
+        "2028-05-28T15:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 224: 5 4 * * SUN in America/Los_Angeles after 2026-10-03T18:15:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-03T18:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-04T11:05:00.000Z",
+        "2026-10-11T11:05:00.000Z",
+        "2026-10-18T11:05:00.000Z",
+        "2026-10-25T11:05:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 225: 0 * * * * in Pacific/Chatham after 2027-08-08T23:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "Pacific/Chatham",
+      "after": "2027-08-08T23:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-08-09T00:15:00.000Z",
+        "2027-08-09T01:15:00.000Z",
+        "2027-08-09T02:15:00.000Z",
+        "2027-08-09T03:15:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 226: 59 23 31 12 * in Asia/Kolkata after 2027-07-20T17:30:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2027-07-20T17:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-12-31T18:29:00.000Z",
+        "2028-12-31T18:29:00.000Z",
+        "2029-12-31T18:29:00.000Z",
+        "2030-12-31T18:29:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 227: 0 * * * * in America/Toronto after 2026-11-01T07:30:00.000Z",
+      "expression": "0 * * * *",
+      "timeZone": "America/Toronto",
+      "after": "2026-11-01T07:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-11-01T08:00:00.000Z",
+        "2026-11-01T09:00:00.000Z",
+        "2026-11-01T10:00:00.000Z",
+        "2026-11-01T11:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 228: 0 */6 * * * in America/Los_Angeles after 2026-10-26T04:00:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "America/Los_Angeles",
+      "after": "2026-10-26T04:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-10-26T07:00:00.000Z",
+        "2026-10-26T13:00:00.000Z",
+        "2026-10-26T19:00:00.000Z",
+        "2026-10-27T01:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 229: */15 * * * * in Europe/London after 2026-03-28T23:00:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/London",
+      "after": "2026-03-28T23:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-28T23:15:00.000Z",
+        "2026-03-28T23:30:00.000Z",
+        "2026-03-28T23:45:00.000Z",
+        "2026-03-29T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 230: 0 */6 * * * in Asia/Kolkata after 2027-10-28T23:15:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2027-10-28T23:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-10-29T00:30:00.000Z",
+        "2027-10-29T06:30:00.000Z",
+        "2027-10-29T12:30:00.000Z",
+        "2027-10-29T18:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 231: 59 23 31 12 * in America/Toronto after 2026-10-24T22:00:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-24T22:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T04:59:00.000Z",
+        "2028-01-01T04:59:00.000Z",
+        "2029-01-01T04:59:00.000Z",
+        "2030-01-01T04:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 232: 0 8 1,15 * * in Asia/Kolkata after 2026-05-25T11:15:00.000Z",
+      "expression": "0 8 1,15 * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-05-25T11:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-06-01T02:30:00.000Z",
+        "2026-06-15T02:30:00.000Z",
+        "2026-07-01T02:30:00.000Z",
+        "2026-07-15T02:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 233: 0 2 * * * in Europe/Helsinki after 2027-01-17T01:45:00.000Z",
+      "expression": "0 2 * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2027-01-17T01:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-18T00:00:00.000Z",
+        "2027-01-19T00:00:00.000Z",
+        "2027-01-20T00:00:00.000Z",
+        "2027-01-21T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 234: 0 12 * JAN,JUL * in Europe/Helsinki after 2026-04-04T15:30:00.000Z",
+      "expression": "0 12 * JAN,JUL *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2026-04-04T15:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-07-01T09:00:00.000Z",
+        "2026-07-02T09:00:00.000Z",
+        "2026-07-03T09:00:00.000Z",
+        "2026-07-04T09:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 235: 59 23 31 12 * in America/Toronto after 2026-10-24T22:00:00.000Z",
+      "expression": "59 23 31 12 *",
+      "timeZone": "America/Toronto",
+      "after": "2026-10-24T22:00:00.000Z",
+      "count": 4,
+      "next": [
+        "2027-01-01T04:59:00.000Z",
+        "2028-01-01T04:59:00.000Z",
+        "2029-01-01T04:59:00.000Z",
+        "2030-01-01T04:59:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 236: */20 1-3 * * * in Asia/Kolkata after 2026-03-07T22:30:00.000Z",
+      "expression": "*/20 1-3 * * *",
+      "timeZone": "Asia/Kolkata",
+      "after": "2026-03-07T22:30:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-08T19:30:00.000Z",
+        "2026-03-08T19:50:00.000Z",
+        "2026-03-08T20:10:00.000Z",
+        "2026-03-08T20:30:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 237: 0 */6 * * * in Australia/Sydney after 2026-04-04T15:45:00.000Z",
+      "expression": "0 */6 * * *",
+      "timeZone": "Australia/Sydney",
+      "after": "2026-04-04T15:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-04-04T20:00:00.000Z",
+        "2026-04-05T02:00:00.000Z",
+        "2026-04-05T08:00:00.000Z",
+        "2026-04-05T14:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 238: */15 * * * * in Europe/Helsinki after 2028-06-17T04:45:00.000Z",
+      "expression": "*/15 * * * *",
+      "timeZone": "Europe/Helsinki",
+      "after": "2028-06-17T04:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-06-17T05:00:00.000Z",
+        "2028-06-17T05:15:00.000Z",
+        "2028-06-17T05:30:00.000Z",
+        "2028-06-17T05:45:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 239: 0 9 * * 1-5 in Europe/London after 2028-01-09T12:45:00.000Z",
+      "expression": "0 9 * * 1-5",
+      "timeZone": "Europe/London",
+      "after": "2028-01-09T12:45:00.000Z",
+      "count": 4,
+      "next": [
+        "2028-01-10T09:00:00.000Z",
+        "2028-01-11T09:00:00.000Z",
+        "2028-01-12T09:00:00.000Z",
+        "2028-01-13T09:00:00.000Z"
+      ]
+    },
+    {
+      "name": "generated 240: 5 4 * * SUN in America/Toronto after 2026-03-29T02:15:00.000Z",
+      "expression": "5 4 * * SUN",
+      "timeZone": "America/Toronto",
+      "after": "2026-03-29T02:15:00.000Z",
+      "count": 4,
+      "next": [
+        "2026-03-29T08:05:00.000Z",
+        "2026-04-05T08:05:00.000Z",
+        "2026-04-12T08:05:00.000Z",
+        "2026-04-19T08:05:00.000Z"
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "name": "on time",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "skip",
+      "nextRunAt": "2026-10-13T13:00:00.000Z",
+      "now": "2026-10-13T13:01:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 0,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "late within the grace",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "skip",
+      "nextRunAt": "2026-10-13T13:00:00.000Z",
+      "now": "2026-10-13T13:05:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 0,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "not yet",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "run_all",
+      "nextRunAt": "2026-10-14T13:00:00.000Z",
+      "now": "2026-10-13T13:01:00.000Z",
+      "expected": null
+    },
+    {
+      "name": "skip: missed three, one on time",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "skip",
+      "nextRunAt": "2026-10-10T13:00:00.000Z",
+      "now": "2026-10-13T13:01:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 3,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "skip: all missed",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "skip",
+      "nextRunAt": "2026-10-10T13:00:00.000Z",
+      "now": "2026-10-13T15:00:00.000Z",
+      "expected": {
+        "run": [],
+        "skipped": 4,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "run_once: all missed",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "run_once",
+      "nextRunAt": "2026-10-10T13:00:00.000Z",
+      "now": "2026-10-13T15:00:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 3,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "run_all: three missed and one on time",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 9 * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "run_all",
+      "nextRunAt": "2026-10-10T13:00:00.000Z",
+      "now": "2026-10-13T13:01:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-10T13:00:00.000Z",
+          "2026-10-11T13:00:00.000Z",
+          "2026-10-12T13:00:00.000Z",
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 0,
+        "next": "2026-10-14T13:00:00.000Z"
+      }
+    },
+    {
+      "name": "run_all: a day of hours, capped",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 * * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "run_all",
+      "nextRunAt": "2026-10-12T00:00:00.000Z",
+      "now": "2026-10-13T00:30:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-12T15:00:00.000Z",
+          "2026-10-12T16:00:00.000Z",
+          "2026-10-12T17:00:00.000Z",
+          "2026-10-12T18:00:00.000Z",
+          "2026-10-12T19:00:00.000Z",
+          "2026-10-12T20:00:00.000Z",
+          "2026-10-12T21:00:00.000Z",
+          "2026-10-12T22:00:00.000Z",
+          "2026-10-12T23:00:00.000Z",
+          "2026-10-13T00:00:00.000Z"
+        ],
+        "skipped": 15,
+        "next": "2026-10-13T01:00:00.000Z"
+      }
+    },
+    {
+      "name": "a one-shot, missed, skipped",
+      "trigger": {
+        "kind": "once",
+        "at": "2026-10-13T13:00:00.000Z"
+      },
+      "catchUp": "skip",
+      "nextRunAt": "2026-10-13T13:00:00.000Z",
+      "now": "2026-10-13T18:00:00.000Z",
+      "expected": {
+        "run": [],
+        "skipped": 1,
+        "next": null
+      }
+    },
+    {
+      "name": "a one-shot, missed, run once",
+      "trigger": {
+        "kind": "once",
+        "at": "2026-10-13T13:00:00.000Z"
+      },
+      "catchUp": "run_once",
+      "nextRunAt": "2026-10-13T13:00:00.000Z",
+      "now": "2026-10-13T18:00:00.000Z",
+      "expected": {
+        "run": [
+          "2026-10-13T13:00:00.000Z"
+        ],
+        "skipped": 0,
+        "next": null
+      }
+    },
+    {
+      "name": "hourly across fall back, caught up",
+      "trigger": {
+        "kind": "cron",
+        "expression": "0 * * * *",
+        "timeZone": "America/Toronto"
+      },
+      "catchUp": "run_all",
+      "nextRunAt": "2026-11-01T03:00:00.000Z",
+      "now": "2026-11-01T08:30:00.000Z",
+      "expected": {
+        "run": [
+          "2026-11-01T03:00:00.000Z",
+          "2026-11-01T04:00:00.000Z",
+          "2026-11-01T05:00:00.000Z",
+          "2026-11-01T06:00:00.000Z",
+          "2026-11-01T07:00:00.000Z",
+          "2026-11-01T08:00:00.000Z"
+        ],
+        "skipped": 0,
+        "next": "2026-11-01T09:00:00.000Z"
+      }
+    }
+  ]
+}

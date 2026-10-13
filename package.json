@@ -30,6 +30,7 @@
     "idle:log": "vite-node packages/core/scripts/idle-log.ts",
     "initiative:log": "vite-node packages/core/scripts/initiative-log.ts",
     "schedule:log": "vite-node packages/core/scripts/schedule-log.ts",
+    "schedule:fixtures": "vite-node packages/core/scripts/schedule-fixtures.ts",
     "live:history": "pnpm --filter @latentpresence/providers exec vite-node live/history.ts",
     "live:persona": "pnpm --filter @latentpresence/providers exec vite-node live/persona.ts",
     "live:affect": "pnpm --filter @latentpresence/providers exec vite-node live/affect.ts",

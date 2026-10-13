@@ -1453,3 +1453,89 @@ mod tests {
         assert!(sql.contains("ORDER BY seq, rank"));
     }
 }
+
+// ---------------------------------------------------------------------------------------
+// Schedules (P6-T07b, ADR-57)
+// ---------------------------------------------------------------------------------------
+
+/// One stored schedule: the protocol's `Schedule` as JSON, and the columns it is found by.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScheduleRow {
+    pub uid: String,
+    pub character_id: String,
+    pub run_on: String,
+    pub status: String,
+    pub next_run_at: Option<NaiveDateTime>,
+    pub body: String,
+}
+
+/// `listSchedules`: a character's schedules, by id.
+pub async fn list_schedules(
+    pool: &MySqlPool,
+    character_id: &str,
+) -> Result<Vec<String>, StoreError> {
+    let rows = sqlx::query!(
+        "SELECT body FROM schedules WHERE character_id = ? ORDER BY uid",
+        character_id,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DbError::from)?;
+    Ok(rows.into_iter().map(|row| row.body).collect())
+}
+
+/// `saveSchedule`: insert or replace, whole.
+pub async fn save_schedule(
+    pool: &MySqlPool,
+    row: &ScheduleRow,
+    now: NaiveDateTime,
+) -> Result<(), StoreError> {
+    sqlx::query!(
+        "INSERT INTO schedules (uid, character_id, run_on, status, next_run_at, body, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           character_id = VALUES(character_id),
+           run_on = VALUES(run_on),
+           status = VALUES(status),
+           next_run_at = VALUES(next_run_at),
+           body = VALUES(body),
+           updated_at = VALUES(updated_at)",
+        row.uid,
+        row.character_id,
+        row.run_on,
+        row.status,
+        row.next_run_at,
+        row.body,
+        now,
+    )
+    .execute(pool)
+    .await
+    .map_err(DbError::from)?;
+    Ok(())
+}
+
+/// `deleteSchedule`: gone, or already gone — the person cancelling twice is not an error.
+pub async fn delete_schedule(pool: &MySqlPool, uid: &str) -> Result<(), StoreError> {
+    sqlx::query!("DELETE FROM schedules WHERE uid = ?", uid)
+        .execute(pool)
+        .await
+        .map_err(DbError::from)?;
+    Ok(())
+}
+
+/// The companion's own jobs that are due: active, `runOn: companion`, next run at or before `now`.
+pub async fn due_companion_schedules(
+    pool: &MySqlPool,
+    now: NaiveDateTime,
+) -> Result<Vec<String>, StoreError> {
+    let rows = sqlx::query!(
+        "SELECT body FROM schedules
+         WHERE run_on = 'companion' AND status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= ?
+         ORDER BY next_run_at, uid",
+        now,
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(DbError::from)?;
+    Ok(rows.into_iter().map(|row| row.body).collect())
+}

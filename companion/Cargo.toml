@@ -52,3 +52,8 @@ sha2 = "0.11.0"
 notify = "8.2.0"
 # Test folders for the extractors and the ingest API tests.
 tempfile = "3"
+# P6-T07b (ADR-57): the companion's own scheduler, for jobs that run with no page open. croner-rust
+# is the same author's port of the croner the core uses; chrono-tz carries the zones. Both are held
+# to the core's firing fixtures (packages/core/src/scheduler/fixtures/firings.json).
+croner = "4.0.1"
+chrono-tz = "0.10.4"

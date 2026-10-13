@@ -198,10 +198,6 @@ export type McpCallRequest = z.infer<typeof McpCallRequestSchema>;
 export const SchedulesQuerySchema = z.object({ characterId: IdSchema });
 export const SchedulesResponseSchema = z.object({ schedules: z.array(ScheduleSchema) });
 export const ScheduleParamsSchema = z.object({ id: IdSchema });
-export const ScheduleDueRequestSchema = z.object({
-  characterId: IdSchema,
-  now: TimestampSchema,
-});
 
 /** One route: how to call it, what goes up, what comes back. */
 export interface CompanionRoute {
@@ -423,22 +419,6 @@ export const companionRoutes = {
     params: ScheduleParamsSchema,
     query: null,
     request: null,
-    response: okSchema,
-  },
-  schedulesDue: {
-    method: 'POST',
-    path: '/schedules/due',
-    params: null,
-    query: null,
-    request: ScheduleDueRequestSchema,
-    response: SchedulesResponseSchema,
-  },
-  schedulesRecordRun: {
-    method: 'POST',
-    path: '/schedules/runs',
-    params: null,
-    query: null,
-    request: ScheduleRunSchema,
     response: okSchema,
   },
 } as const satisfies Record<string, CompanionRoute>;

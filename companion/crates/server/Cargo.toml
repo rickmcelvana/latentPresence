@@ -30,6 +30,9 @@ sqlx = { workspace = true, features = ["postgres", "sqlite-bundled", "rust_decim
 sqlparser = { version = "0.63.0", features = ["visitor"] }
 # P5-T06 (ADR-47): `url::Host` for read_page's address check; the version reqwest already uses.
 url = "2.5.8"
+# P6-T07b (ADR-57): when a companion schedule fires.
+croner.workspace = true
+chrono-tz.workspace = true
 
 [dev-dependencies]
 http-body-util.workspace = true

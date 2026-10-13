@@ -61,6 +61,7 @@ function base(id: string, description: string, overrides: Partial<Schedule>): Sc
     lastRunAt: null,
     nextRunAt: null,
     createdAt: new Date(WEEK_START - HOUR).toISOString(),
+    toolCall: null,
     lastRun: null,
     ...overrides,
   };

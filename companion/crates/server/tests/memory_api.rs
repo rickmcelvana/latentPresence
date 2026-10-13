@@ -10,7 +10,10 @@ use axum::Router;
 use axum::body::Body;
 use axum::http::{Method, Request, StatusCode, header};
 use http_body_util::BodyExt;
+use latentpresence_companion::schedules::model::ToolCall;
+use latentpresence_companion::schedules::runner::{ToolCaller, run_due};
 use latentpresence_companion::{memory_api, relay, router_with};
+use latentpresence_db::store::Registry;
 use rand::Rng;
 use serde_json::{Value, json};
 use sqlx::AssertSqlSafe;
@@ -131,6 +134,10 @@ async fn cleanup_rows(pool: &MySqlPool, character_id: &str) {
         .execute(pool)
         .await;
     let _ = sqlx::query("DELETE FROM plans WHERE character_id = ?")
+        .bind(character_id)
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("DELETE FROM schedules WHERE character_id = ?")
         .bind(character_id)
         .execute(pool)
         .await;
@@ -1186,6 +1193,229 @@ async fn episodes_appended_at_once_to_one_session_all_get_their_own_seq() {
     cleanup(&pool, &character_id).await;
 }
 
+/// A schedule as the page writes one (P6-T07b, ADR-57).
+fn schedule(id: &str, character_id: &str, overrides: Value) -> Value {
+    let mut base = json!({
+        "id": id,
+        "characterId": character_id,
+        "description": "Re-index the notes",
+        "trigger": { "kind": "cron", "expression": "0 3 * * *", "timeZone": "America/Toronto" },
+        "taskPrompt": "",
+        "allowedTools": [],
+        "delivery": "speak_next_session",
+        "catchUp": "run_once",
+        "runOn": "companion",
+        "status": "active",
+        "lastRunAt": null,
+        "nextRunAt": "2026-10-14T07:00:00.000Z",
+        "createdAt": "2026-10-13T12:00:00.000Z",
+        "toolCall": null,
+        "lastRun": null,
+    });
+    for (key, value) in overrides.as_object().expect("overrides are an object") {
+        base[key] = value.clone();
+    }
+    base
+}
+
+#[tokio::test]
+async fn schedules_save_list_and_delete_as_the_protocol_has_them() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let id = random_id("schedule");
+    let job = schedule(
+        &id,
+        &character_id,
+        json!({ "toolCall": { "serverId": "files", "name": "files_list", "arguments": { "path": "notes" } } }),
+    );
+    let (status, body) = call(&router, Method::POST, "/schedules", Some(job.clone())).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("SchedulesSaveResponse", &body);
+    assert_eq!(body, job);
+
+    let paused = schedule(&id, &character_id, json!({ "status": "paused" }));
+    call(&router, Method::POST, "/schedules", Some(paused)).await;
+    let list = format!("/schedules?characterId={character_id}");
+    let (status, body) = call(&router, Method::GET, &list, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("SchedulesListResponse", &body);
+    assert_eq!(body["schedules"].as_array().map(Vec::len), Some(1));
+    assert_eq!(body["schedules"][0]["status"], "paused");
+
+    // Refused in words: an enum zod would refuse.
+    let refused = schedule(&id, &character_id, json!({ "delivery": "email" }));
+    let (status, body) = call(&router, Method::POST, "/schedules", Some(refused)).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_matches_error_schema(&body);
+
+    let (status, body) = call(&router, Method::DELETE, &format!("/schedules/{id}"), None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("SchedulesDeleteResponse", &body);
+    let (_, body) = call(&router, Method::GET, &list, None).await;
+    assert_eq!(body["schedules"], json!([]));
+    // Twice is not an error: the person cancelling again.
+    let (status, _) = call(&router, Method::DELETE, &format!("/schedules/{id}"), None).await;
+    assert_eq!(status, StatusCode::OK);
+    cleanup(&pool, &character_id).await;
+}
+
+/// A fake MCP host: answers by tool name.
+struct Tools;
+
+impl ToolCaller for Tools {
+    fn call(
+        &self,
+        call: &ToolCall,
+    ) -> impl std::future::Future<Output = Result<String, String>> + Send {
+        let name = call.name.clone();
+        async move {
+            match name.as_str() {
+                "ingest_now" => Ok("Indexed 12 files in notes, 3 of them new.".to_owned()),
+                _ => Err("the files server is not running".to_owned()),
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn the_companion_runs_its_own_jobs_on_time_with_no_page_open() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let ids: Vec<String> = ["indexed", "reminder", "broken", "page"]
+        .iter()
+        .map(|name| random_id(name))
+        .collect();
+    let tool = |name: &str| json!({ "serverId": "files", "name": name, "arguments": {} });
+    // Due at 03:00 Toronto (07:00Z); the companion looks at 07:00:30Z.
+    for job in [
+        schedule(
+            &ids[0],
+            &character_id,
+            json!({ "toolCall": tool("ingest_now") }),
+        ),
+        schedule(
+            &ids[1],
+            &character_id,
+            json!({ "description": "Call the vet", "trigger": { "kind": "once", "at": "2026-10-14T07:00:00.000Z" } }),
+        ),
+        schedule(
+            &ids[2],
+            &character_id,
+            json!({ "toolCall": tool("ingest_gone"), "delivery": "silent_log" }),
+        ),
+        schedule(
+            &ids[3],
+            &character_id,
+            json!({ "runOn": "core", "taskPrompt": "Summarise" }),
+        ),
+    ] {
+        let (status, body) = call(&router, Method::POST, "/schedules", Some(job)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+    }
+    let now = || {
+        chrono::DateTime::parse_from_rfc3339("2026-10-14T07:00:30Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc)
+    };
+    let count = std::sync::atomic::AtomicU32::new(0);
+    let new_id = || {
+        let n = count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        format!("{character_id}-run-{n}")
+    };
+    let registry = Registry::default();
+    let runs = run_due(&pool, &registry, &Tools, now, new_id)
+        .await
+        .expect("runs");
+    // Only this test's jobs count: other rows may share the database.
+    let mine = runs
+        .iter()
+        .filter(|run| ids.contains(&run.schedule_id))
+        .count();
+    assert_eq!(mine, 3, "{runs:?}");
+
+    let (_, body) = call(
+        &router,
+        Method::GET,
+        &format!("/schedules?characterId={character_id}"),
+        None,
+    )
+    .await;
+    assert_matches_schema("SchedulesListResponse", &body);
+    let by_id = |id: &str| {
+        body["schedules"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|job| job["id"] == id)
+            .cloned()
+            .unwrap()
+    };
+    let indexed = by_id(&ids[0]);
+    assert_eq!(indexed["nextRunAt"], "2026-10-15T07:00:00.000Z");
+    assert_eq!(indexed["lastRun"]["outcome"], "ok");
+    assert_eq!(
+        indexed["lastRun"]["summary"],
+        "Indexed 12 files in notes, 3 of them new."
+    );
+    assert_eq!(
+        indexed["lastRun"]["scheduledFor"],
+        "2026-10-14T07:00:00.000Z"
+    );
+    assert_eq!(
+        indexed["lastRun"]["deliveredAt"],
+        Value::Null,
+        "waits for the page to say it"
+    );
+    let reminder = by_id(&ids[1]);
+    assert_eq!(reminder["status"], "completed");
+    assert_eq!(reminder["lastRun"]["summary"], "Call the vet");
+    let broken = by_id(&ids[2]);
+    assert_eq!(broken["lastRun"]["outcome"], "failed");
+    assert_eq!(
+        broken["lastRun"]["error"],
+        "the files server is not running"
+    );
+    assert_ne!(
+        broken["lastRun"]["deliveredAt"],
+        Value::Null,
+        "a silent log is told by being kept"
+    );
+    let page = by_id(&ids[3]);
+    assert_eq!(
+        page["lastRun"],
+        Value::Null,
+        "the core's job is left to the core"
+    );
+
+    // Its results are memories, in each schedule's own session.
+    let texts: Vec<String> = sqlx::query_scalar(
+        "SELECT t.text FROM turns t JOIN sessions s ON s.id = t.session_id WHERE s.character_id = ? ORDER BY t.text",
+    )
+    .bind(&character_id)
+    .fetch_all(&pool)
+    .await
+    .expect("turns");
+    assert_eq!(
+        texts,
+        [
+            "Call the vet",
+            "I couldn't do \"Re-index the notes\": the files server is not running",
+            "Indexed 12 files in notes, 3 of them new.",
+        ]
+    );
+
+    // Claimed: looking again a moment later runs nothing twice.
+    let again = run_due(&pool, &registry, &Tools, now, || random_id("run"))
+        .await
+        .expect("runs");
+    assert!(again.iter().all(|run| !ids.contains(&run.schedule_id)));
+    cleanup(&pool, &character_id).await;
+}
+
 /// Not a test: removes what the TypeScript `MemoryStore` conformance suite leaves on a shared
 /// database (P4-T04) — its `conformance-` characters and the `memory-api-test` model's vector
 /// tables. Run after `LP_TEST_COMPANION_URL=… pnpm vitest run companion.conformance`:
@@ -1196,7 +1426,7 @@ async fn remove_conformance_data() {
     let Some((_router, pool, _serial)) = setup().await else {
         return;
     };
-    for table in ["sessions", "facts", "self_blocks", "plans"] {
+    for table in ["sessions", "facts", "self_blocks", "plans", "schedules"] {
         sqlx::query(AssertSqlSafe(format!(
             "DELETE FROM {table} WHERE character_id LIKE 'conformance-%'"
         )))

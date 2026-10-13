@@ -1,0 +1,31 @@
+{
+  "db_name": "MySQL",
+  "query": "SELECT body FROM schedules\n         WHERE run_on = 'companion' AND status = 'active' AND next_run_at IS NOT NULL AND next_run_at <= ?\n         ORDER BY next_run_at, uid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "body",
+        "type_info": {
+          "type": "Blob",
+          "flags": "NOT_NULL | BLOB | NO_DEFAULT_VALUE",
+          "collation": 224,
+          "max_size": 4294967295
+        },
+        "origin": {
+          "Table": {
+            "table": "latentpresence.schedules",
+            "name": "body"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b830d577c13832d794ddc3df9c110fa6de8f3e41079af38bfda9f278477ac4a8"
+}

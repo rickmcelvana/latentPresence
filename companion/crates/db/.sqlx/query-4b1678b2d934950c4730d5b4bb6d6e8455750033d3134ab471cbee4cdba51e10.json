@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "INSERT INTO schedules (uid, character_id, run_on, status, next_run_at, body, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?)\n         ON DUPLICATE KEY UPDATE\n           character_id = VALUES(character_id),\n           run_on = VALUES(run_on),\n           status = VALUES(status),\n           next_run_at = VALUES(next_run_at),\n           body = VALUES(body),\n           updated_at = VALUES(updated_at)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "4b1678b2d934950c4730d5b4bb6d6e8455750033d3134ab471cbee4cdba51e10"
+}

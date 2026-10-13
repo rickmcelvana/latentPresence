@@ -6,7 +6,7 @@ Saturday, then left open from Saturday 23:00 to Sunday 23:00. A person comes bac
 and every hour while it is open, and is told what is waiting. `src/scheduler/simulate.ts` has the
 schedules; `scheduler.test.ts` holds the week to its rules.
 
-Runs: 174 (167 ok, 1 failed, 6 skipped). Said: 7. Notified: 1. Episodes written: 168. Run twice, the log is identical.
+Runs: 175 (168 ok, 1 failed, 6 skipped). Said: 7. Notified: 1. Episodes written: 169. Run twice, the log is identical.
 
 ```
 Thu Oct 29 08:00 EDT  page opened
@@ -86,6 +86,7 @@ Sat Oct 31 23:00 EDT  said       Water the plants
 Sun Nov 01 00:00 EDT  ok         Check the feeds (due Sun Nov 01 00:00 EDT) — logged
 Sun Nov 01 01:00 EDT  ok         Check the feeds (due Sun Nov 01 01:00 EDT) — logged
 Sun Nov 01 01:30 EDT  ok         Night check (due Sun Nov 01 01:30 EDT) — logged
+Sun Nov 01 01:00 EST  ok         Check the feeds (due Sun Nov 01 01:00 EST) — logged
 Sun Nov 01 02:00 EST  ok         Check the feeds (due Sun Nov 01 02:00 EST) — logged
 Sun Nov 01 03:00 EST  ok         Re-index the notes folder (due Sun Nov 01 03:00 EST) — logged
 Sun Nov 01 03:00 EST  ok         Check the feeds (due Sun Nov 01 03:00 EST) — logged

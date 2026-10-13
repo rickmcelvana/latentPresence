@@ -487,6 +487,23 @@ impl McpHost {
         response
     }
 
+    /// One tool call by server and name, as `/mcp/call` makes it — for the companion's own
+    /// scheduled jobs (P6-T07b, ADR-57).
+    pub async fn call_tool(
+        &self,
+        server_id: &str,
+        name: &str,
+        arguments: serde_json::Map<String, Value>,
+    ) -> Result<CallOutcome, ApiError> {
+        self.call(CallRequest {
+            call_id: String::new(),
+            server_id: server_id.to_owned(),
+            name: name.to_owned(),
+            arguments,
+        })
+        .await
+    }
+
     async fn call(&self, request: CallRequest) -> Result<CallOutcome, ApiError> {
         let hosted = self.find(&request.server_id).ok_or_else(|| {
             ApiError::NotFound(format!(

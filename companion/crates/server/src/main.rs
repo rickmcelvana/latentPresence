@@ -2,7 +2,7 @@
 //! (`lib.rs`), so `tests/memory_api.rs` can build the same router against a real MariaDB.
 
 use latentpresence_companion::{
-    bench, bind_address, ingest, mcp, memory_api, relay, router_with_ingest,
+    bench, bind_address, ingest, mcp, memory_api, relay, router_with_ingest, schedules,
 };
 
 #[tokio::main]
@@ -72,6 +72,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None => mcp::config::McpConfig::default(),
     };
     let host = mcp::McpHost::start(config);
+
+    // P6-T07b (ADR-57): the companion's own schedules — tool-only jobs that run with no page open.
+    if let Some(pool) = pool.clone() {
+        schedules::runner::spawn(pool, memory.registry.clone(), host.clone());
+    }
 
     // P5-T03 (ADR-44): the folders the person's own `documents.json` lists, indexed now, when
     // something in them changes, and when the page asks. The page never names a path.

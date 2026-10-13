@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "DELETE FROM schedules WHERE uid = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a8b2d9cfd386b5f9ad5b76ef08711691dae057a431fffc27417e4f5504dcfb30"
+}

@@ -18,6 +18,7 @@ pub mod ingest;
 pub mod mcp;
 pub mod memory_api;
 pub mod relay;
+pub mod schedules;
 
 pub const DEFAULT_PORT: u16 = 8787;
 
