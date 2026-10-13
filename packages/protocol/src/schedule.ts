@@ -40,27 +40,6 @@ export type ScheduleStatus = z.infer<typeof ScheduleStatusSchema>;
 export const ScheduleRunnerSchema = z.enum(['core', 'companion']);
 export type ScheduleRunner = z.infer<typeof ScheduleRunnerSchema>;
 
-/** A job the user asked the character to do later or repeatedly (ADR-14). */
-export const ScheduleSchema = z.object({
-  id: IdSchema,
-  characterId: IdSchema,
-  /** What the user would call it. Shown in the Schedules panel and said back aloud. */
-  description: z.string().min(1).max(200),
-  trigger: ScheduleTriggerSchema,
-  /** The prompt the job runs with, if it runs through the LLM. */
-  taskPrompt: z.string(),
-  /** Tool names this job may use. Empty means no tools. */
-  allowedTools: z.array(z.string().min(1)),
-  delivery: DeliveryModeSchema,
-  catchUp: CatchUpPolicySchema,
-  runOn: ScheduleRunnerSchema,
-  status: ScheduleStatusSchema,
-  lastRunAt: TimestampSchema.nullable(),
-  nextRunAt: TimestampSchema.nullable(),
-  createdAt: TimestampSchema,
-});
-export type Schedule = z.infer<typeof ScheduleSchema>;
-
 /** The outcome of one firing, kept so the character can say what happened and when. */
 export const ScheduleRunSchema = z.object({
   id: IdSchema,
@@ -71,5 +50,38 @@ export const ScheduleRunSchema = z.object({
   /** What to tell the user, already phrased. Empty for a silent log. */
   summary: z.string(),
   error: z.string().nullable(),
+  /** The firing time this run was for; a caught-up run starts later than it (ADR-56). */
+  scheduledFor: TimestampSchema.nullable().default(null),
+  /**
+   * When the user was told (ADR-56): set at once for a silent log, when the notification went for
+   * `notify`, and when she said it for `speak_next_session`. Null is still to tell.
+   */
+  deliveredAt: TimestampSchema.nullable().default(null),
 });
 export type ScheduleRun = z.infer<typeof ScheduleRunSchema>;
+
+/** A job the user asked the character to do later or repeatedly (ADR-14). */
+export const ScheduleSchema = z.object({
+  id: IdSchema,
+  characterId: IdSchema,
+  /** What the user would call it. Shown in the Schedules panel and said back aloud. */
+  description: z.string().min(1).max(200),
+  trigger: ScheduleTriggerSchema,
+  /**
+   * The prompt the job runs with, if it runs through the LLM. Empty: nothing to work out — the
+   * description is the message (a reminder), and no model is asked (ADR-56).
+   */
+  taskPrompt: z.string(),
+  /** Tool names this job may use. Empty means no tools. */
+  allowedTools: z.array(z.string().min(1)),
+  delivery: DeliveryModeSchema,
+  catchUp: CatchUpPolicySchema,
+  runOn: ScheduleRunnerSchema,
+  status: ScheduleStatusSchema,
+  lastRunAt: TimestampSchema.nullable(),
+  nextRunAt: TimestampSchema.nullable(),
+  createdAt: TimestampSchema,
+  /** The newest run, with whether it has been told (ADR-56); every run is also a memory episode. */
+  lastRun: ScheduleRunSchema.nullable().default(null),
+});
+export type Schedule = z.infer<typeof ScheduleSchema>;

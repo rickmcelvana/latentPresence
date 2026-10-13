@@ -205,6 +205,7 @@ describe('CompanionEventSchema', () => {
         lastRunAt: null,
         nextRunAt: '2026-09-09T07:00:00Z',
         createdAt: '2026-09-08T10:00:00Z',
+        lastRun: null,
       },
     };
     expect(CompanionEventSchema.parse(event)).toEqual(event);

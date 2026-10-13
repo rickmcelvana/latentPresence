@@ -15,6 +15,7 @@ const schedule = {
   lastRunAt: null,
   nextRunAt: '2026-09-09T12:00:00Z',
   createdAt: '2026-09-08T10:00:00Z',
+  lastRun: null,
 };
 
 describe('ScheduleTriggerSchema', () => {
@@ -38,6 +39,11 @@ describe('ScheduleTriggerSchema', () => {
 describe('ScheduleSchema', () => {
   it('round-trips a job the user asked for aloud', () => {
     expect(ScheduleSchema.parse(schedule)).toEqual(schedule);
+  });
+
+  it('reads a document saved before ADR-56 as never having run (P6-T07)', () => {
+    const { lastRun: _added, ...before } = schedule;
+    expect(ScheduleSchema.parse(before).lastRun).toBeNull();
   });
 
   it('will not accept a job with no delivery decision', () => {
@@ -74,8 +80,13 @@ describe('ScheduleRunSchema', () => {
       outcome: 'failed',
       summary: '',
       error: 'companion unreachable',
+      scheduledFor: '2026-09-09T12:00:00Z',
+      deliveredAt: null,
     };
     expect(ScheduleRunSchema.parse(run)).toEqual(run);
+    // A run kept before ADR-56 says neither when it was due nor whether it was told.
+    const { scheduledFor: _due, deliveredAt: _told, ...before } = run;
+    expect(ScheduleRunSchema.parse(before)).toMatchObject({ scheduledFor: null, deliveredAt: null });
     expect(ScheduleRunSchema.safeParse({ ...run, outcome: 'maybe' }).success).toBe(false);
   });
 });

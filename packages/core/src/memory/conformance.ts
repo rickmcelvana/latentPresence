@@ -389,6 +389,7 @@ export function describeMemoryStoreConformance(target: ConformanceTarget): void 
           lastRunAt: null,
           nextRunAt: days(1),
           createdAt: days(-1),
+          lastRun: null,
         };
         await store.saveSchedule(schedule);
         await store.saveSchedule({ ...schedule, status: 'paused' });

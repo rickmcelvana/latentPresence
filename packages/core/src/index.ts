@@ -28,4 +28,5 @@ export * from './time';
 export * from './initiative';
 export * from './rest';
 export * from './inner';
+export * from './scheduler';
 export { Cancellation } from './cancellation';
