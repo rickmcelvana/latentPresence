@@ -415,7 +415,7 @@ Done when: unit tests cover cron parsing, next-run computation across DST, each 
 covers cron, DST both ways, every policy and every delivery; `pnpm schedule:log` replays a week in
 Toronto across the fall-back night identically (`docs/runs/P6-T07-week.md`).
 
-### P6-T07b Companion schedules — owner: main (done 2026-10-13, ADR-57 proposed)
+### P6-T07b Companion schedules — owner: main (done 2026-10-13, ADR-57 accepted)
 Depends: P6-T07. Split out by ADR-56. The `schedules` table and the `/schedules/*` routes already in
 `companionRoutes`, `CompanionMemoryStore`'s schedules (refused today) held to the conformance suite;
 `runOn: companion` tool-only jobs run by the companion with the app closed — a Rust cron held to the

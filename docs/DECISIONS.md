@@ -59,7 +59,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
-| ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | proposed | 2026-10-13 |
+| ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
 
 ---
 
@@ -2177,7 +2177,7 @@ cron, keeping croner-rust's rules — a skipped fixed time runs when the gap end
 an interval job runs in both halves of a repeated hour. The week log gained the hourly job's 01:00
 EST run: 175 runs.
 
-## ADR-57 Companion schedules: a table, three routes, its own tool-only jobs, and one rule for when things fire (proposed 2026-10-13)
+## ADR-57 Companion schedules: a table, three routes, its own tool-only jobs, and one rule for when things fire (accepted 2026-10-13)
 
 **Context.** P6-T07b, split out of P6-T07 by ADR-56: the `schedules` table and the `/schedules/*`
 routes, `CompanionMemoryStore`'s schedules (refused until now), and `runOn: companion` tool-only
