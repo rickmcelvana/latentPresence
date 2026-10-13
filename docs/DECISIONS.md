@@ -60,6 +60,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
+| ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | proposed | 2026-10-13 |
 
 ---
 
@@ -2235,3 +2236,60 @@ writes three episodes, and runs nothing twice when asked again. The memory confo
 through a companion on MariaDB: **20/20** (both schedule tests now run). Live: a reminder posted to
 a companion due 40 s later fired at +1 s with no page open, kept as `ok`, waiting to be said. Migration
 0005 is applied to the dev MariaDB.
+
+## ADR-58 Schedule tools and panel: how she makes a schedule, reads it back, and tells you (proposed 2026-10-13)
+
+**Context.** P6-T08: agent tools `schedule.create`, `schedule.list`, `schedule.cancel`,
+`schedule.run_now`; natural-language times with the time read back before it is settled; a
+Schedules panel; OS notification delivery. Done when "remind me Thursday at 9 to call the vet"
+creates a schedule the panel shows with the right next run, and the reminder is said at the next
+session after it fires. The scheduler (ADR-56) and the companion's runner (ADR-57) exist; nothing
+on the page attaches them yet, and nothing says a pending run.
+
+**Decisions.**
+
+1. **Four tools, named like hers** — `schedule_create`, `schedule_list`, `schedule_cancel`,
+   `schedule_run_now` (underscores, as `plan_create`). A schedule is named by id or by its
+   description, never only by id (ADR-41's lesson).
+2. **She reads the words; the code reads the clock.** `schedule_create` takes exactly one of `at`
+   (a wall-clock time, `YYYY-MM-DDTHH:MM`, in the person's own zone), `in_minutes`, or `repeat` (a
+   five-field cron line). She works out "Thursday at 9" against RIGHT NOW, which already names the
+   day and date; the code turns her answer into the trigger — `at` through `wallTimeToInstant`,
+   the cron's own clock-change rules (ADR-57), so a reminder and a cron job never disagree. The
+   person's zone is the browser's (`Intl.DateTimeFormat().resolvedOptions().timeZone`). A time
+   already past is refused, saying what time it is now.
+3. **Saved at once, read back from the code's words.** The reply carries `when` — the next run as
+   the code wrote it in the person's zone ("Thursday 15 October at 09:00, in 1 day and 23 hours")
+   — and the tool tells her to say that back, not her own reading of it. A wrong one is
+   `schedule_cancel` and a new `schedule_create`.
+4. **A reminder or a task.** No `task`: a reminder, its description the message, no model (ADR-56).
+   A `task` is the prompt she will run with, and `tools` the names (from hers, now) it may use; an
+   unknown name is refused. **A reminder runs on the companion when memory is the companion** —
+   it fires with the page closed and waits to be said (ADR-57); everything else runs in the core.
+   Defaults: a one-shot catches up `run_once` (a reminder missed while away is still said, late,
+   and she says it is late), a repeating one `skip`; delivery `notify`. Tool-only companion jobs
+   (`toolCall`) are not made by her tools yet.
+5. **Delivery on the page.** On opening, and on every scheduler tick, the page reads the runs still
+   to tell (`pendingDeliveries`). A `notify` run while the page is hidden is an OS notification
+   (the browser's Web Notifications; permission asked only from a click in the Schedules panel), and
+   shown is told. Otherwise, once the page is visible and she is free (nothing typed, no voice panel
+   or permission prompt open, the machine quiet), **she says them, in one turn** (`speakUp` with a
+   cue naming each, and when it was due if that was a while ago), and they are told. **Delivery is
+   outside the initiative dial and budget** — they asked for it — and when she has said one on
+   opening, the opener (ADR-51) is not asked for too.
+6. **`schedule_run_now` is told by her answer**: it runs the job at once, without moving its next
+   run, and returns the result to her; the run is marked told, because she is saying it.
+7. **A Schedules drawer view** beside Transcript, Memory, Plans and Thoughts: upcoming first (next
+   run in words, repeating or once, where it runs), each with its last result; Pause/Resume and
+   Cancel; finished and cancelled ones folded below. Cancel keeps the schedule (`cancelled`) so its
+   history stays; Resume moves the next run on from now — a paused job does not catch up on what
+   passed while it was paused.
+8. **"In the desktop app"** waits for P8's tray app: until then the page's notification is the OS
+   notification.
+
+**Rejected.** *A natural-language date parser (chrono-node and the like)* — a second interpreter,
+English-only, whose answer the read-back would still have to check; the model already reads the
+date from RIGHT NOW. *A two-step confirm (a draft, then "yes" saves it)* — a model that forgets the
+second call loses the reminder without a word; reading back what was saved gives the person the
+same chance to correct it. *Counting a delivery against the initiative budget* — a reminder they
+asked for is not her starting a conversation, and the dial's "off" must not silence it.

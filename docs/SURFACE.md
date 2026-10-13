@@ -2419,3 +2419,15 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
 - `cargo sqlx prepare --workspace` writes the cache to the workspace root (`companion/.sqlx`); this
   repo keeps it in `companion/crates/db/.sqlx` — move the new files there.
 
+
+## Web Notifications, the page's OS notifications — checked 2026-10-13 (P6-T08)
+
+- MDN (`Notification/requestPermission_static`, `Notification/Notification`), read 2026-10-13:
+  `Notification.requestPermission()` returns a `Promise<'granted' | 'denied' | 'default'>` (the
+  callback form is deprecated); `Notification.permission` is the same three strings, read without
+  prompting; `default` acts as denied. **Ask from a click** (MDN's own example does; browsers
+  ignore or penalise a prompt without one). Secure contexts only (HTTPS; `localhost` counts).
+- `new Notification(title, { body, tag, silent, requireInteraction, … })`; `tag` replaces an
+  earlier notification with the same tag. **The constructor throws a `TypeError` in nearly all
+  mobile browsers** (they need `ServiceWorkerRegistration.showNotification`) — so showing one is
+  wrapped in `try` and a throw means "not shown": the run waits for her to say it. Not Baseline.
