@@ -34,6 +34,24 @@ describe('useUserCamera', () => {
     expect(getUserMedia).toHaveBeenCalledWith({ video: true, audio: false });
   });
 
+  it('start() on a camera already on opens no second stream, even before a render says so', async () => {
+    // The face reading asks while `active` is still false in its closure (a load-only flake,
+    // 2026-10-13): a second getUserMedia would orphan the first stream's tracks, light left on.
+    const { stream, tracks } = fakeStream();
+    const getUserMedia = vi.fn(async () => stream);
+    const { result } = renderHook(() => useUserCamera({ getUserMedia }));
+    const { start } = result.current;
+
+    await act(async () => {
+      await start();
+      expect(await start()).toBe(true);
+    });
+
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(result.current.stream).toBe(stream);
+    for (const track of tracks) expect(track.stop).not.toHaveBeenCalled();
+  });
+
   it('says it is starting until getUserMedia answers, and a second start() joins the first', async () => {
     const { stream } = fakeStream();
     let answer: ((value: MediaStream) => void) | null = null;

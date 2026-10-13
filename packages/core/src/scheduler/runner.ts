@@ -45,6 +45,14 @@ export interface AttachSchedulerOptions {
 export interface AttachedScheduler {
   /** Look now (the timer does this every tick). Resolves when what was due has run. */
   tick(): Promise<void>;
+  /**
+   * Run one schedule once, now (P6-T08, ADR-58), through the same path as a due one — episode,
+   * `lastRun`, `onRun` — **without moving its next run or its status**. It waits for a pass in
+   * progress, never overlaps one, and its run is told at once: she reads it in the tool's reply and
+   * says it herself. Null, and nothing run, when there is no such schedule, it is a companion tool
+   * job (the companion's to run), or this is detached.
+   */
+  runNow(scheduleId: string): Promise<ScheduleRun | null>;
   detach(): void;
 }
 
@@ -75,10 +83,11 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
 
 
   /** Keep the run on the schedule as it is now (it may have been paused or edited meanwhile). */
-  const keep = async (schedule: Schedule, run: ScheduleRun, failed: boolean): Promise<void> => {
+  const keep = async (schedule: Schedule, run: ScheduleRun, failed: boolean, claimed = true): Promise<void> => {
     const current = (await options.store.listSchedules(options.characterId)).find((candidate) => candidate.id === schedule.id);
     if (current === undefined) return;
-    const status = failed && current.trigger.kind === 'once' && current.status === 'completed' ? 'failed' : current.status;
+    // A run on demand is no firing: the schedule's status stays as it was.
+    const status = claimed && failed && current.trigger.kind === 'once' && current.status === 'completed' ? 'failed' : current.status;
     const kept = { ...current, status, lastRunAt: run.startedAt, lastRun: run };
     await options.store.saveSchedule(kept);
     options.onRun?.(kept, run);
@@ -96,12 +105,12 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
     return run;
   };
 
-  const runOne = async (schedule: Schedule, scheduledFor: Date): Promise<void> => {
+  const runOne = async (schedule: Schedule, scheduledFor: Date, onDemand = false): Promise<ScheduleRun> => {
     const startedAt = iso(now());
     const outcome = await options.execute(schedule, scheduledFor).catch((error: unknown) => ({ ok: false, summary: '', error: error instanceof Error ? error.message : String(error) }));
     const finishedAt = iso(now());
     const summary = outcome.ok ? outcome.summary : failure(schedule, outcome.error ?? 'it failed');
-    const run = await deliver(schedule, {
+    const made: ScheduleRun = {
       id: newId(),
       scheduleId: schedule.id,
       startedAt,
@@ -111,7 +120,9 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
       error: outcome.ok ? null : (outcome.error ?? 'it failed'),
       scheduledFor: scheduledFor.toISOString(),
       deliveredAt: null,
-    });
+    };
+    // On demand, she is about to say it herself (it is in the tool's reply): told already.
+    const run = onDemand ? { ...made, deliveredAt: finishedAt } : await deliver(schedule, made);
     if (summary !== '') {
       await options.store.appendEpisode({
         id: `${run.id}-said`,
@@ -125,7 +136,8 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
         affect: null,
       });
     }
-    await keep(schedule, run, !outcome.ok);
+    await keep(schedule, run, !outcome.ok, !onDemand);
+    return run;
   };
 
   const pass = async (): Promise<void> => {
@@ -161,15 +173,29 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
     }
   };
 
-  const tick = (): Promise<void> => {
-    if (running !== null) return running;
-    running = pass()
-      .catch(report)
-      .finally(() => {
-        running = null;
-      });
-    return running;
+  /** One job at a time: a pass, or a run on demand queued behind whatever is in progress. */
+  const exclusive = <T>(job: () => Promise<T>): Promise<T> => {
+    const result = (running ?? Promise.resolve()).then(job);
+    const mine = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    running = mine;
+    void mine.then(() => {
+      if (running === mine) running = null;
+    });
+    return result;
   };
+
+  const tick = (): Promise<void> => running ?? exclusive(() => pass().catch(report));
+
+  const runNow = (scheduleId: string): Promise<ScheduleRun | null> =>
+    exclusive(async () => {
+      if (detached) return null;
+      const found = (await options.store.listSchedules(options.characterId)).find((candidate) => candidate.id === scheduleId);
+      if (found === undefined || found.toolCall !== null) return null;
+      return runOne(found, new Date(now()), true);
+    });
 
   const schedule = (): void => {
     if (detached || options.scheduler === undefined) return;
@@ -182,6 +208,7 @@ export function attachScheduler(options: AttachSchedulerOptions): AttachedSchedu
 
   return {
     tick,
+    runNow,
     detach() {
       detached = true;
       if (timer !== null) options.scheduler?.clearTimeout(timer);

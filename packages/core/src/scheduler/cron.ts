@@ -221,6 +221,24 @@ export function parseCron(expression: string, timeZone: string): CronTimes {
   return { next };
 }
 
+/**
+ * A wall-clock time in a zone (`2026-10-15T09:00`) as the instant it names (P6-T08), by the cron's
+ * own rules (ADR-57): a time the clocks skip is when the gap ends, a time they repeat is the first.
+ * It is the one firing of `M H D Mon *` on that date, so a reminder and a cron job never disagree.
+ * Null for text that is not such a time or a date that does not exist (30 February).
+ */
+export function wallTimeToInstant(wall: string, timeZone: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(wall);
+  if (match === null) return null;
+  const [year, month, day, hour, minute] = match.slice(1).map(Number) as [number, number, number, number, number];
+  const midnight = Date.UTC(year, month - 1, day);
+  const date = new Date(midnight);
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day || hour > 23 || minute > 59) return null;
+  // Two days early clears every zone's offset; the first firing after that is on the day itself.
+  const at = parseCron(`${minute} ${hour} ${day} ${month} *`, timeZone).next(new Date(midnight - 2 * DAY_MS));
+  return at !== null && at.getTime() < midnight + 2 * DAY_MS ? at : null;
+}
+
 /** The first firing strictly after `after`, or null when there is none (a one-shot that has passed). */
 export function nextFiring(trigger: ScheduleTrigger, after: Date): Date | null {
   if (trigger.kind === 'once') {

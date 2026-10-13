@@ -8,7 +8,7 @@ import type { PlaybackEvent, PlaybackSink } from '@latentpresence/core';
 import { faceModels, kokoroModel } from '@latentpresence/ml-web';
 import { FakeTTSProvider } from '@latentpresence/providers';
 import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
-import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
+import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk, Schedule } from '@latentpresence/protocol';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
 import type { SettingsDeps } from '../settings/deps';
@@ -19,6 +19,7 @@ import { CHAT_CHARACTER_NAME, ChatPage, type ChatPageProps, type FaceReadingLoad
 import type { FaceReadingOptions } from '../call/face-reading';
 import type { ChatLlmOptions } from './chat-llm';
 import { connectDocuments } from './chat-documents';
+import type { NotificationPermissionState, PageNotifications } from './notifications';
 
 afterEach(cleanup);
 
@@ -464,6 +465,209 @@ describe('ChatPage — the persona', () => {
     expect(CHAT_CHARACTER_NAME).toBe(defaultPersona.name);
   });
 });
+
+/** A model for the schedules tests: records the chat requests, answers the extractor with no facts. */
+function schedulingModel(script: (request: LlmRequest, round: number) => LlmStreamChunk[] | null = () => null) {
+  const chats: LlmRequest[] = [];
+  const build = (): LLMProvider => ({
+    id: 'fake',
+    async listModels(): Promise<LlmModel[]> {
+      return [];
+    },
+    async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+      if (request.reasoning === 'off') {
+        yield { type: 'text-delta', text: '{"facts":[],"ended":[]}' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+        return;
+      }
+      chats.push(request);
+      const scripted = script(request, chats.length);
+      if (scripted !== null) {
+        yield* scripted;
+        return;
+      }
+      yield { type: 'text-delta', text: 'Of course.' };
+      yield { type: 'finish', reason: 'stop', usage: null };
+    },
+  });
+  return { chats, build };
+}
+
+/** A schedule as the scheduler would leave it: a reminder due a minute ago, run, waiting to be told. */
+function toldLater(overrides: Partial<Schedule> = {}): Schedule {
+  const due = new Date(Date.now() - 60_000).toISOString();
+  return {
+    id: 'vet',
+    characterId: defaultPersona.id,
+    description: 'call the vet',
+    trigger: { kind: 'once', at: due },
+    taskPrompt: '',
+    allowedTools: [],
+    delivery: 'notify',
+    catchUp: 'run_once',
+    runOn: 'core',
+    status: 'completed',
+    lastRunAt: due,
+    nextRunAt: null,
+    createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+    toolCall: null,
+    lastRun: { id: 'run-1', scheduleId: 'vet', startedAt: due, finishedAt: due, outcome: 'ok', summary: 'call the vet', error: null, scheduledFor: due, deliveredAt: null },
+    ...overrides,
+  };
+}
+
+describe('ChatPage — schedules (P6-T08, ADR-58)', () => {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  it('the Schedules view lists what is scheduled, with the next run in words', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    const next = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    await store.saveSchedule(toldLater({ id: 'later', description: 'water the plants', status: 'active', trigger: { kind: 'once', at: next }, nextRunAt: next, lastRun: null, lastRunAt: null }));
+    const { build } = schedulingModel();
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} notifications={fakeNotifications('granted').notifications} />);
+    await act(() => settle());
+
+    const button = screen.getByRole('button', { name: 'Schedules' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    const item = (await screen.findByText('water the plants')).closest('li');
+    expect(item?.textContent).toMatch(/\(in 2 hours\)/);
+    expect(item?.textContent).toContain('once');
+    // Pressing it again closes the drawer, as the others do.
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('says schedules need memory when memory is off', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { build } = schedulingModel();
+    render(<ChatPage buildProvider={build} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    await act(() => settle());
+    fireEvent.click(screen.getByRole('button', { name: 'Schedules' }));
+    expect(screen.getByText(/Schedules are kept with memory — memory is off\./)).toBeTruthy();
+  });
+
+  it('a run waiting to be told makes the first request carry the delivery cue, and no opener', async () => {
+    setViewportWidth(1024);
+    expect(document.visibilityState).toBe('visible');
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    // They last spoke three hours ago: without the reminder, she would open.
+    await store.appendEpisode({ id: 'e1', sessionId: 'earlier', characterId: defaultPersona.id, role: 'user', text: 'Hello again.', interrupted: false, at: new Date(Date.now() - 3 * 3_600_000).toISOString(), embedding: null, affect: null });
+    await store.saveSchedule(toldLater());
+    const { chats, build } = schedulingModel();
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} notifications={fakeNotifications('granted').notifications} />);
+    await waitFor(() => expect(chats).toHaveLength(1));
+    const cue = chats[0]?.messages.at(-1)?.content ?? '';
+    expect(cue).toContain('They asked you to remind them about this');
+    expect(cue).toContain('"call the vet"');
+    expect(cue).not.toContain('you speak first');
+    expect(await screen.findByText('Of course.')).toBeTruthy();
+    // The cue is never a line of theirs, and she said it once: the run is now told.
+    expect(screen.queryByText(/remind them about this/)).toBeNull();
+    await waitFor(async () => expect((await store.listSchedules(defaultPersona.id))[0]?.lastRun?.deliveredAt).not.toBeNull());
+    await act(() => settle());
+    expect(chats).toHaveLength(1);
+  });
+
+  it('with the page hidden and notifications allowed, the run is a notification and she says nothing', async () => {
+    setViewportWidth(1024);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    try {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      const store = new FakeMemoryStore();
+      await store.saveSchedule(toldLater());
+      const { chats, build } = schedulingModel();
+      const { notifications, shown } = fakeNotifications('granted');
+      const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+      render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} notifications={notifications} />);
+      await waitFor(() => expect(shown).toEqual([[defaultPersona.name, 'call the vet', 'run-1']]));
+      await waitFor(async () => expect((await store.listSchedules(defaultPersona.id))[0]?.lastRun?.deliveredAt).not.toBeNull());
+      await act(() => settle());
+      expect(chats).toHaveLength(0);
+    } finally {
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
+  it('she can make one: schedule_create with a time worked out from now saves it, reads the time back, and the panel shows it', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + 24 * 3_600_000));
+    const { chats, build } = schedulingModel((request, round) =>
+      round === 1 && request.tools.some((tool) => tool.name === 'schedule_create')
+        ? [
+            { type: 'tool-call', call: { id: 'c1', name: 'schedule_create', arguments: { description: 'call the vet', at: `${tomorrow}T09:00` }, source: 'llm', requestedAt: new Date().toISOString() } },
+            { type: 'finish', reason: 'tool-calls', usage: null },
+          ]
+        : null,
+    );
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} notifications={fakeNotifications('granted').notifications} />);
+    await waitFor(() => expect(store.calls).toContain('currentFacts'));
+    await act(() => settle());
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'remind me tomorrow at 9 to call the vet' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+    await waitFor(async () => expect((await store.listSchedules(defaultPersona.id))[0]?.description).toBe('call the vet'));
+    await waitFor(() => expect(chats.length).toBeGreaterThan(1));
+    // The tool's reply, which she reads back from, carries the code's words for the time.
+    const reply = JSON.stringify(chats.at(-1)?.messages.filter((message) => message.role === 'tool').map((message) => message.content));
+    expect(reply).toContain('"when"');
+    expect(reply).toMatch(/at 09:00 \(in /);
+    // Her schedule tools are hers: not shown as a tool call in the transcript.
+    expect(screen.queryByText(/schedule_create/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Schedules' }));
+    const item = (await screen.findByText('call the vet')).closest('li');
+    expect(item?.textContent).toMatch(/at 09:00 \(in /);
+  });
+
+  it('a store that keeps no schedules gives her no schedule tools', async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    store.capabilities = async () => ({ vectorSearch: true, dimensions: null, bitemporalFacts: true, plans: true, schedules: false, remote: false });
+    const { chats, build } = schedulingModel();
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    await waitFor(() => expect(store.calls).toContain('currentFacts'));
+    await act(() => settle());
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+    await waitFor(() => expect(chats.length).toBeGreaterThan(0));
+    const names = chats[0]?.tools.map((tool) => tool.name) ?? [];
+    expect(names).toContain('plan_create');
+    expect(names.some((name) => name.startsWith('schedule_'))).toBe(false);
+  });
+});
+
+/** The browser's notifications as the page sees them, recording what it was asked to show. */
+function fakeNotifications(state: NotificationPermissionState) {
+  const shown: [string, string, string][] = [];
+  const notifications: PageNotifications = {
+    permission: () => state,
+    request: async () => state,
+    show: (title, body, tag) => {
+      shown.push([title, body, tag]);
+      return true;
+    },
+  };
+  return { notifications, shown };
+}
 
 describe('ChatPage — unconfigured', () => {
   it('shows a link to Settings and no text box', () => {

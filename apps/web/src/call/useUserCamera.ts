@@ -58,6 +58,10 @@ export function useUserCamera(deps: UseUserCameraDeps = {}): UseUserCameraResult
 
   const start = useCallback((): Promise<boolean> => {
     if (pendingRef.current !== null) return pendingRef.current;
+    // Already on, though React may not have rendered it yet (`active` is still false in the caller's
+    // closure): a second `getUserMedia` would open another stream and orphan this one's tracks,
+    // the camera light left on. Seen as a load-only flake in "leaves on a camera that was already on".
+    if (streamRef.current !== null) return Promise.resolve(true);
     setStarting(true);
     const pending = (async (): Promise<boolean> => {
       try {

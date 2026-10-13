@@ -63,7 +63,7 @@ export interface AttachedInitiative {
 export const INITIATIVE_TICK_MS = 15_000;
 export const INITIATIVE_BLOCK = '_initiative';
 
-const QUIET_STATES: ReadonlySet<ConversationState> = new Set(['idle', 'listening']);
+export const QUIET_STATES: ReadonlySet<ConversationState> = new Set(['idle', 'listening']);
 
 export function attachInitiative(
   machine: { subscribe: (listener: (event: ConversationEvent) => void) => () => void; getState: () => ConversationState },

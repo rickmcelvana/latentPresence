@@ -1792,6 +1792,139 @@ kbd {
   max-height: none;
 }
 
+/* --- Schedules panel (P6-T08, ADR-58) -----------------------------------------
+   What she has set for a time: upcoming rows (the description, the next run in
+   words, how it repeats, where it runs, the last result) with Pause and Cancel,
+   and the finished ones folded away beneath. Scrolls like the plans body. */
+
+.schedules-panel {
+  min-height: 0;
+}
+
+.schedules-off,
+.schedules-empty,
+.schedules-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.schedules-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  max-height: 480px;
+  padding-right: var(--gap-xs);
+  overflow-y: auto;
+}
+
+.schedules-notify {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.schedules-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.schedules-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.schedules-title {
+  font-weight: 600;
+}
+
+.schedules-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.schedules-last {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.schedules-when {
+  font-size: 12px;
+}
+
+/* The next run in words: wraps, where a pill clipped it in the drawer (2026-10-13). */
+.schedules-next {
+  flex-basis: 100%;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.schedules-next-paused {
+  color: var(--text-muted);
+}
+
+.schedules-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.schedules-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-xs);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.schedules-finished > summary {
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.schedules-finished > summary:hover {
+  color: var(--text);
+}
+
+.schedules-finished > .schedules-list {
+  margin-top: var(--gap-sm);
+}
+
+.call-drawer .schedules-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.call-drawer .schedules-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 /* --- Thoughts panel (P6-T05, ADR-54) ----------------------------------------
    Her inner monologue in the drawer: newest first, each moment a quiet line of
    context, her lines in italics on a teal rule, the model's raw reasoning

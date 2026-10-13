@@ -2,9 +2,9 @@ import type { CancellationSignal, LLMProvider, LlmRequest, LlmStreamChunk, Sched
 import { describe, expect, it } from 'vitest';
 import type { Scheduler } from '../conversation/machine';
 import { FakeMemoryStore } from '../memory/fake-store';
-import { settle } from '../testing/scripted';
+import { deferred, settle } from '../testing/scripted';
 import type { LocalTool } from '../self/tools';
-import { CronError, firingsBetween, nextFiring, parseCron } from './cron';
+import { CronError, firingsBetween, nextFiring, parseCron, wallTimeToInstant } from './cron';
 import { SCHEDULE_MARKER, agentExecutor, type ScheduleExecutor } from './execute';
 import { LATE_GRACE_MS, RUN_ALL_LIMIT, planSchedule } from './plan';
 import { attachScheduler, markDelivered, pendingDeliveries, scheduleSessionId } from './runner';
@@ -51,6 +51,18 @@ describe('cron (five fields, a zone, and the rules the companion keeps at clock 
     // Tuesday the 13th, then Monday the 19th.
     expect(cron.next(at('2026-10-12T14:00:00Z'))?.toISOString()).toBe('2026-10-13T13:00:00.000Z');
     expect(cron.next(at('2026-10-13T14:00:00Z'))?.toISOString()).toBe('2026-10-19T13:00:00.000Z');
+  });
+
+  it('a wall-clock time is the instant it names, by the same rules at clock changes (P6-T08)', () => {
+    expect(wallTimeToInstant('2026-10-15T09:00', 'America/Chicago')?.toISOString()).toBe('2026-10-15T14:00:00.000Z');
+    expect(wallTimeToInstant('2026-10-15T09:00', 'Pacific/Chatham')?.toISOString()).toBe('2026-10-14T19:15:00.000Z');
+    // Skipped: when the gap ends. Repeated: the first time.
+    expect(wallTimeToInstant('2027-03-14T02:30', 'America/Chicago')?.toISOString()).toBe('2027-03-14T08:00:00.000Z');
+    expect(wallTimeToInstant('2026-11-01T01:30', 'America/Chicago')?.toISOString()).toBe('2026-11-01T06:30:00.000Z');
+    expect(wallTimeToInstant('2026-02-30T09:00', TZ)).toBeNull();
+    expect(wallTimeToInstant('2026-10-15T24:00', TZ)).toBeNull();
+    expect(wallTimeToInstant('Thursday at 9', TZ)).toBeNull();
+    expect(() => wallTimeToInstant('2026-10-15T09:00', 'Mars/Olympus')).toThrow(CronError);
   });
 
   it('next is strictly after; a one-shot has one firing, then none', () => {
@@ -274,6 +286,80 @@ describe('attachScheduler (delivery routing)', () => {
     timers.at(-1)?.fn();
     await settle();
     expect(timers.length).toBe(before);
+  });
+});
+
+describe('attachScheduler.runNow (P6-T08)', () => {
+  const waiting = (overrides: Partial<Schedule> = {}): Schedule => schedule({ nextRunAt: '2026-10-15T14:00:00.000Z', ...overrides });
+
+  it('runs a schedule once, now, without moving its next run or its status; the run is kept and told at once', async () => {
+    const r = await rig([waiting({ delivery: 'speak_next_session' })]);
+    expect(r.runs).toEqual([]);
+    const run = await r.attached.runNow('s1');
+    expect(run).toMatchObject({ outcome: 'ok', summary: 'Call the vet at 2026-10-13T13:00:30.000Z', scheduledFor: '2026-10-13T13:00:30.000Z', deliveredAt: run?.finishedAt });
+    const job = await r.get('s1');
+    expect(job).toMatchObject({ status: 'active', nextRunAt: '2026-10-15T14:00:00.000Z', lastRunAt: '2026-10-13T13:00:30.000Z' });
+    expect(job?.lastRun).toEqual(run);
+    expect(pendingDeliveries(await r.store.listSchedules('alice'))).toEqual([]);
+    expect(r.runs).toEqual([run]);
+    expect(await r.store.listEpisodes('alice', null)).toEqual([expect.objectContaining({ sessionId: scheduleSessionId('s1'), text: 'Call the vet at 2026-10-13T13:00:30.000Z' })]);
+  });
+
+  it('a reminder the companion would run may be run by the page: it needs no model', async () => {
+    const r = await rig([waiting({ runOn: 'companion', description: 'Stretch' })], {
+      execute: async (job) => ({ ok: true, summary: job.description, error: null }),
+    });
+    expect(await r.attached.runNow('s1')).toMatchObject({ outcome: 'ok', summary: 'Stretch' });
+  });
+
+  it('a failed run on demand is kept as failed and does not turn a completed one-shot into failed', async () => {
+    const r = await rig([waiting({ id: 'broken', status: 'completed', nextRunAt: null, trigger: { kind: 'once', at: '2026-10-12T13:00:00.000Z' } })]);
+    expect(await r.attached.runNow('broken')).toMatchObject({ outcome: 'failed', summary: 'I couldn\'t do "Call the vet": the folder is gone' });
+    expect(await r.get('broken')).toMatchObject({ status: 'completed', nextRunAt: null });
+  });
+
+  it('runs nothing for a schedule that is not there, a companion tool job, or once detached', async () => {
+    let ran = 0;
+    const r = await rig([waiting({ id: 'tool', runOn: 'companion', toolCall: { serverId: 'home', name: 'lights_on', arguments: {} } }), waiting({ id: 'plain' })], {
+      execute: async () => {
+        ran += 1;
+        return { ok: true, summary: 'ok', error: null };
+      },
+    });
+    expect(await r.attached.runNow('nope')).toBeNull();
+    expect(await r.attached.runNow('tool')).toBeNull();
+    expect(ran).toBe(0);
+    r.attached.detach();
+    expect(await r.attached.runNow('plain')).toBeNull();
+    expect(ran).toBe(0);
+  });
+
+  it('queues behind a pass in progress and never overlaps one', async () => {
+    const store = new FakeMemoryStore();
+    await store.saveSchedule(due({ id: 'due' }));
+    await store.saveSchedule(waiting({ id: 'later', nextRunAt: '2026-10-20T00:00:00.000Z' }));
+    const log: string[] = [];
+    let open = 0;
+    let overlap = false;
+    const gate = deferred();
+    const execute: ScheduleExecutor = async (job) => {
+      open += 1;
+      if (open > 1) overlap = true;
+      log.push(`start ${job.id}`);
+      if (job.id === 'due') await gate.promise;
+      log.push(`end ${job.id}`);
+      open -= 1;
+      return { ok: true, summary: job.id, error: null };
+    };
+    const attached = attachScheduler({ store, characterId: 'alice', execute, now: () => Date.parse('2026-10-13T13:00:30Z') });
+    await settle();
+    const queued = attached.runNow('later');
+    await settle();
+    expect(log).toEqual(['start due']);
+    gate.resolve();
+    expect(await queued).toMatchObject({ summary: 'later' });
+    expect(log).toEqual(['start due', 'end due', 'start later', 'end later']);
+    expect(overlap).toBe(false);
   });
 });
 

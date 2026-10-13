@@ -9,8 +9,12 @@ import {
   MemoryKernel,
   Plans,
   PermissionPrompts,
+  Schedules,
   SelfNotes,
+  agentExecutor,
   attachAffect,
+  attachDeliveries,
+  attachScheduler,
   attachHistory,
   attachInitiative,
   attachInnerMonologue,
@@ -19,6 +23,7 @@ import {
   attachMood,
   mcpTools,
   planTools,
+  scheduleTools,
   selfNoteTools,
   toolResultOf,
   citedSources,
@@ -28,10 +33,12 @@ import {
   lastConversation,
   renderSystemPrompt,
   type AttachedAffect,
+  type AttachedDeliveries,
   type AttachedInitiative,
   type AttachedRest,
   type AttachedMemory,
   type AttachedMood,
+  type AttachedScheduler,
   type ConnectedToolServer,
   type LastConversation,
   type LocalTool,
@@ -45,6 +52,7 @@ import { TranscriptPanel, type CitationSource } from '../transcript/TranscriptPa
 import { useTranscript } from '../transcript/useTranscript';
 import { MemoryPanel } from '../memory/MemoryPanel';
 import { PlansPanel } from '../plan/PlansPanel';
+import { SchedulesPanel } from '../schedule/SchedulesPanel';
 import { InnerPanel } from '../inner/InnerPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, saveSettings, type Settings } from '../settings/settings';
@@ -61,7 +69,16 @@ import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from '
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { hostTimers } from './host-timers';
+import { browserNotifications, type PageNotifications } from './notifications';
 import { PermissionPrompt } from './PermissionPrompt';
+
+/** The browser's notifications, built once: an effect depends on the object, so a default built per render would restart it. */
+const browserPageNotifications = browserNotifications();
+
+/** The person's own zone: the browser's, which is where "Thursday at 9" is read (ADR-58). */
+function localTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 
 /** Alice's name, the default character's (P1-T12); the page itself reads the active pack's persona (P6-T06). */
 export const CHAT_CHARACTER_NAME = packFor(DEFAULT_CHARACTER_ID).persona.name;
@@ -183,6 +200,8 @@ export interface ChatPageProps {
   readonly connectTools?: ConnectTools;
   /** Test seam: asking the companion for her documents (P5-T04). Production never passes it. */
   readonly connectDocs?: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
+  /** Test seam: the browser's OS notifications (P6-T08). Production never passes it. */
+  readonly notifications?: PageNotifications;
 }
 
 type ConnectTools = (options: ConnectToolServersOptions) => Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }>;
@@ -205,6 +224,7 @@ export function ChatPage({
   chooseMemory = chooseMemoryStore,
   connectTools = connectToolServers,
   connectDocs = connectDocuments,
+  notifications = browserPageNotifications,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
@@ -246,6 +266,7 @@ export function ChatPage({
       chooseMemory={chooseMemory}
       connectTools={connectTools}
       connectDocs={connectDocs}
+      notifications={notifications}
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
@@ -277,6 +298,7 @@ interface ConfiguredChatPageProps {
   readonly chooseMemory: (options: ChooseMemoryOptions) => Promise<MemoryChoice | null>;
   readonly connectTools: ConnectTools;
   readonly connectDocs: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
+  readonly notifications: PageNotifications;
 }
 
 function ConfiguredChatPage({
@@ -297,19 +319,21 @@ function ConfiguredChatPage({
   chooseMemory,
   connectTools,
   connectDocs,
+  notifications,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, toolsHolder, docsHolder, timeHolder, inner, webSources, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, chatTools, toolsHolder, docsHolder, timeHolder, inner, webSources, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
     // P4-T06 (ADR-40): her own notes and the tools she keeps them with, from the same store.
     // P4-T07 (ADR-41): her plans with them, kept with tools in the same store.
-    const builtSelfHolder: { notes: SelfNotes | null; plans: Plans | null; tools: LocalTool[] } = { notes: null, plans: null, tools: [] };
+    // P6-T08 (ADR-58): her schedules and their tools, when the store keeps schedules.
+    const builtSelfHolder: { notes: SelfNotes | null; plans: Plans | null; schedules: Schedules | null; tools: LocalTool[] } = { notes: null, plans: null, schedules: null, tools: [] };
     // P5-T01 (ADR-42): the MCP servers once connected (the effect below), their tools behind the
     // gate; the person's decisions live in the settings document, read at every call.
     const builtToolsHolder: { servers: ConnectedToolServer[] } = { servers: [] };
@@ -385,7 +409,9 @@ function ConfiguredChatPage({
     // call that ran nothing is never invisible.
     const outside = (name: string): boolean => !builtSelfHolder.tools.some((tool) => tool.definition.name === name);
     const docsTool = (): LocalTool[] => (builtDocsHolder.connected?.tool == null ? [] : [builtDocsHolder.connected.tool]);
-    const builtChatLlm = withLocalTools(thinkingProvider, () => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })], {
+    // The tools her chat has now: also what a scheduled task may name (P6-T08), through the same gate.
+    const builtChatTools = (): LocalTool[] => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })];
+    const builtChatLlm = withLocalTools(thinkingProvider, builtChatTools, {
       onCallStart: (call) => {
         if (outside(call.name)) builtMachine.dispatch({ type: 'tool.call', sessionId: builtSessionId, at: new Date().toISOString(), call });
       },
@@ -411,6 +437,7 @@ function ConfiguredChatPage({
       sessionId: builtSessionId,
       memoryHolder: builtMemoryHolder,
       selfHolder: builtSelfHolder,
+      chatTools: builtChatTools,
       toolsHolder: builtToolsHolder,
       docsHolder: builtDocsHolder,
       timeHolder: builtTimeHolder,
@@ -441,6 +468,9 @@ function ConfiguredChatPage({
   // The plans (P4-T07) for the panel: state, because the panel renders from it; `selfHolder`
   // holds the same object for the prompt, which reads it outside React.
   const [plans, setPlans] = useState<Plans | null>(null);
+  // P6-T08 (ADR-58): the schedules, the same way; null where the store keeps none.
+  const [schedules, setSchedules] = useState<Schedules | null>(null);
+  const timeZone = localTimeZone();
   // P6-T02, P6-T03 (ADR-51, ADR-52): she does not speak first into an open voice panel — the call
   // is theirs to start — nor while they are typing.
   const voiceOpenRef = useRef(false);
@@ -454,6 +484,8 @@ function ConfiguredChatPage({
     let mood: AttachedMood | null = null;
     let initiative: AttachedInitiative | null = null;
     let resting: AttachedRest | null = null;
+    let scheduler: AttachedScheduler | null = null;
+    let deliveries: AttachedDeliveries | null = null;
     let stopResting = (): void => {};
     const wakeHer = (): void => resting?.wake();
     const saveMood = (): void => void mood?.save();
@@ -483,6 +515,51 @@ function ConfiguredChatPage({
       selfHolder.plans = builtPlans;
       setPlans(builtPlans);
       selfHolder.tools = [...selfNoteTools(notes), ...planTools(builtPlans)];
+      // They are hers to be told of, whoever is looking at the page (ADR-58): the same `blocked` as her initiative.
+      const blocked = (): boolean => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0;
+      // P6-T08 (ADR-58): her schedules, only where the store keeps them. The scheduler runs what is due
+      // in this page (the core's; the companion runs its own with the page closed), and what it kept
+      // is told — a notification while the page is hidden, else she says it, once she is free.
+      const pageNotify = async (_job: unknown, finished: { readonly id: string; readonly summary: string }): Promise<boolean> => {
+        if (document.visibilityState === 'visible' || notifications.permission() !== 'granted') return false;
+        return notifications.show(pack.persona.name, finished.summary, finished.id);
+      };
+      const scheduling = choice.store.capabilities().then(
+        (capabilities) => {
+          if (!live || !capabilities.schedules) return;
+          const builtSchedules = new Schedules({
+            store: choice.store,
+            characterId: pack.persona.id,
+            timeZone,
+            companion: choice.kind === 'companion',
+            toolNames: () => chatTools().map((tool) => tool.definition.name),
+          });
+          selfHolder.schedules = builtSchedules;
+          setSchedules(builtSchedules);
+          scheduler = attachScheduler({
+            store: choice.store,
+            characterId: pack.persona.id,
+            runner: 'core',
+            execute: agentExecutor({ llm: rawLlm, modelId, character: { name: pack.persona.name, summary: pack.persona.summary }, tools: chatTools }),
+            notify: pageNotify,
+            scheduler: hostTimers(),
+            onRun: () => void builtSchedules.load().catch(() => undefined),
+            onError: (error) => warn(error, 'schedules'),
+          });
+          selfHolder.tools = [...selfHolder.tools, ...scheduleTools({ schedules: builtSchedules, runNow: (id) => scheduler?.runNow(id) ?? Promise.resolve(null), timeZone })];
+          deliveries = attachDeliveries(machine, {
+            schedules: builtSchedules,
+            chat,
+            blocked,
+            visible: () => document.visibilityState === 'visible',
+            notify: pageNotify,
+            timeZone,
+            scheduler: hostTimers(),
+            onError: (error) => warn(error, 'schedules'),
+          });
+        },
+        (error: unknown) => warn(error instanceof Error ? error : new Error(String(error)), 'schedules'),
+      );
       mood = attachMood(machine, { affect, notes, onError: (error) => warn(error, 'mood') });
       window.addEventListener('pagehide', saveMood);
       // P6-T02 (ADR-51): when they last talked, then — with her notes, plans and facts in — whether
@@ -492,7 +569,7 @@ function ConfiguredChatPage({
         return null;
       });
       const memoryReady = attached.settled();
-      void Promise.all([last, notesLoaded, plansLoaded, memoryReady]).then(([since]) => {
+      void Promise.all([last, notesLoaded, plansLoaded, memoryReady, scheduling]).then(async ([since]) => {
         if (!live) return;
         timeHolder.since = since;
         // P6-T03 (ADR-52): her initiative — the opener if they came back after an hour (ADR-51),
@@ -500,7 +577,7 @@ function ConfiguredChatPage({
         initiative = attachInitiative(machine, {
           chat,
           dial: () => loadSettings(deps.storage).initiative,
-          blocked: () => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0,
+          blocked,
           followUps: () => builtPlans.promptContext().followUps,
           plans: () => builtPlans.snapshot().plans,
           facts: () => attached?.context()?.facts ?? [],
@@ -508,12 +585,17 @@ function ConfiguredChatPage({
           scheduler: hostTimers(),
           onError: (error) => warn(error, 'initiative'),
         });
-        initiative.open(since);
+        // A reminder that came due while they were away is said before anything else: they asked for
+        // it, and the opener (ADR-51) is not asked for on top of it. It is outside the initiative's
+        // dial and budget (ADR-58).
+        const said = (await deliveries?.tick()) ?? false;
+        if (!live) return;
+        if (!said) initiative.open(since);
         // P6-T04 (ADR-53): after ten quiet minutes with something new to sort, she rests and
         // sleeps on it; anything — the bus, a key, a press — wakes her.
         resting = attachRest(machine, {
           kernel,
-          blocked: () => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0,
+          blocked,
           ledger: { read: () => notes.system(REST_BLOCK), write: (text) => notes.writeSystem(REST_BLOCK, text) },
           scheduler: hostTimers(),
           onError: (error) => warn(error, 'sleep'),
@@ -527,6 +609,8 @@ function ConfiguredChatPage({
     return () => {
       live = false;
       initiative?.detach();
+      deliveries?.detach();
+      scheduler?.detach();
       stopResting();
       resting?.detach();
       window.removeEventListener('keydown', wakeHer);
@@ -545,10 +629,12 @@ function ConfiguredChatPage({
       selfHolder.notes = null;
       selfHolder.plans = null;
       setPlans(null);
+      selfHolder.schedules = null;
+      setSchedules(null);
       selfHolder.tools = [];
       timeHolder.since = null;
     };
-  }, [affect, chat, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, pack.persona.id, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, userAffect]);
+  }, [affect, chat, chatTools, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, notifications, pack.persona.id, pack.persona.name, pack.persona.summary, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, timeZone, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.
@@ -629,11 +715,11 @@ function ConfiguredChatPage({
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
   // Which view the drawer shows (P4-T05, P4-T07). Always transcript at first, per the
   // rule above — Memory and Plans only open the drawer when a person asks it to.
-  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'thoughts'>('transcript');
+  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts'>('transcript');
   /** The Transcript, Memory, Plans and Thoughts buttons share this: pressing the view already showing
    * closes the drawer, pressing the other switches to it (opening the drawer if closed). */
   const toggleDrawerView = useCallback(
-    (view: 'transcript' | 'memory' | 'plans' | 'thoughts') => {
+    (view: 'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts') => {
       if (drawerOpen && drawerView === view) {
         setDrawerOpen(false);
         return;
@@ -981,6 +1067,8 @@ function ConfiguredChatPage({
           <MemoryPanel characterName={pack.persona.name} memory={memory} subscribe={subscribe} where={memoryWhere} />
         ) : drawerView === 'plans' ? (
           <PlansPanel characterName={pack.persona.name} plans={plans} />
+        ) : drawerView === 'schedules' ? (
+          <SchedulesPanel characterName={pack.persona.name} notifications={notifications} schedules={schedules} timeZone={timeZone} />
         ) : drawerView === 'thoughts' ? (
           <InnerPanel characterName={pack.persona.name} inner={inner} />
         ) : (
@@ -1156,6 +1244,9 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={drawerOpen && drawerView === 'plans'} className="btn call-control-btn" onClick={() => toggleDrawerView('plans')} type="button">
           Plans
+        </button>
+        <button aria-pressed={drawerOpen && drawerView === 'schedules'} className="btn call-control-btn" onClick={() => toggleDrawerView('schedules')} type="button">
+          Schedules
         </button>
         <button aria-pressed={thoughtsShowing} className="btn call-control-btn" onClick={() => toggleDrawerView('thoughts')} title="Her private thoughts — never said aloud" type="button">
           Thoughts
