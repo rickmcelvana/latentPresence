@@ -195,68 +195,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-27 · Plan something with her · ~15 minutes, desktop, then a minute on the day she set
-**Why:** P4-T07 gave her plans (ADR-41). The automatic check passed — "let's plan a vegetable
-garden" left a plan in MariaDB five times out of five — but whether planning with her feels like
-planning with a person, rather than filling in a form by voice, needs you.
-**Retry, 2026-10-09:** the first try (herb garden) saved no plan because memory was set to the
-companion and it was not answering — that failed silently then. Fixed (34ac43f): `/chat` now says
-so in the transcript, plans retry once the companion is up, and a check-in can be a time.
-1. **Memory decides where plans live.** Either `/settings` → **Memory** → *This browser* (nothing
-   to start), or *The companion* **with `pnpm companion` running before you open `/chat`** — if it
-   is not, the transcript says "Memory failed: … not answering" and nothing is saved.
-2. Open `/chat`, open the drawer's **Plans** view, and say "let's plan …" about something real
-   you are actually going to do. Talk it through; say when you like where it's going.
-3. Ask her to check in on it — "in a few hours" works now (a time), or a day. Later, tell her a step is done.
-4. In the panel: change a task, add one, **Save**; then **Download .md** and open the file.
-5. After the time she set, open `/chat` (or reload the tab) and **say nothing**: since P6-T02 she
-   speaks first when you come back after an hour or more, and a due follow-up is what she picks up.
-
-**Pass:** she asks before she plans and saves it once it has a shape; she never reads the plan
-out; your panel edit sticks and she works from it; the Markdown reads cleanly; on the day, she
-brings the check-in up herself. **Paste back:** pass/fail, and anything that felt like a form.
-
-### R-41 · Meet Theo · ~15 minutes, desktop
-**Why:** P6-T06 (ADR-55): a second character, Theo — calm, dry, practical, his own voice
-(Kokoro `am_michael`) — on the same placeholder body until P7, with memories of his own in the same
-database as Alice's. The separation is proved by test; whether he feels like someone else, and
-whether switching feels right, needs you.
-1. Pull, and restart `pnpm dev` (the persona file is new).
-2. Settings → **Character**: Alice's summary and "Voice for Alice". If you had chosen a Kokoro
-   voice before, it is still hers. Voice no longer has a Kokoro voice list: that is per character now.
-3. In `/chat`, **Talking to** (beside Speak replies) → Theo. A new visit starts: an empty
-   transcript, and Memory, Plans and Thoughts are his (empty at first).
-4. Turn Speak replies on, tell him two or three things about yourself, ask him something.
-5. Switch back to Alice: her transcript of before is gone from the screen (a new visit) but she
-   remembers you, and nothing you told Theo. Back to Theo: he has his, not hers.
-6. Optional: rewrite him in `personas/theo.persona.json` (name, summary, style, voice) and reload.
-
-**Pass:** Theo sounds and talks like a different person; neither knows what you told the other;
-switching is clear and quick. **Paste back:** what Theo was like, anything one knew that only the
-other was told, and whether you want him renamed or rewritten.
-
-### R-37 · Come back to her · a minute at a time, desktop, over a day
-**Why:** P6-T02 (ADR-51): she knows how long it has been, and when you come back after an hour or
-more she speaks first — a greeting for the time of day, and one thing from last time (a due
-follow-up first). The phrasing is proved by test and by a real model; whether it feels like being
-remembered, rather than like a notification, needs you.
-**2026-10-12:** during R-38/R-39 she once asked the same question twice, three minutes apart,
-around a relaunch — an opener you had not answered, then a second on the reload. Fixed (06bb3cb):
-step 2 now covers her own unanswered opener too. Pull and restart `pnpm dev` before step 1.
-
-Memory must be where your conversations are (Settings → Memory, as for R-27). Speak replies can be
-off: her opener appears in the transcript.
-1. **This evening** (R-27's check-in is due at seven): reload `/chat` after seven and **say
-   nothing**. Expect an evening greeting and the trip — the follow-up she set.
-2. Reload within the hour: she should **not** greet you again.
-3. **Tomorrow morning**, after the first time you have talked: open `/chat` and say nothing.
-   Expect a morning greeting and something from last night — never "today" for last night.
-4. Any time after a longer gap (a few days), the same.
-
-**Pass:** the greeting fits the time of day, the gap is said the way a person would ("last
-night", "it's been a few days"), she picks up one real thing, it is short, and she does not greet
-twice in an hour. **Paste back:** her openers word for word, and when you opened.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -279,6 +217,16 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-54 · R-41: meet Theo** — Rick 2026-10-13: **passed** — Theo sounds and talks differently, "a
+  totally different vibe than Alice", calm and matter of fact; neither knew what Rick told the
+  other; switching is quick. Research and tools with him worked; memories stayed apart. No change
+  to his persona: both "very easy to listen to for giving instructions or reading back research".
+- **D-53 · R-37: come back to her** — Rick 2026-10-13: **passed** — she opened several times over
+  24 hours; the greetings made sense and felt like normal conversation. **Not yet tried: a long gap
+  (days)** — Rick is in and out constantly; the simulated week (`time.test.ts`) covers the wording.
+- **D-52 · R-27: plan something with her** — Rick 2026-10-13: **passed** (retry) — she brought up
+  the planned trip herself, added to the plan when he gave her new information, the Markdown reads
+  cleanly, and she raised it "like a conversation with a normal person".
 - **D-51 · R-40: peek at her thoughts** — Rick 2026-10-12: **passed** — the lines sound like her
   ("quirky attitude of sorts"), one "eerily intuitive"; worth having there. Two quoted: after he
   said "as usual", *"They said 'as usual' like it's a small joke between us, and I liked that more

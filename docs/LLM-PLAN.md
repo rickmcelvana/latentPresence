@@ -408,9 +408,20 @@ told about Mira and Theo about the cello; after each switch each has only their 
 the Memory view and the store (mutation-checked). The stores' namespaces were already held by the
 conformance suite (P4-T04). How it feels is R-41.
 
-### P6-T07 Scheduler core — owner: main
+### P6-T07 Scheduler core — owner: main (core done 2026-10-13, ADR-56 proposed; the companion's half is P6-T07b)
 Depends: P4-T03. `packages/core/scheduler` per ADR-14: `Schedule` model (cron or one-shot, task prompt, allowed tools, delivery mode, catch-up policy), a tick loop with a fixed timestep, missed-run reconciliation on wake, execution through the normal agent loop with the schedule's tool allowlist, results stored as memory episodes. Companion endpoints `/schedules/*` and a `schedules` table; companion-side execution for tool-only jobs.
 Done when: unit tests cover cron parsing, next-run computation across DST, each catch-up policy, and delivery routing; a simulated week replays deterministically.
+**Met:** `packages/core/src/scheduler` (croner 10.0.1) — `scheduler.test.ts` (23, mutation-checked)
+covers cron, DST both ways, every policy and every delivery; `pnpm schedule:log` replays a week in
+Toronto across the fall-back night identically (`docs/runs/P6-T07-week.md`).
+
+### P6-T07b Companion schedules — owner: main
+Depends: P6-T07. Split out by ADR-56. The `schedules` table and the `/schedules/*` routes already in
+`companionRoutes`, `CompanionMemoryStore`'s schedules (refused today) held to the conformance suite;
+`runOn: companion` tool-only jobs run by the companion with the app closed — a Rust cron held to the
+same firing fixtures as croner, and the protocol's tool-only call (an ADR).
+Done when: the memory conformance suite's schedules pass on MariaDB through the companion, and a
+companion job fires on time with no page open, its run kept and told at the next session.
 
 ### P6-T08 Schedule tools and panel — owner: sub
 Depends: P6-T07. Agent tools `schedule.create`, `schedule.list`, `schedule.cancel`, `schedule.run_now`; natural-language time parsing with the character reading back the interpreted time before confirming; Schedules panel listing upcoming runs, last results, pause and cancel; OS notification delivery in the desktop app.

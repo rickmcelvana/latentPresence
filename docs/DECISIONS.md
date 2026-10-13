@@ -58,6 +58,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-53 | Sleep: after 10 quiet minutes with facts new since she last slept, she rests visibly (eyes closed, head down, a label) and `MemoryKernel.sleep` merges what was said twice in other words — by rule (predicate families, plain objects), then by the extraction model per subject, reasoning off — before P4-T03's pass; anything wakes her and stops a sleep between steps; last slept in a `_sleep` block | accepted | 2026-10-12 |
 | ADR-54 | Inner monologue: `withThinking` takes the model's reasoning (and any inline `<think>`) off every chat answer before anything shows or speaks it; each settled answer is a moment, put into one to three private first-person lines by the bare page model with reasoning off — only while the Thoughts view is open; held in the page, never on the bus, never stored | accepted | 2026-10-12 |
 | ADR-55 | Characters: a pack is a persona file plus an avatar entry in the app; the persona's id is the memory namespace, in one database; the active character and each one's voice are settings, everything else stays the person's; switching remounts `/chat` as a new visit; a second pack, Theo, on the placeholder body until P7 | accepted | 2026-10-12 |
+| ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | proposed | 2026-10-13 |
 
 ---
 
@@ -2103,3 +2104,68 @@ has one of their own, so a choice there would have changed nobody's; it says so 
 Character. The done-when test (`ChatPage.test.tsx`) failed, as it should, with the kernel's id
 hard-wired to Alice's ("Theo's Memory view has no Mira"); the voice tests failed with the
 speaker given the page's settings instead of the character's.
+
+## ADR-56 Scheduler core: when it fires, what a missed firing does, and how a result reaches them (proposed 2026-10-13)
+
+**Context.** P6-T07 (ADR-14): `packages/core/scheduler` — schedules (cron or one-shot, a task prompt,
+allowed tools, delivery, catch-up), a fixed-timestep tick, missed runs reconciled on waking,
+execution through the agent loop with the schedule's tool allowlist, results as memory episodes;
+done when cron parsing, next runs across DST, each catch-up policy and delivery routing are tested
+and a simulated week replays deterministically. Already there: `Schedule` and `ScheduleRun` in the
+protocol (P0), `listSchedules`/`saveSchedule`/`deleteSchedule` on `MemoryStore`, kept by the fake
+and IndexedDB stores, refused by the companion (no routes yet), and the `/schedules/*` routes
+declared in `companionRoutes` but not served. Self blocks cannot hold schedules: the companion caps
+them at 2,000 characters.
+
+**Measured first (2026-10-13).** croner 10.0.1 (MIT, no dependencies, published 2026-02-01) in
+America/Toronto: on the spring-forward day a daily 02:30 fires once, at 03:30; on the fall-back day
+a daily 01:30 fires once, the first (EDT) one; every 30 minutes steps over both changes without a
+gap or a repeat in wall-clock time (an hourly job runs 01:00 EDT then 02:00 EST — not in the
+repeated hour, where Vixie cron would run a wildcard job twice); `nextRun` is strictly after its
+argument; it also accepts a six-field expression with seconds; a bad field or zone throws.
+
+**Decisions.**
+
+1. **Cron is five fields** in the schedule's own zone, day-of-month and day-of-week OR'd; six
+   fields and unknown zones are refused in words (`CronError`). A schedule the runtime cannot read
+   becomes `failed`, once, and is reported.
+2. **On time or missed** (`planSchedule`, pure): a firing found within **5 minutes** runs whatever
+   the policy — a background tab's timers run about once a minute; older ones were missed and the
+   policy settles them: `skip` none, `run_once` the newest, `run_all` each oldest first, **at most
+   10** (the rest counted). A one-shot has no next firing: planned, it is `completed` (or `failed`).
+3. **A fixed 30 s tick** (`attachScheduler`), and waking is the same tick finding firings in the
+   past. **A firing is claimed before it runs** — `nextRunAt` moved on and saved first — so a
+   reload mid-run does not repeat it; one at a time; a schedule paused or deleted during its run is
+   left as the person left it. Two tabs open on one store could each claim a firing; the tray app
+   (P8) is the one place that should run them.
+4. **Execution** (`agentExecutor`): her model through `withLocalTools`, offered **only the
+   schedule's `allowedTools`** (a name it guesses is answered, never run), told who she is and
+   what it is doing, asked for one to three plain sentences to tell them; tags are taken out. **An
+   empty task prompt is a reminder**: the description is the message and no model is asked.
+5. **Results**: the run is kept on the schedule — **protocol, additive: `Schedule.lastRun`,
+   `ScheduleRun.scheduledFor` and `deliveredAt`**, all defaulted so stored documents still read —
+   and its summary is written into memory as an assistant episode in the schedule's own session
+   (`schedule-<id>`), so she can be asked about it and it is never mistaken for a conversation.
+6. **Delivery routing**: `silent_log` is told by being written down (`deliveredAt` at once);
+   `notify` is told when the notifier says it showed it — otherwise, or with no notifier, it
+   **waits to be said**, as `speak_next_session` does (`pendingDeliveries`, `markDelivered`). A
+   failure is told as one ("I couldn't do …: …"). Missed firings a policy skips are kept as a
+   `skipped` run, told to nobody. Only the newest run waits to be told; a `run_all` catch-up's
+   earlier ones are episodes.
+7. **The companion's half is its own task, P6-T07b**: the `schedules` table and `/schedules/*`
+   routes (so a companion-memory page keeps schedules at all), `CompanionMemoryStore`'s schedules
+   held to the conformance suite, and running `runOn: companion` tool-only jobs with the app
+   closed — Rust, a second cron implementation held to the same firing fixtures, and a protocol
+   addition for a tool-only job's call. P6-T08 (tools and panel) needs only this core.
+
+**Rejected.** *Hand-written cron* — DST is where a scheduler goes wrong, and croner's behaviour was
+measurable before relying on it. *Schedules in self blocks* — the 2,000-character cap. *A run
+history store* — the panel needs the last result and memory keeps every result as an episode.
+
+**Measured in the build (2026-10-13).** `pnpm schedule:log` (`docs/runs/P6-T07-week.md`): a week in
+Toronto across the fall-back night — open by day, closed at night, away Saturday, open overnight
+Saturday to Sunday — with eight schedules covering every policy and delivery, a failure, a
+blocked notification and a paused job: 174 runs (167 ok, 1 failed, 6 skipped), 7 things said, 1
+notification, 168 episodes; run twice, identical. `scheduler.test.ts`, 23 tests, mutation-checked
+seven ways (no grace, no `run_once`, no claim, no re-read, silent not told, six fields, no
+allowlist); a runner that repeats itself now fails the week at 2,000 runs instead of hanging it.

@@ -806,3 +806,9 @@ Did: ADR-55 accepted. Sweep for staleness: **Phase 5 marked complete** (its thre
 Left: R-41, R-37, R-27 retry; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P6-T07 scheduler core (main), tonight.
 Decisions: ADR-55 accepted. None new.
+
+## 2026-10-13 claude — R-27, R-37, R-41 passed; P6-T07 scheduler core
+Did: R-27 (D-52), R-37 (D-53; a gap of days not yet tried), R-41 (D-54) passed — every desktop check is done. P6-T07: found `Schedule`, the store methods and the companion routes already declared (P0); measured croner 10.0.1 across both DST changes (SURFACE); ADR-56 proposed; core `scheduler/` (cron, planSchedule, attachScheduler, agentExecutor, pendingDeliveries); protocol additive (`lastRun`, `scheduledFor`, `deliveredAt`; OpenAPI regenerated); simulated week (`pnpm schedule:log`, 174 runs, identical twice); 23 tests mutation-checked seven ways, a runaway guard added after one mutation hung the week. A transient MSVC `LNK1000` in the Rust half passed on rerun.
+Left: P6-T07b (companion schedules), P6-T08; laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P6-T07b (main).
+Decisions: ADR-56 proposed (with the split into T07b) — needs Rick's accept.

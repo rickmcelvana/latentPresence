@@ -2389,3 +2389,17 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
 - The reasoning reads as planning in another voice ("**Analyze the Input:** … Persona: Alice",
   "Okay, the user is feeling down…"), not as the character's thoughts.
 
+## croner, cron in a time zone — measured 2026-10-13 (P6-T07)
+
+- **croner 10.0.1** (npm, MIT, no dependencies, published 2026-02-01; `new Cron(pattern,
+  { timezone, paused: true, legacyMode: true })`, `nextRun(after)`), in node 22 with
+  `America/Toronto`:
+  - `nextRun(d)` is **strictly after** `d`;
+  - spring forward (2026-03-08): `30 2 * * *` fires at **03:30 EDT** that day, 02:30 after;
+    `*/30 * * * *` goes 01:30 → 03:00;
+  - fall back (2026-11-01): `30 1 * * *` fires **once**, at 01:30 EDT (05:30Z); `0 * * * *` goes
+    01:00 EDT → 02:00 EST, skipping the repeated 01:00 EST;
+  - a **six-field** pattern is accepted as seconds-first (`0 0 9 * * *`) — we refuse six fields;
+  - `61 * * * *` throws "CronPattern: Invalid value for minute: 61"; an unknown zone throws on the
+    first `nextRun` ("Invalid timezone"), so zones are checked with `Intl.DateTimeFormat` first.
+
