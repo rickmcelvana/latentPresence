@@ -91,6 +91,32 @@ function hostOf(url: string): string {
   }
 }
 
+/** True when the URL's path has an API version segment: `/v1`, `/api/v1`, `/v1beta/openai`. */
+function hasVersionSegment(url: string): boolean {
+  try {
+    return /\/v\d[^/]*(\/|$)/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A 404 means a server answered, just not with an OpenAI-compatible listing — never
+ * "nothing here". Without a version segment the base URL is the likely mistake; with one,
+ * the server most likely has an API of its own (Voicebox 0.5.0 serves `/generate` and no
+ * `/v1` at all, 2026-10-14).
+ */
+function messageForNotFound(url: string): ConnectionResult {
+  const host = hostOf(url);
+  if (!hasVersionSegment(url)) {
+    return { tone: 'danger', text: `A server is running at ${host}, but not an OpenAI-compatible API at this path. The base URL usually ends in /v1.` };
+  }
+  return {
+    tone: 'danger',
+    text: `A server is running at ${host}, but it has no OpenAI-compatible API at this address. It may only offer an API of its own, which this setting cannot use.`,
+  };
+}
+
 function messageForStatus(status: number, ctx: ProbeContext): ConnectionResult {
   if (status >= 200 && status < 300) {
     const caveat = KEY_CHECKED_ON_USE.has(ctx.endpointId)
@@ -103,9 +129,7 @@ function messageForStatus(status: number, ctx: ProbeContext): ConnectionResult {
     if (status === 403 && !ctx.hasKey) return { tone: 'warn', text: 'This endpoint needs a key.' };
     return { tone: 'danger', text: 'The key was refused.' };
   }
-  if (status === 404) {
-    return { tone: 'danger', text: 'Nothing at this address. The base URL usually ends in /v1.' };
-  }
+  if (status === 404) return messageForNotFound(ctx.url);
   return { tone: 'danger', text: `The server answered ${status}.` };
 }
 

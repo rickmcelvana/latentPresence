@@ -2460,3 +2460,22 @@ shipped character (`docs/pipeline/character.md`):
 - MPFB2 / MakeHuman system assets (hair `ponytail01` etc., skins, eyes, teeth), `faceunits01`,
   `visemes02`: **CC0**, per-asset header "explicitly released as CC0 in september 2020" (read in
   the installed `.mhclo` files).
+
+## Voicebox (jamiepine/voicebox) 0.5.0 — 2026-10-14, verified by live call on Rick's dev PC
+
+Not OpenAI-compatible. `GET /openapi.json` lists no `/v1` route at all: no `/v1/models`, no
+`/v1/audio/speech`. Our "OpenAI-compatible server" voice source cannot use it, and its test
+now says so instead of "Nothing at this address".
+
+- Native TTS: `POST /generate/stream`, JSON `{profile_id, text, engine, language?, instruct?,
+  ...}` (`instruct` ≤ 500 chars; engines `qwen | qwen_custom_voice | luxtts | chatterbox |
+  chatterbox_turbo | tada | kokoro`). Returns one whole WAV, 24 kHz mono s16: the first byte
+  arrives when the clip is finished, so it does not stream.
+- CORS: preflight from `http://localhost:5173` answered 200 with that origin allowed.
+- Chatterbox Turbo on the CPU backend: 6.9 s for ~2.5 s of audio, 8.6 s for ~3.3 s (a
+  `[sigh]` tag in the text). Rick has since switched it to the GPU; not re-measured.
+
+`agjs/voicebox` is a different project with the same name (MIT, Piper or Kokoro TTS plus
+faster-whisper STT). It does serve `/v1/models` and `/v1/audio/speech` (read from
+`src/voicebox/app.py`, 2026-10-14) and has no CORS middleware there, so a browser call would
+be refused.

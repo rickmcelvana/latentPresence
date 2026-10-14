@@ -74,11 +74,19 @@ describe('messageForProbe — the outcome table', () => {
     });
   });
 
-  it('answered 404: nothing at this address', () => {
-    expect(messageForProbe({ kind: 'answered', status: 404 }, ctx())).toEqual({
+  it('answered 404 with no version in the path: a server is running, suggest /v1', () => {
+    expect(messageForProbe({ kind: 'answered', status: 404 }, ctx({ url: 'http://127.0.0.1:17493/models' }))).toEqual({
       tone: 'danger',
-      text: 'Nothing at this address. The base URL usually ends in /v1.',
+      text: 'A server is running at 127.0.0.1:17493, but not an OpenAI-compatible API at this path. The base URL usually ends in /v1.',
     });
+  });
+
+  it('answered 404 under a version segment: the server has no OpenAI-compatible API', () => {
+    for (const url of ['http://127.0.0.1:17493/v1/models', 'http://x/api/v1/models', 'http://x/v1beta/openai/models']) {
+      const result = messageForProbe({ kind: 'answered', status: 404 }, ctx({ url }));
+      expect(result.tone).toBe('danger');
+      expect(result.text).toContain('has no OpenAI-compatible API at this address');
+    }
   });
 
   it('answered other: the server answered <status>', () => {
