@@ -661,7 +661,7 @@ function fakeNotifications(state: NotificationPermissionState) {
   const notifications: PageNotifications = {
     permission: () => state,
     request: async () => state,
-    show: (title, body, tag) => {
+    show: async (title, body, tag) => {
       shown.push([title, body, tag]);
       return true;
     },

@@ -24,7 +24,7 @@ function notifier(state: NotificationPermissionState = 'granted') {
       current = 'granted';
       return 'granted';
     },
-    show: () => true,
+    show: async () => true,
   };
   return { notifications, calls };
 }

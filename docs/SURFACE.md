@@ -2431,3 +2431,11 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
   earlier notification with the same tag. **The constructor throws a `TypeError` in nearly all
   mobile browsers** (they need `ServiceWorkerRegistration.showNotification`) — so showing one is
   wrapped in `try` and a throw means "not shown": the run waits for her to say it. Not Baseline.
+- MDN (`Notification/show_event`, `error_event`, `click_event`), read 2026-10-14 (R-43): `show` "fires
+  when a Notification is displayed"; `error` fires "in many cases [on] an error preventing the
+  notification from being displayed"; both plain `Event`s, **neither Baseline** — so a constructed
+  one that fires neither in 4 s still counts as shown. `click`'s default is to focus the
+  notification's tab (`preventDefault()` stops it); not every browser does, so the page calls
+  `window.focus()` and `close()` itself. **Windows' Do Not Disturb files the toast in the
+  notification centre with no banner** (R-43, Chrome on Windows 11): the page cannot tell, and
+  ADR-58 counts it as told.

@@ -146,6 +146,25 @@ export const TAG_SCAN_LIMIT = 48;
  */
 export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture|user|cite):([a-z][a-z0-9-]*)\]/;
 
+/**
+ * Near-misses of `[user:x]`, which leads every reply: `glm-5.3-flash:cloud` wrote
+ * `[sim user - neutral]` in /chat (R-43, 2026-10-14) and it was shown and said. A word before
+ * `user`, a dash, `=` or a space for the colon, any case — but **only with a label on the user
+ * list**, so `[user manual]` or `[user guide - v2]` stays text.
+ */
+const LOOSE_USER_TAG = new RegExp(`^\\[(?:[a-z]+[ _-])?user\\s*(?:[-:=]\\s*)?(${[...knownUserEmotions].join('|')})\\]`, 'i');
+
+/** A tag at the start of `rest`: its length, kind (`emotion`/`emotive` normalised to `emote`) and value, or null. */
+export function matchTag(rest: string): { readonly length: number; readonly kind: InlineTagKind; readonly value: string } | null {
+  const strict = TAG_PATTERN.exec(rest);
+  if (strict !== null) {
+    const kind = strict[1] === 'gesture' || strict[1] === 'user' || strict[1] === 'cite' ? strict[1] : 'emote';
+    return { length: strict[0].length, kind, value: strict[2] ?? '' };
+  }
+  const loose = LOOSE_USER_TAG.exec(rest);
+  return loose === null ? null : { length: loose[0].length, kind: 'user', value: (loose[1] ?? '').toLowerCase() };
+}
+
 /** The verdict on a raw label: on its own kind's list, or null. */
 function known(kind: InlineTagKind, value: string): CharacterEmotion | CharacterGesture | UserEmotion | null {
   // A citation (P5-T04, ADR-45) names a chunk, not a label on a list.
@@ -247,15 +266,14 @@ export class SentenceChunker {
 
       if (ch === '[' && !this.inCode && !this.inFence) {
         const rest = this.buffer.slice(i, i + TAG_SCAN_LIMIT);
-        const match = TAG_PATTERN.exec(rest);
+        const match = matchTag(rest);
         if (match !== null) {
-          const kind = match[1] === 'gesture' || match[1] === 'user' || match[1] === 'cite' ? match[1] : 'emote';
-          const value = match[2] ?? '';
+          const { kind, value } = match;
           // Other tags lead what follows them; a citation follows what it supports — `…five
           // seconds. [cite:c6612]` cites that sentence, so it sits at its end (ADR-45).
           const offset = kind === 'cite' ? this.spoken.trimEnd().length : this.spoken.length;
           this.tags.push({ kind, value, known: known(kind, value), offset });
-          i += match[0].length;
+          i += match.length;
           // `Hello [emote:joy] world` must not become `Hello  world`.
           while (isWhitespace(this.buffer.charAt(i)) && this.endsWithSpace()) i += 1;
           this.spaceBeforeTag = this.endsWithSpace();

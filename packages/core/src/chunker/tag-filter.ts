@@ -1,4 +1,4 @@
-import { CLOSING, TAG_PATTERN, TAG_SCAN_LIMIT } from './chunker';
+import { CLOSING, TAG_SCAN_LIMIT, matchTag } from './chunker';
 
 /**
  * Keeps inline tags out of the token stream (P1-T12).
@@ -82,9 +82,9 @@ export class TagFilter {
       }
       show(buffer.slice(0, open));
       const rest = buffer.slice(open);
-      const match = TAG_PATTERN.exec(rest);
+      const match = matchTag(rest);
       if (match !== null) {
-        buffer = rest.slice(match[0].length);
+        buffer = rest.slice(match.length);
         this.trimAfterTag = true;
         this.tagSinceSpace = this.heldSpace;
         continue;

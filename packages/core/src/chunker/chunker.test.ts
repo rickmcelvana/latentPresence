@@ -137,6 +137,21 @@ describe('SentenceChunker tags', () => {
     expect(chunkText('[emote:sad] Hm.')[0]?.tags[0]?.known).toBeNull();
   });
 
+  it('lifts near-misses of [user:x] out when the label is a user emotion (glm-5.3-flash:cloud, R-43 2026-10-14)', () => {
+    const [chunk] = chunkText('[sim user - neutral]\n\n[emote:joy] Hey, good to see you.');
+    expect(chunk?.text).toBe('Hey, good to see you.');
+    expect(chunk?.tags).toEqual([
+      { kind: 'user', value: 'neutral', known: 'neutral', offset: 0 },
+      { kind: 'emote', value: 'joy', known: 'joy', offset: 0 },
+    ]);
+    for (const near of ['[User: Happy]', '[user - sad]', '[user=angry]', '[user neutral]', '[sim_user:fearful]']) {
+      expect(chunkText(`${near} Hi.`)[0]).toMatchObject({ text: 'Hi.', tags: [expect.objectContaining({ kind: 'user' })] });
+    }
+    // Without a label from the user list it is ordinary text, and said.
+    expect(chunkText('Check the [user manual] first.')[0]?.text).toBe('Check the [user manual] first.');
+    expect(chunkText('See [user guide - v2] here.')[0]?.text).toBe('See [user guide - v2] here.');
+  });
+
   it('lifts [cite:c123] out as a citation, never spoken and never a known label (P5-T04)', () => {
     const chunks = chunkText('Hold reset for five seconds. [cite:c6612] Then wait. [cite:c6613]');
     expect(chunks.map((chunk) => chunk.text).join(' ')).toBe('Hold reset for five seconds. Then wait.');

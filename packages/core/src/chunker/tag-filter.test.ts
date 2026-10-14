@@ -64,8 +64,10 @@ describe('TagFilter', () => {
   });
 
   it('removes [emotion:x] too, so the near-miss is never spoken', () => {
-    // Shares TAG_PATTERN with the chunker, so the alias lands in both by construction.
+    // Shares matchTag with the chunker, so an alias lands in both by construction.
     expect(stream(['[emotion:concern] That sounds hard.'])).toBe('That sounds hard.');
+    expect(stream(['[sim us', 'er - neu', 'tral] That sounds hard.'])).toBe('That sounds hard.');
+    expect(stream(['Check the [user manual] first.'])).toBe('Check the [user manual] first.');
     expect(stream(['[emotive:sad] That sounds hard.'])).toBe('That sounds hard.');
     expect(stream(['[user:sad] [emote:concern] That sounds hard.'])).toBe('That sounds hard.');
     expect(stream(['It is on page twelve. [ci', 'te:c66', '12] Anything else?'])).toBe('It is on page twelve. Anything else?');
