@@ -198,9 +198,16 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-3 · Character pipeline
-**Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
-Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
+### R-3 · Character pipeline · thirty minutes, desktop, ComfyUI running
+**Why:** P7-T01's done-when is yours: approve Alice's concept sheet, and follow
+`docs/pipeline/character.md` without needing to ask. (Replacing `apps/desktop/src-tauri/icons/`,
+still Tauri's scaffold logo, moves to P7-T02.)
+1. Open `docs/pipeline/alice/concept-sheet.jpg`. Is she Alice?
+2. Follow `docs/pipeline/character.md` §2–4 to rebuild her yourself from the three images in
+   `docs/pipeline/alice/` (name it `alice_r3` so the approved build stays). Use §3 to look at it.
+
+**Pass:** the concept approved, and a validated VRM with no question you had to ask. **Paste
+back:** every question you had (each goes into the doc), and anything in §3's "re-run" list you saw.
 
 ## Open — claude (say go, or add the key)
 

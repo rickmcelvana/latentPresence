@@ -445,6 +445,7 @@ Disturb was off; a notification now counts as shown on its `show` event, 4eb99c2
 ### P7-T01 Pipeline doc and concept art — owner: main + human
 The architect generates Alice's concept sheet and turnaround (front, side, back, face close-ups, neutral expression, T-pose or A-pose) through comfy-mcp during a session, iterating with Rick. Then `docs/pipeline/character.md`: exact steps from the approved images to VRM 1.0 (tool, version, settings, export options, validation) for mesh generation, UniRig or Rigify rigging, ARKit blendshapes, VRM export and expression mapping, written so Rick can follow it without asking.
 Done when: Rick approves the concept sheet; Rick follows the doc without needing to ask a question, or every question asked is folded back into the doc.
+**Built 2026-10-14 (main, with Rick):** the doc names Rick's `image-to-vrm` instead of UniRig/Rigify (never auto-rig: MPFB2 rig, hands, head and hair fitted to a TRELLIS.2 mesh and a portrait), which the architect extended for Alice (close-up face, MPFB hair, weld-then-bake, the neck under the collar). Concept: a Z-Image portrait, a Klein 4B ponytail edit, a Klein 4B T-pose (`docs/pipeline/alice/`). Klein 9B dropped on its licence (ADR-18 amendment). Alice's VRM: web 4.09 MB, all validators pass. Rick's check: R-3.
 
 ### P7-T02 Default character: Alice — owner: human
 Semi-realistic full-body VRM with PBR materials, 52 ARKit shapes, VRM expression mapping; plus a stylised alternative.

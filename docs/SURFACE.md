@@ -2439,3 +2439,24 @@ home-assistant.io/integrations/mcp_server read the same day, which is for 2026.1
   `window.focus()` and `close()` itself. **Windows' Do Not Disturb files the toast in the
   notification centre with no banner** (R-43, Chrome on Windows 11): the page cannot tell, and
   ADR-58 counts it as told.
+
+## Character pipeline model licences — read 2026-10-14 (P7-T01)
+
+Model cards on Hugging Face, read 2026-10-14, for every model whose output becomes part of a
+shipped character (`docs/pipeline/character.md`):
+
+- `Tongyi-MAI/Z-Image-Turbo`: **Apache-2.0** ("License: apache-2.0").
+- `black-forest-labs/FLUX.2-klein-9B`: **FLUX Non-Commercial License**. LICENSE.md §2(d): "You may
+  use Output for any purpose (including for commercial purposes), except as expressly prohibited
+  herein"; §4(a) prohibits using or distributing "any data produced by the FLUX Model" for "any
+  commercial or production purposes". The two conflict; **not used for anything shipped**.
+  (`image-to-vrm/docs/LICENSING.md` had recorded it as Apache-2.0 — corrected there.)
+- `black-forest-labs/FLUX.2-klein-base-4b-fp8`: **Apache-2.0**, not gated; "multi-reference
+  editing" in one model. Downloaded with Rick's OK 2026-10-14: `flux-2-klein-base-4b-fp8.safetensors`,
+  4,089,498,488 bytes. Runs with Z-Image's `qwen_3_4b_fp8_mixed.safetensors` text encoder in place
+  of the template's `qwen_3_4b.safetensors` (verified: Alice's edit and T-pose).
+- `microsoft/TRELLIS.2-4B`: **MIT** ("This model is released under the MIT License"); the ComfyUI
+  core port drops upstream's non-commercial NVIDIA dependencies (`image-to-vrm` LICENSING.md).
+- MPFB2 / MakeHuman system assets (hair `ponytail01` etc., skins, eyes, teeth), `faceunits01`,
+  `visemes02`: **CC0**, per-asset header "explicitly released as CC0 in september 2020" (read in
+  the installed `.mhclo` files).
