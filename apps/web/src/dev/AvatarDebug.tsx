@@ -29,7 +29,7 @@ import {
   type MouthShape,
   tapAnalyser,
 } from '@latentpresence/avatar';
-import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
+import { VrmAvatarRenderer, type BodyReport } from '@latentpresence/avatar/vrm';
 import { AffectEngine, DEFAULT_AFFECT_PARAMS, IDLE_ACTIVITIES, dominantEmotion, initialAffect } from '@latentpresence/core';
 import { IdlePerformer } from '@latentpresence/avatar';
 import { type AudioOutputHandle, createAudioOutput } from '@latentpresence/providers';
@@ -38,6 +38,7 @@ import speechUrl from '../../../../e2e/fixtures/speech.wav?url';
 import { type FrameResult, FrameRecorder } from '../spikes/frame-rate';
 import { AVATAR, totalAssetBytes } from '../spikes/avatar-consent';
 import { BASE_CLIP_URLS } from '../call/clips';
+import { missingWords } from '../characters/BodyPanel';
 import { AFFECT_REVIEW_STATES } from './affect-review';
 
 /**
@@ -150,6 +151,9 @@ export function AvatarDebug(): ReactElement {
   const [cycling, setCycling] = useState<ExpressionName | null>(null);
   const [modelExpressions, setModelExpressions] = useState<readonly string[]>([]);
   const [plan, setPlan] = useState<ExpressionPlan | null>(null);
+  /** P7-T02: a VRM from this computer, worn in place of the placeholder to check it before it is offered. */
+  const firstFile = useRef<File | null>(null);
+  const [body, setBody] = useState<{ file: string; report: BodyReport | null }>({ file: 'the placeholder', report: null });
 
   const [lifeOn, setLifeOn] = useState(true);
   const [lifeState, setLifeState] = useState<ConversationState>('listening');
@@ -288,16 +292,21 @@ export function AvatarDebug(): ReactElement {
         await avatar.mount(surface);
         if (cancelled) return;
         frame = requestAnimationFrame(tick);
-        await avatar.loadCharacter({
-          id: 'placeholder',
-          url: AVATAR.downloadUrl,
-          format: 'vrm',
-          licence: AVATAR.licence,
-          attribution: AVATAR.author,
-        });
+        const local = firstFile.current;
+        const source = local === null ? AVATAR.downloadUrl : URL.createObjectURL(local);
+        try {
+          await avatar.loadCharacter(
+            local === null
+              ? { id: 'placeholder', url: source, format: 'vrm', licence: AVATAR.licence, attribution: AVATAR.author }
+              : { id: 'local', url: source, format: 'vrm', licence: 'Your own file', attribution: null },
+          );
+        } finally {
+          if (local !== null) URL.revokeObjectURL(source);
+        }
         if (cancelled) return;
         setModelExpressions(avatar.modelExpressions());
         setPlan(avatar.expressionPlan());
+        setBody({ file: local?.name ?? 'the placeholder', report: avatar.bodyReport() });
         try {
           await Promise.all(Object.entries(BASE_CLIP_URLS).map(([id, url]) => avatar.loadClip(id, url)));
         } catch (error) {
@@ -601,6 +610,32 @@ export function AvatarDebug(): ReactElement {
   }, [speak]);
 
   const ready = phase === 'ready';
+
+  /** Wears a file from this computer on the running stage (P7-T02): the same live swap `/chat` makes. */
+  const wearFile = async (file: File): Promise<void> => {
+    const avatar = renderer.current;
+    if (avatar === null) return;
+    setStatus(`Loading ${file.name}.`);
+    const url = URL.createObjectURL(file);
+    try {
+      await avatar.loadCharacter({ id: 'local', url, format: 'vrm', licence: 'Your own file', attribution: null });
+      setModelExpressions(avatar.modelExpressions());
+      setPlan(avatar.expressionPlan());
+      setBody({ file: file.name, report: avatar.bodyReport() });
+      setStatus(`Wearing ${file.name}.`);
+    } catch (error) {
+      setStatus(`Refused ${file.name}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+  const report = body.report;
+  const bodyWords =
+    report === null
+      ? ''
+      : [report.name ?? 'no name', report.authors.length > 0 ? `by ${report.authors.join(', ')}` : null, report.licence, missingWords(report.missing) ?? 'Every call preset present.', report.lookAt ? null : 'No look-at.']
+          .filter((part): part is string => part !== null)
+          .join(' · ');
   const phaseTone = phase === 'failed' ? 'pill-danger' : ready ? 'pill-ok' : '';
 
   return (
@@ -651,6 +686,22 @@ export function AvatarDebug(): ReactElement {
             >
               Agree and download
             </button>
+            <label className="btn">
+              Or load a .vrm from this computer
+              <input
+                accept=".vrm,model/gltf-binary"
+                className="bodies-file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file === undefined) return;
+                  firstFile.current = file;
+                  setPhase('loading');
+                  setStarted(true);
+                  setStatus(`Loading ${file.name}.`);
+                }}
+                type="file"
+              />
+            </label>
           </div>
         </section>
       ) : null}
@@ -670,6 +721,29 @@ export function AvatarDebug(): ReactElement {
           <p className="panel-note">
             Model expressions: {modelExpressions.length === 0 ? '—' : modelExpressions.join(', ')}
           </p>
+          <p className="panel-note">
+            Wearing {body.file}
+            {bodyWords === '' ? '' : ` — ${bodyWords}`}
+          </p>
+          {ready && (
+            <div className="spike-controls">
+              <label className="btn btn-sm">
+                Load a .vrm from this computer
+                <input
+                  accept=".vrm,model/gltf-binary"
+                  aria-label="Load a VRM from this computer"
+                  className="bodies-file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    if (file !== undefined) void wearFile(file);
+                  }}
+                  type="file"
+                />
+              </label>
+              <span className="panel-note">Nothing is uploaded; the file is read in this browser.</span>
+            </div>
+          )}
         </section>
       ) : null}
 

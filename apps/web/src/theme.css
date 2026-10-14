@@ -1925,6 +1925,116 @@ kbd {
   max-height: none;
 }
 
+/* --- Body panel (P7-T02, ADR-59) --------------------------------------------
+   Her body, chosen in the call: built-in bodies, then the person's own files,
+   each worn with one press. Laid out like the Schedules list. */
+.bodies-panel {
+  min-height: 0;
+}
+
+.bodies-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  max-height: 480px;
+  padding-right: var(--gap-xs);
+  overflow-y: auto;
+}
+
+.bodies-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.bodies-heading {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bodies-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bodies-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.bodies-title {
+  font-weight: 600;
+}
+
+.bodies-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.bodies-missing {
+  color: var(--warning);
+  font-size: 12px;
+}
+
+.bodies-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.bodies-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+/* The real input sits inside its label button, out of sight; the label is what is pressed. */
+.bodies-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.bodies-add-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.bodies-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.call-drawer .bodies-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.call-drawer .bodies-body {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 /* --- Thoughts panel (P6-T05, ADR-54) ----------------------------------------
    Her inner monologue in the drawer: newest first, each moment a quiet line of
    context, her lines in italics on a teal rule, the model's raw reasoning
@@ -2133,6 +2243,21 @@ kbd {
   justify-content: flex-start;
   padding: var(--gap-lg);
   background: none;
+}
+
+/* A body loading behind the one on stage (P7-T02): a quiet pill, the old body still moving. */
+.call-stage-note {
+  position: absolute;
+  bottom: var(--gap-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 2px var(--gap-md);
+  border-radius: 999px;
+  background: var(--scrim);
+  color: var(--text-muted);
+  font-size: 12px;
+  pointer-events: none;
 }
 
 /* --- PiP: the user's own camera (decision 8) -------------------------------

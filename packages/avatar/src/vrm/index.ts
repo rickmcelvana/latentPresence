@@ -18,6 +18,8 @@ export {
   type StageOptions,
 } from './stage';
 export { DisplayBoard, drawBoard, hexColour, type BoardCanvas, type BoardPalette, type CreateCanvas } from './display-board';
+export { BodyRejectedError, CALL_PRESETS, REQUIRED_BONES, checkBody, type BodyReport, type CheckedVrm } from './body-check';
+export { inspectBody, readVrm } from './inspect';
 export {
   VrmAvatarRenderer,
   type DrawingSurface,

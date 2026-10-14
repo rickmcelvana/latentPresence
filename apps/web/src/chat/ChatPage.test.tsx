@@ -20,6 +20,9 @@ import type { FaceReadingOptions } from '../call/face-reading';
 import type { ChatLlmOptions } from './chat-llm';
 import { connectDocuments } from './chat-documents';
 import type { NotificationPermissionState, PageNotifications } from './notifications';
+import { InMemoryBodyShelf } from '../characters/body-shelf';
+import { ALICE_GENERATED, ALICE_GENERATED_DESCRIPTOR, AVATAR_DESCRIPTOR } from '../call/character-asset';
+import type { BodyReport } from '@latentpresence/avatar/vrm';
 
 afterEach(cleanup);
 
@@ -1734,6 +1737,93 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
       await waitFor(() => expect(speakButton().getAttribute('aria-pressed')).toBe('true'));
       expect(speaker.started.map((call) => call.voiceId)).toEqual([voiceId]);
       view.unmount();
+    }
+  });
+});
+
+describe('ChatPage — her body, worn live (P7-T02, ADR-59)', () => {
+  it('swaps between the placeholder, the generated Alice and their own .vrm mid-conversation, with the room, the transcript and memory untouched', async () => {
+    // jsdom has no Blob URL registry; the stage makes one per body.
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:test-body'), revokeObjectURL: vi.fn() });
+    try {
+      const storage = memoryStorage();
+      seedConfigured(storage);
+      const store = new FakeMemoryStore();
+      const model = rememberingModel();
+      let chosen = 0;
+      const chooseMemory = async () => {
+        chosen += 1;
+        return { store, kind: 'browser' as const, reason: 'a test store' };
+      };
+      const consent = new ModelConsent(memoryStorage());
+      consent.grant([AVATAR_DESCRIPTOR]);
+      const stage = new FakeAvatarRenderer();
+      const createRenderer = vi.fn(() => stage);
+      const fetchModel = vi.fn(async (_url: string, _descriptor: unknown) => new Uint8Array([1]));
+      const shelf = new InMemoryBodyShelf();
+      const checkBodyFile = vi.fn(async (bytes: Uint8Array): Promise<BodyReport> => {
+        if (bytes[0] === 0) throw new Error('This model is missing bones every VRM body needs: leftHand.');
+        return { name: 'My avatar', authors: ['Me'], licence: null, missing: ['blink'], lookAt: true };
+      });
+      const { container } = render(
+        <ChatPage
+          bodyShelf={shelf}
+          buildProvider={model.build}
+          checkBodyFile={checkBodyFile}
+          chooseMemory={chooseMemory}
+          createRenderer={createRenderer}
+          deps={testDeps({ storage, consent })}
+          fetchModel={fetchModel}
+        />,
+      );
+      await waitFor(() => expect(chosen).toBe(1));
+      await waitFor(() => expect(stage.character?.id).toBe('placeholder'));
+      await act(() => settle());
+
+      // 1. They talk; she remembers.
+      await sayInRoom('my sister is called Mira');
+      await waitFor(async () => expect((await store.currentFacts('alice')).some((fact) => fact.object === 'Mira')).toBe(true));
+
+      // 2. The generated Alice: a built-in body, so it asks first, the placeholder still on stage.
+      fireEvent.click(screen.getByRole('button', { name: 'Body' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Wear Alice, generated' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Wear this body' }));
+      await waitFor(() => expect(stage.character?.id).toBe('alice-generated'));
+      expect(fetchModel).toHaveBeenLastCalledWith(ALICE_GENERATED.downloadUrl, ALICE_GENERATED_DESCRIPTOR);
+
+      // 3. Their own file: checked, kept, worn — nothing fetched for it.
+      const add = screen.getByLabelText('Add a VRM body from this computer');
+      fireEvent.change(add, { target: { files: [new File([new Uint8Array([1, 2])], 'mine.vrm')] } });
+      await waitFor(() => expect(stage.character?.id.startsWith('own:')).toBe(true));
+      expect(fetchModel).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText('My avatar')).toBeTruthy();
+      expect(screen.getByText('Cannot show blinking.')).toBeTruthy();
+
+      // 4. A file the call cannot drive is refused with the reason, and kept nowhere.
+      fireEvent.change(add, { target: { files: [new File([new Uint8Array([0])], 'statue.glb')] } });
+      expect((await screen.findByRole('alert')).textContent).toBe('statue.glb: This model is missing bones every VRM body needs: leftHand.');
+      expect(await shelf.list()).toHaveLength(1);
+      expect(stage.character?.id.startsWith('own:')).toBe(true);
+
+      // 5. Back to the placeholder.
+      fireEvent.click(screen.getByRole('button', { name: 'Wear The placeholder (pixiv sample)' }));
+      await waitFor(() => expect(stage.character?.id).toBe('placeholder'));
+      const saved = JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}') as { characters?: Record<string, { body?: unknown }> };
+      expect(saved.characters?.['alice']?.body).toBe('placeholder');
+
+      // Untouched: one renderer, one visit, the same transcript and session, her memory in her prompt.
+      expect(createRenderer).toHaveBeenCalledTimes(1);
+      expect(chosen).toBe(1);
+      await sayInRoom('hello again');
+      await waitFor(() => expect(model.chats).toHaveLength(2));
+      expect(model.chats[1]?.messages.some((message) => message.role === 'user' && message.content.includes('my sister is called Mira'))).toBe(true);
+      expect(systemOf(model.chats[1])).toContain('Mira');
+      expect(new Set(store.rows.episodes.map(({ episode }) => episode.sessionId)).size).toBe(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+      await waitFor(() => expect(drawerShows(container)).toContain('my sister is called Mira'));
+    } finally {
+      Reflect.deleteProperty(URL, 'createObjectURL');
+      Reflect.deleteProperty(URL, 'revokeObjectURL');
     }
   });
 });

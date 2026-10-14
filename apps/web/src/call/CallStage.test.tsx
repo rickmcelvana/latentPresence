@@ -6,6 +6,7 @@ import { FakeAvatarRenderer, ListeningReactor, type AffectInputs, type Displays,
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from './character-asset';
 import { CallStage, type CallStageRenderer } from './CallStage';
+import type { StageBody } from '../characters/bodies';
 
 afterEach(cleanup);
 
@@ -93,7 +94,7 @@ describe('CallStage — consent gates the fetch', () => {
     expect(renderer.character?.url).toBe('blob:test-character');
   });
 
-  it("loads the body a character's pack names, and asks consent for that one (P6-T06)", async () => {
+  it('loads the body it is given, and asks consent for that one (P6-T06, P7-T02)', async () => {
     const other: AssetDownload = { ...AVATAR, label: 'Theo', downloadUrl: 'https://example.test/theo.vrm', bytes: 42 };
     const otherDescriptor = { ...AVATAR_DESCRIPTOR, id: 'example/theo.vrm', label: 'Theo', sizeBytes: 42 };
     const consent = new ModelConsent(memoryStorage());
@@ -101,7 +102,14 @@ describe('CallStage — consent gates the fetch', () => {
     consent.grant([AVATAR_DESCRIPTOR]);
     const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor) => new Uint8Array([1, 2, 3]));
     render(
-      <CallStage avatar={other} avatarDescriptor={otherDescriptor} voice={null} consent={consent} createRenderer={() => new FakeAvatarRenderer()} fetchModel={fetchModel} machine={machine()} />,
+      <CallStage
+        body={{ kind: 'download', id: 'theo', name: 'Theo', asset: other, descriptor: otherDescriptor }}
+        voice={null}
+        consent={consent}
+        createRenderer={() => new FakeAvatarRenderer()}
+        fetchModel={fetchModel}
+        machine={machine()}
+      />,
     );
     await settle();
     expect(fetchModel).not.toHaveBeenCalled();
@@ -190,6 +198,86 @@ describe('CallStage — base clips follow the conversation (P2-T03)', () => {
     // thinking is idle too, so it asks for nothing: a second `idle` would restart the loop.
     expect(renderer.played.map((play) => play.id)).toEqual(['idle', 'talk', 'idle']);
     expect(renderer.played.slice(1).every((play) => play.crossfadeMs > 0 && play.crossfadeMs < 300)).toBe(true);
+  });
+});
+
+/** A person's own body, read from the shelf by `read`. */
+function own(id: string, read = vi.fn(async () => new Uint8Array([7]))): StageBody {
+  return { kind: 'local', id, name: 'Mine', read };
+}
+
+describe('CallStage — another body, mid-call (P7-T02, ADR-59)', () => {
+
+  it('wears a new body on the same renderer: no remount, the clips retargeted, not fetched again', async () => {
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new ClipRenderer();
+    const createRenderer = vi.fn(() => renderer);
+    const fetchModel = vi.fn(async () => new Uint8Array([1]));
+    const scripted = scriptedMachine();
+    const props = { voice: null, consent, createRenderer, fetchModel, machine: scripted.machine };
+    const view = render(<CallStage {...props} />);
+    await waitFor(() => expect(renderer.played.length).toBe(1));
+    scripted.to('speaking');
+
+    const read = vi.fn(async () => new Uint8Array([7]));
+    view.rerender(<CallStage {...props} body={own('own:1', read)} />);
+    expect(screen.getByText('Changing into Mine…')).toBeTruthy();
+    await waitFor(() => expect(renderer.character?.id).toBe('own:1'));
+    await settle();
+
+    expect(createRenderer).toHaveBeenCalledTimes(1);
+    expect(renderer.disposed).toBe(false);
+    // Her own file asks nothing and fetches nothing: it is already on this computer.
+    expect(fetchModel).toHaveBeenCalledTimes(1);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(renderer.loaded.toSorted()).toEqual(['idle', 'talk']);
+    // The new body starts the clip for where the conversation is, at once.
+    expect(renderer.played.at(-1)).toEqual({ id: 'talk', crossfadeMs: 0 });
+    expect(screen.queryByText('Changing into Mine…')).toBeNull();
+  });
+
+  it('asks consent for a built-in body not yet agreed to, with the old body still on stage', async () => {
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new FakeAvatarRenderer();
+    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor) => new Uint8Array([1]));
+    const props = { voice: null, consent, createRenderer: () => renderer, fetchModel, machine: machine() };
+    const view = render(<CallStage {...props} />);
+    await waitFor(() => expect(renderer.character?.id).toBe('placeholder'));
+
+    const asset: AssetDownload = { ...AVATAR, label: 'Alice, generated', downloadUrl: 'https://example.test/alice.vrm', bytes: 9 };
+    const descriptor = { ...AVATAR_DESCRIPTOR, id: 'example/alice.vrm', label: 'Alice, generated', sizeBytes: 9 };
+    view.rerender(<CallStage {...props} body={{ kind: 'download', id: 'alice-generated', name: 'Alice, generated', asset, descriptor }} />);
+    await settle();
+    expect(screen.getByText('This will download a new body')).toBeTruthy();
+    expect(fetchModel).toHaveBeenCalledTimes(1);
+    expect(renderer.character?.id).toBe('placeholder');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wear this body' }));
+    await waitFor(() => expect(renderer.character?.id).toBe('alice-generated'));
+    expect(fetchModel).toHaveBeenLastCalledWith('https://example.test/alice.vrm', descriptor);
+  });
+
+  it('keeps the body on stage when the new one is refused, and says why', async () => {
+    class Refusing extends FakeAvatarRenderer {
+      override loadCharacter(source: Parameters<FakeAvatarRenderer['loadCharacter']>[0]): Promise<void> {
+        if (source.id === 'own:bad') return Promise.reject(new Error('This model is missing bones every VRM body needs: leftHand.'));
+        return super.loadCharacter(source);
+      }
+    }
+    const consent = new ModelConsent(memoryStorage());
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const renderer = new Refusing();
+    const props = { voice: null, consent, createRenderer: () => renderer, fetchModel: async () => new Uint8Array([1]), machine: machine() };
+    const view = render(<CallStage {...props} />);
+    await waitFor(() => expect(renderer.character?.id).toBe('placeholder'));
+
+    view.rerender(<CallStage {...props} body={own('own:bad')} />);
+    await waitFor(() => expect(screen.getByText(/missing bones every VRM body needs: leftHand/)).toBeTruthy());
+    expect(renderer.character?.id).toBe('placeholder');
+    // Her face still moves: the frame loop drives the body that stayed.
+    renderer.setExpression({ happy: 1 });
   });
 });
 

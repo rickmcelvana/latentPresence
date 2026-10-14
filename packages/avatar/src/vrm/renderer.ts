@@ -27,6 +27,8 @@ import { ClipPlayer } from './clip-player';
 import { VrmFaceDriver } from './face';
 import type { CreateCanvas } from './display-board';
 import { DEFAULT_STAGE_OPTIONS, type StageBoards, type StageOptions, buildStage, stageBoards } from './stage';
+import { type BodyReport, checkBody } from './body-check';
+import { readVrm } from './inspect';
 
 /**
  * What drawing needs from a WebGL renderer; `THREE.WebGLRenderer` is the real one.
@@ -103,6 +105,7 @@ interface Loaded {
   readonly face: VrmFaceDriver;
   readonly clips: ClipPlayer;
   readonly pose: AdditivePose;
+  readonly report: BodyReport;
 }
 
 /**
@@ -144,6 +147,8 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   private shadowsOn: boolean;
   private life: LifePose | null = null;
   private disposed = false;
+  /** Counts `loadCharacter` calls, so a slow load overtaken by a newer one never replaces it. */
+  private loads = 0;
 
   constructor(deps: Partial<VrmRendererDeps> = {}, options: VrmRendererOptions = {}) {
     this.deps = { ...defaultDeps(), ...deps };
@@ -182,17 +187,30 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
     return Promise.resolve();
   }
 
+  /**
+   * Loads a body and swaps it in (P7-T02, ADR-59). The one on stage keeps moving until the new
+   * one is parsed and checked; only then is it replaced, between two frames. A file that fails
+   * the check (`checkBody`) rejects with `BodyRejectedError` and leaves the old body standing.
+   * A load overtaken by a later call is dropped when it finishes.
+   */
   async loadCharacter(source: CharacterSource): Promise<void> {
     this.assertLive();
     if (this.surface === null) throw new Error('mount before loadCharacter');
     const parsed = CharacterSourceSchema.parse(source);
+    this.loads += 1;
+    const ticket = this.loads;
 
-    const gltf = await this.deps.loadGltf(parsed.url);
-    const vrm = gltf.userData['vrm'] as VRM | undefined;
-    if (vrm === undefined) throw new Error(`${parsed.url} is a glTF with no VRM extension`);
-    if (this.disposed) {
+    const vrm = await readVrm(parsed.url, this.deps.loadGltf);
+    if (this.disposed || ticket !== this.loads) {
       VRMUtils.deepDispose(vrm.scene);
       return;
+    }
+    let report: BodyReport;
+    try {
+      report = checkBody(vrm);
+    } catch (error) {
+      VRMUtils.deepDispose(vrm.scene);
+      throw error;
     }
     VRMUtils.rotateVRM0(vrm);
     // A VRMA can animate the look-at, and it does so through this proxy; three-vrm-animation
@@ -213,7 +231,7 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
       clips.add(id, createVRMAnimationClip(animation, vrm));
     }
     const pose = new AdditivePose((bone: LifeBone) => vrm.humanoid.getNormalizedBoneNode(bone));
-    this.loaded = { vrm, face, clips, pose };
+    this.loaded = { vrm, face, clips, pose, report };
     this.frameHead();
   }
 
@@ -365,6 +383,11 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
    */
   setPixelRatio(ratio: number): void {
     this.surface?.setPixelRatio(ratio);
+  }
+
+  /** What the loaded body is and what it cannot show (`checkBody`); null with none loaded. */
+  bodyReport(): BodyReport | null {
+    return this.loaded?.report ?? null;
   }
 
   /** What each protocol expression resolved to on the loaded model. */

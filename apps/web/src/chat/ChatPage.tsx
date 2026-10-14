@@ -55,9 +55,13 @@ import { PlansPanel } from '../plan/PlansPanel';
 import { SchedulesPanel } from '../schedule/SchedulesPanel';
 import { InnerPanel } from '../inner/InnerPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
-import { loadSettings, saveSettings, type Settings } from '../settings/settings';
+import { loadSettings, saveSettings, withBodyChoice, type Settings } from '../settings/settings';
 import { DEFAULT_CHARACTER_ID, PACKS, packFor, type CharacterPack } from '../characters/packs';
 import { withCharacterVoice } from '../characters/voice';
+import { bodyFor } from '../characters/bodies';
+import { defaultBodyShelf, type BodyShelf, type OwnBody } from '../characters/body-shelf';
+import { BodyPanel } from '../characters/BodyPanel';
+import type { BodyReport } from '@latentpresence/avatar/vrm';
 import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { latestCitedSources, pickPlan, planToWhiteboard, sourcesToScreen } from '../call/displays';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
@@ -202,6 +206,26 @@ export interface ChatPageProps {
   readonly connectDocs?: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
   /** Test seam: the browser's OS notifications (P6-T08). Production never passes it. */
   readonly notifications?: PageNotifications;
+  /** Test seam: where the person's own bodies are kept (P7-T02). Production never passes it. */
+  readonly bodyShelf?: BodyShelf;
+  /** Test seam: reading a file as a VRM body, refusing what the call cannot drive (P7-T02). Production never passes it. */
+  readonly checkBodyFile?: (bytes: Uint8Array) => Promise<BodyReport>;
+  /** Test seam, forwarded to `CallStage`: in place of `cachedModelFetch` for a built-in body. Production never passes it. */
+  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>) | undefined;
+}
+
+/**
+ * `inspectBody` from the VRM subpath, loaded when a person adds a file — it is three.js and
+ * three-vrm, which `lazy(CallStage)` above keeps out of the page until the stage needs them.
+ */
+async function checkBodyFileDefault(bytes: Uint8Array): Promise<BodyReport> {
+  const { inspectBody } = await import('@latentpresence/avatar/vrm');
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
+  try {
+    return await inspectBody(url);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 type ConnectTools = (options: ConnectToolServersOptions) => Promise<{ readonly connected: ConnectedToolServer[]; readonly statuses: ToolServerStatus[] }>;
@@ -225,8 +249,12 @@ export function ChatPage({
   connectTools = connectToolServers,
   connectDocs = connectDocuments,
   notifications = browserPageNotifications,
+  bodyShelf,
+  checkBodyFile = checkBodyFileDefault,
+  fetchModel,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
+  const shelf = useMemo(() => bodyShelf ?? defaultBodyShelf(), [bodyShelf]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
   // P6-T06 (ADR-55): who she is this visit. Read once; a switch saves it and remounts the room below.
   const [characterId, setCharacterId] = useState(() => settings.character);
@@ -267,6 +295,9 @@ export function ChatPage({
       connectTools={connectTools}
       connectDocs={connectDocs}
       notifications={notifications}
+      bodyShelf={shelf}
+      checkBodyFile={checkBodyFile}
+      fetchModel={fetchModel}
       loadFaceReading={loadFaceReading}
       loadSpeaker={loadSpeaker}
       modelId={llm.modelId}
@@ -299,6 +330,9 @@ interface ConfiguredChatPageProps {
   readonly connectTools: ConnectTools;
   readonly connectDocs: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
   readonly notifications: PageNotifications;
+  readonly bodyShelf: BodyShelf;
+  readonly checkBodyFile: (bytes: Uint8Array) => Promise<BodyReport>;
+  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>) | undefined;
 }
 
 function ConfiguredChatPage({
@@ -320,6 +354,9 @@ function ConfiguredChatPage({
   connectTools,
   connectDocs,
   notifications,
+  bodyShelf,
+  checkBodyFile,
+  fetchModel,
 }: ConfiguredChatPageProps): ReactElement {
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
@@ -715,11 +752,11 @@ function ConfiguredChatPage({
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
   // Which view the drawer shows (P4-T05, P4-T07). Always transcript at first, per the
   // rule above — Memory and Plans only open the drawer when a person asks it to.
-  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts'>('transcript');
+  const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts' | 'body'>('transcript');
   /** The Transcript, Memory, Plans and Thoughts buttons share this: pressing the view already showing
    * closes the drawer, pressing the other switches to it (opening the drawer if closed). */
   const toggleDrawerView = useCallback(
-    (view: 'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts') => {
+    (view: 'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts' | 'body') => {
       if (drawerOpen && drawerView === view) {
         setDrawerOpen(false);
         return;
@@ -731,6 +768,55 @@ function ConfiguredChatPage({
   );
   // P6-T05 (ADR-54): her lines are only asked of the model while the Thoughts view is showing.
   const thoughtsShowing = drawerOpen && drawerView === 'thoughts';
+
+  // P7-T02 (ADR-59): her body, the person's choice per character, worn live — a choice saves the
+  // setting and hands the stage a new body; nothing else in the room is rebuilt.
+  const [bodyChoice, setBodyChoice] = useState<string | null>(() => settings.characters[pack.persona.id]?.body ?? null);
+  const [ownBodies, setOwnBodies] = useState<readonly OwnBody[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    bodyShelf.list().then(
+      (listed) => {
+        if (!cancelled) setOwnBodies(listed);
+      },
+      (error: unknown) => {
+        console.warn('Could not read your own bodies; showing the built-in ones.', error);
+        if (!cancelled) setOwnBodies([]);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [bodyShelf]);
+  const stageBody = useMemo(() => bodyFor(bodyChoice, pack.defaultBody, bodyShelf, ownBodies), [bodyChoice, pack.defaultBody, bodyShelf, ownBodies]);
+  const wearBody = useCallback(
+    (id: string | null) => {
+      saveSettings(withBodyChoice(loadSettings(deps.storage), pack.persona.id, id), deps.storage);
+      setBodyChoice(id);
+    },
+    [deps.storage, pack.persona.id],
+  );
+  const addBody = useCallback(
+    async (file: File) => {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const report = await checkBodyFile(data);
+      const kept = await bodyShelf.add(
+        { name: report.name ?? file.name.replace(/\.vrm$/i, ''), fileName: file.name, bytes: data.byteLength, authors: report.authors, missing: report.missing },
+        data,
+      );
+      setOwnBodies(await bodyShelf.list());
+      wearBody(kept.id);
+    },
+    [bodyShelf, checkBodyFile, wearBody],
+  );
+  const removeBody = useCallback(
+    async (id: string) => {
+      await bodyShelf.remove(id);
+      setOwnBodies(await bodyShelf.list());
+      if (bodyChoice === id) wearBody(null);
+    },
+    [bodyChoice, bodyShelf, wearBody],
+  );
   useEffect(() => {
     inner.look(thoughtsShowing);
   }, [inner, thoughtsShowing]);
@@ -1042,11 +1128,11 @@ function ConfiguredChatPage({
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
         <CallStage
           affect={stageAffect}
-          avatar={pack.avatar}
-          avatarDescriptor={pack.avatarDescriptor}
+          body={stageBody}
           consent={deps.consent}
           createRenderer={createRenderer}
           displays={displays}
+          {...(fetchModel === undefined ? {} : { fetchModel })}
           listening={listening}
           rest={rest}
           machine={machine}
@@ -1071,6 +1157,16 @@ function ConfiguredChatPage({
           <SchedulesPanel characterName={pack.persona.name} notifications={notifications} schedules={schedules} timeZone={timeZone} />
         ) : drawerView === 'thoughts' ? (
           <InnerPanel characterName={pack.persona.name} inner={inner} />
+        ) : drawerView === 'body' ? (
+          <BodyPanel
+            characterName={pack.persona.name}
+            defaultBody={pack.defaultBody}
+            onAdd={addBody}
+            onRemove={removeBody}
+            onWear={wearBody}
+            own={ownBodies}
+            wearing={stageBody.id}
+          />
         ) : (
           <TranscriptPanel characterName={pack.persona.name} lines={lines} onClear={clear} sources={citationSource} />
         )}
@@ -1250,6 +1346,9 @@ function ConfiguredChatPage({
         </button>
         <button aria-pressed={thoughtsShowing} className="btn call-control-btn" onClick={() => toggleDrawerView('thoughts')} title="Her private thoughts — never said aloud" type="button">
           Thoughts
+        </button>
+        <button aria-pressed={drawerOpen && drawerView === 'body'} className="btn call-control-btn" onClick={() => toggleDrawerView('body')} title="What she looks like — changes live" type="button">
+          Body
         </button>
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings

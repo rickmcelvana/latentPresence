@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { ConversationMachine } from '@latentpresence/core';
 import type { ConversationState } from '@latentpresence/protocol';
@@ -29,7 +29,7 @@ import { VrmAvatarRenderer } from '@latentpresence/avatar/vrm';
 import { cachedModelFetch, type ModelConsent } from '@latentpresence/ml-web/consent';
 import { ConsentScreen } from '../consent/ConsentScreen';
 import type { AudioOutputHandle } from '@latentpresence/providers';
-import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from './character-asset';
+import { BUILT_IN_BODIES, builtInStageBody, type BuiltInBody, type StageBody } from '../characters/bodies';
 import { IdleDirector } from './idle';
 import { BASE_CLIP_URLS } from './clips';
 import { computePixelRatio } from './pixel-ratio';
@@ -42,9 +42,14 @@ import { computePixelRatio } from './pixel-ratio';
  *
  * **The character is behind consent** (decision 3): the canvas mounts and the frame loop
  * starts immediately — that draws the room and the lighting, nothing else — but no byte of
- * the avatar moves until `AVATAR_DESCRIPTOR` is granted in `ModelConsent`, the same
+ * the avatar moves until its descriptor is granted in `ModelConsent`, the same
  * `latentpresence.consent.v1` store the voice models share. A returning user who already
- * granted it never sees the panel.
+ * granted it never sees the panel. A person's own body (P7-T02) is already on this computer,
+ * so it asks nothing.
+ *
+ * **The body changes live** (P7-T02, ADR-59): a new `body` loads while the one on stage keeps
+ * moving, and replaces it between two frames — the renderer, the frame loop, the conversation
+ * and everything attached to it stay. A body refused or failing leaves the old one standing.
  *
  * **Lip sync follows the voice** (decision 5): `voice` is the output graph of whatever is
  * speaking — a call's (`VoicePanel` hands it to `/chat` through `onCallStarted`) or, since
@@ -110,9 +115,9 @@ export interface CallStageProps {
   readonly displays?: Displays | undefined;
   /** Whether she is resting (P6-T04, ADR-53), read every frame; omitted or null, she never does. */
   readonly rest?: { resting(): boolean } | null;
-  /** The body to load and its consent entry (P6-T06, ADR-55: each character's pack names its own); omitted, the placeholder. */
-  readonly avatar?: AssetDownload;
-  readonly avatarDescriptor?: ModelDescriptor;
+  /** The body to wear (P7-T02, ADR-59: the character's choice from the library); omitted, the placeholder.
+   * A new `id` swaps it live. */
+  readonly body?: StageBody;
   /** Test seam: a fake renderer factory in place of `new VrmAvatarRenderer()`. Production
    * never passes it. */
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -137,6 +142,8 @@ const IDLE_HEAD: readonly [number, number, number] = [0, 1.5, 0];
 
 const defaultCreateRenderer = (): CallStageRenderer => new VrmAvatarRenderer();
 
+const PLACEHOLDER: StageBody = builtInStageBody(BUILT_IN_BODIES[0] as BuiltInBody);
+
 export function CallStage({
   machine,
   consent,
@@ -145,8 +152,7 @@ export function CallStage({
   listening = null,
   displays = EMPTY_DISPLAYS,
   rest = null,
-  avatar: asset = AVATAR,
-  avatarDescriptor = AVATAR_DESCRIPTOR,
+  body: asked = PLACEHOLDER,
   createRenderer = defaultCreateRenderer,
   fetchModel = cachedModelFetch,
 }: CallStageProps): ReactElement {
@@ -167,16 +173,32 @@ export function CallStage({
   const displaysRef = useRef<Displays>(displays);
   const restRef = useRef<{ resting(): boolean } | null>(rest);
 
-  // A previously granted descriptor skips the panel entirely — read once, not watched:
-  // consent granted mid-session (there is no UI for that here) would not retroactively
-  // start a fetch this render already decided against.
-  const [phase, setPhase] = useState<CharacterPhase>(() => (consent.has([avatarDescriptor]) ? 'loading' : 'consent'));
-  const [status, setStatus] = useState('');
-  const [mounted, setMounted] = useState(false);
+  /** The latest body asked for, for the load effect, which runs per body id rather than per object. */
+  const bodyRef = useRef(asked);
+  /** Whether the clips have been fetched; a later body only has them retargeted. */
+  const clipsLoadedRef = useRef(false);
+
+  // A previously granted descriptor skips the panel entirely — read when a body is asked for,
+  // not watched: consent granted elsewhere mid-session would not retroactively start a fetch
+  // this render already decided against.
+  const firstPhase = (wanted: StageBody): CharacterPhase => (wanted.kind === 'local' || consent.has([wanted.descriptor]) ? 'loading' : 'consent');
+  const [request, setRequest] = useState(() => ({ id: asked.id, phase: firstPhase(asked) }));
+  let phase = request.phase;
+  if (request.id !== asked.id) {
+    // A new body asked for: its own consent or load starts, while the old one stays on stage.
+    const next = { id: asked.id, phase: firstPhase(asked) };
+    setRequest(next);
+    phase = next.phase;
+  }
+  const setPhase = useCallback((next: CharacterPhase): void => setRequest((current) => ({ ...current, phase: next })), []);
+  /** The body on stage, once there is one: the overlays speak of a swap rather than a first load. */
+  const [onStage, setOnStage] = useState<string | null>(null);
 
   useEffect(() => {
-    readyRef.current = phase === 'ready';
-  }, [phase]);
+    bodyRef.current = asked;
+  }, [asked]);
+  const [status, setStatus] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     affectRef.current = affect === null ? null : { source: affect, baselineGaze: affectToBody(affect.baseline).gaze };
@@ -323,10 +345,13 @@ export function CallStage({
       cancelAnimationFrame(frame);
       avatar.dispose();
       rendererRef.current = null;
+      readyRef.current = false;
+      clipsReadyRef.current = false;
+      clipsLoadedRef.current = false;
     };
     // `createRenderer` is a stable identity in production (the module-level default) and
     // in a test (the seam a test passes once); `machine` lives for the page's life.
-  }, [machine, createRenderer]);
+  }, [machine, createRenderer, setPhase]);
 
   // The room's whiteboard and screen (P5-T08): pushed when the content changes, and once the
   // renderer is mounted (they are part of the room, so they need no character).
@@ -351,29 +376,42 @@ export function CallStage({
     return () => window.removeEventListener('resize', apply);
   }, [mounted]);
 
-  // Fetches and loads the character, but only once `phase` says consent is in hand —
+  // Fetches and loads the body, but only once `phase` says consent is in hand —
   // `fetchModel` is not called from anywhere else in this component, which is the whole
   // proof "nothing fetched before consent" needs.
   useEffect(() => {
-    if (!mounted || phase !== 'loading') return;
+    const wanted = bodyRef.current;
+    if (!mounted || phase !== 'loading' || wanted.id !== request.id) return;
     let cancelled = false;
     void (async () => {
       const avatar = rendererRef.current;
       if (avatar === null) return;
       try {
-        const bytes = await fetchModel(asset.downloadUrl, avatarDescriptor);
+        const bytes = wanted.kind === 'download' ? await fetchModel(wanted.asset.downloadUrl, wanted.descriptor) : await wanted.read();
         if (cancelled) return;
         const blobUrl = URL.createObjectURL(new Blob([bytes as BlobPart]));
         try {
-          await avatar.loadCharacter({ id: 'placeholder', url: blobUrl, format: 'vrm', licence: asset.licence, attribution: asset.author });
+          await avatar.loadCharacter(
+            wanted.kind === 'download'
+              ? { id: wanted.id, url: blobUrl, format: 'vrm', licence: wanted.asset.licence, attribution: wanted.asset.author }
+              : { id: wanted.id, url: blobUrl, format: 'vrm', licence: 'Your own file', attribution: null },
+          );
         } finally {
           URL.revokeObjectURL(blobUrl);
         }
         if (cancelled) return;
-        // The clips come after the character: `loadClip` retargets onto whichever model is
-        // loaded. A clip that fails leaves her standing in the life layer's rest pose, which
-        // is how she stood before P2-T03 — a note, not a failure.
-        if (avatar.loadClip !== undefined) {
+        readyRef.current = true;
+        // The clips come after the first body: `loadClip` retargets onto whichever model is
+        // loaded, and the renderer retargets them again onto every later one, so a swap only
+        // starts the base clip afresh on the new body. A clip that fails leaves her standing in
+        // the life layer's rest pose, which is how she stood before P2-T03 — a note, not a failure.
+        if (clipsLoadedRef.current) {
+          if (clipsReadyRef.current) {
+            graphRef.current.reset();
+            playBaseClip(avatar, graphRef.current, machine.getState());
+          }
+        } else if (avatar.loadClip !== undefined) {
+          clipsLoadedRef.current = true;
           try {
             await Promise.all(Object.entries(BASE_CLIP_URLS).map(([id, url]) => avatar.loadClip?.(id, url)));
             if (cancelled) return;
@@ -385,6 +423,7 @@ export function CallStage({
           }
         }
         if (cancelled) return;
+        setOnStage(wanted.id);
         setPhase('ready');
       } catch (error) {
         if (cancelled) return;
@@ -395,7 +434,8 @@ export function CallStage({
     return () => {
       cancelled = true;
     };
-  }, [mounted, phase, fetchModel, machine, asset, avatarDescriptor]);
+    // `request.id`, not the body: a new object for the same body is not a new load.
+  }, [mounted, phase, fetchModel, machine, request.id, setPhase]);
 
   // Follows `voice`: taps its output node for lip sync while there is one, and shuts the
   // mouth again — every viseme to 0 — the moment there is not (decision 5).
@@ -418,7 +458,7 @@ export function CallStage({
   }, [voice]);
 
   function agree(): void {
-    consent.grant([avatarDescriptor]);
+    if (asked.kind === 'download') consent.grant([asked.descriptor]);
     setPhase('loading');
   }
 
@@ -427,19 +467,21 @@ export function CallStage({
   }
 
   function reopen(): void {
-    setPhase('consent');
+    setPhase(firstPhase(asked));
   }
+
+  const swapping = onStage !== null;
 
   return (
     <div className="call-stage">
       <canvas className="call-stage-canvas" ref={canvasRef} />
-      {phase === 'consent' && (
+      {phase === 'consent' && asked.kind === 'download' && (
         <div className="call-stage-overlay">
           <ConsentScreen
-            agreeLabel="Show the character"
+            agreeLabel={swapping ? 'Wear this body' : 'Show the character'}
             cancelLabel="Not now"
-            descriptors={[avatarDescriptor]}
-            heading="This will download the character"
+            descriptors={[asked.descriptor]}
+            heading={swapping ? 'This will download a new body' : 'This will download the character'}
             intro="This comes from GitHub to this computer. It stays in this browser — nothing is sent anywhere."
             onAgree={agree}
             onCancel={notNow}
@@ -449,10 +491,11 @@ export function CallStage({
       {phase === 'declined' && (
         <div className="call-stage-overlay call-stage-overlay-minimal">
           <button className="btn btn-ghost" onClick={reopen} type="button">
-            Show the character
+            {swapping ? `Wear ${asked.name}` : 'Show the character'}
           </button>
         </div>
       )}
+      {phase === 'loading' && swapping && <p className="call-stage-note">Changing into {asked.name}…</p>}
       {phase === 'failed' && (
         <div className="call-stage-overlay call-stage-overlay-minimal">
           <p className="field-error">{status}</p>

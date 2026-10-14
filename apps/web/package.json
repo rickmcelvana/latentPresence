@@ -30,6 +30,7 @@
     "@types/react-dom": "^19.2.7",
     "@types/three": "0.185.4",
     "@vitejs/plugin-react": "^6.1.1",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "kokoro-js": "1.2.1",
     "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4",

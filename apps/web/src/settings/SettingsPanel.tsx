@@ -55,7 +55,7 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
         character={settings.character}
         characters={settings.characters}
         onSelect={(character) => setSettings((prev) => ({ ...prev, character }))}
-        onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { voice } } }))}
+        onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { body: null, ...prev.characters[id], voice } } }))}
         tts={settings.tts}
       />
 

@@ -28,3 +28,7 @@ tile, `#2dd4bf` glyph, `#3a4a5c` ring. If the palette moves, these move with it.
 - These are exempt from git LFS in `.gitattributes`. They are small, and a site that needs
   `git lfs pull` before it can be served is worse than a few kilobytes in the tree.
 - The SVG is also served directly as a favicon; the PNGs are the fallback.
+- The desktop shell's icons (`apps/desktop/src-tauri/icons/`, P7-T02) come from this SVG too:
+  `cd apps/desktop && npx tauri icon ../../site/img/mark.svg -o <scratch dir>`, then copy over only
+  the files already in `icons/` (the CLI also writes `64x64.png`, `android/` and `ios/`, which no
+  target uses).

@@ -44,6 +44,9 @@ export function CharacterSection({ character, characters, tts, onSelect, onVoice
         </select>
       </div>
       <p className="field-hint">{persona.summary}</p>
+      <p className="field-hint">
+        {persona.name}&apos;s body is chosen in the call, under Body: it changes while you talk.
+      </p>
 
       <div className="field">
         <label className="field-label" htmlFor="settings-character-voice">

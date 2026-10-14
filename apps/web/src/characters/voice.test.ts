@@ -13,7 +13,7 @@ const onServer: Settings = {
 
 describe('characterVoice (P6-T06, ADR-55)', () => {
   it('uses the choice saved for the character when it was made for the engine in use', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 } } } };
+    const settings: Settings = { ...DEFAULT_SETTINGS, characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: null } } };
     expect(characterVoice(settings, theo)).toEqual({ voiceId: 'bm_george', speed: 0.9 });
   });
 
@@ -24,12 +24,12 @@ describe('characterVoice (P6-T06, ADR-55)', () => {
   });
 
   it('uses the persona voice on Kokoro when the saved choice is null', () => {
-    const settings: Settings = { ...DEFAULT_SETTINGS, characters: { theo: { voice: null } } };
+    const settings: Settings = { ...DEFAULT_SETTINGS, characters: { theo: { voice: null, body: null } } };
     expect(characterVoice(settings, theo).voiceId).toBe('am_michael');
   });
 
   it('ignores a choice made for another engine: a Kokoro voice means nothing to a server', () => {
-    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 } } } };
+    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: null } } };
     expect(characterVoice(settings, theo)).toEqual({ voiceId: 'alloy', speed: 1.1 });
   });
 
@@ -38,13 +38,13 @@ describe('characterVoice (P6-T06, ADR-55)', () => {
   });
 
   it('uses a choice saved for the server engine, for that character only', () => {
-    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'openai-compatible', voiceId: 'onyx', speed: 1 } } } };
+    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'openai-compatible', voiceId: 'onyx', speed: 1 }, body: null } } };
     expect(characterVoice(settings, theo)).toEqual({ voiceId: 'onyx', speed: 1 });
     expect(characterVoice(settings, alice)).toEqual({ voiceId: 'alloy', speed: 1.1 });
   });
 
   it('withCharacterVoice copies the settings with only the voice and speed replaced', () => {
-    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'openai-compatible', voiceId: 'onyx', speed: 1 } } } };
+    const settings: Settings = { ...onServer, characters: { theo: { voice: { kind: 'openai-compatible', voiceId: 'onyx', speed: 1 }, body: null } } };
     const copy = withCharacterVoice(settings, theo);
     expect(copy.tts).toEqual({ kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'onyx', speed: 1 });
     expect(copy).not.toBe(settings);

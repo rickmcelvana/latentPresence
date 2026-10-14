@@ -147,7 +147,7 @@ export const InitiativeSettingSchema = z.enum(['off', 'rare', 'normal']);
 export type InitiativeSetting = z.infer<typeof InitiativeSettingSchema>;
 
 /**
- * One character's own voice (P6-T06, ADR-55): the engine it was chosen for, and the voice and
+ * One character's own voice (P6-T06, ADR-55) and body (P7-T02, ADR-59). The voice: the engine it was chosen for, and the voice and
  * speed on it. Used only while that engine is the one in use (`characterVoice`). `null` is no
  * choice: the persona's voice on Kokoro, the one in Settings → Voice on any other engine.
  */
@@ -159,6 +159,9 @@ export const CharacterSettingsSchema = z.object({
       speed: SpeedSchema,
     })
     .nullable(),
+  /** P7-T02 (ADR-59): the body this character wears, a built-in id or an own body's `own:` id;
+   * `null`, or a body no longer there, is the pack's default. Defaulted, so older documents load. */
+  body: z.string().min(1).nullable().default(null),
 });
 export type CharacterSettings = z.infer<typeof CharacterSettingsSchema>;
 
@@ -228,7 +231,13 @@ function hasCharacters(stored: unknown): boolean {
 function keepVoiceForAlice(settings: Settings): Settings {
   const { tts } = settings;
   if (tts.kind !== 'kokoro-browser' || tts.voiceId === packFor(DEFAULT_CHARACTER_ID).persona.voice.voiceId) return settings;
-  return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
+  return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { body: null, ...settings.characters[DEFAULT_CHARACTER_ID], voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
+}
+
+/** The settings with `body` chosen for one character (P7-T02, ADR-59), its voice kept. `null` is its pack's default. */
+export function withBodyChoice(settings: Settings, characterId: string, body: string | null): Settings {
+  const current = settings.characters[characterId] ?? { voice: null, body: null };
+  return { ...settings, characters: { ...settings.characters, [characterId]: { ...current, body } } };
 }
 
 /** Load the settings document, falling back to defaults on missing or corrupt JSON —

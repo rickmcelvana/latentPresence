@@ -1,6 +1,6 @@
 import { PersonaSchema } from '@latentpresence/protocol';
 import { describe, expect, it } from 'vitest';
-import { AVATAR, AVATAR_DESCRIPTOR } from '../call/character-asset';
+import { BUILT_IN_BODIES, PLACEHOLDER_BODY_ID } from './bodies';
 import { DEFAULT_CHARACTER_ID, PACKS, packFor } from './packs';
 
 describe('character packs (P6-T06, ADR-55)', () => {
@@ -18,10 +18,10 @@ describe('character packs (P6-T06, ADR-55)', () => {
     expect(new Set(PACKS.map((pack) => pack.persona.name)).size).toBe(PACKS.length);
   });
 
-  it('puts every pack on the placeholder body until P7', () => {
+  it('puts every pack on the placeholder by default (ADR-18 amended), a body the library has', () => {
     for (const pack of PACKS) {
-      expect(pack.avatar).toBe(AVATAR);
-      expect(pack.avatarDescriptor).toBe(AVATAR_DESCRIPTOR);
+      expect(pack.defaultBody).toBe(PLACEHOLDER_BODY_ID);
+      expect(BUILT_IN_BODIES.some((body) => body.id === pack.defaultBody)).toBe(true);
     }
   });
 
