@@ -830,3 +830,9 @@ Did: ADR-58 accepted; R-42 passed (D-55). Sweep: README status (Phase 6 built, s
 Left: R-43; laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
 Decisions: none new.
+
+## 2026-10-14 claude — R-43 passed; Phase 6 complete
+Did: R-43 step 3 traced — the run was marked told because `new Notification()` did not throw, and Windows' Do Not Disturb hid the toast (in the notification centre; Chrome allowed, Windows not blocking). fix 4eb99c2: shown is the `show` event, false on `error`, 4 s of neither still shown (not Baseline; MDN in SURFACE); a click focuses her tab and closes it. `glm-5.3-flash:cloud` wrote `[sim user - neutral]`: `matchTag` lifts `[user:x]` near-misses with a user-emotion label for the chunker and the tag filter. Gate green (1968 TS, 152 Rust; Rust on a scratch target, the running companion locked its exe), CI green. R-43 passed (D-56): **Phase 6 complete**.
+Left: laptop session (R-13, R-1, R-9); R-3; C-7.
+Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
+Decisions: none new.

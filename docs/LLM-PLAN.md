@@ -434,7 +434,9 @@ Done when: "remind me Thursday at 9 to call the vet" creates a schedule the pane
 the trigger (`wallTimeToInstant`) and hands back the time in its own words to read back; reminders
 run on the companion where memory is; pending runs are an OS notification while the page is hidden,
 else said in one turn, outside the initiative budget; a Schedules drawer view. Live 12/12 right and
-read back (`docs/runs/P6-T08-schedule.md`). Rick's check: R-43.
+read back (`docs/runs/P6-T08-schedule.md`). **R-43 passed 2026-10-14 (D-56), closing Phase 6**:
+a reminder set by voice, said after a closed tab, and notified while hidden (once Windows' Do Not
+Disturb was off; a notification now counts as shown on its `show` event, 4eb99c2).
 
 ---
 

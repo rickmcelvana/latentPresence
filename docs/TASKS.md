@@ -198,26 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-43 · Reminders, said and notified · ten minutes, desktop
-**Why:** P6-T08's done-when is half yours: a reminder that fires while you are away is said when
-you come back, and one that fires while the tab is hidden pops up as a Windows notification. With
-memory on the companion, a reminder runs there (the companion is on the new build: R-42, D-55).
-1. In `/chat` (Alice), **start a voice call and say it out loud** — Phase 6's exit criterion is a
-   reminder set by voice that fires on time: *"Remind me in 3 minutes to stretch."* She should say
-   the time back (the clock time, three minutes from now). End the call. Open **Schedules**: the reminder is there with
-   its next run in words and "runs on the companion".
-2. Close the tab. Wait **five** minutes. Open `/chat` again: **she should open with the reminder**
-   (and say it was due a couple of minutes ago, while you were away) — not with a "welcome back"
-   on top of it. In Schedules it is under **Finished** with its last result.
-3. In Schedules, press **Let her notify you** and allow it. Then: *"Remind me in 2 minutes to check
-   the oven."* Switch to another tab or minimise the browser. **A Windows notification from Alice
-   should appear within about a minute of the time.** Come back: she does **not** say it again.
-4. *"Remind me Thursday at 9 to call the vet."* — Schedules shows Thursday 15 October at 09:00.
-   Then *"Actually, cancel the vet reminder."* — it moves to Finished.
-
-**Pass:** all four. **Paste back:** any time she read back that was not the time asked for, and
-anything said twice or not at all.
-
 ### R-3 · Character pipeline
 **Why:** P7. **Blocked on me** — waiting for `docs/pipeline/character.md`, which I owe you.
 Includes replacing `apps/desktop/src-tauri/icons/`, currently Tauri's scaffold logo.
@@ -240,6 +220,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-56 · R-43: reminders said and notified** — Rick 2026-10-14: **passed** — a tea reminder set
+  by voice in a call was said the moment `/chat` reopened after the tab was closed; Thursday at 9
+  showed right and moved to Finished when cancelled. The hidden-tab notification first seemed
+  missing: **Windows' Do Not Disturb was on** and the toast sat in the notification centre. With it
+  off, the banner shows and a click brings Rick back to her tab; she does not say it again. Fixed on
+  the way (4eb99c2): shown is now the `show` event, not the constructor; `glm-5.3-flash:cloud`'s
+  `[sim user - neutral]` is lifted out as `[user:neutral]`.
 - **D-55 · R-42: restart the companion on the new build** — Rick 2026-10-13: **passed** — the
   companion restarted on the P6-T07b build (migration 0005) before P6-T08's gate ran, and `/chat`
   remembers as before.
