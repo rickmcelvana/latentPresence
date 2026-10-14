@@ -202,7 +202,7 @@ passes with 2× margin.**
 **Why:** P7-T01's done-when is yours: approve Alice's concept sheet, and follow
 `docs/pipeline/character.md` without needing to ask. (Replacing `apps/desktop/src-tauri/icons/`,
 still Tauri's scaffold logo, moves to P7-T02.)
-1. Open `docs/pipeline/alice/concept-sheet.jpg`. Is she Alice?
+1. ~~Open `docs/pipeline/alice/concept-sheet.jpg`. Is she Alice?~~ **Approved 2026-10-14.**
 2. Follow `docs/pipeline/character.md` §2–4 to rebuild her yourself from the three images in
    `docs/pipeline/alice/` (name it `alice_r3` so the approved build stays). Use §3 to look at it.
 

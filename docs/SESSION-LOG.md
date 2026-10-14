@@ -836,3 +836,9 @@ Did: R-43 step 3 traced — the run was marked told because `new Notification()`
 Left: laptop session (R-13, R-1, R-9); R-3; C-7.
 Next: P7-T01 concept art and pipeline doc (main + Rick, ComfyUI running).
 Decisions: none new.
+
+## 2026-10-14 claude — P7-T01 pipeline doc and Alice; ADR-18 amended, ADR-59 proposed
+Did: Alice's concept with Rick through comfy-mcp: Z-Image portrait (A of four), Klein ponytail edit, T-pose with image-to-vrm's stick figure. Extended Rick's image-to-vrm instead of new tools (4 commits there, unpushed): `--face-image`, `--hair` (MPFB CC0), photo hair/iris colour, weld before decimate (glTF seam splits folded the clothes), unwrap + bake, the neck under the collar, generated hair/chin/collar-inside cleanup. Licences from the model cards: FLUX.2 Klein 9B is non-commercial — Klein 4B (Apache-2.0, 3.81 GB, Rick's OK) redid both edits. `docs/pipeline/character.md`, `docs/pipeline/alice/` (LFS), SURFACE licences. Concept approved; ADR-18 amendment accepted with her default body kept as the pixiv placeholder.
+Left: R-3 (Rick follows the doc); P7-T02 (avatar library, live swap); grey slivers at the collar's back corners; laptop session (R-13, R-1, R-9); C-7.
+Next: Rick's unrelated bug (new session), then P7-T02 after ADR-59 is accepted.
+Decisions: ADR-18 amended and accepted; ADR-59 proposed — needs Rick's accept.

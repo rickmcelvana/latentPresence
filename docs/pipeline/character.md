@@ -170,9 +170,11 @@ The last stage runs them; `validate: PASS` is required:
 Every link permits commercial use and redistribution, so the VRM can ship with the app under a
 licence Rick chooses (P7-T02 decides it, and the VRM's own `meta` fields).
 
-## 6. Into latentPresence (P7-T02)
+## 6. Into latentPresence (P7-T02, ADR-59)
 
-Hand `out\<name>.web.vrm` (and the desktop `.vrm`) to a Claude session at P7-T02. It records the
-file's bytes and licence, decides where it is hosted (the app downloads the avatar through the
-consent screen, as it does the placeholder today), adds a way to load a local VRM in
-`/dev/avatar`, and checks all expressions there.
+Bodies are a library (ADR-59, proposed): built-in ones download through the consent screen with
+their exact bytes and licence, and anyone can add their own `.vrm`, kept in their browser. Alice's
+**default body stays the placeholder** (pixiv's sample — Rick's choice, ADR-18 amended); the
+generated Alice is a library entry. Until P7-T02 lands, hand `out\<name>.web.vrm` to a Claude
+session; it records the file's bytes and licence, hosts it, and checks every expression in
+`/dev/avatar`.
