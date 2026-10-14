@@ -200,14 +200,28 @@ passes with 2× margin.**
 
 ### R-3 · Character pipeline · thirty minutes, desktop, ComfyUI running
 **Why:** P7-T01's done-when is yours: approve Alice's concept sheet, and follow
-`docs/pipeline/character.md` without needing to ask. (Replacing `apps/desktop/src-tauri/icons/`,
-still Tauri's scaffold logo, moves to P7-T02.)
+`docs/pipeline/character.md` without needing to ask. (The Tauri icons were replaced in P7-T02.)
 1. ~~Open `docs/pipeline/alice/concept-sheet.jpg`. Is she Alice?~~ **Approved 2026-10-14.**
 2. Follow `docs/pipeline/character.md` §2–4 to rebuild her yourself from the three images in
    `docs/pipeline/alice/` (name it `alice_r3` so the approved build stays). Use §3 to look at it.
 
 **Pass:** the concept approved, and a validated VRM with no question you had to ask. **Paste
 back:** every question you had (each goes into the doc), and anything in §3's "re-run" list you saw.
+
+### R-55 · Her body, swapped while you talk · ten minutes, after pushing
+**Why:** P7-T02's done-when, by eye. The tests prove the swap keeps the conversation; only you can
+say it looks right, and the generated Alice's download answers only once **8e94db0 is pushed**
+(her file is fetched from GitHub's LFS host, pinned to that commit).
+1. Push. Open `/chat`, say something, then press **Body** in the control bar.
+2. **Wear** "Alice, generated": agree to the download (4.0 MB). She changes in place — keep
+   talking, or let her answer while it loads.
+3. **Add a .vrm…**: any VRM 1.0 you have (after R-3, `image-to-vrm\out\alice_r3.web.vrm`; or a
+   VRoid Studio export). It is worn at once. Then **Wear** the placeholder again.
+4. `/dev/avatar` → **Or load a .vrm from this computer** → the same file; cycle the expressions.
+
+**Pass:** each swap keeps the transcript and her reply going, with no blank stage and no T-pose
+frame. **Paste back:** anything odd — the camera jumping, the mouth stuck, a body framed wrong, a
+file refused that should not have been (with the message).
 
 ## Open — claude (say go, or add the key)
 

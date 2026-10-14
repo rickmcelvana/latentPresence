@@ -2479,3 +2479,23 @@ now says so instead of "Nothing at this address".
 faster-whisper STT). It does serve `/v1/models` and `/v1/audio/speech` (read from
 `src/voicebox/app.py`, 2026-10-14) and has no CORS middleware there, so a browser call would
 be refused.
+
+## GitHub as a host for a built-in body — measured 2026-10-14 (P7-T02)
+
+`curl -sIL -H "Origin: https://app.latentpresence.com"` against each, from the dev PC:
+
+- **Release downloads** (`github.com/<owner>/<repo>/releases/download/...`): `302` to
+  `release-assets.githubusercontent.com`, and the `github.com` hop carries **no
+  `Access-Control-Allow-Origin`** — a browser `fetch` fails on it. Not usable for anything the page
+  downloads itself.
+- **`raw.githubusercontent.com`**: `Access-Control-Allow-Origin: *` (the placeholder comes from
+  here, 10,776,032 bytes). For a file in **LFS** it serves the pointer (132 bytes), not the file.
+- **`media.githubusercontent.com/media/<owner>/<repo>/<ref>/<path>`**: serves the LFS object with
+  `Access-Control-Allow-Origin: *` (a 1,355,974-byte PNG from `docs/pipeline/alice/` checked).
+  `<ref>` may be a commit, which pins the bytes. This is where the generated Alice comes from.
+  Each download counts against the repository owner's Git LFS bandwidth; the quota was not checked.
+
+three-vrm 3.5.5 (read from `lib/three-vrm.module.js`): `VRMLoaderPlugin` sets `gltf.userData.vrm`
+only when the file has both a meta and a humanoid; `VRMRequiredHumanBoneName` is the 15 bones
+`body-check.ts` requires (hips, spine, head, both upper and lower legs, feet, upper and lower arms,
+hands).

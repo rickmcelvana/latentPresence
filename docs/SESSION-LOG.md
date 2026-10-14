@@ -842,3 +842,9 @@ Did: Alice's concept with Rick through comfy-mcp: Z-Image portrait (A of four), 
 Left: R-3 (Rick follows the doc); P7-T02 (avatar library, live swap); grey slivers at the collar's back corners; laptop session (R-13, R-1, R-9); C-7.
 Next: Rick's unrelated bug (new session), then P7-T02 after ADR-59 is accepted.
 Decisions: ADR-18 amended and accepted; ADR-59 proposed — needs Rick's accept.
+
+## 2026-10-14 claude — P7-T02 avatar library and live swap (ADR-59 accepted)
+Did: body per character beside the voice; Body view in the call's drawer (built-in bodies, own `.vrm` files in IndexedDB, add/wear/remove); `CallStage` swaps on the same renderer (base clip restarted, consent per built-in body, a refused body leaves the old one); `checkBody` (15 VRM bones or refused; missing presets listed) and an overtaken load dropped; `/dev/avatar` loads a local file; generated Alice in `assets/bodies/` (LFS, meta named, validators pass) fetched pinned to 8e94db0 — release assets have no CORS, LFS media does (SURFACE); Tauri icons from the site mark. Gate green (1989 tests); live in the Browser pane with Alice as an own file.
+Left: R-55 (swap by eye; her download needs 8e94db0 pushed); R-3; laptop session (R-13, R-1, R-9); C-7.
+Next: P8-T01 or P7-T03, Rick's pick.
+Decisions: ADR-59 accepted, build notes in it — her licence kept as the VRM Public License 1.0 with the placeholder's terms (Rick may change it: a new file and commit).

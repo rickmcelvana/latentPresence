@@ -61,7 +61,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
-| ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets) | proposed | 2026-10-14 |
+| ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets) | accepted | 2026-10-14 |
 
 ---
 
@@ -2321,14 +2321,14 @@ morning", listed in the Schedules view, and cancelled with the two-press Cancel 
 next-run label first rendered as a pill that clipped, and now wraps. P8 must check that Web
 Notifications show from inside WebView2 before the tray app relies on them.
 
-## ADR-59 Avatar library and live swap (proposed 2026-10-14)
+## ADR-59 Avatar library and live swap (accepted 2026-10-14)
 
 **Context.** Each pack (ADR-55) carries one fixed avatar entry, and both characters point at the
 same placeholder VRM. P7 adds a generated Alice body (`docs/pipeline/character.md`), Rick wants
 the placeholder kept as the default (ADR-18 amended), and wants a clean way to swap bodies —
 live, rather than editing config and restarting.
 
-**Decision (recommended option, taken; Rick to accept).**
+**Decision (accepted by Rick 2026-10-14).**
 1. **A library of bodies, not one per pack.** An entry is today's `AssetDownload` plus an `id`:
    *built-in* (the pixiv placeholder; the generated Alice once she is hosted), each downloaded
    only through the consent screen with its exact bytes and licence, as now; and *your own* —
@@ -2351,6 +2351,33 @@ live, rather than editing config and restarting.
 `/chat` remount to swap* — what Rick asked to avoid, and it would end the visit. *Uploading
 the person's VRM to the companion* — no reason to; the browser already caches large assets.
 
-**Open for the build (P7-T02).** Where the generated Alice is hosted (a release asset on the
-GitHub repo vs `latentpresence.com`), and her licence and VRM `meta` fields.
+**In the build (P7-T02, 2026-10-14).**
+- **Where the generated Alice lives:** in this repository through LFS (`assets/bodies/alice.vrm`,
+  3,995,896 bytes, with `manifest.json`), fetched from `media.githubusercontent.com` **pinned to the
+  commit that added it** (8e94db0), so the bytes under a person's consent never change; not bundled
+  with the app. A GitHub release asset was the other option and cannot work: its download redirect
+  carries no CORS header, so a page cannot read it (measured, `docs/SURFACE.md`). A new version of
+  her is a new file, a new commit, and a new descriptor id (`latentpresence/alice-generated-1.vrm`).
+- **Her licence and `meta`:** the VRM Public License 1.0 with the same permissions as the
+  placeholder (anyone, commercial use including corporations, redistribution and modification,
+  credit not required) — `image-to-vrm`'s export defaults, kept; every input is Apache-2.0, MIT or
+  CC0. The `meta` was renamed from the pipeline's (`name` Alice, `version` 1, `authors`
+  latentPresence, a `copyrightInformation` line naming the tools); validators re-run on the result.
+  **Rick may choose otherwise** — that is a new file, as above.
+- **The check** (`packages/avatar/src/vrm/body-check.ts`): a body without the 15 humanoid bones VRM
+  1.0 requires (three-vrm's `VRMRequiredHumanBoneName`) is refused naming them; a file that is not
+  glTF, or glTF with no VRM data, is refused in words; a body missing any of the 11 presets the call
+  drives (blink, the five visemes, the five emotions) loads and the picker says what will not show.
+  The renderer checks before it unloads the old body, and drops a load that a later one overtook.
+- **Own bodies** are checked when added, not when worn, and kept in IndexedDB
+  `latentpresence-bodies` (descriptions and bytes in separate stores, so listing reads no model).
+- **Where the choice is made:** a **Body** view in the call's drawer (wear, add, remove); Settings →
+  Character points to it, since Settings is another page and leaving the call would end it.
+- **Consent per built-in body**, as before; an own body asks nothing. Declining a new body keeps the
+  old one on stage. On a swap the base clip restarts on the new rig at once, so there is no T-pose
+  frame; lip sync and the face carry over because the frame loop drives whatever is loaded.
+- Proved by `ChatPage.test.tsx` (the done-when: placeholder → generated Alice → own file → a
+  refused file → placeholder, mid-conversation, one renderer, one visit, the same session and her
+  memory in her prompt) and live in the Browser pane with the generated Alice as an own file. Her
+  pinned URL answers only once 8e94db0 is pushed: R-55.
 

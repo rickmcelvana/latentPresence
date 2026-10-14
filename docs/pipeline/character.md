@@ -172,9 +172,17 @@ licence Rick chooses (P7-T02 decides it, and the VRM's own `meta` fields).
 
 ## 6. Into latentPresence (P7-T02, ADR-59)
 
-Bodies are a library (ADR-59, proposed): built-in ones download through the consent screen with
-their exact bytes and licence, and anyone can add their own `.vrm`, kept in their browser. Alice's
-**default body stays the placeholder** (pixiv's sample — Rick's choice, ADR-18 amended); the
-generated Alice is a library entry. Until P7-T02 lands, hand `out\<name>.web.vrm` to a Claude
-session; it records the file's bytes and licence, hosts it, and checks every expression in
-`/dev/avatar`.
+Bodies are a library: built-in ones download through the consent screen with their exact bytes
+and licence, and anyone can add their own `.vrm`, kept in their browser. Alice's **default body
+stays the placeholder** (pixiv's sample — Rick's choice, ADR-18 amended); the generated Alice is a
+built-in entry, "Alice, generated".
+
+1. **Check it:** `/dev/avatar` → **Or load a .vrm from this computer** (or, once the stage is up,
+   **Load a .vrm from this computer**) → `out\<name>.web.vrm`. The line under the stage names the
+   body and says what it cannot show; every slider and preset on the page then drives it.
+2. **Wear it:** in `/chat`, **Body** → **Add a .vrm…**. It is checked, kept in this browser, and worn
+   at once, while you talk. A file the call cannot drive is refused with the reason.
+3. **Make it a built-in body** (for everyone, not just this browser): a Claude session copies it to
+   `assets/bodies/` (LFS) with its `meta` named and a `manifest.json` entry (bytes, sha256, licence,
+   validation), commits it alone, then adds an entry to `BUILT_IN_BODIES` with its download URL
+   pinned to that commit (`apps/web/src/call/character-asset.ts`, as `ALICE_GENERATED`).
