@@ -2517,3 +2517,27 @@ hands).
   endorsement, plus the usual conduct rules. Conditions "may be subject to change" (updated
   2024-12-26). Presets are in VRoid Studio (free); VRoid Hub downloads need an account.
 
+## Cross-origin isolation on the hosted app — measured 2026-10-16
+
+The production build served locally with Caddy's headers (a scratch node server: COOP
+`same-origin`, COEP per row, `index.html` fallback), probed in the Claude desktop Browser pane
+(Chrome 152):
+
+| `fetch(url, { mode: 'no-cors' })` to | COEP `require-corp` | COEP `credentialless` |
+|---|---|---|
+| `http://127.0.0.1:11434/v1/models` (Ollama) | **TypeError** | resolves (opaque) |
+| `https://example.com/` | **TypeError** | resolves |
+| `http://127.0.0.1:9/` (closed port) | TypeError | TypeError |
+| `crossOriginIsolated` | true | true |
+
+So under `require-corp` `probeEndpoint` reports every CORS-refusing server as `unreachable` —
+Rick saw "no server found" for an Ollama without `OLLAMA_ORIGINS` on the live site, and the
+OLLAMA_ORIGINS steps once COEP was off. Under `credentialless` the probe is right again.
+Readable (CORS) fetches were unaffected in both modes: Hugging Face's Kokoro `config.json`,
+`onnx/model.onnx` and `voices/af_heart.bin` streamed (the model through a 302 to
+`us.aws.cdn.hf.co`, `Access-Control-Allow-Origin` on both hops); the placeholder from
+`raw.githubusercontent.com` loaded and a chat reply came back with no console error. jsDelivr's
+`ort-wasm-simd-threaded.jsep.mjs` sends `Access-Control-Allow-Origin: *` and
+`Cross-Origin-Resource-Policy: cross-origin`. A voice download Rick saw fail once under the old
+headers was not reproduced after the switch (Rick, wiped and re-downloaded). Recipe: `docs/deploy.md`.
+
