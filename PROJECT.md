@@ -105,11 +105,11 @@
 
 ## Last three sessions
 
-- 2026-10-14 claude — **P7-T02: swap the body, not the room.** The renderer already parsed a new model before letting go of the old one, so a live swap was mostly a matter of not remounting: one renderer, the base clip restarted on the new rig in the same tick, and the check run before the old body is let go. GitHub's release downloads looked like the obvious host until a curl with an Origin header showed no CORS on the redirect; its LFS host had it.
-
 - 2026-10-16 claude — **Ship the door, not the furniture.** The live swap and the import were what people will use; the generated body was an experiment that passed every validator and still was not good enough. Taken out in one commit, with a saved choice of her falling back to the default rather than breaking.
 
 - 2026-10-16 claude — **Measure the origin before designing around it.** One curl showed Ollama 403s the Windows webview's origin, which turned "tell people to set OLLAMA_ORIGINS" into "route it through the companion the app already runs". Driving the release build's own webview over its debugging port checked the token, the relay, the keychain and a conversation from inside the window, where no browser test can reach.
+
+- 2026-10-16 claude — **Read the yank before working around it.** zip's yanks looked like an 8.x problem; crates.io showed every release before 9.0.3 gone, and the maintainer's reply on #1075 named three extraction advisories. Ingest never extracts, so the move to 9.0.3 was a lockfile change and a dated SURFACE entry.
 
 ## Spike harness
 

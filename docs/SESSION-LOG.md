@@ -860,3 +860,9 @@ Did: `docs/deploy.md` (Caddy `try_files`, COEP `credentialless` — `require-cor
 Left: R-56 (fresh machine, toast, second launch, exit); zip 8.x yanked (lockfile holds 8.6.0); laptop session; C-7.
 Next: P8-T02 or P8-T03, Rick's pick, after R-56.
 Decisions: ADR-60 proposed — needs Rick's accept.
+
+## 2026-10-16 claude — zip 9.0.3 (every release before it yanked)
+Did: found why zip was yanked: not just 8.x but every release before 9.0.3, for GHSA-vv5m-jxxh-4627, GHSA-4v9h-p7m9-rh26 and GHSA-4684-h2q9-2vcp (extraction: SUID bits, symlink escape, permissions through symlinks) plus more due this month (maintainer, zip-rs/zip2#1075). Ingest never extracts, so it was not exposed. Moved the companion to 9.0.3 (9.0.4 hours old), with the same features and no code change; both lockfiles pinned with `--precise` (a plain update takes 9.0.4). Gate green, including DOCX and the desktop shell. SURFACE dated.
+Left: R-56; laptop session (R-13, R-1, R-9); C-7. A fresh worktree needs `git lfs pull` before the gate (vrma.test.ts reads a pointer otherwise).
+Next: P8-T02 or P8-T03, Rick's pick, after R-56.
+Decisions: none.
