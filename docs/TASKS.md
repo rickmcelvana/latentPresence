@@ -198,6 +198,26 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-56 · The desktop app on a fresh Windows machine · ~15 minutes, a VM or another PC
+**Why:** P8-T01's done-when — "a fresh Windows VM installs and talks in under 10 minutes". Time it
+from the installer's first click.
+1. On the dev PC: `pnpm desktop:build`. The installer is
+   `apps/desktop/src-tauri/target/release/bundle/nsis/latentPresence_0.1.0_x64-setup.exe`. Copy it
+   to the fresh machine.
+2. Run it. It is **unsigned**: Windows says "Windows protected your PC" → **More info** → **Run
+   anyway**. It installs for you only (no admin prompt). Start it from the Start menu.
+3. Settings → Language model: either a cloud provider and its key, or install Ollama on that
+   machine and pull a model — **no `OLLAMA_ORIGINS` needed** in the app. Then `/chat` (the Chat
+   link), agree to the character, say hello.
+4. While it is open: launch it again from the Start menu — the first window should come to the
+   front, no second one. Close it with X and check Task Manager: no `latentpresence-desktop.exe`
+   left. Set a reminder a minute out ("remind me in one minute to stretch"), minimise the window,
+   and see whether a Windows toast appears.
+
+**Pass:** talking within 10 minutes, with nothing looked up. **Paste back:** the time, every
+place you hesitated, the SmartScreen wording, whether the toast came, and anything left running
+after closing.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane

@@ -473,6 +473,7 @@ Done when: `docs/spikes/F-lam.md` records feasibility and licence status.
 ### P8-T01 Tauri app with companion sidecar (Windows) — owner: main
 Bundle companion as a sidecar; local pairing token; window management; OS keychain for secrets; NSIS installer.
 Done when: fresh Windows VM installs and talks in under 10 minutes.
+**Built 2026-10-16 (main, ADR-60 proposed):** the companion runs in the app's process (not a sidecar — ADR-60 says why), paired by a per-launch token; the page wraps `fetch` to add it and to send local Ollama/LM Studio through the companion's relay (Ollama 403s the Windows webview's origin); keys in Windows Credential Manager; single instance and remembered window; per-user NSIS installer, unsigned (`pnpm desktop:build`, 17.6 MiB). Checked from inside the release build's window, including a typed conversation. The fresh-VM done-when is Rick's: R-56.
 
 ### P8-T02 First-run wizard — owner: sub
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.

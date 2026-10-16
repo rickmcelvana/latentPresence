@@ -854,3 +854,9 @@ Did: on Rick's call, removed the generated Alice from the built-in bodies (`char
 Left: Theo's body (Rick's call: a VRoid preset exported by Rick); laptop session (R-13, R-1, R-9); C-7.
 Next: P8-T01, with Rick's testing alongside.
 Decisions: ADR-59 and ADR-18 amended (generated body out; image-to-vrm outside this repo).
+
+## 2026-10-16 claude — deploy.md; P8-T01 desktop app (ADR-60 proposed)
+Did: `docs/deploy.md` (Caddy `try_files`, COEP `credentialless` — `require-corp` hid the OLLAMA_ORIGINS help, measured; LFS). P8-T01: companion startup moved to `serve.rs` and run in the Tauri process, paired by a per-launch token (`pairing.rs`), `Relay::desktop()` for local Ollama/LM Studio (Ollama 0.40.5 403s `http://tauri.localhost`); page `desktop.ts` wraps fetch (token + relay) and `KeychainVault` (Credential Manager via keyring 4.2); single instance, window state, per-user NSIS (17.6 MiB, unsigned); tauri 2.11.5 → 2.12.4; gate checks the shell on Windows. Checked inside the release window over CDP: token, relay (24 models), keychain round trip, a conversation, clean exit.
+Left: R-56 (fresh machine, toast, second launch, exit); zip 8.x yanked (lockfile holds 8.6.0); laptop session; C-7.
+Next: P8-T02 or P8-T03, Rick's pick, after R-56.
+Decisions: ADR-60 proposed — needs Rick's accept.

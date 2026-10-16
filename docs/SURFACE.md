@@ -2541,3 +2541,27 @@ Readable (CORS) fetches were unaffected in both modes: Hugging Face's Kokoro `co
 `Cross-Origin-Resource-Policy: cross-origin`. A voice download Rick saw fail once under the old
 headers was not reproduced after the switch (Rick, wiped and re-downloaded). Recipe: `docs/deploy.md`.
 
+## The desktop app's dependencies and Ollama's origins — 2026-10-16 (P8-T01)
+
+- **Ollama 0.40.5** (`GET /api/version`), `curl -H "Origin: …" /api/version` on the dev PC:
+  `http://tauri.localhost` **403**, `https://tauri.localhost` **403**, `tauri://localhost` 200 with
+  `Access-Control-Allow-Origin: tauri://localhost`, `http://localhost:5173` 200. Tauri 2 on Windows
+  serves the app from `http://tauri.localhost`, so the Windows app reaches Ollama through the
+  companion's relay (ADR-60). (The machine's `OLLAMA_ORIGINS` was `https://app.latentpresence.com`.)
+- **crates.io, read 2026-10-16:** tauri 2.12.4 (2026-10-14), tauri-build 2.7.3,
+  tauri-plugin-single-instance 2.5.4 and tauri-plugin-window-state 2.5.0 (both require tauri
+  ^2.12, hence the bump from 2.11.5), tauri-plugin-notification 2.7.0, tauri-plugin-log 2.10.1 —
+  all Apache-2.0 OR MIT. `@tauri-apps/cli` 2.12.3 (npm). **keyring 4.2.0** (MIT OR Apache-2.0):
+  default feature `v1` = Windows' native store; API read from the crate source —
+  `keyring::v1::Entry::new(service, user)`, `set_password`, `get_password`, `delete_credential`,
+  `Error::NoEntry` when there is none.
+- **zip: every 8.x release is yanked**, and 9.0.0–9.0.2; 9.0.3 (2026-10-13) and 9.0.4
+  (2026-10-16) are not. The companion's lockfile still holds 8.6.0 and builds; a fresh resolve
+  cannot pick it, so the desktop's lockfile was seeded from the companion's. Reason for the yanks
+  not found. Moving to 9.x is its own change.
+- **WebView2 155.0.4283.45** in the release build; `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=
+  --remote-debugging-port=<port>` exposes the app's webview to Playwright's `connectOverCDP`, which
+  is how the build was checked from inside the window.
+- The release compile hit **rustc 1.97.1 internal compiler errors** twice (in `zerocopy` via
+  `rand`, then in `rmcp`), each gone on a retry with nothing changed: flaky, not the code.
+

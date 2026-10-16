@@ -354,6 +354,7 @@ owns. The thing the brief refuses to allow is an *ungated crate nobody mentions*
 has a command, a comment and a paragraph.
 
 **Phase 8 should reverse this**, at the point the desktop app stops being a spike artifact.
+**Reversed 2026-10-16 (P8-T01, ADR-60):** `pnpm gate` checks the shell on Windows (`tools/gate-desktop.mjs`).
 
 ## What this spike did not do, and is not pretending to
 

@@ -62,6 +62,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
 | ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets); **amended 2026-10-16: the generated Alice taken out — the placeholder and the person's own files** | accepted (amended) | 2026-10-14 |
+| ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now | proposed | 2026-10-16 |
 
 ---
 
@@ -2391,4 +2392,61 @@ product: anyone wanting a realistic character brings their own VRM. Open, Rick's
 for Theo in the placeholder's style — pixiv's VRoid Studio presets (VRoidPreset_A–Z) may be used
 and redistributed free of charge by anyone, commercially, without credit (read 2026-10-16,
 `docs/SURFACE.md`); one would be exported from VRoid Studio by Rick and added as a built-in body.
+
+## ADR-60 The desktop app (proposed 2026-10-16, P8-T01)
+
+**Context.** P8-T01: "bundle the companion as a sidecar; local pairing token; window management;
+OS keychain for secrets; NSIS installer; a fresh Windows VM installs and talks in under 10
+minutes". Spike E's shell (P0-T08) opened a window on the dev server and nothing else. Measured
+while building: **Ollama 0.40.5 answers `http://tauri.localhost` — the Windows webview's origin —
+with 403** (and `tauri://localhost`, macOS and Linux, with 200), so out of the box the Windows app
+could not talk to a local Ollama at all without `OLLAMA_ORIGINS` (`docs/SURFACE.md`).
+
+**Decision (recommended option, taken; Rick to accept).**
+1. **The companion runs in the app's own process**, as a library: `companion/crates/server` gained
+   `serve::serve(ServeOptions, shutdown)`, which `main.rs` (`pnpm companion`) and the shell both
+   call — one startup, gated with the companion. Bound on loopback, on 8787 when it is free, else a
+   port the OS picks (a developer's own companion may hold 8787); stopped on exit (up to 3 s for
+   the MCP servers it started).
+2. **Paired.** A 32-byte token from the OS's random source at each launch, held only in the
+   process; the page asks the shell for it (`companion_info`), and every request must carry it in
+   `x-lp-companion-token`, or 401 (`pairing.rs`, inside CORS so the page can read the refusal).
+   Preflights pass. The standalone companion stays unpaired, as before.
+3. **The page learns it is in the app** from `window.__TAURI__` (`apps/web/src/desktop/desktop.ts`)
+   before the first render, and **wraps `window.fetch` once**: the token on every request to the
+   companion, and **requests to this machine's Ollama (11434) and LM Studio (1234) sent through the
+   companion's relay**, which in the app allows exactly those (`Relay::desktop()`: `/v1/` and
+   Ollama's `/api/tags`; not `/api/pull` or anything else). Nobody sets `OLLAMA_ORIGINS` or turns
+   on CORS. The settings' companion URL is the app's own while in the app.
+4. **API keys in Windows Credential Manager** (`keyring` 4.2, service `latentPresence`, the ref as
+   the account) through `secret_set/get/delete`; the page keeps an index of refs, no secret
+   (`KeychainVault`, behind the `KeyVault` interface the browser vault now implements).
+5. **One window**: a second launch focuses the first (`tauri-plugin-single-instance`); size and
+   place remembered (`tauri-plugin-window-state`); 960×600 at least. The notification plugin stays
+   (ADR-58's reminders). Spike E's probe command and test tray are gone (the tray is P8-T05).
+6. **Installer**: NSIS only, **per-user** (`installMode: currentUser`, no admin prompt), WebView2
+   fetched by the bootstrapper if missing (Tauri's default), **unsigned** — SmartScreen will say
+   "Windows protected your PC" (More info → Run anyway) until signing lands (P8-T04).
+7. **The gate checks the shell on Windows** (`tools/gate-desktop.mjs`: fmt, clippy, test), as Spike
+   E said Phase 8 should; Linux skips it (no webkit2gtk dev packages there).
+
+**Rejected.** *A sidecar binary* — a second executable to build per target triple, ship and sign;
+a process that outlives a crashed shell and holds the port; and the token passed through a command
+line or environment another process can read. In-process, the token never leaves memory.
+*Asking every Ollama user to set `OLLAMA_ORIGINS`* — the measured 403 makes it the first thing a
+fresh install hits. *Handing each caller a token-aware fetch* — a companion call that forgot its
+`fetch` option would fail in the app only, where no test runs.
+
+**Measured in the build (2026-10-16, Rick's dev PC, release build, WebView2 155.0.4283.45).** From
+inside the window over WebView2's debugging port: origin `http://tauri.localhost`, WebGPU adapter
+present, `crossOriginIsolated` false; the companion's `/health` 200 with the token added by the
+wrapper; unpaired from curl, 401 (with a wrong token too, and the relay); Ollama through the relay
+200 (`/api/tags`, 24 models, and `/v1/models`); a Credential Manager set/get/delete round trip; the
+page's `Notification.permission` "granted"; a typed conversation with `glm-5.2:cloud` through the
+relay answered, no console error; with 8787 taken, the companion moved to 40299. Closing the
+window ends the process within a second (the exit is logged both sides). Once, after a
+non-forced `taskkill` had sent WM_CLOSE to every window of the process, the window closed and
+the process stayed; not reproduced in two clean runs since. The installer:
+`latentPresence_0.1.0_x64-setup.exe`, 17.6 MiB. **Not yet seen:** a fresh machine (R-56), the
+toast from the installed app (Spike E's AUMID question), the second-launch focus.
 
