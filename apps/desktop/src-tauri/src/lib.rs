@@ -1,139 +1,182 @@
-//! The shell for P0-T08 Spike E. It opens a window on the `apps/web` dev server and does
-//! nothing else on purpose: the spike runs known-good pages in an unknown container to see
-//! what the container takes away, so anything this file adds is a variable in the result.
+//! latentPresence for the desktop (P8-T01, ADR-60): the web app in a window, with the companion
+//! running inside this process.
 //!
-//! The log plugin is here because the finding this spike is most likely to produce is an
-//! error message, and "didn't work" is not a finding.
+//! - **The companion** is the same library `pnpm companion` runs (`latentpresence_companion::serve`):
+//!   bound on loopback, on 8787 when it is free and on a port the OS picks when it is not (a
+//!   developer's own companion may hold 8787), and **paired** — a token made fresh at each launch,
+//!   held only here, handed to the page by `companion_info` and required on every request. Its
+//!   relay also reaches this machine's Ollama and LM Studio (`Relay::desktop`), which refuse the
+//!   window's origin.
+//! - **Secrets** — the API keys the page saves — go to Windows Credential Manager through
+//!   `secret_set` / `secret_get` / `secret_delete` (the `keyring` crate), not into the webview.
+//! - **One window**: a second launch focuses the first (`single-instance`), and its size and place
+//!   are remembered (`window-state`).
 //!
-//! **Amended for the Windows sitting, 2026-09-11.** The paragraph above still governs, with
-//! one deliberate exception: the tray and the OS notification path are built here now. The
-//! Linux leg left both rows "not measured" and gave a good reason — building Rust features
-//! to test a shell Linux will not ship is work in the direction the answer already ruled
-//! out. That reason inverts on Windows. WebView2 is the container ADR-07 ships *first*, the
-//! brief asks for both rows by name, and ADR-14's schedules and P8-T05's tray mode are the
-//! two features that depend on them. They are additions to the shell rather than to the
-//! page, so the webview capability readings stay uncontaminated.
+//! Spike E's probe command and test tray are gone; the tray mode is P8-T05.
 
-use tauri::Manager;
-use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
-use tauri_plugin_notification::NotificationExt;
+use std::net::{Ipv4Addr, SocketAddr, TcpListener};
+use std::sync::Mutex;
+use std::time::Duration;
 
-/// The only command the shell has, and it is measurement plumbing rather than a feature.
-///
-/// A Tauri window has no address bar, no devtools by default and — on GNOME Wayland — no
-/// way for another process to screenshot it. Without this, the only route from a result
-/// inside the webview to the write-up is a person retyping a table off a screen, which is
-/// how a wrong number reaches a decision. The probe page calls it once and the report
-/// lands in the terminal that launched the app.
+use latentpresence_companion::{DEFAULT_PORT, pairing, relay, serve};
+use tauri::{Manager, RunEvent};
+use tokio::sync::oneshot;
+
+/// The Credential Manager "service" every key is filed under; the account is the page's ref
+/// (`llm:openai`, `tts`, `mcp:<id>`).
+const KEYCHAIN_SERVICE: &str = "latentPresence";
+
+/// What the page needs to reach its companion.
+#[derive(Clone, serde::Serialize)]
+struct CompanionInfo {
+    url: String,
+    token: String,
+}
+
+/// The running companion: what the page is told, and how to stop it.
+struct Companion {
+    info: CompanionInfo,
+    stop: Mutex<Option<oneshot::Sender<()>>>,
+    done: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+}
+
 #[tauri::command]
-fn record(report: String) {
-    println!("--- spike E report from inside the webview ---\n{report}");
+fn companion_info(companion: tauri::State<'_, Companion>) -> CompanionInfo {
+    companion.info.clone()
 }
 
-/// What container this actually is, asked of the runtime rather than of a package manager.
-///
-/// `webview_version` reports what wry loaded. `pkg-config --modversion webkit2gtk-4.1`
-/// reports what is installed to build against, which is a different question — the Linux
-/// leg recorded both for exactly that reason, and the Windows column needs the same.
-fn report_environment() {
-    match tauri::webview_version() {
-        Ok(version) => log::info!("webview runtime: {version}"),
-        Err(error) => log::info!("webview runtime: unavailable ({error})"),
+fn entry(name: &str) -> Result<keyring::v1::Entry, String> {
+    keyring::v1::Entry::new(KEYCHAIN_SERVICE, name).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn secret_set(name: String, value: String) -> Result<(), String> {
+    entry(&name)?
+        .set_password(&value)
+        .map_err(|error| error.to_string())
+}
+
+/// `None` when there is no such key, which is not an error.
+#[tauri::command]
+fn secret_get(name: String) -> Result<Option<String>, String> {
+    match entry(&name)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::v1::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error.to_string()),
     }
-    log::info!(
-        "os: {} {}, tauri {}",
-        std::env::consts::OS,
-        std::env::consts::ARCH,
-        tauri::VERSION
-    );
 }
 
-/// The tray, and the notification the tray sends.
-///
-/// "It built" is not the test. A tray icon that appears under one desktop environment and
-/// silently does not under another is the kind of thing this spike exists to catch, so
-/// every outcome is logged and the write-up quotes a line rather than a memory.
-fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Show the window", true, None::<&str>)?;
-    let notify = MenuItem::with_id(
-        app,
-        "notify",
-        "Send a test notification",
-        true,
-        None::<&str>,
-    )?;
-    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&show, &notify, &quit])?;
+#[tauri::command]
+fn secret_delete(name: String) -> Result<(), String> {
+    match entry(&name)?.delete_credential() {
+        Ok(()) | Err(keyring::v1::Error::NoEntry) => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
 
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or_else(|| tauri::Error::AssetNotFound("default window icon".into()))?;
+/// Loopback, on the companion's usual port if nobody holds it, else any free one.
+fn bind_companion() -> std::io::Result<TcpListener> {
+    let preferred = SocketAddr::from((Ipv4Addr::LOCALHOST, DEFAULT_PORT));
+    let listener = TcpListener::bind(preferred)
+        .or_else(|_| TcpListener::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))))?;
+    listener.set_nonblocking(true)?;
+    Ok(listener)
+}
 
-    TrayIconBuilder::with_id("spike-e")
-        .icon(icon)
-        .tooltip("latentPresence (spike)")
-        .menu(&menu)
-        .on_menu_event(|app, event| match event.id().as_ref() {
-            "show" => {
-                let Some(window) = app.get_webview_window("main") else {
-                    return;
-                };
-                let _ = window.show();
-                let _ = window.set_focus();
+/// Binds and starts the companion; the page can ask for it as soon as this returns.
+fn start_companion() -> std::io::Result<Companion> {
+    let listener = bind_companion()?;
+    let address = listener.local_addr()?;
+    let token = pairing::new_token();
+    let (stop, stopped) = oneshot::channel::<()>();
+    let serve_token = token.clone();
+    let done = tauri::async_runtime::spawn(async move {
+        let listener = match tokio::net::TcpListener::from_std(listener) {
+            Ok(listener) => listener,
+            Err(error) => {
+                log::error!("companion: the listener could not be handed to tokio: {error}");
+                return;
             }
-            "notify" => {
-                // The OS notification service, reached from Rust. This is a different path
-                // from the web `Notification` the probe page tests, it is the one ADR-14
-                // and P8-T05 will actually use, and on Linux it needs a daemon that may not
-                // be running — so a failure is a finding and is logged rather than dropped.
-                //
-                // Note what this does and does not claim. `Ok` means the call succeeded,
-                // not that a toast was drawn: Focus Assist and per-app settings suppress
-                // after the API has returned.
-                let result = app
-                    .notification()
-                    .builder()
-                    .title("latentPresence")
-                    .body("Spike E: the native notification call returned.")
-                    .show();
-                match result {
-                    Ok(()) => log::info!("notification: call returned Ok"),
-                    Err(error) => log::error!("notification failed: {error}"),
-                }
-            }
-            "quit" => app.exit(0),
-            other => log::warn!("unhandled tray item: {other}"),
-        })
-        .build(app)?;
+        };
+        let options = serve::ServeOptions {
+            listener,
+            token: Some(serve_token),
+            relay: relay::Relay::desktop(),
+        };
+        let shutdown = async {
+            let _ = stopped.await;
+        };
+        if let Err(error) = serve::serve(options, shutdown).await {
+            log::error!("companion stopped: {error}");
+        }
+    });
+    log::info!("companion: http://{address} (paired)");
+    Ok(Companion {
+        info: CompanionInfo {
+            url: format!("http://{address}"),
+            token,
+        },
+        stop: Mutex::new(Some(stop)),
+        done: Mutex::new(Some(done)),
+    })
+}
 
-    log::info!("tray: built");
-    Ok(())
+/// Stops the companion and waits a moment for the MCP servers it started to go with it.
+fn stop_companion(app: &tauri::AppHandle) {
+    let Some(companion) = app.try_state::<Companion>() else {
+        return;
+    };
+    if let Some(stop) = companion.stop.lock().ok().and_then(|mut stop| stop.take()) {
+        let _ = stop.send(());
+    }
+    if let Some(done) = companion.done.lock().ok().and_then(|mut done| done.take()) {
+        let _ = tauri::async_runtime::block_on(async {
+            tokio::time::timeout(Duration::from_secs(3), done).await
+        });
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_notification::init())
-        .invoke_handler(tauri::generate_handler![record])
-        .setup(|app| {
-            app.handle().plugin(
-                tauri_plugin_log::Builder::default()
-                    .level(log::LevelFilter::Info)
-                    .build(),
-            )?;
-
-            report_environment();
-
-            if let Err(error) = build_tray(app.handle()) {
-                // The webview capability readings are the larger half of the spike and do
-                // not depend on the tray. Losing it must not cost the run that takes them.
-                log::error!("tray failed: {error}");
+    let app = tauri::Builder::default()
+        // First: a second launch hands over to this one and exits before starting anything.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
             }
-
+        }))
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log::LevelFilter::Info)
+                .build(),
+        )
+        .invoke_handler(tauri::generate_handler![
+            companion_info,
+            secret_set,
+            secret_get,
+            secret_delete
+        ])
+        .setup(|app| {
+            match tauri::webview_version() {
+                Ok(version) => log::info!("webview runtime: {version}"),
+                Err(error) => log::warn!("webview runtime: unavailable ({error})"),
+            }
+            app.manage(start_companion()?);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("the latentPresence window could not be built");
+
+    app.run(|app, event| {
+        if let RunEvent::Exit = event {
+            // Logged both sides: a shutdown that hangs shows which half it hung in.
+            log::info!("exit: stopping the companion");
+            stop_companion(app);
+            log::info!("exit: companion stopped");
+        }
+    });
 }

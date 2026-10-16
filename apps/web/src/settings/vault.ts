@@ -116,7 +116,18 @@ export class IndexedDbMasterKeyPort implements MasterKeyPort {
 
 /** Encrypted key storage, referenced by a stable ref per slot (`llmKeyRef`, `TTS_KEY_REF`,
  * `STT_KEY_REF` in `settings.ts`). */
-export class Vault {
+/** Where saved API keys live: this vault in a browser, Windows Credential Manager in the desktop
+ * app (`desktop/keychain-vault.ts`, P8-T01). `hasKey` and the forgets answer at once, from an
+ * index that holds no secret, so the fields can say "saved" without waiting. */
+export interface KeyVault {
+  saveKey(ref: string, secret: string): Promise<void>;
+  loadKey(ref: string): Promise<string | null>;
+  hasKey(ref: string): boolean;
+  forgetKey(ref: string): void;
+  forgetAll(): void;
+}
+
+export class Vault implements KeyVault {
   private readonly port: MasterKeyPort;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 

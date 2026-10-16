@@ -33,12 +33,13 @@ url = "2.5.8"
 # P6-T07b (ADR-57): when a companion schedule fires.
 croner.workspace = true
 chrono-tz.workspace = true
+# P8-T01 (ADR-60): the desktop app's pairing token, from the OS's random source.
+rand.workspace = true
 
 [dev-dependencies]
 http-body-util.workspace = true
 serde_json.workspace = true
 tower = { workspace = true, features = ["util"] }
 jsonschema.workspace = true
-rand.workspace = true
 tempfile.workspace = true
 zip.workspace = true

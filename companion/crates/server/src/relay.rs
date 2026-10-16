@@ -55,6 +55,31 @@ impl Relay {
         }])
     }
 
+    /// `measured()` plus the model servers on this machine, for the desktop app (P8-T01,
+    /// ADR-60): Ollama refuses the Windows webview's origin (`http://tauri.localhost`, a 403 from
+    /// Ollama 0.40.5, measured 2026-10-16) and LM Studio answers no page until CORS is turned on,
+    /// so the app reaches both through here and nobody has to set `OLLAMA_ORIGINS`. Only a paired
+    /// companion uses this list: the token keeps every other page and process off it.
+    pub fn desktop() -> Self {
+        let mut targets = Self::measured().targets;
+        for host in ["127.0.0.1", "localhost"] {
+            for (port, prefixes) in [
+                // Ollama: its OpenAI-compatible API, and `/api/tags` for what each model can do.
+                ("11434", &["/v1/", "/api/tags"][..]),
+                // LM Studio.
+                ("1234", &["/v1/"][..]),
+            ] {
+                for prefix in prefixes {
+                    targets.push(AllowedTarget {
+                        origin: format!("http://{host}:{port}"),
+                        path_prefix: (*prefix).to_owned(),
+                    });
+                }
+            }
+        }
+        Self::with_targets(targets)
+    }
+
     pub fn with_targets(targets: Vec<AllowedTarget>) -> Self {
         let client = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
@@ -140,7 +165,9 @@ pub async fn cors(request: Request, next: Next) -> Response {
         );
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_HEADERS,
-            HeaderValue::from_static("authorization, content-type, accept, x-lp-target"),
+            HeaderValue::from_static(
+                "authorization, content-type, accept, x-lp-target, x-lp-companion-token",
+            ),
         );
         headers.insert(
             header::ACCESS_CONTROL_MAX_AGE,
@@ -277,6 +304,34 @@ mod tests {
             "http://127.0.0.1:11434/v1/models",
             "http://192.168.1.1/v1/models",
             "not a url",
+        ] {
+            assert!(relay.allowed(refused).is_none(), "{refused}");
+        }
+    }
+
+    #[test]
+    fn the_desktop_relay_adds_this_machines_model_servers_and_nothing_else() {
+        let relay = Relay::desktop();
+        for allowed in [
+            "https://integrate.api.nvidia.com/v1/models",
+            "http://127.0.0.1:11434/v1/chat/completions",
+            "http://localhost:11434/v1/models",
+            "http://127.0.0.1:11434/api/tags",
+            "http://127.0.0.1:1234/v1/models",
+            "http://localhost:1234/v1/chat/completions",
+        ] {
+            assert!(relay.allowed(allowed).is_some(), "{allowed}");
+        }
+        for refused in [
+            // Ollama's other native routes: pulling, deleting, copying models.
+            "http://127.0.0.1:11434/api/pull",
+            "http://127.0.0.1:11434/api/delete",
+            "http://127.0.0.1:1234/api/v0/models",
+            // Other ports and hosts on this machine and the LAN.
+            "http://127.0.0.1:8787/health",
+            "http://127.0.0.1:3306/",
+            "http://192.168.1.10:11434/v1/models",
+            "https://127.0.0.1:11434/v1/models",
         ] {
             assert!(relay.allowed(refused).is_none(), "{refused}");
         }

@@ -6,7 +6,7 @@ import { connectCompanionTools, connectToolServer, type ConnectMcp, type ToolSer
 import { HomeDevices } from './HomeDevices';
 import { KeyField } from './KeyField';
 import { mcpKeyRef, type ToolServerSetting, type ToolsSettings } from './settings';
-import type { Vault } from './vault';
+import type { KeyVault } from './vault';
 
 /**
  * Settings → Tools (P5-T01, ADR-42): the MCP servers the person adds, whether each is on, and
@@ -20,7 +20,7 @@ import type { Vault } from './vault';
 export interface ToolsSectionProps {
   readonly tools: ToolsSettings;
   readonly onChange: (update: (previous: ToolsSettings) => ToolsSettings) => void;
-  readonly vault: Vault;
+  readonly vault: KeyVault;
   /** Test seam: the connection Test makes. Omitted, the real MCP adapter. */
   readonly connect?: ConnectMcp | undefined;
   readonly fetch?: typeof globalThis.fetch | undefined;

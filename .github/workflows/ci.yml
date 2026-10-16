@@ -38,7 +38,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: companion
+          # The desktop shell is its own workspace (P8-T01); `pnpm gate` checks it on Windows only.
+          workspaces: |
+            companion
+            apps/desktop/src-tauri
 
       # The same two commands the README gives a contributor.
       - run: pnpm install --frozen-lockfile

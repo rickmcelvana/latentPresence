@@ -1,9 +1,8 @@
 //! The `latentpresence-companion` binary. The HTTP surface itself lives in the library
-//! (`lib.rs`), so `tests/memory_api.rs` can build the same router against a real MariaDB.
+//! (`lib.rs`), so `tests/memory_api.rs` can build the same router against a real MariaDB, and
+//! its startup in `serve.rs`, so the desktop app (P8-T01) runs the same companion in-process.
 
-use latentpresence_companion::{
-    bench, bind_address, ingest, mcp, memory_api, relay, router_with_ingest, schedules,
-};
+use latentpresence_companion::{bench, bind_address, relay, serve};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,104 +28,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // The pool comes from `DATABASE_URL` in the environment or the repo's `.env`, shared
-    // with `bench` and `memory-check` rather than read again here. `has_database_url`
-    // distinguishes "not configured" from "configured but did not come up" for `/health`
-    // (`HealthResponseSchema.database.kind`); connecting also runs the migrations.
-    let database_url = bench::database_url();
-    let has_database_url = database_url.is_ok();
-    let pool = match database_url {
-        Ok(url) => match latentpresence_db::connect(&url).await {
-            Ok(pool) => Some(pool),
-            Err(error) => {
-                eprintln!("companion: database connection failed: {error}");
-                None
-            }
+    let listener = tokio::net::TcpListener::bind(bind_address()).await?;
+    serve::serve(
+        serve::ServeOptions {
+            listener,
+            token: None,
+            relay: relay::Relay::measured(),
         },
-        Err(_) => None,
-    };
-    let memory = memory_api::MemoryState::new(pool.clone());
-
-    // P5-T02 (ADR-43): the MCP servers the person's own `mcp.json` names, started now and
-    // never on a page's request. No file is no servers; a broken one is said and skipped.
-    let config = match mcp::config::config_path("mcp.json", "COMPANION_MCP_CONFIG") {
-        Some(path) => {
-            let loaded = mcp::config::McpConfig::load(&path);
-            match &loaded {
-                Ok(config) => println!(
-                    "companion: mcp servers from {} ({} listed, {} files root(s){}{})",
-                    path.display(),
-                    config.servers.len(),
-                    config.roots.len(),
-                    if config.web.is_some() { ", web" } else { "" },
-                    if config.home.is_some() {
-                        ", Home Assistant"
-                    } else {
-                        ""
-                    }
-                ),
-                Err(error) => eprintln!("companion: mcp.json not used: {error}"),
-            }
-            loaded.unwrap_or_default()
-        }
-        None => mcp::config::McpConfig::default(),
-    };
-    let host = mcp::McpHost::start(config);
-
-    // P6-T07b (ADR-57): the companion's own schedules — tool-only jobs that run with no page open.
-    if let Some(pool) = pool.clone() {
-        schedules::runner::spawn(pool, memory.registry.clone(), host.clone());
-    }
-
-    // P5-T03 (ADR-44): the folders the person's own `documents.json` lists, indexed now, when
-    // something in them changes, and when the page asks. The page never names a path.
-    let (documents, documents_error) =
-        match mcp::config::config_path("documents.json", "COMPANION_DOCUMENTS_CONFIG") {
-            Some(path) => match ingest::config::DocumentsConfig::load(&path) {
-                Ok(config) => (config, None),
-                Err(error) => {
-                    eprintln!("companion: documents.json not used: {error}");
-                    (ingest::config::DocumentsConfig::default(), Some(error))
-                }
-            },
-            None => (ingest::config::DocumentsConfig::default(), None),
-        };
-    let ingester = ingest::Ingester::new(documents, documents_error, pool, memory.registry.clone());
-    for note in ingester.notes() {
-        eprintln!("companion: documents: {note}");
-    }
-    println!(
-        "companion: documents from {}: {} folder(s), {}",
-        mcp::config::config_path("documents.json", "COMPANION_DOCUMENTS_CONFIG").map_or_else(
-            || "(no config directory)".to_owned(),
-            |path| path.display().to_string()
-        ),
-        ingester.folder_labels().len(),
-        match ingester.embedding() {
-            Some(embedding) => format!("embedding {}", embedding.model),
-            None => "keyword only".to_owned(),
-        }
-    );
-    ingester.start();
-
-    let address = bind_address();
-    let listener = tokio::net::TcpListener::bind(address).await?;
-    println!("latentpresence-companion listening on http://{address}");
-    axum::serve(
-        listener,
-        router_with_ingest(
-            relay::Relay::measured(),
-            memory,
-            has_database_url,
-            host.clone(),
-            ingester,
-        ),
+        async {
+            let _ = tokio::signal::ctrl_c().await;
+        },
     )
-    .with_graceful_shutdown(async {
-        let _ = tokio::signal::ctrl_c().await;
-    })
-    .await?;
-    // The servers it started go with it.
-    host.shutdown().await;
-    Ok(())
+    .await
 }

@@ -3,6 +3,7 @@ import { McpTransportSchema } from '@latentpresence/protocol';
 import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
 import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
+import { desktopShell } from '../desktop/desktop';
 
 /**
  * The settings document (P1-T10).
@@ -243,6 +244,10 @@ export function withBodyChoice(settings: Settings, characterId: string, body: st
 /** Load the settings document, falling back to defaults on missing or corrupt JSON —
  * never throws, so a wiped or hand-edited localStorage cannot crash the boot screen. */
 export function loadSettings(storage: Pick<Storage, 'getItem'> = window.localStorage): Settings {
+  return withShellCompanion(loadStored(storage));
+}
+
+function loadStored(storage: Pick<Storage, 'getItem'>): Settings {
   try {
     const raw = storage.getItem(SETTINGS_STORAGE_KEY);
     if (raw === null) return DEFAULT_SETTINGS;
@@ -253,6 +258,12 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> = window.localSto
   } catch {
     return DEFAULT_SETTINGS;
   }
+}
+
+/** In the desktop app the companion is the app's own, wherever it is listening (P8-T01). */
+function withShellCompanion(settings: Settings): Settings {
+  const shell = desktopShell();
+  return shell === null ? settings : { ...settings, companionUrl: shell.companionUrl };
 }
 
 /** Persist the settings document. Never call this with a key's text anywhere in

@@ -1,7 +1,9 @@
 import type { ModelConsent } from '@latentpresence/ml-web/consent';
 import { probeEndpoint, type HttpFetch } from '@latentpresence/providers/web';
 import { defaultConsentCaches, defaultModelConsent, type MinimalCacheStorage } from '../consent/deps';
-import { vault as realVault, Vault } from './vault';
+import { vault as realVault, type KeyVault } from './vault';
+import { desktopShell } from '../desktop/desktop';
+import { KeychainVault } from '../desktop/keychain-vault';
 
 /**
  * Everything a section needs from the outside world, gathered in one small bag so a test
@@ -18,7 +20,7 @@ export interface MinimalAudioContext {
 }
 
 export interface SettingsDeps {
-  readonly vault: Vault;
+  readonly vault: KeyVault;
   readonly storage: Pick<Storage, 'getItem' | 'setItem'>;
   readonly fetch: HttpFetch;
   readonly probe: typeof probeEndpoint;
@@ -35,9 +37,19 @@ export interface SettingsDeps {
   readonly caches: MinimalCacheStorage;
 }
 
+/** In the desktop app, keys go to the OS (P8-T01); one vault for the page's life. */
+let keychain: KeychainVault | null = null;
+
+function defaultVault(): KeyVault {
+  const shell = desktopShell();
+  if (shell === null) return realVault;
+  keychain ??= new KeychainVault(shell.invoke);
+  return keychain;
+}
+
 export function defaultSettingsDeps(): SettingsDeps {
   return {
-    vault: realVault,
+    vault: defaultVault(),
     storage: window.localStorage,
     fetch: (input, init) => window.fetch(input, init),
     probe: probeEndpoint,

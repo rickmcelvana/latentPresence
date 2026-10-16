@@ -26,7 +26,9 @@
     // `_hp` is the feedback API's honeypot field. The name is fixed by that service's
     // deserialiser (docs/SURFACE.md), so renaming it to satisfy a style rule would
     // silently break every report the form sends.
-    "eslint/no-underscore-dangle": ["error", { "allow": ["_hp"] }],
+    // `__TAURI__` is the global Tauri injects into its window (`withGlobalTauri`); the page reads
+    // it to know it is in the desktop app (P8-T01). The name is Tauri's.
+    "eslint/no-underscore-dangle": ["error", { "allow": ["_hp", "__TAURI__"] }],
     // React 19 automatic JSX runtime: React is not imported for JSX (ADR-11 toolchain).
     "react/react-in-jsx-scope": "off"
   }

@@ -17,8 +17,10 @@ pub mod bench;
 pub mod ingest;
 pub mod mcp;
 pub mod memory_api;
+pub mod pairing;
 pub mod relay;
 pub mod schedules;
+pub mod serve;
 
 pub const DEFAULT_PORT: u16 = 8787;
 
@@ -61,6 +63,18 @@ pub fn router_with_ingest(
     mcp: mcp::SharedHost,
     ingest: ingest::Ingester,
 ) -> Router {
+    with_cors(routes(relay, memory, has_database_url, mcp, ingest))
+}
+
+/// Every route, with no CORS layer yet: `serve` puts the pairing check (P8-T01) inside CORS, so
+/// a page refused for a missing token still gets a response it can read.
+pub fn routes(
+    relay: relay::Relay,
+    memory: memory_api::MemoryState,
+    has_database_url: bool,
+    mcp: mcp::SharedHost,
+    ingest: ingest::Ingester,
+) -> Router {
     let relay_router = Router::new()
         .route("/relay", get(relay::relay).post(relay::relay))
         .with_state(relay);
@@ -68,7 +82,11 @@ pub fn router_with_ingest(
         .merge(relay_router)
         .merge(mcp::router(mcp))
         .merge(ingest::router(ingest))
-        .layer(middleware::from_fn(relay::cors))
+}
+
+/// The companion's CORS (`relay::cors`), outermost.
+pub fn with_cors(router: Router) -> Router {
+    router.layer(middleware::from_fn(relay::cors))
 }
 
 /// Bind address from `COMPANION_HOST` and `COMPANION_PORT`, loopback by default.

@@ -1,15 +1,14 @@
 [package]
 name = "latentpresence-desktop"
-version = "0.0.0"
-description = "Tauri shell for latentPresence — P0-T08 Spike E"
+version = "0.1.0"
+description = "latentPresence for the desktop: the web app in a window, with the companion inside (P8-T01)"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/rickmcelvana/latentPresence"
 
-# Deliberately its own workspace, not a member of `companion/`. `pnpm gate` runs cargo
-# against `companion/Cargo.toml` only, so this crate is NOT gated — see
-# `docs/spikes/E-tauri.md` for why, and `pnpm gate:desktop` for the one command that
-# does check it.
+# Its own workspace, not a member of `companion/`: the companion is a path dependency below, and
+# the shell's tauri tree stays out of the companion's lockfile. `pnpm gate` checks both (P8-T01
+# reverses Spike E's "on demand only").
 [workspace]
 
 [lib]
@@ -17,13 +16,21 @@ name = "latentpresence_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = "2.6.3"
+tauri-build = { version = "2.7.3", features = [] }
 
 [dependencies]
-# Versions verified against crates.io on 2026-09-09, docs/SURFACE.md.
-# `tray-icon` is not a default feature, and the tray is one of the rows the brief asks for.
-tauri = { version = "2.11.5", features = ["tray-icon"] }
-tauri-plugin-log = "2"
-# Added for the Windows sitting (2026-09-11). Version verified against crates.io that day.
-tauri-plugin-notification = "2.4.0"
+# Versions read from crates.io on 2026-10-16 (docs/SURFACE.md). The plugins below need tauri ^2.12.
+tauri = { version = "2.12.4", features = [] }
+tauri-plugin-log = "2.10.1"
+# The page's `Notification` goes through this plugin's polyfill (ADR-58's reminders when hidden).
+tauri-plugin-notification = "2.7.0"
+# A second launch focuses the first window instead of starting a second companion.
+tauri-plugin-single-instance = "2.5.4"
+tauri-plugin-window-state = "2.5.0"
+# API keys in Windows Credential Manager (ADR-60). Default feature `v1`: Windows' native store.
+keyring = "4.2.0"
 log = "0.4"
+# The companion, run in this process (ADR-60): same router, same startup as `pnpm companion`.
+latentpresence-companion = { path = "../../../companion/crates/server" }
+tokio = { version = "1.53", features = ["net", "sync", "time"] }
+serde = { version = "1.0", features = ["derive"] }

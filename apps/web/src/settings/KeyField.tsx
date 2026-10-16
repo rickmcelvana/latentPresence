@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import type { Vault } from './vault';
+import type { KeyVault } from './vault';
 
 /**
  * One key field, shared by the Language model, Voice and Hearing sections (P1-T10).
@@ -21,7 +21,7 @@ export interface KeyFieldProps {
   readonly refKey: string;
   readonly hint?: string | null;
   readonly optional?: boolean;
-  readonly vault: Vault;
+  readonly vault: KeyVault;
   /** Called after a successful save or a forget, so a parent that needs to know (to
    * enable "Test connection", say) can react. */
   readonly onChange?: () => void;
