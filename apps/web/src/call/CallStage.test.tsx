@@ -246,17 +246,17 @@ describe('CallStage — another body, mid-call (P7-T02, ADR-59)', () => {
     const view = render(<CallStage {...props} />);
     await waitFor(() => expect(renderer.character?.id).toBe('placeholder'));
 
-    const asset: AssetDownload = { ...AVATAR, label: 'Alice, generated', downloadUrl: 'https://example.test/alice.vrm', bytes: 9 };
-    const descriptor = { ...AVATAR_DESCRIPTOR, id: 'example/alice.vrm', label: 'Alice, generated', sizeBytes: 9 };
-    view.rerender(<CallStage {...props} body={{ kind: 'download', id: 'alice-generated', name: 'Alice, generated', asset, descriptor }} />);
+    const asset: AssetDownload = { ...AVATAR, label: 'Another body', downloadUrl: 'https://example.test/another.vrm', bytes: 9 };
+    const descriptor = { ...AVATAR_DESCRIPTOR, id: 'example/another.vrm', label: 'Another body', sizeBytes: 9 };
+    view.rerender(<CallStage {...props} body={{ kind: 'download', id: 'another', name: 'Another body', asset, descriptor }} />);
     await settle();
     expect(screen.getByText('This will download a new body')).toBeTruthy();
     expect(fetchModel).toHaveBeenCalledTimes(1);
     expect(renderer.character?.id).toBe('placeholder');
 
     fireEvent.click(screen.getByRole('button', { name: 'Wear this body' }));
-    await waitFor(() => expect(renderer.character?.id).toBe('alice-generated'));
-    expect(fetchModel).toHaveBeenLastCalledWith('https://example.test/alice.vrm', descriptor);
+    await waitFor(() => expect(renderer.character?.id).toBe('another'));
+    expect(fetchModel).toHaveBeenLastCalledWith('https://example.test/another.vrm', descriptor);
   });
 
   it('keeps the body on stage when the new one is refused, and says why', async () => {

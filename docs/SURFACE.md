@@ -2499,3 +2499,21 @@ three-vrm 3.5.5 (read from `lib/three-vrm.module.js`): `VRMLoaderPlugin` sets `g
 only when the file has both a meta and a humanoid; `VRMRequiredHumanBoneName` is the 15 bones
 `body-check.ts` requires (hips, spine, head, both upper and lower legs, feet, upper and lower arms,
 hands).
+
+## Free VRM bodies for a second character — read 2026-10-16
+
+- **pixiv/three-vrm** `packages/three-vrm/examples/models/` holds one model:
+  `VRM1_Constraint_Twist_Sample.vrm` (the placeholder). No male sample there.
+- **vrm-c/vrm-specification** `samples/`: besides the placeholder, **Seed-san** (VRM 1.0,
+  10,917,800 bytes, raw URL serves `Access-Control-Allow-Origin: *`). Its `meta`: VRM Public License
+  1.0, authors "VirtualCast, Inc.", **credit required**, redistribution and modification allowed.
+  A boyish figure with a robot-arm backpack — not a match for Theo.
+- **VRoid Studio sample models** (pixiv's FAQ, read in the Browser pane — the page refuses plain
+  fetches with 403): HairSample_Male, HairSample_Female and β Ver AvatarSample_1–4 are **CC0**
+  (old beta-era models, VRM 0.x); AvatarSample_A–C and **VRoidPreset_A–Z** are not CC0 but "can
+  be used by anyone in any kind of activity, be it for-profit or not", with **no credit needed**,
+  and may be edited and redistributed. Prohibited: redistributing them marked as CC0, selling the
+  `.vroid`/VRM file itself, using their data for a character-creation service, implying pixiv's
+  endorsement, plus the usual conduct rules. Conditions "may be subject to change" (updated
+  2024-12-26). Presets are in VRoid Studio (free); VRoid Hub downloads need an account.
+

@@ -21,7 +21,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-15 | Design system: dark theme with teal accent, one `theme.css`, className coverage test | accepted | 2026-09-07 |
 | ADR-16 | Hosting: `latentpresence.com` static site + `app.latentpresence.com` app, self-hosted behind Caddy; deploy by `git pull` on the server | accepted (amended) | 2026-09-08 |
 | ADR-17 | Development database is a MariaDB 11.8 on the LAN; one batched retrieval call per turn | accepted (amended) | 2026-09-09 |
-| ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect; **amended 2026-10-14: through `image-to-vrm`, Apache/MIT/CC0 models only; her default body stays the placeholder, the generated one is in the library (ADR-59)** | accepted (amended 2026-10-14) | 2026-09-07 |
+| ADR-18 | Default character is "Alice"; concept art via comfy-mcp, mesh and rig via Rick's tools with exact instructions from the architect; **amended 2026-10-14: through `image-to-vrm`, Apache/MIT/CC0 models only; her default body stays the placeholder, the generated one is in the library (ADR-59)**; **2026-10-16: the generated body is out — image-to-vrm continues outside this repo** | accepted (amended 2026-10-16) | 2026-09-07 |
 | ADR-19 | Product name latentPresence (latentAura dropped: aura.ai exists) | accepted | 2026-09-07 |
 | ADR-20 | Voice pipeline needs a GPU; latency stated as two numbers, not one; **Kokoro fp32 only on WebGPU** | accepted (amended) | 2026-09-13 |
 | ADR-22 | LLM discovery capabilities can be unknown (`LlmModel.capabilities` nullable) | accepted | 2026-09-12 |
@@ -61,7 +61,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-56 | Scheduler core: five-field cron in the schedule's zone on croner; on time within 5 minutes, else the catch-up policy (`run_all` capped at 10); a fixed 30 s tick that claims a firing before running it through the agent loop with only the allowed tools (an empty prompt is a reminder, no model); the last run kept on the schedule (`lastRun`, with `scheduledFor` and `deliveredAt`), every result an episode; delivery routed, nothing meant for them lost; the companion's half is P6-T07b | accepted | 2026-10-13 |
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
-| ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets) | accepted | 2026-10-14 |
+| ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets); **amended 2026-10-16: the generated Alice taken out — the placeholder and the person's own files** | accepted (amended) | 2026-10-14 |
 
 ---
 
@@ -2380,4 +2380,15 @@ the person's VRM to the companion* — no reason to; the browser already caches 
   refused file → placeholder, mid-conversation, one renderer, one visit, the same session and her
   memory in her prompt) and live in the Browser pane with the generated Alice as an own file. Her
   pinned URL answers only once 8e94db0 is pushed: R-55.
+
+**Amended 2026-10-16 (Rick, after R-55).** Swapping mid-conversation and importing a `.vrm` work
+"wonderfully"; **the generated Alice is not good enough to ship** (and sometimes did not load), and
+image-to-vrm is a side project, not this app's focus. She is taken out of `BUILT_IN_BODIES`;
+`assets/bodies/` is untracked and git-ignored (the file stays on Rick's disk; 8e94db0 still holds it
+in history, so nothing that was pushed breaks). A saved `alice-generated` choice falls back to the
+pack's default. **The library is now the placeholder plus the person's own files**; that is the
+product: anyone wanting a realistic character brings their own VRM. Open, Rick's call: a male body
+for Theo in the placeholder's style — pixiv's VRoid Studio presets (VRoidPreset_A–Z) may be used
+and redistributed free of charge by anyone, commercially, without credit (read 2026-10-16,
+`docs/SURFACE.md`); one would be exported from VRoid Studio by Rick and added as a built-in body.
 

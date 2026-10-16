@@ -1,5 +1,9 @@
 # Character pipeline — images to a VRM 1.0 avatar
 
+> **Paused 2026-10-16.** The result was not good enough to ship, and image-to-vrm is a side
+> project worked on outside this repo. Nothing here is part of the app: people bring their own VRM
+> (`/chat` → Body → Add a .vrm…). Kept as the record of what was tried; R-3 is withdrawn.
+
 How a latentPresence character is made, from three images to a validated VRM. Written for
 Rick to follow without asking; any question asked gets folded back in here (P7-T01's
 done-when). Alice is the worked example throughout. Verified on the dev PC on 2026-10-14.

@@ -21,7 +21,7 @@ import type { ChatLlmOptions } from './chat-llm';
 import { connectDocuments } from './chat-documents';
 import type { NotificationPermissionState, PageNotifications } from './notifications';
 import { InMemoryBodyShelf } from '../characters/body-shelf';
-import { ALICE_GENERATED, ALICE_GENERATED_DESCRIPTOR, AVATAR_DESCRIPTOR } from '../call/character-asset';
+import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { BodyReport } from '@latentpresence/avatar/vrm';
 
 afterEach(cleanup);
@@ -1742,7 +1742,7 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
 });
 
 describe('ChatPage — her body, worn live (P7-T02, ADR-59)', () => {
-  it('swaps between the placeholder, the generated Alice and their own .vrm mid-conversation, with the room, the transcript and memory untouched', async () => {
+  it('swaps between the placeholder and their own .vrm files mid-conversation, with the room, the transcript and memory untouched', async () => {
     // jsdom has no Blob URL registry; the stage makes one per body.
     Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:test-body'), revokeObjectURL: vi.fn() });
     try {
@@ -1763,6 +1763,7 @@ describe('ChatPage — her body, worn live (P7-T02, ADR-59)', () => {
       const shelf = new InMemoryBodyShelf();
       const checkBodyFile = vi.fn(async (bytes: Uint8Array): Promise<BodyReport> => {
         if (bytes[0] === 0) throw new Error('This model is missing bones every VRM body needs: leftHand.');
+        if (bytes[0] === 2) return { name: 'Second avatar', authors: [], licence: null, missing: [], lookAt: true };
         return { name: 'My avatar', authors: ['Me'], licence: null, missing: ['blink'], lookAt: true };
       });
       const { container } = render(
@@ -1784,26 +1785,27 @@ describe('ChatPage — her body, worn live (P7-T02, ADR-59)', () => {
       await sayInRoom('my sister is called Mira');
       await waitFor(async () => expect((await store.currentFacts('alice')).some((fact) => fact.object === 'Mira')).toBe(true));
 
-      // 2. The generated Alice: a built-in body, so it asks first, the placeholder still on stage.
+      // 2. Their own file: checked, kept, worn — nothing fetched for it.
       fireEvent.click(screen.getByRole('button', { name: 'Body' }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Wear Alice, generated' }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Wear this body' }));
-      await waitFor(() => expect(stage.character?.id).toBe('alice-generated'));
-      expect(fetchModel).toHaveBeenLastCalledWith(ALICE_GENERATED.downloadUrl, ALICE_GENERATED_DESCRIPTOR);
-
-      // 3. Their own file: checked, kept, worn — nothing fetched for it.
-      const add = screen.getByLabelText('Add a VRM body from this computer');
+      const add = await screen.findByLabelText('Add a VRM body from this computer');
       fireEvent.change(add, { target: { files: [new File([new Uint8Array([1, 2])], 'mine.vrm')] } });
       await waitFor(() => expect(stage.character?.id.startsWith('own:')).toBe(true));
-      expect(fetchModel).toHaveBeenCalledTimes(2);
+      const mine = stage.character?.id;
+      expect(fetchModel).toHaveBeenCalledTimes(1);
       expect(await screen.findByText('My avatar')).toBeTruthy();
       expect(screen.getByText('Cannot show blinking.')).toBeTruthy();
+
+      // 3. A second one, then back to the first.
+      fireEvent.change(add, { target: { files: [new File([new Uint8Array([2])], 'second.vrm')] } });
+      await waitFor(() => expect(stage.character?.id).not.toBe(mine));
+      fireEvent.click(await screen.findByRole('button', { name: 'Wear My avatar' }));
+      await waitFor(() => expect(stage.character?.id).toBe(mine));
 
       // 4. A file the call cannot drive is refused with the reason, and kept nowhere.
       fireEvent.change(add, { target: { files: [new File([new Uint8Array([0])], 'statue.glb')] } });
       expect((await screen.findByRole('alert')).textContent).toBe('statue.glb: This model is missing bones every VRM body needs: leftHand.');
-      expect(await shelf.list()).toHaveLength(1);
-      expect(stage.character?.id.startsWith('own:')).toBe(true);
+      expect(await shelf.list()).toHaveLength(2);
+      expect(stage.character?.id).toBe(mine);
 
       // 5. Back to the placeholder.
       fireEvent.click(screen.getByRole('button', { name: 'Wear The placeholder (pixiv sample)' }));

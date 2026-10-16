@@ -198,31 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-3 · Character pipeline · thirty minutes, desktop, ComfyUI running
-**Why:** P7-T01's done-when is yours: approve Alice's concept sheet, and follow
-`docs/pipeline/character.md` without needing to ask. (The Tauri icons were replaced in P7-T02.)
-1. ~~Open `docs/pipeline/alice/concept-sheet.jpg`. Is she Alice?~~ **Approved 2026-10-14.**
-2. Follow `docs/pipeline/character.md` §2–4 to rebuild her yourself from the three images in
-   `docs/pipeline/alice/` (name it `alice_r3` so the approved build stays). Use §3 to look at it.
-
-**Pass:** the concept approved, and a validated VRM with no question you had to ask. **Paste
-back:** every question you had (each goes into the doc), and anything in §3's "re-run" list you saw.
-
-### R-55 · Her body, swapped while you talk · ten minutes, after pushing
-**Why:** P7-T02's done-when, by eye. The tests prove the swap keeps the conversation; only you can
-say it looks right, and the generated Alice's download answers only once **8e94db0 is pushed**
-(her file is fetched from GitHub's LFS host, pinned to that commit).
-1. Push. Open `/chat`, say something, then press **Body** in the control bar.
-2. **Wear** "Alice, generated": agree to the download (4.0 MB). She changes in place — keep
-   talking, or let her answer while it loads.
-3. **Add a .vrm…**: any VRM 1.0 you have (after R-3, `image-to-vrm\out\alice_r3.web.vrm`; or a
-   VRoid Studio export). It is worn at once. Then **Wear** the placeholder again.
-4. `/dev/avatar` → **Or load a .vrm from this computer** → the same file; cycle the expressions.
-
-**Pass:** each swap keeps the transcript and her reply going, with no blank stage and no T-pose
-frame. **Paste back:** anything odd — the camera jumping, the mouth stuck, a body framed wrong, a
-file refused that should not have been (with the message).
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -241,6 +216,10 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-57 · R-55: her body, swapped while you talk** — Rick 2026-10-16: **passed** — changing the
+  VRM mid-conversation "works great", and importing a `.vrm` works "wonderfully". The generated
+  Alice sometimes did not load; rather than chase it she is **taken out** (not good enough to ship;
+  ADR-59 amended). **R-3 withdrawn** the same day: image-to-vrm continues outside this repo.
 - **D-56 · R-43: reminders said and notified** — Rick 2026-10-14: **passed** — a tea reminder set
   by voice in a call was said the moment `/chat` reopened after the tab was closed; Thursday at 9
   showed right and moved to Finished when cancelled. The hidden-tab notification first seemed

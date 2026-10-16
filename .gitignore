@@ -24,6 +24,8 @@ models/
 # non-redistributable assets (keep local)
 assets/mixamo/
 assets/private/
+# experimental bodies from image-to-vrm (P7-T02's generated Alice, out 2026-10-16): local only
+assets/bodies/
 
 # aider
 .aider*

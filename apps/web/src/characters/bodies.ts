@@ -1,5 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
-import { ALICE_GENERATED, ALICE_GENERATED_DESCRIPTOR, AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from '../call/character-asset';
+import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from '../call/character-asset';
 import { isOwnBodyId, type BodyShelf, type OwnBody } from './body-shelf';
 
 /**
@@ -19,7 +19,8 @@ export const PLACEHOLDER_BODY_ID = 'placeholder';
 
 export const BUILT_IN_BODIES: readonly BuiltInBody[] = [
   { id: PLACEHOLDER_BODY_ID, name: 'The placeholder (pixiv sample)', asset: AVATAR, descriptor: AVATAR_DESCRIPTOR },
-  { id: 'alice-generated', name: 'Alice, generated', asset: ALICE_GENERATED, descriptor: ALICE_GENERATED_DESCRIPTOR },
+  // The generated Alice (P7-T02) was taken out on 2026-10-16: not good enough to ship. A saved
+  // `alice-generated` choice falls back to the pack's default, as any unknown id does.
 ];
 
 /** What the stage loads: a download behind consent, or a file already on this computer. */

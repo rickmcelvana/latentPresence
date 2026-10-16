@@ -133,7 +133,7 @@ describe('loadSettings', () => {
 
     const chosen = withBodyChoice(loaded, 'theo', 'own:1');
     expect(chosen.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: 'own:1' });
-    expect(withBodyChoice(chosen, 'alice', 'alice-generated').characters['alice']).toEqual({ voice: null, body: 'alice-generated' });
+    expect(withBodyChoice(chosen, 'alice', 'placeholder').characters['alice']).toEqual({ voice: null, body: 'placeholder' });
   });
 
   it('defaults the companion URL to the documented default', () => {

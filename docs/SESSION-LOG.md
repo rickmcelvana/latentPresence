@@ -848,3 +848,9 @@ Did: body per character beside the voice; Body view in the call's drawer (built-
 Left: R-55 (swap by eye; her download needs 8e94db0 pushed); R-3; laptop session (R-13, R-1, R-9); C-7.
 Next: P8-T01 or P7-T03, Rick's pick.
 Decisions: ADR-59 accepted, build notes in it — her licence kept as the VRM Public License 1.0 with the placeholder's terms (Rick may change it: a new file and commit).
+
+## 2026-10-16 claude — generated Alice out; R-55 passed (D-57); R-3 withdrawn
+Did: on Rick's call, removed the generated Alice from the built-in bodies (`character-asset.ts`, `bodies.ts`, tests now swap between own files); `assets/bodies/` untracked and git-ignored (file kept locally; history keeps 8e94db0). Looked for a male body for Theo: three-vrm has one sample, Seed-san needs credit and does not fit; VRoid Studio presets (VRoidPreset_A–Z) may be redistributed free, commercially, without credit (SURFACE). Pipeline doc marked paused.
+Left: Theo's body (Rick's call: a VRoid preset exported by Rick); laptop session (R-13, R-1, R-9); C-7.
+Next: P8-T01, with Rick's testing alongside.
+Decisions: ADR-59 and ADR-18 amended (generated body out; image-to-vrm outside this repo).

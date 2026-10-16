@@ -51,8 +51,9 @@ describe('bodyFor (P7-T02, ADR-59)', () => {
   });
 
   it('wears a built-in body as a download behind consent, and an own one from the shelf', () => {
-    const generated = bodyFor('alice-generated', PLACEHOLDER_BODY_ID, shelf, []);
-    expect(generated).toMatchObject({ kind: 'download', id: 'alice-generated' });
+    expect(bodyFor(PLACEHOLDER_BODY_ID, PLACEHOLDER_BODY_ID, shelf, [])).toMatchObject({ kind: 'download', id: PLACEHOLDER_BODY_ID });
+    // The generated Alice was a built-in body until 2026-10-16; a choice of her is the default now.
+    expect(bodyFor('alice-generated', PLACEHOLDER_BODY_ID, shelf, [])).toMatchObject({ kind: 'download', id: PLACEHOLDER_BODY_ID });
     expect(bodyFor('own:1', PLACEHOLDER_BODY_ID, shelf, [mine])).toMatchObject({ kind: 'local', id: 'own:1', name: 'Mine' });
   });
 
