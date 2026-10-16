@@ -41,11 +41,12 @@ rand = "0.9"
 # refuse browser origins, through the reqwest it already has. No server macros, no schemars.
 rmcp = { version = "3.5.1", default-features = false, features = ["client", "transport-child-process", "transport-streamable-http-client-reqwest"] }
 # P5-T03 (ADR-44): document ingestion. Extractors, measured 2026-10-09 (docs/SURFACE.md):
-# `pdf-extract` for PDF (page by page), `zip` + `quick-xml` for DOCX (zip 8.6.0, not the
-# hours-old 9.0.0), `html2text` for HTML; `sha2` for the content hash that makes a re-run a
-# no-op; `notify` to watch the folders the person listed.
+# `pdf-extract` for PDF (page by page), `zip` + `quick-xml` for DOCX, `html2text` for HTML;
+# `sha2` for the content hash that makes a re-run a no-op; `notify` to watch the folders the
+# person listed. zip 9.0.3: every release before it is yanked for security advisories
+# (2026-10-16, docs/SURFACE.md); 9.0.4 was hours old.
 pdf-extract = "0.12.1"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 quick-xml = "0.42.0"
 html2text = "0.17.1"
 sha2 = "0.11.0"

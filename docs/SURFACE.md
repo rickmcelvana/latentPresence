@@ -2248,7 +2248,8 @@ On the development server (MariaDB 11.8.8):
   default features (`missing field defined_names in DocumentIR`, `pdf_to_ir.rs:194`). Rejected.
 - **`html2text` 0.17.1** (MIT): `from_read(&bytes[..], width) -> Result<String, _>`; RESEARCH.html
   in 2 ms, 3479 words, headings kept as `#`.
-- **`zip` 8.6.0** (MIT; 9.0.0 is hours old — not taken) with `default-features = false,
+- **`zip` 8.6.0** (MIT; 9.0.0 is hours old — not taken; replaced by 9.0.3 on 2026-10-16, see
+  "The desktop app's dependencies") with `default-features = false,
   features = ["deflate"]`, and **`quick-xml` 0.42.0** (MIT). **0.42 changed the API:** names are
   `str` (`e.local_name().as_ref() == "t"`), text is `BytesText::xml10_content()`, entity references
   arrive as `Event::GeneralRef` (`xml10_content()` gives the name: `amp`, `lt`…;
@@ -2557,8 +2558,30 @@ headers was not reproduced after the switch (Rick, wiped and re-downloaded). Rec
   `Error::NoEntry` when there is none.
 - **zip: every 8.x release is yanked**, and 9.0.0–9.0.2; 9.0.3 (2026-10-13) and 9.0.4
   (2026-10-16) are not. The companion's lockfile still holds 8.6.0 and builds; a fresh resolve
-  cannot pick it, so the desktop's lockfile was seeded from the companion's. Reason for the yanks
-  not found. Moving to 9.x is its own change.
+  cannot pick it, so the desktop's lockfile was seeded from the companion's. Moving to 9.x is its
+  own change (done the same day, next entry).
+- **Why zip was yanked, read 2026-10-16:** it is not only 8.x. **Every** release on crates.io
+  before 9.0.3 is yanked, back through 2.x. The maintainer (Pr0methean) explained it in
+  zip-rs/zip2#1075 ("Old versions have been yanked?", 2026-10-16): the yanks are for the security
+  advisories **GHSA-vv5m-jxxh-4627** (SUID/SGID bits kept on extraction, ≤ 9.0.0-pre3, fixed in
+  9.0.0), **GHSA-4v9h-p7m9-rh26** (`ZipArchive::extract` creates symlinks that point outside the
+  destination, ≤ 9.0.0-pre3, fixed in 9.0.0) and **GHSA-4684-h2q9-2vcp** (`extract()` applies Unix
+  permissions through symlinks, ≤ 9.0.0, fixed in 9.0.1), all rated high, plus "other security
+  issues that will be published later this month". The 9.0.1 release also lists "fail reads that
+  exceed the declared uncompressed size" and two implode-decoder overflows. No reason is given
+  for yanking 9.0.0–9.0.2. RustSec's `crates/zip/` holds only RUSTSEC-2025-0168 (CVE-2025-29787,
+  fixed in 2.3.0): the 2026 GHSAs are not in RustSec yet.
+  **The companion was not exposed to the published three:** ingest only opens a DOCX in memory
+  and reads `word/document.xml` through `by_name` (capped at `DOCX_PART_LIMIT`). It never calls
+  `extract`, and nothing touches the disk.
+- **zip 9.0.3** (MIT, rust-version 1.88; 9.0.4 is hours old, not taken), read from the crate
+  source: `deflate` is still a feature (`deflate-zopfli` + `deflate-flate2-zlib-rs`), so
+  `default-features = false, features = ["deflate"]` carries over unchanged. Ingest's calls are
+  unchanged too: `ZipArchive::new(R)`, `by_name(&str)`, `ZipWriter::new(W)`,
+  `start_file(name, SimpleFileOptions)`, `finish()`. 9.0.0's breaking changes are internal
+  (`ZipFileData` fields, `zip::unstable::format`). The lockfile gains `nix` (Unix-only target
+  dependency). Both lockfiles (`companion/`, `apps/desktop/src-tauri/`) are pinned with
+  `cargo update -p zip --precise 9.0.3`: a plain `cargo update -p zip` takes 9.0.4.
 - **WebView2 155.0.4283.45** in the release build; `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=
   --remote-debugging-port=<port>` exposes the app's webview to Playwright's `connectOverCDP`, which
   is how the build was checked from inside the window.
