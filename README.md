@@ -22,8 +22,6 @@ run half each. `pnpm dev` starts the web app on Vite's dev server.
 With `pnpm dev` running: `/settings` picks a language model (Ollama, LM Studio, cloud keys) and tests the connection; `/chat` talks to it. NVIDIA's API does not answer web pages, so it goes through the companion — start it with `pnpm companion` (ADR-29).
 
 ```
-apps/web/            Vite + React 19 app, deployed to app.latentpresence.com
-site/                static marketing site, docs and feedback form (P0-T03)
 packages/protocol/   shared types and the companion API schema
 packages/core/       conversation engine, affect engine, memory kernel, scheduler
 packages/providers/  llm, stt, tts, embedding and omni adapters
@@ -36,7 +34,6 @@ docs/                research, decisions, plans, briefs, spikes
 Copy `.env.example` to `.env` for the companion's `DATABASE_URL`. `.env` is never committed.
 
 Deployment is a `git pull` on the server followed by `pnpm install --frozen-lockfile && pnpm build`;
-Caddy serves `site/` and `apps/web/dist` straight out of the checkout (ADR-16).
 
 ## Principles
 
