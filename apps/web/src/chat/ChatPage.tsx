@@ -76,8 +76,6 @@ import { hostTimers } from './host-timers';
 import { pageNotifications, type PageNotifications } from './notifications';
 import { PermissionPrompt } from './PermissionPrompt';
 
-/** The browser's notifications, built once: an effect depends on the object, so a default built per render would restart it. */
-
 /** The person's own zone: the browser's, which is where "Thursday at 9" is read (ADR-58). */
 function localTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
