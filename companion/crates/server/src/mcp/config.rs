@@ -26,6 +26,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use super::sql::backend::Source;
+use crate::secrets::Lookup;
 
 /// The companion's own server: its name is not one the file can use.
 pub const FILES_ID: &str = "files";
@@ -60,13 +61,19 @@ impl std::fmt::Debug for HomeSpec {
 #[serde(deny_unknown_fields)]
 struct RawHome {
     url: String,
-    token: String,
+    /// Absent when the desktop app keeps it in Credential Manager (ADR-63).
+    token: Option<String>,
 }
 
 impl RawHome {
-    fn spec(self) -> HomeSpec {
+    fn spec(self, secrets: Lookup<'_>) -> HomeSpec {
         let base = self.url.trim().trim_end_matches('/');
-        let token = self.token.trim();
+        let token = self
+            .token
+            .filter(|token| !token.trim().is_empty())
+            .or_else(|| secrets(crate::secrets::HOME_TOKEN))
+            .unwrap_or_default();
+        let token = token.trim();
         if !(base.starts_with("http://") || base.starts_with("https://")) {
             return HomeSpec::Invalid(format!(
                 "\"{base}\" is not an http(s) address, like http://homeassistant.local:8123"
@@ -74,7 +81,7 @@ impl RawHome {
         }
         if token.is_empty() {
             return HomeSpec::Invalid(
-                "it needs a long-lived access token: in Home Assistant, your profile → Security →                  Long-lived access tokens → Create token"
+                "it needs a long-lived access token: in Home Assistant, your profile → Security → Long-lived access tokens → Create token"
                     .into(),
             );
         }
@@ -117,13 +124,16 @@ struct RawSearch {
 }
 
 impl RawWeb {
-    fn spec(self) -> WebSpec {
+    fn spec(self, secrets: Lookup<'_>) -> WebSpec {
         use super::web::search::Provider;
         let read_pages = self.read_pages.unwrap_or(true);
         let search = match self.search {
             None => None,
             Some(raw) => {
-                let key = raw.key.filter(|key| !key.trim().is_empty());
+                let key = raw
+                    .key
+                    .filter(|key| !key.trim().is_empty())
+                    .or_else(|| secrets(crate::secrets::WEB_SEARCH_KEY));
                 match (
                     raw.provider.trim().to_ascii_lowercase().as_str(),
                     raw.url,
@@ -255,7 +265,11 @@ struct RawDatabase {
 }
 
 impl RawDatabase {
-    fn spec(self) -> DatabaseSpec {
+    fn spec(mut self, name: &str, secrets: Lookup<'_>) -> DatabaseSpec {
+        // Neither in the file: the desktop app keeps the address in Credential Manager (ADR-63).
+        if self.url.is_none() && self.path.is_none() {
+            self.url = secrets(&crate::secrets::database_url(name));
+        }
         const SCHEMES: [&str; 5] = [
             "postgres://",
             "postgresql://",
@@ -327,7 +341,13 @@ struct RawServer {
 }
 
 impl McpConfig {
+    /// The file's text on its own terms: a secret it leaves out stays missing.
     pub fn parse(text: &str) -> Result<Self, String> {
+        Self::parse_with(text, &crate::secrets::none)
+    }
+
+    /// The file's text, with each secret it leaves out looked up in `secrets` (ADR-63).
+    pub fn parse_with(text: &str, secrets: Lookup<'_>) -> Result<Self, String> {
         let raw: RawConfig = serde_json::from_str(text).map_err(|error| error.to_string())?;
         let servers = raw
             .mcp_servers
@@ -372,19 +392,22 @@ impl McpConfig {
                 .databases
                 .into_iter()
                 .filter(|(_, database)| !database.disabled)
-                .map(|(name, database)| (name, database.spec()))
+                .map(|(name, database)| {
+                    let spec = database.spec(&name, secrets);
+                    (name, spec)
+                })
                 .collect(),
-            web: raw.web.map(RawWeb::spec),
-            home: raw.home_assistant.map(RawHome::spec),
+            web: raw.web.map(|web| web.spec(secrets)),
+            home: raw.home_assistant.map(|home| home.spec(secrets)),
         })
     }
 
-    /// The file at `path`: none there is no servers; one that does not parse is an error.
+    /// The file at `path`: none there is no servers; one that does not parse is an error. A
+    /// secret it leaves out comes from the OS store (Credential Manager on Windows, ADR-63).
     pub fn load(path: &Path) -> Result<Self, String> {
         match read_config(path)? {
-            Some(text) => {
-                Self::parse(&text).map_err(|error| format!("{}: {error}", path.display()))
-            }
+            Some(text) => Self::parse_with(&text, &crate::secrets::os)
+                .map_err(|error| format!("{}: {error}", path.display())),
             None => Ok(Self::default()),
         }
     }
@@ -669,7 +692,20 @@ mod tests {
                 "{json}"
             );
         }
-        assert!(McpConfig::parse(r#"{ "homeAssistant": { "url": "http://ha:8123" } }"#).is_err());
+        // No token in the file (ADR-63: the app keeps it in Credential Manager): read, and with
+        // nothing in the store either, the entry says what it lacks.
+        assert!(matches!(
+            home(r#"{ "homeAssistant": { "url": "http://ha:8123" } }"#),
+            Some(HomeSpec::Invalid(why)) if why.contains("Long-lived access tokens")
+        ));
+        assert!(matches!(
+            McpConfig::parse_with(r#"{ "homeAssistant": { "url": "http://ha:8123" } }"#, &|account| {
+                (account == crate::secrets::HOME_TOKEN).then(|| "from-the-store".to_owned())
+            })
+            .unwrap()
+            .home,
+            Some(HomeSpec::Ready { token, .. }) if token == "from-the-store"
+        ));
         let printed = format!(
             "{:?}",
             McpConfig::parse(

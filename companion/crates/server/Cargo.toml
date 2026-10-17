@@ -36,6 +36,11 @@ chrono-tz.workspace = true
 # P8-T01 (ADR-60): the desktop app's pairing token, from the OS's random source.
 rand.workspace = true
 
+# P8-T06 (ADR-63): the secrets the desktop app keeps in Credential Manager instead of mcp.json.
+# The same crate and version as the desktop shell; Windows only, as the app is.
+[target.'cfg(windows)'.dependencies]
+keyring = "4.2.0"
+
 [dev-dependencies]
 http-body-util.workspace = true
 serde_json.workspace = true

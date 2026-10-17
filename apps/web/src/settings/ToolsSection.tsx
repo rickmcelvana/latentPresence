@@ -2,6 +2,9 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { effectivePolicy, isReadingTool, toolFingerprint, type HomeDevice, type ToolPolicy } from '@latentpresence/core';
 import type { McpToolInfo, McpTransport } from '@latentpresence/protocol';
+import { probeEndpoint } from '@latentpresence/providers/web';
+import { desktopShell } from '../desktop/desktop';
+import { describeToolServerFailure } from './tool-server-failure';
 import { connectCompanionTools, connectToolServer, type ConnectMcp, type ToolServerStatus } from '../chat/chat-tools';
 import { HomeDevices } from './HomeDevices';
 import { KeyField } from './KeyField';
@@ -28,6 +31,8 @@ export interface ToolsSectionProps {
   readonly companionUrl: string;
   /** Test seam: what List asks. Omitted, the companion's real `/mcp/tools`. */
   readonly listCompanion?: Parameters<typeof connectCompanionTools>[0]['listCompanion'] | undefined;
+  /** Test seam: the second look a failed Test takes at the address. Omitted, `probeEndpoint`. */
+  readonly probe?: typeof probeEndpoint | undefined;
 }
 
 /** What List found out about the companion's servers, kept only while Settings is open. */
@@ -148,7 +153,7 @@ function CompanionServerTools({
   );
 }
 
-export function ToolsSection({ tools, onChange, vault, connect, fetch, companionUrl, listCompanion }: ToolsSectionProps): ReactElement {
+export function ToolsSection({ tools, onChange, vault, connect, fetch, companionUrl, listCompanion, probe = probeEndpoint }: ToolsSectionProps): ReactElement {
   const [results, setResults] = useState<Record<string, TestResult>>({});
   const [listing, setListing] = useState<CompanionListing | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -214,12 +219,25 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch, companion
     });
     // Test only listed the tools; nothing keeps the connection open for the panel.
     if (connected !== null) void connected.client.close().catch(() => undefined);
+    // A failure the client cannot explain gets a second, plain look at the address: up and
+    // refusing this page reads very differently from not there (P8-T06).
+    const text = status.ok
+      ? `Connected — ${status.detail}`
+      : connected === null && server.auth === 'bearer' && status.detail === 'It needs a token, and none is saved.'
+        ? status.detail
+        : describeToolServerFailure({
+            url: server.url,
+            detail: status.detail,
+            probe: await probe(server.url, fetch === undefined ? {} : { fetch }),
+            origin: window.location.origin,
+            inApp: desktopShell() !== null,
+          });
     setResults((current) => ({
       ...current,
       [server.id]: {
         pending: false,
         ok: status.ok,
-        text: status.ok ? `Connected — ${status.detail}` : status.detail,
+        text,
         tools: connected?.tools ?? [],
       },
     }));

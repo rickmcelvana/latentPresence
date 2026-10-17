@@ -27,6 +27,9 @@ tauri-plugin-notification = "2.7.0"
 # A second launch focuses the first window instead of starting a second companion.
 tauri-plugin-single-instance = "2.5.4"
 tauri-plugin-window-state = "2.5.0"
+# P8-T06 (ADR-63): the system folder and file dialogs, so a person picks every folder the
+# companion may read; the page never names one. Used from Rust only, no JS permission.
+tauri-plugin-dialog = "2.8.1"
 # API keys in Windows Credential Manager (ADR-60). Default feature `v1`: Windows' native store.
 keyring = "4.2.0"
 log = "0.4"

@@ -12,6 +12,10 @@
 //! - **The database address** (ADR-62), if the person gave one, is kept in Credential Manager too
 //!   and handed to the companion at each start; changing it restarts the companion on the same
 //!   socket and token (`database_set` / `database_clear`), so the page carries on.
+//! - **The companion's own settings** (ADR-63) — Home Assistant, the folders it may read, web
+//!   search, databases, documents — are read and changed here (`companion_config*`), through the
+//!   companion's `config_edit`: secrets to Credential Manager, a folder only from the system's
+//!   folder dialog, never a program. Each change restarts the companion, as the address does.
 //! - **One window**: a second launch focuses the first (`single-instance`), and its size and place
 //!   are remembered (`window-state`).
 //!
@@ -20,9 +24,11 @@
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
 use std::time::Duration;
 
+use latentpresence_companion::config_edit::{self, Change, ConfigFiles, ConfigView, OsStore};
 use latentpresence_companion::{DEFAULT_PORT, pairing, relay, serve};
 use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{Manager, RunEvent};
+use tauri_plugin_dialog::DialogExt;
 use tokio::sync::oneshot;
 
 /// The Credential Manager "service" every key is filed under; the account is the page's ref
@@ -260,6 +266,121 @@ fn secret_delete(name: String) -> Result<(), String> {
     }
 }
 
+fn config_files() -> Result<ConfigFiles, String> {
+    ConfigFiles::locate()
+        .ok_or_else(|| "Windows gave no folder for the app's settings (APPDATA).".to_owned())
+}
+
+/// The companion's settings as the page may see them: no secret, only where each one is.
+#[tauri::command]
+fn companion_config() -> Result<ConfigView, String> {
+    Ok(config_edit::view(&config_files()?, &OsStore))
+}
+
+/// One change from Settings or the wizard; the companion restarts on the result.
+#[tauri::command]
+async fn companion_config_change(
+    change: Change,
+    companion: tauri::State<'_, Companion>,
+) -> Result<ConfigView, String> {
+    let files = config_files()?;
+    config_edit::apply(&files, change, &OsStore)?;
+    companion.restart().await?;
+    Ok(config_edit::view(&files, &OsStore))
+}
+
+/// Where a picked folder goes.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum FolderFor {
+    /// The Files server's roots (`mcp.json`).
+    Files,
+    /// The documents to index (`documents.json`).
+    Documents,
+}
+
+/// The system's folder dialog; the folder the person picks is added. `None` when they cancel.
+/// This, not the page, names the folder (ADR-43/44's guarantee, ADR-63).
+#[tauri::command]
+async fn companion_config_pick_folder(
+    target: FolderFor,
+    app: tauri::AppHandle,
+    companion: tauri::State<'_, Companion>,
+) -> Result<Option<ConfigView>, String> {
+    let title = match target {
+        FolderFor::Files => "Choose a folder she may read",
+        FolderFor::Documents => "Choose a folder of documents",
+    };
+    let dialog = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        dialog
+            .dialog()
+            .file()
+            .set_title(title)
+            .blocking_pick_folder()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    let path = picked.into_path().map_err(|error| error.to_string())?;
+    let files = config_files()?;
+    match target {
+        FolderFor::Files => config_edit::add_root(&files, &path)?,
+        FolderFor::Documents => config_edit::add_documents_folder(&files, &path)?,
+    }
+    companion.restart().await?;
+    Ok(Some(config_edit::view(&files, &OsStore)))
+}
+
+/// A SQLite file as a database, from the system's file dialog. `None` when they cancel.
+#[tauri::command]
+async fn companion_config_pick_sqlite(
+    name: String,
+    app: tauri::AppHandle,
+    companion: tauri::State<'_, Companion>,
+) -> Result<Option<ConfigView>, String> {
+    let dialog = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        dialog
+            .dialog()
+            .file()
+            .set_title("Choose a SQLite database file")
+            .add_filter("SQLite database", &["sqlite", "sqlite3", "db"])
+            .blocking_pick_file()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    let path = picked.into_path().map_err(|error| error.to_string())?;
+    let files = config_files()?;
+    config_edit::add_sqlite_database(&files, &name, &path)?;
+    companion.restart().await?;
+    Ok(Some(config_edit::view(&files, &OsStore)))
+}
+
+/// Opens `mcp.json` in whatever Windows opens `.json` with, for the programs it lists, which are
+/// changed only by hand. An empty file is made first if there is none.
+#[tauri::command]
+fn companion_config_open() -> Result<(), String> {
+    let files = config_files()?;
+    if !files.mcp.exists() {
+        if let Some(dir) = files.mcp.parent() {
+            std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
+        }
+        std::fs::write(&files.mcp, "{\n  \"mcpServers\": {}\n}\n")
+            .map_err(|error| error.to_string())?;
+    }
+    std::process::Command::new("explorer.exe")
+        .arg(&files.mcp)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
 /// Loopback, on the companion's usual port if nobody holds it, else any free one.
 fn bind_companion() -> std::io::Result<TcpListener> {
     let preferred = SocketAddr::from((Ipv4Addr::LOCALHOST, DEFAULT_PORT));
@@ -323,6 +444,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(log::LevelFilter::Info)
@@ -336,7 +458,12 @@ pub fn run() {
             secret_delete,
             database_info,
             database_set,
-            database_clear
+            database_clear,
+            companion_config,
+            companion_config_change,
+            companion_config_pick_folder,
+            companion_config_pick_sqlite,
+            companion_config_open
         ])
         .setup(|app| {
             match tauri::webview_version() {

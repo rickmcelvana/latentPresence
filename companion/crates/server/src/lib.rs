@@ -14,12 +14,14 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use axum::{Router, middleware, routing::get};
 
 pub mod bench;
+pub mod config_edit;
 pub mod ingest;
 pub mod mcp;
 pub mod memory_api;
 pub mod pairing;
 pub mod relay;
 pub mod schedules;
+pub mod secrets;
 pub mod serve;
 
 pub const DEFAULT_PORT: u16 = 8787;

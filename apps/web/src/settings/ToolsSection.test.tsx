@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it } from 'vitest';
 import { toolFingerprint } from '@latentpresence/core';
 import { FakeMcpServer, textResult } from '@latentpresence/providers/web';
-import type { McpServerConfig } from '@latentpresence/providers/web';
+import type { EndpointProbe, McpServerConfig } from '@latentpresence/providers/web';
 import type { ConnectMcp } from '../chat/chat-tools';
 import type { CompanionToolServer } from '@latentpresence/providers/web';
 import { InMemoryMasterKeyPort, Vault } from './vault';
@@ -54,7 +54,10 @@ interface Harness {
 }
 
 /** The section over real state, as the panel holds it: `latest()` is what would be saved. */
-function mount(initial: ToolsSettings, connect?: ConnectMcp, listCompanion?: () => Promise<CompanionToolServer[]>): Harness {
+/** A failed Test takes a second look at the address; never the network here. */
+const nothingThere = async (): Promise<EndpointProbe> => ({ kind: 'unreachable' });
+
+function mount(initial: ToolsSettings, connect?: ConnectMcp, listCompanion?: () => Promise<CompanionToolServer[]>, probe: () => Promise<EndpointProbe> = nothingThere): Harness {
   const vault = new Vault(new InMemoryMasterKeyPort(), memoryStorage());
   let latest = initial;
   function Host(): ReactElement {
@@ -64,6 +67,7 @@ function mount(initial: ToolsSettings, connect?: ConnectMcp, listCompanion?: () 
         companionUrl="http://localhost:8731"
         connect={connect}
         listCompanion={listCompanion}
+        probe={probe}
         onChange={(update) =>
           setTools((previous) => {
             latest = update(previous);
@@ -226,13 +230,27 @@ describe('ToolsSection — Test', () => {
     expect(seen[0]?.headers).toEqual({ Authorization: 'Bearer tok' });
   });
 
-  it('a failing connection shows its message and lists no tools', async () => {
+  it('a failing connection says what it found, and lists no tools', async () => {
     mount(openServer, async () => {
       throw new TypeError('Failed to fetch');
     });
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
-    expect(await screen.findByText('Failed to fetch')).toBeTruthy();
+    expect(await screen.findByText(/^Nothing answered at /)).toBeTruthy();
     expect(screen.queryByRole('combobox', { name: /Policy for/ })).toBeNull();
+  });
+
+  // P8-T06: Rick's Home Assistant read as "not up"; it was up and refused the page.
+  it('a server that is up and refuses the page is not called down', async () => {
+    mount(
+      openServer,
+      async () => {
+        throw new TypeError('Failed to fetch');
+      },
+      undefined,
+      async () => ({ kind: 'cors-blocked' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    expect(await screen.findByText(/is running, but it does not let this page connect/)).toBeTruthy();
   });
 
   it('a server that needs a token and has none says so', async () => {
