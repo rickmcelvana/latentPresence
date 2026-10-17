@@ -63,6 +63,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
 | ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets); **amended 2026-10-16: the generated Alice taken out — the placeholder and the person's own files** | accepted (amended) | 2026-10-14 |
 | ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now; **amended 2026-10-17: reminders through the notification plugin itself, a toast only from the installed app** | accepted (amended 2026-10-17) | 2026-10-16 |
+| ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | proposed | 2026-10-17 |
 
 ---
 
@@ -2485,3 +2486,37 @@ whether they are elsewhere — in a browser, the page hidden, as before; in the 
 focused **or** minimised (a minimised window can still be the focused one). Seen working the same
 day from outside `target\`: toasts behind other windows and minimised; with the window in front
 she said it.
+
+## ADR-61 First run, and who answers for the microphone (proposed 2026-10-17, P8-T02)
+
+**Context.** R-56 passed (D-58), so friends and family can start, and most will meet the Windows
+app first. Nothing on `/` tells a new person what to do; every setting is in one long page. Two
+facts measured while briefing the wizard: (1) left to WebView2, the app's first `getUserMedia`
+shows a prompt reading "http://tauri.localhost wants to Use your microphones" — a name nobody
+recognises — and a Block is kept in the app's profile with no settings page to undo it; (2) the
+companion finds MariaDB only through `DATABASE_URL` in the environment or a `.env` found walking
+up from the working directory, so the installed app has no database unless the person sets a
+user environment variable.
+
+**Decision (recommended option, taken; Rick to accept).**
+1. **A `/welcome` wizard**, shown from `/` until a new `welcomed` setting is true (a settings
+   document that already has a model loads as welcomed). Steps: welcome, language model,
+   character (and its body's consent), memory, voice and hearing (consent, then a microphone and
+   an optional camera check), done. Each step saves as it goes; "Skip" everywhere but the end.
+2. **It records consent and downloads nothing.** `ConsentScreen` with the same descriptors `/chat`
+   would ask for; agreeing is `ModelConsent.grant`, and the weights come the first time they are
+   used. A wizard that downloaded 300 MB before the first hello would be the slowest possible
+   start.
+3. **Memory:** on this computer (the default), MariaDB through the companion, or off. The plan's
+   "SQLite" is the placeholder store; IndexedDB is what "on this computer" means. MariaDB in the
+   app is set by a Windows user environment variable and a restart, with the steps on screen and a
+   Check against `/health`. **An in-app field for the database URL** (kept in Credential Manager,
+   handed to the companion at start) is the better answer and goes to the backlog: it needs the
+   shell to restart its companion.
+4. **The desktop shell grants the microphone and the camera** (`permission_for`, via Tauri's
+   `on_permission_request`; the main window is now built in `setup` with `"create": false` so the
+   handler can be attached). The page is the app's own and asks only after a click; a native app
+   is not asked twice. Windows' privacy switches still apply, and the wizard says where they are.
+   Every other permission is left to WebView2. Measured in the release build in a throwaway
+   profile: `getUserMedia({ audio: true })` resolved with no prompt.
+

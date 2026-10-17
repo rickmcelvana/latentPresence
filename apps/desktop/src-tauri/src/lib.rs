@@ -19,6 +19,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use latentpresence_companion::{DEFAULT_PORT, pairing, relay, serve};
+use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{Manager, RunEvent};
 use tokio::sync::oneshot;
 
@@ -137,6 +138,18 @@ fn start_companion() -> std::io::Result<Companion> {
     })
 }
 
+/// The app's answer to the webview's permission requests (P8-T02, ADR-61). Left to WebView2, the
+/// microphone and the camera are asked for in a prompt naming `http://tauri.localhost`, and a
+/// Block there is remembered with no settings page to undo it. The page is this app's own and
+/// asks only after a click (Start voice, Read my face, the first-run check), so the app answers
+/// as a native app would; Windows' own privacy switches still apply. Nothing else is granted.
+fn permission_for(kind: PermissionKind) -> PermissionResponse {
+    match kind {
+        PermissionKind::Microphone | PermissionKind::Camera => PermissionResponse::Allow,
+        _ => PermissionResponse::Default,
+    }
+}
+
 /// Stops the companion and waits a moment for the MCP servers it started to go with it.
 fn stop_companion(app: &tauri::AppHandle) {
     let Some(companion) = app.try_state::<Companion>() else {
@@ -183,6 +196,19 @@ pub fn run() {
                 Err(error) => log::warn!("webview runtime: unavailable ({error})"),
             }
             app.manage(start_companion()?);
+            // The window is built here, after the companion is managed, rather than from the
+            // config ("create": false), so it can answer the webview's permission requests.
+            let config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .cloned()
+                .ok_or("tauri.conf.json has no main window")?;
+            tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+                .on_permission_request(|_, kind| permission_for(kind))
+                .build()?;
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -196,4 +222,28 @@ pub fn run() {
             log::info!("exit: companion stopped");
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_app_grants_the_microphone_and_camera_and_leaves_everything_else_to_the_webview() {
+        assert!(matches!(
+            permission_for(PermissionKind::Microphone),
+            PermissionResponse::Allow
+        ));
+        assert!(matches!(
+            permission_for(PermissionKind::Camera),
+            PermissionResponse::Allow
+        ));
+        for other in [
+            PermissionKind::Geolocation,
+            PermissionKind::Notifications,
+            PermissionKind::ClipboardRead,
+        ] {
+            assert!(matches!(permission_for(other), PermissionResponse::Default));
+        }
+    }
 }

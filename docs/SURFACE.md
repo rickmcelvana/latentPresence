@@ -2627,3 +2627,21 @@ From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release bui
   'com.latentpresence.desktop')`, and the first one creates
   `HKCU\...\Notifications\Settings\com.latentpresence.desktop` — neither existed after R-56's
   first run, so that build never sent one.
+
+## WebView2 media permissions in the Tauri window — measured 2026-10-17 (P8-T02)
+
+- In a fresh WebView2 profile, `navigator.permissions.query` reads `prompt` for `microphone`,
+  `camera` and `notifications`; `isSecureContext` is true at `http://tauri.localhost`.
+- With no handler, `getUserMedia({ audio: true })` shows WebView2's own prompt, top left of the
+  window: "http://tauri.localhost wants to / Use your microphones / Block / Allow" (screenshot,
+  release build).
+- Tauri 2.12.4 leaves the default unless a webview has `on_permission_request`
+  (`tauri-runtime-wry` 2.12.2 → wry 0.57.0 `add_PermissionRequested`; `PermissionResponse::Default`
+  lets WebView2 prompt). A window built from `tauri.conf.json` cannot take one: it has to be built
+  in `setup` (`WebviewWindowBuilder::from_config`, window `"create": false`).
+- With `Microphone | Camera => Allow`, `getUserMedia({ audio: true })` resolved with no prompt and
+  `permissions.query` read `granted` for the microphone, `prompt` for the camera until asked.
+- The companion finds MariaDB through `DATABASE_URL` in its environment, else a `.env` walking up
+  from the working directory (`bench::database_url`); the installed app is started from the Start
+  menu, so only the environment variable reaches it.
+
