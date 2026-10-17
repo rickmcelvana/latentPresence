@@ -878,3 +878,9 @@ Did: Rick's install on the dev PC passed on time, single instance and clean exit
 Left: R-56 re-run with the new installer here, then a fresh machine; Qwen not re-tested (no key here); the laptop session (R-13, R-1, R-9); C-7; README (Rick).
 Next: P8-T02 or P8-T03, Rick's pick, after R-56.
 Decisions: ADR-29 amended (Ollama Cloud relayed); ADR-60 amended (2) (a reminder is a toast when the window is away).
+
+## 2026-10-17 claude — R-56 passed; P8-T01 done
+Did: Rick reinstalled fresh on two PCs: every key worked, the toast came minimised, nothing left running — R-56 → D-58, P8-T01 done. Removed Spike E's `/spike/shell` (its last question answered; it called a removed shell command), with its capability probe and tests (1979 TS now).
+Left: the laptop session (R-13, R-1, R-9); C-7; README (Rick); friends-and-family testing can start.
+Next: P8-T02 or P8-T03, Rick's pick.
+Decisions: none.

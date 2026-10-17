@@ -198,41 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-56 · The desktop app on a fresh Windows machine · ~15 minutes, a VM or another PC
-**Why:** P8-T01's done-when — "a fresh Windows VM installs and talks in under 10 minutes". Time it
-from the installer's first click.
-1. On the dev PC: `pnpm desktop:build`. The installer is
-   `apps/desktop/src-tauri/target/release/bundle/nsis/latentPresence_0.1.0_x64-setup.exe`. Copy it
-   to the fresh machine.
-2. Run it. It is **unsigned**: Windows says "Windows protected your PC" → **More info** → **Run
-   anyway**. It installs for you only (no admin prompt). Start it from the Start menu.
-3. Settings → Language model: either a cloud provider and its key, or install Ollama on that
-   machine and pull a model — **no `OLLAMA_ORIGINS` needed** in the app. Then `/chat` (the Chat
-   link), agree to the character, say hello.
-4. While it is open: launch it again from the Start menu — the first window should come to the
-   front, no second one. Close it with X and check Task Manager: no `latentpresence-desktop.exe`
-   left. Set a reminder a minute out ("remind me in one minute to stretch"), minimise the window,
-   and see whether a Windows toast appears. (Only the **installed** app can draw one: run from
-   `target\release` the toast is dropped by Windows, so there she says it when you come back —
-   ADR-60 amended 2026-10-17.)
-
-**Pass:** talking within 10 minutes, with nothing looked up. **Paste back:** the time, every
-place you hesitated, the SmartScreen wording, whether the toast came, and anything left running
-after closing.
-
-**First run, 2026-10-17 (Rick, on the dev PC):** installed smoothly and talking in a few minutes
-(local Ollama, LM Studio, a local OpenAI-compatible server; Hugging Face, Google, OpenRouter and
-NVIDIA with keys); the second launch came to the front; nothing left running after closing,
-several times. **Failed:** (a) a key pasted but not saved was never used, on every provider;
-(b) DeepSeek and Qwen said "v1/models 401" — the listing sent no key; (c) Ollama Cloud was refused
-for CORS — ollama.com answers no page; (d) no toast, she said the reminder. (a)–(c) fixed in
-6d9f749; (d) was the 2026-10-16 installer (built before 73a3be2) **and** WebView2 reporting the
-page visible while minimised or behind other apps — fixed in 36ec482 (the window is asked), and
-seen working from outside `target\` the same day: reminders toasted behind other windows and
-minimised, and she said the one that came due with the window in front.
-**Still to do:** reinstall from the new installer on this PC and re-check (d) and the keys; then
-the fresh machine, which is what R-56 is for.
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -251,6 +216,13 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-58 · R-56: the desktop app from its installer** — Rick 2026-10-17: **passed**, on this PC
+  and another, each uninstalled first and installed fresh from the new installer. Talking within a
+  few minutes; every API key worked (DeepSeek, Qwen, Ollama Cloud included); the Windows toast came
+  with the app minimised; the second launch came to the front; nothing left running after closing.
+  The first run (same day) found four bugs, fixed in 6d9f749 and 36ec482: a key typed but not saved
+  was not used; the model listing sent no key (DeepSeek/Qwen 401); Ollama Cloud needs the relay;
+  and no toast — an installer older than 73a3be2, and WebView2 never reporting the page hidden.
 - **D-57 · R-55: her body, swapped while you talk** — Rick 2026-10-16: **passed** — changing the
   VRM mid-conversation "works great", and importing a `.vrm` works "wonderfully". The generated
   Alice sometimes did not load; rather than chase it she is **taken out** (not good enough to ship;

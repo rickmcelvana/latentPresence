@@ -7,15 +7,15 @@
 - **Project:** latentPresence (formerly latentAura, renamed 2026-09-07). Open-source (Apache-2.0) conversational AI with a full-body avatar in a video-call framing. Browser-first; an optional Rust companion; MariaDB Vector memory; ships no models.
 - **Where it runs:** the browser (`app.latentpresence.com`, **live** behind Caddy since 2026-10-16 — recipe in `docs/deploy.md`), the **Windows desktop app** (P8-T01: Tauri with the companion inside, per-user NSIS installer, unsigned), and a developer's checkout (`pnpm dev`, `pnpm companion`). **Linux ships as companion + Chrome** (no WebGPU in WebKitGTK, Spike E; ADR-07 amended).
 - **The product site `latentpresence.com` left this repository on 2026-10-17** (Rick: `site/` deleted, kept locally in the git-ignored `latentpresence.com/`). ADR-16 said Caddy serves `<checkout>/site` — a `git pull` on the server removes it unless the server was moved too.
-- **Phase:** **8 — Desktop and distribution, started 2026-10-16**: T01 built (ADR-60 accepted 2026-10-17), R-56 open. **7** — T01 paused (image-to-vrm is a side project outside this repo), T02 done (avatar library and live swap, D-57). **6, 5, 4, 3: complete.** **2 and 1: every task done**, each with one check left — R-13's integrated-GPU half (P2) and **R-9, the five-minute conversation (P1's exit criterion)** — both in the laptop session.
-- **Current task:** none in flight. **R-56's first run (2026-10-17, dev PC)** passed on time, single instance and clean exit; its four findings are fixed — keys typed but not saved, the key-less model listing (DeepSeek/Qwen 401), Ollama Cloud (relayed now), and no toast (an old installer, and WebView2 never reporting the page hidden; reminders now ask the window) — 6d9f749, 36ec482, toasts seen working here.
-- **Next task:** Rick: **R-56 again** — reinstall from the new installer here (toast, keys), then the fresh machine. Architect: P8-T02 (first-run wizard, `owner: sub`) or P8-T03 (the hosted app reaching local services) — Rick's pick. **Friends-and-family testing starts once R-56 passes.**
+- **Phase:** **8 — Desktop and distribution, started 2026-10-16**: **T01 done** (ADR-60 accepted, R-56 passed 2026-10-17: D-58). **7** — T01 paused (image-to-vrm is a side project outside this repo), T02 done (avatar library and live swap, D-57). **6, 5, 4, 3: complete.** **2 and 1: every task done**, each with one check left — R-13's integrated-GPU half (P2) and **R-9, the five-minute conversation (P1's exit criterion)** — both in the laptop session.
+- **Current task:** none in flight. **P8-T01 is done:** R-56 passed on two PCs from a fresh install (D-58) after its first run's four bugs were fixed (6d9f749, 36ec482).
+- **Next task:** Architect: P8-T02 (first-run wizard, `owner: sub`) or P8-T03 (the hosted app reaching local services) — Rick's pick. **Friends-and-family testing can start** (R-56 passed): the installer is `apps/desktop/src-tauri/target/release/bundle/nsis/latentPresence_0.1.0_x64-setup.exe`, unsigned (SmartScreen's "More info → Run anyway").
 - **Blockers:** none.
 - **Characters (ADR-55, ADR-59):** Alice (default) and Theo, `personas/*.persona.json`; the persona id is the memory namespace. Both wear the pixiv placeholder by default; a person can wear their own `.vrm` per character, swapped live (`/chat` → Body). Open, Rick's call: a VRoid preset as Theo's default (terms allow it, SURFACE).
 - **The desktop app (ADR-60):** the companion runs in the Tauri process on 8787 or a free port, paired by a per-launch token the page adds to every companion request; local Ollama and LM Studio go through its relay (Ollama 403s `http://tauri.localhost`); API keys in Windows Credential Manager; single instance, remembered window. `pnpm desktop:build` → `apps/desktop/src-tauri/target/release/bundle/nsis/`. Icons from `apps/desktop/icon.svg` (`apps/desktop/README.md`).
 - **The hosted app (`docs/deploy.md`):** Caddy with `try_files` and COOP `same-origin` + COEP **`credentialless`** (`require-corp` hid the OLLAMA_ORIGINS help — measured); the server needs Git LFS or the body's clips are pointer files. Visitors running Ollama set `OLLAMA_ORIGINS=https://app.latentpresence.com`.
 - **CI:** gate on ubuntu and windows (Windows also checks the desktop shell), `vector` (MariaDB), e2e. **After every push, read the run** (`gh run list --limit 1`): a green local gate is not a green CI.
-- **Test counts (2026-10-17):** **1996** TypeScript passing (20 skipped: need a running companion or a model), **157** Rust; `pnpm gate` green.
+- **Test counts (2026-10-17):** **1979** TypeScript passing (20 skipped: need a running companion or a model), **157** Rust; `pnpm gate` green.
 - **Dev database:** MariaDB 11.8.8 at `192.168.40.101` (LAN), `DATABASE_URL` in `.env`. Over a tunnel a statement costs ~40 ms, so retrieval stays one statement (ADR-17). **Shipping requirement:** `mhnsw_max_cache_size` defaults to 16 MB, a 5× slowdown at 100k vectors, and is `GLOBAL`-only — whoever runs MariaDB must raise it (Spike C).
 - **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22, pnpm 12.3.4; three 0.185.1, three-vrm 3.5.5; kokoro-js 1.2.1; axum 0.8, sqlx 0.9, zip 9.0.3; tauri 2.12.4; rustc 1.97 (Windows), 1.98 (Linux). Verified facts in `docs/SURFACE.md`.
 - **Lanes:** `main` (the architect), `sub` (a subagent run in-session, for work the brief and the repo alone get right) or `human`. The Aider lane is retired (2026-09-13). `docs/WORKFLOW.md`.
@@ -24,13 +24,12 @@
 
 ## Tasks needing a human or a live endpoint
 
-In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** R-56 (the desktop app on a fresh machine) and the **laptop session** (R-13: stage frame rate on an integrated GPU, R-1: the bare-avatar reading on the same GPU, R-9: the five-minute conversation, Phase 1's exit criterion). Done: R-2, R-4 to R-8, R-10 to R-12, R-14 to R-43, R-55 (D-17–D-57); R-3 withdrawn. **One for the architect, needs Ollama running:** C-7, proving an aborted answer stops the model server-side.
+In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** the **laptop session** (R-13: stage frame rate on an integrated GPU, R-1: the bare-avatar reading on the same GPU, R-9: the five-minute conversation, Phase 1's exit criterion). Done: R-2, R-4 to R-8, R-10 to R-12, R-14 to R-43, R-55, R-56 (D-17–D-58); R-3 withdrawn. **One for the architect, needs Ollama running:** C-7, proving an aborted answer stops the model server-side.
 
 ## Backlog (architect)
 
 - **Tool-only schedules from her tools** (ADR-58 left it out): `Schedule.toolCall` jobs run on the companion with the app closed (ADR-57), but `schedule_create` cannot make one yet — it needs her MCP tool names mapped to the companion's server ids. Wanted for "turn the grow light on at 7 every morning".
 - **Time-bound facts do not expire** ("visiting next weekend" stays current; `docs/memory.md`).
-- **Spike E's `/spike/shell`** (dev-only) still hands its report to the shell's `record` command, which P8-T01 removed; the call fails quietly. Delete the page once R-56 has answered its last question (does the installed app draw a toast).
 
 ## Phase checklist
 
@@ -42,7 +41,7 @@ In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** R-56 
 - [x] **P5 Knowledge and tools** — complete 2026-10-12 (R-31, R-32, R-34).
 - [x] **P6 Presence, life and schedules** — complete 2026-10-14 (R-43).
 - [~] **P7 Character pipeline and realism** — T01 paused (image-to-vrm outside this repo); T02 done (D-57); T03–T05 not started.
-- [~] **P8 Desktop and distribution (Windows first)** — started 2026-10-16; T01 built (ADR-60 accepted; R-56 open).
+- [~] **P8 Desktop and distribution (Windows first)** — started 2026-10-16; T01 done 2026-10-17 (ADR-60, D-58).
 - [ ] **P9 Polish and 1.0**
 
 ## Last three sessions
@@ -55,7 +54,7 @@ In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** R-56 
 
 ## Dev-only routes
 
-`/dev/avatar` (the renderer's debug panel; loads a local `.vrm`), `/dev/voice` (the voice pipeline with a scripted model — the only instrument for a speaker with no microphone, a timed barge-in and click analysis), `/dev/e2e` (Playwright's), `/spike/avatar` (R-1's frame-rate instrument), `/spike/shell` (Spike E's probe; see Backlog). All are dropped from production builds by the guard in `vite.config.ts`. Their history is in `docs/HISTORY.md`.
+`/dev/avatar` (the renderer's debug panel; loads a local `.vrm`), `/dev/voice` (the voice pipeline with a scripted model — the only instrument for a speaker with no microphone, a timed barge-in and click analysis), `/dev/e2e` (Playwright's), `/spike/avatar` (R-1's frame-rate instrument). Spike E's `/spike/shell` was removed 2026-10-17. All are dropped from production builds by the guard in `vite.config.ts`. Their history is in `docs/HISTORY.md`.
 
 ## Quick links
 
