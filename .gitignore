@@ -13,7 +13,7 @@ target/
 *.pem
 
 # website
-site/
+latentpresence.com/
 
 # model weights are never committed
 *.onnx
