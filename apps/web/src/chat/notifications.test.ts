@@ -131,4 +131,39 @@ describe('desktopNotifications (P8-T01)', () => {
     const invoke = vi.fn(async () => Promise.reject(new Error('not allowed by ACL'))) as unknown as Invoke;
     expect(await desktopNotifications(invoke, true).show('Alice', 'Stretch.', 's1')).toBe(false);
   });
+
+  // R-56 (2026-10-17): in the app the page reads visible while the window is minimised or behind
+  // another app, so "hidden" never came and every reminder was hers to say.
+  it('asks the window, not the page, whether they are away: not focused, or minimised', async () => {
+    let focused = true;
+    let minimised = false;
+    const invoke = vi.fn(async (command: string) => (command === 'plugin:window|is_focused' ? focused : command === 'plugin:window|is_minimized' ? minimised : null)) as unknown as Invoke;
+    const notifications = desktopNotifications(invoke, true);
+    expect(await notifications.away()).toBe(false);
+    focused = false;
+    expect(await notifications.away()).toBe(true);
+    // Minimised with nothing else to take the focus, Windows still calls it focused.
+    focused = true;
+    minimised = true;
+    expect(await notifications.away()).toBe(true);
+    expect(invoke).toHaveBeenCalledWith('plugin:window|is_focused', { label: 'main' });
+    expect(invoke).toHaveBeenCalledWith('plugin:window|is_minimized', { label: 'main' });
+  });
+
+  it('falls back to the page when the window cannot be asked', async () => {
+    const invoke = vi.fn(async () => Promise.reject(new Error('not allowed by ACL'))) as unknown as Invoke;
+    expect(await desktopNotifications(invoke, true).away()).toBe(false);
+  });
+});
+
+describe('browserNotifications().away', () => {
+  it('is the page being hidden', async () => {
+    expect(await browserNotifications().away()).toBe(false);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    try {
+      expect(await browserNotifications().away()).toBe(true);
+    } finally {
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
 });

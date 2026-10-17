@@ -555,9 +555,10 @@ function ConfiguredChatPage({
       const blocked = (): boolean => voiceOpenRef.current || draftRef.current.trim() !== '' || permissionPrompts.snapshot().length > 0;
       // P6-T08 (ADR-58): her schedules, only where the store keeps them. The scheduler runs what is due
       // in this page (the core's; the companion runs its own with the page closed), and what it kept
-      // is told — a notification while the page is hidden, else she says it, once she is free.
+      // is told — a notification while they are away (the page hidden; in the app, its window not
+      // focused), else she says it, once she is free.
       const pageNotify = async (_job: unknown, finished: { readonly id: string; readonly summary: string }): Promise<boolean> => {
-        if (document.visibilityState === 'visible' || notifications.permission() !== 'granted') return false;
+        if (notifications.permission() !== 'granted' || !(await notifications.away())) return false;
         return notifications.show(pack.persona.name, finished.summary, finished.id);
       };
       const scheduling = choice.store.capabilities().then(

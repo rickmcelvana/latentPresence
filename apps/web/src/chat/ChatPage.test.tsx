@@ -668,6 +668,7 @@ function fakeNotifications(state: NotificationPermissionState) {
       shown.push([title, body, tag]);
       return true;
     },
+    away: async () => document.visibilityState !== 'visible',
   };
   return { notifications, shown };
 }

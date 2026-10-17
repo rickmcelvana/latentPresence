@@ -33,6 +33,18 @@ export interface PageNotifications {
    * any throw (the constructor throws on mobile). `tag` replaces an earlier one with the same tag.
    */
   show(title: string, body: string, tag: string): Promise<boolean>;
+  /**
+   * Whether they are somewhere else, so a reminder is a notification rather than hers to say. In a
+   * browser, the page is hidden. In the desktop app the page cannot tell: WebView2 reports it
+   * visible and focused while the window is minimised or behind another app (measured in the
+   * release build, 2026-10-17), so the window is asked: away when it is not focused, or minimised —
+   * a minimised window can still be Windows' focused one when nothing else took the focus (measured).
+   */
+  away(): Promise<boolean>;
+}
+
+function pageHidden(): boolean {
+  return document.visibilityState !== 'visible';
 }
 
 function supported(): boolean {
@@ -86,6 +98,7 @@ export function browserNotifications(): PageNotifications {
         made.addEventListener('error', () => settle(false), { once: true });
       });
     },
+    away: () => Promise.resolve(pageHidden()),
   };
 }
 
@@ -107,6 +120,17 @@ export function desktopNotifications(invoke: Invoke, osNotifications: boolean): 
         return true;
       } catch {
         return false;
+      }
+    },
+    away: async () => {
+      try {
+        const [focused, minimised] = await Promise.all([
+          invoke<boolean>('plugin:window|is_focused', { label: 'main' }),
+          invoke<boolean>('plugin:window|is_minimized', { label: 'main' }),
+        ]);
+        return !focused || minimised;
+      } catch {
+        return pageHidden();
       }
     },
   };
