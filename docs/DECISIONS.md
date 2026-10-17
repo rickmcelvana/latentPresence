@@ -63,7 +63,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
 | ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets); **amended 2026-10-16: the generated Alice taken out — the placeholder and the person's own files** | accepted (amended) | 2026-10-14 |
 | ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now; **amended 2026-10-17: reminders through the notification plugin itself, a toast only from the installed app** | accepted (amended 2026-10-17) | 2026-10-16 |
-| ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | proposed | 2026-10-17 |
+| ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | accepted 2026-10-17 | 2026-10-17 |
+| ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
 
 ---
 
@@ -2487,7 +2488,7 @@ focused **or** minimised (a minimised window can still be the focused one). Seen
 day from outside `target\`: toasts behind other windows and minimised; with the window in front
 she said it.
 
-## ADR-61 First run, and who answers for the microphone (proposed 2026-10-17, P8-T02)
+## ADR-61 First run, and who answers for the microphone (accepted 2026-10-17, P8-T02)
 
 **Context.** R-56 passed (D-58), so friends and family can start, and most will meet the Windows
 app first. Nothing on `/` tells a new person what to do; every setting is in one long page. Two
@@ -2498,7 +2499,7 @@ companion finds MariaDB only through `DATABASE_URL` in the environment or a `.en
 up from the working directory, so the installed app has no database unless the person sets a
 user environment variable.
 
-**Decision (recommended option, taken; Rick to accept).**
+**Decision (accepted by Rick 2026-10-17, after R-57).**
 1. **A `/welcome` wizard**, shown from `/` until a new `welcomed` setting is true (a settings
    document that already has a model loads as welcomed). Steps: welcome, language model,
    character (and its body's consent), memory, voice and hearing (consent, then a microphone and
@@ -2519,4 +2520,34 @@ user environment variable.
    is not asked twice. Windows' privacy switches still apply, and the wizard says where they are.
    Every other permission is left to WebView2. Measured in the release build in a throwaway
    profile: `getUserMedia({ audio: true })` resolved with no prompt.
+
+## ADR-62 The database address in the desktop app (accepted 2026-10-17)
+
+**Context.** ADR-61 left MariaDB in the app as a Windows user environment variable and a restart.
+R-57 (Rick's wife, a fresh install): the only pause in the whole wizard was that step — and the
+way she would actually get a database is to be sent its login, which is an address, not a
+variable. Rick asked for the field.
+
+**Decision.**
+1. **In the app, the wizard's MariaDB choice and Settings → Memory (with the companion or
+   Automatic) show one "Database address" field** (`CompanionDatabase`): a password input, Save
+   and Enter, then "Saved" with the address minus its password, Replace and Forget, and Check.
+   In a browser nothing changes: the companion there is the person's own process and reads `.env`.
+2. **The shell owns it.** `database_set` checks the address (`mysql://` or `mariadb://`, a host),
+   keeps it in Credential Manager under `companion:database` (not a page ref), and restarts the
+   companion; `database_clear` forgets and restarts; `database_info` returns only `saved` and the
+   redacted address. The address goes from Credential Manager to the companion and nowhere else —
+   not to the page, not to the log.
+3. **The companion takes it as `ServeOptions.database_url`**, ahead of `DATABASE_URL` and `.env`
+   (which still work, for the binary and for anyone who set the variable).
+4. **A restart keeps the socket and the token.** The shell binds once and runs each companion on a
+   clone of the socket, so the page's address and pairing stay valid and nothing reconnects. After
+   a save the page asks `/health` until the companion answers (connecting can take seconds before
+   it serves), then says connected, could not connect (fix and save again), or none saved.
+   **A cloned socket must be set non-blocking again on Windows**: without it the run accepted
+   connections into the backlog and never answered (measured).
+
+Checked in the release app against the dev MariaDB (throwaway WebView2 profile): a `postgres://`
+address refused in a sentence; the real one saved → `/health` `mariadb`, connected; forgotten →
+`none`; no `companion:database` left in Credential Manager; the log says only whether one is saved.
 

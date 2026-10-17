@@ -2645,3 +2645,11 @@ From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release bui
   from the working directory (`bench::database_url`); the installed app is started from the Start
   menu, so only the environment variable reaches it.
 
+## A duplicated listening socket on Windows — measured 2026-10-17 (ADR-62)
+
+- `std::net::TcpListener::try_clone` on Windows (`WSADuplicateSocketW`) gives a socket **without**
+  the original's non-blocking mode. Handed to `tokio::net::TcpListener::from_std` as it was, the
+  companion's run never answered: connections sat `ESTABLISHED` in the backlog, `/health` timed
+  out, and nothing after "starting" was logged. `set_nonblocking(true)` on the clone fixed it.
+- sqlx-mysql 0.9.0 accepts both `mysql://` and `mariadb://` (`URL_SCHEMES`, `database.rs`).
+

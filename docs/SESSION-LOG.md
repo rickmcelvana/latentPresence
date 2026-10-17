@@ -890,3 +890,9 @@ Did: measured the app's microphone prompt (WebView2's own, naming http://tauri.l
 Left: R-57 (a new person through the wizard); real-device mic/camera test in the wizard; the laptop session; C-7; README (Rick).
 Next: P8-T03 or P8-T05, Rick's pick.
 Decisions: ADR-61 proposed (wizard; consent without download; memory choices; the shell grants mic/camera).
+
+## 2026-10-17 claude — R-57 passed; the database address in the app; a page bar
+Did: R-57 passed (Rick's wife, fresh install, her own run; D-59); ADR-61 accepted. Settings got a sticky page bar — name, Chat, Settings, Setup (1950989; `#root` is the window's height, so the page wraps itself in `.app-page`). The database address is now typed into the app (ADR-62, 822b095): shell keeps it in Credential Manager and restarts the companion on the same socket and token; companion takes `ServeOptions.database_url`; `CompanionDatabase` in the wizard and Settings → Memory. A cloned socket on Windows loses non-blocking mode — the first live run hung until it was set. Checked live against the dev MariaDB, then forgotten.
+Left: the laptop session (R-13, R-1, R-9); C-7; README (Rick).
+Next: P8-T03 or P8-T05, Rick's pick.
+Decisions: ADR-61 accepted (Rick); ADR-62 accepted (Rick asked for it).
