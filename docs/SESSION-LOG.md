@@ -896,3 +896,9 @@ Did: R-57 passed (Rick's wife, fresh install, her own run; D-59); ADR-61 accepte
 Left: the laptop session (R-13, R-1, R-9); C-7; README (Rick).
 Next: P8-T03 or P8-T05, Rick's pick.
 Decisions: ADR-61 accepted (Rick); ADR-62 accepted (Rick asked for it).
+
+## 2026-10-17 claude — P8-T06 the companion's own settings in the app
+Did: Rick's wife's fresh install took the database address (ADR-62 confirmed). Then mcp.json / documents.json from the app (ADR-63): companion `secrets` (a missing secret from Credential Manager, Windows only) and `config_edit` (view without secrets, one checked Change at a time, no folder or program from the page); shell commands with tauri-plugin-dialog 2.8.1 for the folder/file dialogs, a reload; Tools → Test explains a failure (Rick's Home Assistant: up, refusing the page). A Sonnet subagent built Settings → On this computer and the wizard's step 5 from `docs/briefs/P8-T06.md`; reviewed and checked in the release app against copies of Rick's files (no secret in the DOM; Home Assistant Connected on the stored token); two fixes. Test credentials deleted after.
+Left: R-58; the laptop session; C-7; README (Rick). Rick's real mcp.json still holds its secrets in plain text until each section is saved.
+Next: P8-T03 or P8-T05, Rick's pick.
+Decisions: ADR-63 accepted (Rick asked for all of it).

@@ -480,7 +480,7 @@ Brief: `docs/briefs/P8-T02.md` (2026-10-17). Main landed first: the shell grants
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
 Done when: no step requires the docs.
 
-### P8-T06 The companion's own settings, in the app — owner: main + sub (added 2026-10-17)
+### P8-T06 The companion's own settings, in the app — owner: main + sub (added and **built 2026-10-17**, ad20630; R-58 open)
 Home Assistant, the Files folders, web search, databases and documents from Settings and the wizard
 instead of hand-edited `mcp.json` / `documents.json`; secrets to Credential Manager; a folder only
 from the system dialog; programs stay file-only; Tools → Test says why it failed. ADR-63, brief

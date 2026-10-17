@@ -198,6 +198,27 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-58 · Home, notes and documents from the app · ~10 minutes
+**Why:** P8-T06's done-when — a person connects Home Assistant and a notes folder from the app,
+with no file edited.
+1. Install the new installer here (over the old one is fine).
+2. **On this PC (your files exist):** Settings → On this computer. Each of Home Assistant, Web
+   search and the "mine" database shows "In mcp.json, in plain text". Press Save on each: they
+   should change to "Saved in Credential Manager", and `%APPDATA%\latentPresence\mcp.json` should
+   no longer hold the token, the key or the password (open it with the Open mcp.json button —
+   Playwright and "everything" are still there). Home Assistant should say Connected. Then ask
+   her to turn on a light, read a note, and look something up in a manual. Also run
+   `pnpm companion` from the checkout once: it should still reach Home Assistant (it reads the
+   token from Credential Manager now).
+3. **On your wife's PC (no files):** setup's step 5 "Your home, notes and documents": your Home
+   Assistant address and a token, a notes folder with Add a folder…, then ask her something about
+   a note.
+4. Tools → Add a server with the Home Assistant address: Test should now say it is running but
+   refuses the app, and point to Settings → Home Assistant.
+
+**Pass:** all of it with no file opened by hand. **Paste back:** anything confusing, and anything
+that said an error.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
