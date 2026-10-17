@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SHOW_WAIT_MS, browserNotifications } from './notifications';
+import type { Invoke } from '../desktop/desktop';
+import { SHOW_WAIT_MS, browserNotifications, desktopNotifications } from './notifications';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -91,5 +92,43 @@ describe('browserNotifications (P6-T08)', () => {
     instances[0]?.dispatchEvent(new Event('click'));
     expect(focus).toHaveBeenCalledTimes(1);
     expect(instances[0]?.closed).toBe(true);
+  });
+});
+
+describe('a Notification stand-in with no events (the desktop plugin, P8-T01)', () => {
+  it('counts as shown at once instead of throwing on addEventListener', async () => {
+    // tauri-plugin-notification's polyfill: a plain function, sends the toast, has no events.
+    const sent: string[] = [];
+    function StandIn(this: unknown, title: string): void {
+      sent.push(title);
+    }
+    StandIn.permission = 'granted';
+    vi.stubGlobal('Notification', StandIn);
+    expect(await browserNotifications().show('Alice', 'Stretch.', 's1')).toBe(true);
+    expect(sent).toEqual(['Alice']);
+  });
+});
+
+describe('desktopNotifications (P8-T01)', () => {
+  it('sends to the plugin when Windows will draw the toast, and says granted', async () => {
+    const invoke = vi.fn(async () => null) as unknown as Invoke;
+    const notifications = desktopNotifications(invoke, true);
+    expect(notifications.permission()).toBe('granted');
+    expect(await notifications.show('Alice', 'Stretch.', 's1')).toBe(true);
+    expect(invoke).toHaveBeenCalledWith('plugin:notification|notify', { options: { title: 'Alice', body: 'Stretch.' } });
+  });
+
+  it('run from a build folder, sends nothing and says not shown, so she says it', async () => {
+    const invoke = vi.fn(async () => null) as unknown as Invoke;
+    const notifications = desktopNotifications(invoke, false);
+    expect(notifications.permission()).toBe('unsupported');
+    expect(await notifications.request()).toBe('unsupported');
+    expect(await notifications.show('Alice', 'Stretch.', 's1')).toBe(false);
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it('is not shown when the plugin refuses', async () => {
+    const invoke = vi.fn(async () => Promise.reject(new Error('not allowed by ACL'))) as unknown as Invoke;
+    expect(await desktopNotifications(invoke, true).show('Alice', 'Stretch.', 's1')).toBe(false);
   });
 });

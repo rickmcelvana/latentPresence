@@ -73,11 +73,10 @@ import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from '
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { hostTimers } from './host-timers';
-import { browserNotifications, type PageNotifications } from './notifications';
+import { pageNotifications, type PageNotifications } from './notifications';
 import { PermissionPrompt } from './PermissionPrompt';
 
 /** The browser's notifications, built once: an effect depends on the object, so a default built per render would restart it. */
-const browserPageNotifications = browserNotifications();
 
 /** The person's own zone: the browser's, which is where "Thursday at 9" is read (ADR-58). */
 function localTimeZone(): string {
@@ -248,7 +247,7 @@ export function ChatPage({
   chooseMemory = chooseMemoryStore,
   connectTools = connectToolServers,
   connectDocs = connectDocuments,
-  notifications = browserPageNotifications,
+  notifications = pageNotifications(),
   bodyShelf,
   checkBodyFile = checkBodyFileDefault,
   fetchModel,

@@ -45,6 +45,22 @@ fn companion_info(companion: tauri::State<'_, Companion>) -> CompanionInfo {
     companion.info.clone()
 }
 
+/// Whether Windows will draw this app's toasts. It routes a toast by the app's identity, which the
+/// installer's Start menu shortcut carries; tauri-plugin-notification sets it only when the exe is
+/// not in `target\debug` or `target\release` (its `desktop.rs`, 2.7.0), and a toast without it
+/// is accepted and dropped (Spike E). Run from a build folder, the page is told no, so a reminder
+/// is said by her instead of lost.
+#[tauri::command]
+fn os_notifications() -> bool {
+    let Ok(exe) = std::env::current_exe() else {
+        return false;
+    };
+    let Some(dir) = exe.parent() else {
+        return false;
+    };
+    !(dir.ends_with("target/debug") || dir.ends_with("target/release"))
+}
+
 fn entry(name: &str) -> Result<keyring::v1::Entry, String> {
     keyring::v1::Entry::new(KEYCHAIN_SERVICE, name).map_err(|error| error.to_string())
 }
@@ -156,6 +172,7 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             companion_info,
+            os_notifications,
             secret_set,
             secret_get,
             secret_delete

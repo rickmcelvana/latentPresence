@@ -16,6 +16,8 @@
  *   answers no page until CORS is on; through the relay neither needs `OLLAMA_ORIGINS` or a
  *   setting. The companion allows exactly these servers (`Relay::desktop`).
  * - **keeps API keys in Windows Credential Manager** (`KeychainVault`), not in the webview.
+ * - **shows reminders through the notification plugin itself** (`desktopNotifications`): its
+ *   stand-in for `Notification` has no events, and Windows draws its toasts only once installed.
  *
  * Outside the app all of this is null and nothing changes.
  */
@@ -38,6 +40,8 @@ export interface DesktopShell {
   readonly companionUrl: string;
   readonly token: string;
   readonly invoke: Invoke;
+  /** Whether Windows will draw this app's toasts: only once installed (`os_notifications`). */
+  readonly osNotifications: boolean;
 }
 
 interface TauriGlobal {
@@ -110,7 +114,8 @@ export async function initDesktop(
   if (invoke === null) return null;
   try {
     const info = await invoke<{ url: string; token: string }>('companion_info');
-    shell = { companionUrl: info.url, token: info.token, invoke };
+    const osNotifications = await invoke<boolean>('os_notifications').catch(() => false);
+    shell = { companionUrl: info.url, token: info.token, invoke, osNotifications };
   } catch (error) {
     console.warn('latentPresence: the desktop shell did not say where its companion is; running without it.', error);
     return null;

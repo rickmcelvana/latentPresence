@@ -67,10 +67,11 @@ describe('initDesktop', () => {
 
   it('asks the shell for its companion and wraps fetch', async () => {
     const { fetch, calls } = recording();
-    const invoke = vi.fn(async () => ({ url: companion.companionUrl, token: companion.token })) as unknown as Invoke;
+    const invoke = vi.fn(async (command: string) => (command === 'os_notifications' ? true : { url: companion.companionUrl, token: companion.token })) as unknown as Invoke;
     const scope = { __TAURI__: { core: { invoke } }, fetch: fetch as unknown as typeof globalThis.fetch };
     expect((await initDesktop(scope))?.companionUrl).toBe('http://127.0.0.1:8790');
     expect(desktopShell()?.token).toBe('tok');
+    expect(desktopShell()?.osNotifications).toBe(true);
 
     await scope.fetch('http://127.0.0.1:8790/health');
     expect(calls[0]?.headers.get(COMPANION_TOKEN_HEADER)).toBe('tok');

@@ -17,6 +17,8 @@
  * does, so the page focuses itself and closes the notification.
  */
 
+import { desktopShell, type Invoke } from '../desktop/desktop';
+
 /** How long showing waits for `show` or `error` before taking the constructor's word for it. */
 export const SHOW_WAIT_MS = 4000;
 
@@ -67,6 +69,9 @@ export function browserNotifications(): PageNotifications {
       } catch {
         return Promise.resolve(false);
       }
+      // A stand-in for `Notification` (the desktop shell's plugin) may have no events at all: it was
+      // sent, and nothing more can be learned.
+      if (typeof made.addEventListener !== 'function') return Promise.resolve(true);
       made.addEventListener('click', () => {
         window.focus();
         made.close();
@@ -82,4 +87,41 @@ export function browserNotifications(): PageNotifications {
       });
     },
   };
+}
+
+/**
+ * The desktop app's (P8-T01): straight to tauri-plugin-notification, as its own `Notification`
+ * stand-in does, minus the stand-in's missing events. Windows draws the app's toasts only once it
+ * is installed (`os_notifications`); run from a build folder this says `unsupported`, so a
+ * reminder is said by her rather than sent to a toast nobody will see. Shown means the OS took it.
+ */
+export function desktopNotifications(invoke: Invoke, osNotifications: boolean): PageNotifications {
+  const state: NotificationPermissionState = osNotifications ? 'granted' : 'unsupported';
+  return {
+    permission: () => state,
+    request: () => Promise.resolve(state),
+    show: async (title, body) => {
+      if (!osNotifications) return false;
+      try {
+        await invoke('plugin:notification|notify', { options: { title, body } });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+}
+
+let browserOnes: PageNotifications | null = null;
+let desktopOnes: PageNotifications | null = null;
+
+/** The page's notifications: the desktop app's inside it, else the browser's. */
+export function pageNotifications(): PageNotifications {
+  const shell = desktopShell();
+  if (shell !== null) {
+    desktopOnes ??= desktopNotifications(shell.invoke, shell.osNotifications);
+    return desktopOnes;
+  }
+  browserOnes ??= browserNotifications();
+  return browserOnes;
 }
