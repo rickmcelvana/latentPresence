@@ -68,6 +68,7 @@ describe('loadSettings', () => {
       llm: { endpoint: 'nvidia', baseUrl: 'https://integrate.api.nvidia.com/v1', modelId: 'nemotron', temperature: 0.7 },
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
+      welcomed: true,
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
@@ -134,6 +135,28 @@ describe('loadSettings', () => {
     const chosen = withBodyChoice(loaded, 'theo', 'own:1');
     expect(chosen.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: 'own:1' });
     expect(withBodyChoice(chosen, 'alice', 'placeholder').characters['alice']).toEqual({ voice: null, body: 'placeholder' });
+  });
+
+  it('loads a document saved before the wizard as welcomed when a model was chosen, and not when none was (P8-T02)', () => {
+    const { welcomed: _welcomed, ...beforeT02 } = DEFAULT_SETTINGS;
+    const chosen = { ...beforeT02, llm: { endpoint: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', modelId: 'llama3', temperature: null } };
+    expect(loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(chosen) })).welcomed).toBe(true);
+    // An endpoint with no model is not set up either.
+    const half = { ...beforeT02, llm: { ...chosen.llm, modelId: null } };
+    expect(loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(half) })).welcomed).toBe(false);
+    expect(loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(beforeT02) })).welcomed).toBe(false);
+  });
+
+  it('keeps a saved welcomed value as it is, even with a model chosen (P8-T02)', () => {
+    // "Run setup again" after finishing leaves true; a person who chose a model in the wizard but
+    // has not finished it (false, saved with the field) must still meet the wizard.
+    const midway = { ...DEFAULT_SETTINGS, llm: { endpoint: 'ollama', baseUrl: 'http://127.0.0.1:11434/v1', modelId: 'llama3', temperature: null }, welcomed: false };
+    expect(loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(midway) })).welcomed).toBe(false);
+  });
+
+  it('is not welcomed by default', () => {
+    expect(DEFAULT_SETTINGS.welcomed).toBe(false);
+    expect(loadSettings(memoryStorage()).welcomed).toBe(false);
   });
 
   it('defaults the companion URL to the documented default', () => {

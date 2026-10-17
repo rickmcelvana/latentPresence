@@ -1,7 +1,8 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION } from '@latentpresence/protocol';
-import { App, CHAT_PATH, SETTINGS_PATH } from './App';
+import { App, CHAT_PATH, SETTINGS_PATH, WELCOME_PATH } from './App';
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from './settings/settings';
 
 afterEach(cleanup);
 
@@ -13,18 +14,24 @@ afterEach(cleanup);
  */
 const LAZY = { timeout: 10_000 };
 
+/** A settings document read from memory, so these tests never depend on jsdom's `localStorage`. */
+function stored(welcomed: boolean): Pick<Storage, 'getItem'> {
+  const document = JSON.stringify({ ...DEFAULT_SETTINGS, welcomed });
+  return { getItem: (key: string) => (key === SETTINGS_STORAGE_KEY ? document : null) };
+}
+
 describe('App', () => {
   it('renders the boot screen with the protocol version the app is linked against', () => {
     // Fails if React, jsdom, or workspace package resolution from apps/web breaks —
     // the three things the scaffold has to keep working for every later task.
-    const { container } = render(<App />);
+    const { container } = render(<App storage={stored(true)} />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('latentPresence');
     expect(container.textContent).toContain(`protocol v${PROTOCOL_VERSION}`);
     expect(container.textContent).toContain('@latentpresence/core');
   });
 
   it('links to /settings from the boot screen', () => {
-    render(<App />);
+    render(<App storage={stored(true)} />);
     const link = screen.getByRole('link', { name: 'Settings' }) as HTMLAnchorElement;
     expect(new URL(link.href).pathname).toBe(SETTINGS_PATH);
   });
@@ -34,6 +41,8 @@ describe('App', () => {
     // The fallback renders first; `findBy` waits for the lazy import to resolve.
     const heading = await screen.findByRole('heading', { level: 1 }, LAZY);
     expect(heading.textContent).toBe('Settings');
+    // P8-T02: a way back into the wizard.
+    expect(new URL((screen.getByRole('link', { name: 'Run setup again' }) as HTMLAnchorElement).href).pathname).toBe(WELCOME_PATH);
     await act(async () => {});
   });
 
@@ -41,6 +50,31 @@ describe('App', () => {
     render(<App path={CHAT_PATH} />);
     const heading = await screen.findByRole('heading', { level: 1 }, LAZY);
     expect(heading.textContent).toBe('Chat');
+    await act(async () => {});
+  });
+
+  it('shows the wizard at / until setup has been finished or skipped (P8-T02)', async () => {
+    render(<App path="/" storage={stored(false)} />);
+    const heading = await screen.findByRole('heading', { level: 1 }, LAZY);
+    expect(heading.textContent).toBe('Welcome to latentPresence');
+    expect(screen.queryByText(/Scaffold online/)).toBeNull();
+    await act(async () => {});
+  });
+
+  it('leaves / as it was once welcomed', () => {
+    render(<App path="/" storage={stored(true)} />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('latentPresence');
+  });
+
+  it('shows the wizard at /welcome whether or not setup was finished', async () => {
+    render(<App path={WELCOME_PATH} storage={stored(true)} />);
+    expect((await screen.findByRole('heading', { level: 1 }, LAZY)).textContent).toBe('Welcome to latentPresence');
+    await act(async () => {});
+  });
+
+  it('does not send other routes to the wizard', async () => {
+    render(<App path={CHAT_PATH} storage={stored(false)} />);
+    expect((await screen.findByRole('heading', { level: 1 }, LAZY)).textContent).toBe('Chat');
     await act(async () => {});
   });
 });

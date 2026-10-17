@@ -4,6 +4,7 @@ import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
 import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
 import { desktopShell } from '../desktop/desktop';
+import { SETTINGS_STORAGE_KEY } from './welcomed';
 
 /**
  * The settings document (P1-T10).
@@ -14,7 +15,7 @@ import { desktopShell } from '../desktop/desktop';
  * switching an LLM preset keeps that preset's own saved key.
  */
 
-export const SETTINGS_STORAGE_KEY = 'latentpresence.settings.v1';
+export { SETTINGS_STORAGE_KEY };
 
 /** Temperature is never 0 — a thinking model given no budget for an answer spent its
  * whole budget reasoning and wrote nothing (P1-T02/T03). `null` means "server default",
@@ -182,6 +183,12 @@ export const SettingsSchema = z.object({
   llm: LlmSettingsSchema,
   tts: TtsSettingsSchema,
   stt: SttSettingsSchema,
+  /**
+   * Whether the first-run wizard (P8-T02) has been finished or skipped. `/` shows the wizard
+   * until it is. Defaulted, so a document saved before P8-T02 loads; `loadSettings` reads such
+   * a document with a language model chosen as already welcomed (`markWelcomed`).
+   */
+  welcomed: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -199,6 +206,7 @@ export const DEFAULT_SETTINGS: Settings = {
   llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
+  welcomed: false,
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets
@@ -235,6 +243,19 @@ function keepVoiceForAlice(settings: Settings): Settings {
   return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { body: null, ...settings.characters[DEFAULT_CHARACTER_ID], voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
 }
 
+function hasWelcomed(stored: unknown): boolean {
+  return typeof stored === 'object' && stored !== null && 'welcomed' in stored;
+}
+
+/**
+ * A document saved before the first-run wizard (P8-T02) has no `welcomed`. Someone who had
+ * already chosen a language model has been through setup in all but name, and must not meet a
+ * wizard on their next visit; a document with none chosen has not, and keeps the default.
+ */
+function markWelcomed(settings: Settings): Settings {
+  return settings.llm.modelId === null ? settings : { ...settings, welcomed: true };
+}
+
 /** The settings with `body` chosen for one character (P7-T02, ADR-59), its voice kept. `null` is its pack's default. */
 export function withBodyChoice(settings: Settings, characterId: string, body: string | null): Settings {
   const current = settings.characters[characterId] ?? { voice: null, body: null };
@@ -254,7 +275,8 @@ function loadStored(storage: Pick<Storage, 'getItem'>): Settings {
     const stored: unknown = JSON.parse(raw);
     const parsed = SettingsSchema.safeParse(stored);
     if (!parsed.success) return DEFAULT_SETTINGS;
-    return hasCharacters(stored) ? parsed.data : keepVoiceForAlice(parsed.data);
+    const migrated = hasCharacters(stored) ? parsed.data : keepVoiceForAlice(parsed.data);
+    return hasWelcomed(stored) ? migrated : markWelcomed(migrated);
   } catch {
     return DEFAULT_SETTINGS;
   }

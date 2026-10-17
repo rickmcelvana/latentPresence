@@ -272,7 +272,7 @@ export function ChatPage({
           <h1>Chat</h1>
         </header>
         <p className="chat-unconfigured-note">
-          Choose a language model and a model in Settings before you can chat here. <a href="/settings">Go to Settings</a>.
+          Choose a language model and a model before you can chat here. <a href="/welcome">Set up</a> or <a href="/settings">go to Settings</a>.
         </p>
       </main>
     );

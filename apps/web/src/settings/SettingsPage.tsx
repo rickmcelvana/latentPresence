@@ -12,6 +12,9 @@ export function SettingsPage(): ReactElement {
           Configure a language model, a voice and a way to listen. Nothing here is sent anywhere unless you point it
           somewhere yourself.
         </p>
+        <p className="settings-page-note">
+          <a href="/welcome">Run setup again</a>
+        </p>
       </header>
       <SettingsPanel />
     </main>

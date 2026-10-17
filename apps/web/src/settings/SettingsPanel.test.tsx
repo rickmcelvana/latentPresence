@@ -1,13 +1,17 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
+import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import type { SettingsDeps } from './deps';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { SettingsPanel } from './SettingsPanel';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetDesktopForTests();
+});
 
 function memoryStorage(): Storage {
   const store = new Map<string, string>();
@@ -284,5 +288,22 @@ describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
     );
     fireEvent.change(screen.getByLabelText('Voice for Alice'), { target: { value: '' } });
     await waitFor(() => expect(stored(storage).characters).toEqual({ alice: { voice: null, body: null } }));
+  });
+});
+
+describe('SettingsPanel — where keys are kept (R-56, P8-T02)', () => {
+  it('says encrypted browser storage in a browser', () => {
+    const { container } = render(<SettingsPanel deps={testDeps()} />);
+    expect(container.textContent).toContain("Keys are encrypted in this browser's storage");
+  });
+
+  it('says Windows Credential Manager in the desktop app, not browser storage', async () => {
+    const invoke = vi.fn(async (command: string) =>
+      command === 'os_notifications' ? false : { url: 'http://127.0.0.1:8790', token: 'tok' },
+    ) as unknown as Invoke;
+    await initDesktop({ __TAURI__: { core: { invoke } }, fetch: vi.fn() as unknown as typeof fetch });
+    const { container } = render(<SettingsPanel deps={testDeps()} />);
+    expect(container.textContent).toContain("Keys are kept in Windows Credential Manager, not in this app's storage.");
+    expect(container.textContent).not.toContain('encrypted in this browser');
   });
 });

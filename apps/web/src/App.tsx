@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { packageInfo as core } from '@latentpresence/core';
 import { PROTOCOL_VERSION } from '@latentpresence/protocol';
 import { Gallery } from './Gallery';
+import { isWelcomed } from './settings/welcomed';
 
 /** The dev-only design-system page. Never routed in a production build (P0-T02b). */
 export const GALLERY_PATH = '/gallery';
@@ -41,6 +42,12 @@ export const SETTINGS_PATH = '/settings';
 /** `/chat` (P1-T11). Ships in production, like `/settings` — the transcript and a typed
  * conversation with the model `/settings` configured. */
 export const CHAT_PATH = '/chat';
+
+/**
+ * The first-run wizard (P8-T02). Ships in production. `/` shows it until the person has finished
+ * or skipped it (`settings.welcomed`); `/welcome` shows it always, for "Run setup again".
+ */
+export const WELCOME_PATH = '/welcome';
 
 /**
  * The harness pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
@@ -121,11 +128,27 @@ const ChatPage = lazy(async () => {
 });
 
 /**
+ * The wizard (P8-T02). `lazy()` for the reason `/settings` is: the language-model section it
+ * reuses pulls in the AI SDK, and the boot screen should not wait on that chunk.
+ */
+const WelcomePage = lazy(async () => {
+  const module = await import('./welcome/WelcomePage');
+  return { default: module.WelcomePage };
+});
+
+/**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
  * The stage and the call framing arrive in Phase 2.
  */
-export function App({ path = window.location.pathname }: { path?: string }): ReactElement {
+export function App({
+  path = window.location.pathname,
+  storage,
+}: {
+  readonly path?: string;
+  /** Where the settings are read from, for a test; the browser's `localStorage` otherwise. */
+  readonly storage?: Pick<Storage, 'getItem'>;
+}): ReactElement {
   if (import.meta.env.DEV && path === GALLERY_PATH) {
     return <Gallery />;
   }
@@ -174,6 +197,15 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     return (
       <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
         <AvatarStage />
+      </Suspense>
+    );
+  }
+
+  // P8-T02: someone who has not been through setup meets the wizard at `/`, not a scaffold screen.
+  if (path === WELCOME_PATH || (path === '/' && !(storage === undefined ? isWelcomed() : isWelcomed(storage)))) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading setup…</p>}>
+        <WelcomePage />
       </Suspense>
     );
   }

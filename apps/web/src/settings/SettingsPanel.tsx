@@ -9,6 +9,7 @@ import { LanguageModelSection } from './LanguageModelSection';
 import { DocumentsSection } from './DocumentsSection';
 import { MemorySection } from './MemorySection';
 import { ToolsSection } from './ToolsSection';
+import { VaultNote } from './VaultNote';
 import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
 
@@ -38,10 +39,7 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
 
   return (
     <div className="settings-sections">
-      <p className="panel-note settings-vault-note">
-        Keys are encrypted in this browser&apos;s storage. Anything running on this page, or anyone using this
-        browser profile, can still use them.
-      </p>
+      <VaultNote />
 
       <LanguageModelSection
         companionUrl={settings.companionUrl}

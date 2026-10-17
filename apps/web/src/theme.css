@@ -2742,3 +2742,201 @@ kbd {
   color: var(--text-muted);
   font-size: 13px;
 }
+
+/* --- First-run wizard (P8-T02) -------------------------------------------------
+   /welcome, and / until setup is finished: one step at a time, at the width of the settings
+   form. The language-model section and the consent screen keep their own panels. */
+
+.welcome-page {
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  min-width: 0;
+}
+
+.welcome-progress {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.welcome-heading:focus {
+  outline: none;
+}
+
+.welcome-heading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.welcome-lead {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.welcome-subheading {
+  font-size: 16px;
+}
+
+.welcome-actions,
+.welcome-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.welcome-nav {
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+}
+
+.welcome-nav-spacer {
+  flex: 1 1 auto;
+}
+
+/* A group of radios as cards. A real fieldset, so a screen reader hears the legend. */
+.welcome-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.welcome-choices > legend {
+  margin-bottom: var(--gap-sm);
+  padding: 0;
+}
+
+.welcome-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    border-color var(--transition),
+    background var(--transition);
+}
+
+.welcome-choice:hover {
+  background: var(--panel-hover);
+}
+
+.welcome-choice-selected {
+  border-color: var(--accent-dim);
+}
+
+.welcome-choice input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.welcome-choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-width: 0;
+}
+
+.welcome-choice-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-weight: 600;
+}
+
+.welcome-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+}
+
+.welcome-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+  color: var(--text-muted);
+}
+
+.welcome-device {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.welcome-meter {
+  height: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+
+.welcome-meter-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 80ms linear;
+}
+
+.welcome-preview {
+  width: 160px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.welcome-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.welcome-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap-sm) var(--gap-md);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.welcome-summary-row .field-label {
+  flex: 0 0 140px;
+}
+
+.welcome-summary-row > span:not(.field-label) {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-meter-fill {
+    transition: none;
+  }
+}

@@ -678,6 +678,8 @@ describe('ChatPage — unconfigured', () => {
     const storage = memoryStorage();
     render(<ChatPage deps={testDeps({ storage })} />);
     expect(screen.getByRole('link', { name: /Settings/ })).toBeTruthy();
+    // P8-T02: and to the wizard, for someone who has not chosen anything yet.
+    expect(new URL((screen.getByRole('link', { name: 'Set up' }) as HTMLAnchorElement).href).pathname).toBe('/welcome');
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 });

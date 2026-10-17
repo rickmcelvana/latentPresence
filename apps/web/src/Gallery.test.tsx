@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App, GALLERY_PATH } from './App';
 import { Gallery } from './Gallery';
+import { DEFAULT_SETTINGS } from './settings/settings';
 
 afterEach(cleanup);
 
@@ -87,7 +88,8 @@ describe('App routing', () => {
     expect(screen.queryByText(/Scaffold online/)).toBeNull();
     cleanup();
 
-    render(<App path="/" />);
+    // Welcomed: an unwelcomed `/` is the first-run wizard (P8-T02).
+    render(<App path="/" storage={{ getItem: () => JSON.stringify({ ...DEFAULT_SETTINGS, welcomed: true }) }} />);
     expect(screen.getByRole('heading', { name: 'latentPresence' })).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Design system' })).toBeNull();
   });
