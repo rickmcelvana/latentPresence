@@ -43,6 +43,15 @@ describe('App', () => {
     expect(heading.textContent).toBe('Settings');
     // P8-T02: a way back into the wizard.
     expect(new URL((screen.getByRole('link', { name: 'Run setup again' }) as HTMLAnchorElement).href).pathname).toBe(WELCOME_PATH);
+    // A way out without the browser's Back (the app window has none): the page bar.
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const links = [...nav.querySelectorAll('a')].map((a) => [a.textContent, new URL(a.href).pathname, a.getAttribute('aria-current')]);
+    expect(links).toEqual([
+      ['latentPresence', CHAT_PATH, null],
+      ['Chat', CHAT_PATH, null],
+      ['Settings', SETTINGS_PATH, 'page'],
+      ['Setup', WELCOME_PATH, null],
+    ]);
     await act(async () => {});
   });
 

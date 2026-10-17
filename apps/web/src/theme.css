@@ -861,6 +861,61 @@ kbd {
   white-space: pre-wrap;
 }
 
+/* --- The page bar (2026-10-17) --------------------------------------------------
+   Across the top of a full page: the name (to the conversation) and the pages. Sticky, so
+   the way out stays in reach on a long Settings page; the app window has no Back button. */
+
+/* `#root` is the window's height, and a sticky bar sticks only within its parent: a page that
+   carries the bar wraps itself in this, which is as tall as its content. */
+.app-page {
+  min-height: 100%;
+}
+
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  padding: var(--gap-sm) var(--gap-lg);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-nav-brand {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+
+.app-nav-links {
+  display: flex;
+  gap: var(--gap-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-nav-link {
+  display: inline-block;
+  padding: var(--gap-xs) var(--gap-sm);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.app-nav-link:hover {
+  color: var(--text);
+}
+
+.app-nav-link[aria-current='page'] {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
 /* --- Settings (P1-T10) -----------------------------------------------------
    Ships in production, unlike everything above. Three sections — Language model,
    Voice, Hearing — each a `.panel`, laid out one under another like the gallery and
