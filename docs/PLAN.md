@@ -127,7 +127,7 @@ Exit criteria: the pipeline reproduced by someone other than Rick from the doc a
 Goal: one-click Windows install with the companion bundled, and the hosted app reaching local services.
 
 Deliverables
-- Tauri 2 app for Windows with the companion as a sidecar; Linux only if Spike E passed; macOS deferred (ADR-07).
+- Tauri 2 app for Windows with the companion as a sidecar (built in the app's own process instead, ADR-60); Linux only if Spike E passed; macOS deferred (ADR-07).
 - Tray mode that keeps the character alive for schedules and check-ins; optional compact always-on-top presence window.
 - Auto-update, crash-safe settings, first-run wizard (choose providers, connect MariaDB or use SQLite, download browser models).
 - `app.latentpresence.com` connecting to a local companion, Ollama or LM Studio (pairing, CORS, Chrome Local Network Access).

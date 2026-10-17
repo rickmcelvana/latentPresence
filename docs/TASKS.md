@@ -212,7 +212,9 @@ from the installer's first click.
 4. While it is open: launch it again from the Start menu — the first window should come to the
    front, no second one. Close it with X and check Task Manager: no `latentpresence-desktop.exe`
    left. Set a reminder a minute out ("remind me in one minute to stretch"), minimise the window,
-   and see whether a Windows toast appears.
+   and see whether a Windows toast appears. (Only the **installed** app can draw one: run from
+   `target\release` the toast is dropped by Windows, so there she says it when you come back —
+   ADR-60 amended 2026-10-17.)
 
 **Pass:** talking within 10 minutes, with nothing looked up. **Paste back:** the time, every
 place you hesitated, the SmartScreen wording, whether the toast came, and anything left running

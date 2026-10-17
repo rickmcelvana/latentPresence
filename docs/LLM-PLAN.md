@@ -470,10 +470,10 @@ Done when: `docs/spikes/F-lam.md` records feasibility and licence status.
 
 ## Phase 8 — Desktop and distribution
 
-### P8-T01 Tauri app with companion sidecar (Windows) — owner: main
-Bundle companion as a sidecar; local pairing token; window management; OS keychain for secrets; NSIS installer.
+### P8-T01 Tauri app with the companion (Windows) — owner: main
+Bundle companion as a sidecar (built in-process instead, ADR-60); local pairing token; window management; OS keychain for secrets; NSIS installer.
 Done when: fresh Windows VM installs and talks in under 10 minutes.
-**Built 2026-10-16 (main, ADR-60 proposed):** the companion runs in the app's process (not a sidecar — ADR-60 says why), paired by a per-launch token; the page wraps `fetch` to add it and to send local Ollama/LM Studio through the companion's relay (Ollama 403s the Windows webview's origin); keys in Windows Credential Manager; single instance and remembered window; per-user NSIS installer, unsigned (`pnpm desktop:build`, 17.6 MiB). Checked from inside the release build's window, including a typed conversation. The fresh-VM done-when is Rick's: R-56.
+**Built 2026-10-16 (main, ADR-60 accepted 2026-10-17):** the companion runs in the app's process (not a sidecar — ADR-60 says why), paired by a per-launch token; the page wraps `fetch` to add it and to send local Ollama/LM Studio through the companion's relay (Ollama 403s the Windows webview's origin); keys in Windows Credential Manager; single instance and remembered window; per-user NSIS installer, unsigned (`pnpm desktop:build`, 17.6 MiB). Checked from inside the release build's window, including a typed conversation. The fresh-VM done-when is Rick's: R-56. **2026-10-17:** reminders go through the notification plugin directly, and a toast is expected only from the installed app (ADR-60 amended).
 
 ### P8-T02 First-run wizard — owner: sub
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
@@ -498,7 +498,8 @@ Done when: a schedule fires with the main window closed and the notification app
 ### P9-T01 Accessibility and reduced motion — owner: sub
 ### P9-T02 Performance budgets in CI — owner: main
 ### P9-T03 Security review — owner: main
-### P9-T04 Docs in `site/docs/` (user guide, provider setup, privacy) — owner: sub
+### P9-T04 User docs on latentpresence.com (user guide, provider setup, privacy) — owner: sub
+The site left this repository on 2026-10-17 (was `site/docs/`); the docs go wherever Rick keeps it.
 ### P9-T05 Model registry and privacy page — owner: main
 ### P9-T06 Release 1.0 — owner: main + human
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.

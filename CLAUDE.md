@@ -20,7 +20,7 @@ Conversational AI with a realistic-styled full-body avatar in a video-call frami
 
 ## The build loop
 
-**Architect edits → `pnpm gate` → commit on green.** The gate mirrors CI (`tsc -b`, oxlint, vitest, vite build, cargo fmt/clippy/test). A green gate is the go-ahead to commit, not a checkpoint to ask at. Never commit red.
+**Architect edits → `pnpm gate` → commit on green.** The gate mirrors CI (`tsc -b`, oxlint, vitest, vite build, cargo fmt/clippy/test, and on Windows the desktop shell). A green gate is the go-ahead to commit, not a checkpoint to ask at. Never commit red.
 
 - One task at a time from `docs/LLM-PLAN.md`; commit message `P<phase>-T<nn>: <summary>`.
 - **Delegate (`owner: sub`) only what a competent implementer could get right from the brief and the repo alone** — broad mechanical work that would burn architect context. Anything whose correctness depends on a fact you must measure or read out of a dependency stays yours: finding it *is* the task. Finished, verified code is never delegated. The subagent never commits and never touches `packages/protocol`; you review, gate, commit. (The Aider lane is retired — `docs/WORKFLOW.md` says why.)
@@ -30,7 +30,7 @@ Conversational AI with a realistic-styled full-body avatar in a video-call frami
 
 - Ship no models. Nothing downloads without the consent screen (size, licence, source).
 - `packages/protocol` interfaces change only in architect-owned tasks with an ADR note.
-- TypeScript for app and core (must run in the browser); Rust for `companion/`. No Python in the core.
+- TypeScript for app and core (must run in the browser); Rust for `companion/` and the desktop shell (`apps/desktop/src-tauri`). No Python in the core.
 - Style every component the day it is written, in `theme.css`, with the teal tokens (ADR-15). No colour literals outside `:root`.
 - Never commit secrets, weights, or non-redistributable assets. `DATABASE_URL` lives in `.env`.
 - No telemetry, ever. Nothing leaves the user's machine unless they pointed it somewhere.

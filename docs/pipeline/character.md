@@ -178,8 +178,9 @@ licence Rick chooses (P7-T02 decides it, and the VRM's own `meta` fields).
 
 Bodies are a library: built-in ones download through the consent screen with their exact bytes
 and licence, and anyone can add their own `.vrm`, kept in their browser. Alice's **default body
-stays the placeholder** (pixiv's sample — Rick's choice, ADR-18 amended); the generated Alice is a
-built-in entry, "Alice, generated".
+stays the placeholder** (pixiv's sample — Rick's choice, ADR-18 amended). The generated Alice was a
+built-in entry from 2026-10-14 to 2026-10-16, then taken out (not good enough to ship; ADR-59
+amended), so step 3 below is how it was done, kept for when a generated body is good enough.
 
 1. **Check it:** `/dev/avatar` → **Or load a .vrm from this computer** (or, once the stage is up,
    **Load a .vrm from this computer**) → `out\<name>.web.vrm`. The line under the stage names the
@@ -189,4 +190,5 @@ built-in entry, "Alice, generated".
 3. **Make it a built-in body** (for everyone, not just this browser): a Claude session copies it to
    `assets/bodies/` (LFS) with its `meta` named and a `manifest.json` entry (bytes, sha256, licence,
    validation), commits it alone, then adds an entry to `BUILT_IN_BODIES` with its download URL
-   pinned to that commit (`apps/web/src/call/character-asset.ts`, as `ALICE_GENERATED`).
+   pinned to that commit (`apps/web/src/call/character-asset.ts`; `ALICE_GENERATED` there was the
+   example, removed 2026-10-16 — see commit 8e94db0 and afd0e59).

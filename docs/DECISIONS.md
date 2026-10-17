@@ -62,7 +62,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-57 | Companion schedules: a `schedules` table (kept whole, found by character and by due companion job) behind the `/schedules` routes; `runOn: companion` jobs are one fixed tool call (`Schedule.toolCall`) or a reminder, run by the companion every 30 s with no page open and left for the page to say; both schedulers keep croner-rust's (Vixie) rules at clock changes — the core's cron is now its own — and one fixture file of 254 firings and 11 plans holds them to each other | accepted | 2026-10-13 |
 | ADR-58 | Schedule tools and panel: `schedule_create/list/cancel/run_now`; she turns "Thursday at 9" into a wall-clock time in the person's zone (or minutes, or a cron line) and the code into the trigger by the cron's rules; saved at once and read back from the code's own words; reminders run on the companion when memory is there; delivery on the page — an OS notification when hidden, else she says it, outside the initiative budget; a Schedules drawer view | accepted | 2026-10-13 |
 | ADR-59 | Avatar library and live swap: a character's body is a setting (like its voice), chosen from built-in bodies and the person's own `.vrm` files (kept in the browser, never uploaded); a swap loads the new body behind the old one and replaces it mid-call, no restart and no new visit; every body is checked on load (humanoid bones, presets); **amended 2026-10-16: the generated Alice taken out — the placeholder and the person's own files** | accepted (amended) | 2026-10-14 |
-| ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now | proposed | 2026-10-16 |
+| ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now; **amended 2026-10-17: reminders through the notification plugin itself, a toast only from the installed app** | accepted (amended 2026-10-17) | 2026-10-16 |
 
 ---
 
@@ -239,6 +239,7 @@ latentPresence/
   apps/web/            Vite + React app, deployed to app.latentpresence.com
   apps/desktop/        Tauri 2 shell (Phase 8)
   site/                static marketing site + docs + feedback form, latentpresence.com
+                       (left this repository 2026-10-17; kept by Rick outside it)
   packages/core/       conversation engine, affect engine, memory kernel, scheduler (pure TS)
   packages/providers/  llm, stt, tts, embeddings, omni adapters
   packages/avatar/     three.js / VRM renderer, animation, lip sync, set
@@ -264,7 +265,9 @@ the layout above stays true.**
   opt-in command that does check it** (fmt and clippy). The consequence is stated rather than
   hidden: **CI never compiles that crate**, so a change which breaks it is found by running
   the shell. P8-T01 should fold it into the compile gate as part of making the desktop app
-  real. `docs/spikes/E-tauri.md`.
+  real. `docs/spikes/E-tauri.md`. **Done 2026-10-16 (P8-T01, ADR-60):** `pnpm gate` checks the
+  shell on Windows (fmt, clippy, test — `tools/gate-desktop.mjs`), so CI's windows-latest job
+  compiles it on every push; Linux skips it.
 
 Playwright is still unused: it is in the toolchain for `/gallery` screenshots and nothing in
 Phase 0 needed one.
@@ -315,6 +318,11 @@ Rules: one `theme.css` per app is the single source of styling truth; every clas
   Caddy. No GitHub Pages, and no rsync: the `scripts/deploy.sh` written for P0-T03 was deleted the
   day the first deploy proved it unnecessary. First live deploy of the site, docs and feedback form:
   2026-09-08.
+- **Amended 2026-10-17.** The app is live at `app.latentpresence.com` (2026-10-16); its recipe,
+  with the headers measured to work (COEP `credentialless`, not `require-corp`), is
+  `docs/deploy.md`. **The site left this repository** (Rick deleted `site/` and keeps it outside
+  it), so `<checkout>/site` no longer exists after a pull: `latentpresence.com` is served from
+  wherever Rick keeps it now.
 
 ## ADR-20 Voice pipeline performance (accepted 2026-09-08, amended 2026-09-09, 2026-09-11, 2026-09-13, 2026-09-22)
 
@@ -2393,7 +2401,7 @@ for Theo in the placeholder's style — pixiv's VRoid Studio presets (VRoidPrese
 and redistributed free of charge by anyone, commercially, without credit (read 2026-10-16,
 `docs/SURFACE.md`); one would be exported from VRoid Studio by Rick and added as a built-in body.
 
-## ADR-60 The desktop app (proposed 2026-10-16, P8-T01)
+## ADR-60 The desktop app (accepted 2026-10-17, P8-T01)
 
 **Context.** P8-T01: "bundle the companion as a sidecar; local pairing token; window management;
 OS keychain for secrets; NSIS installer; a fresh Windows VM installs and talks in under 10
@@ -2402,7 +2410,7 @@ while building: **Ollama 0.40.5 answers `http://tauri.localhost` — the Windows
 with 403** (and `tauri://localhost`, macOS and Linux, with 200), so out of the box the Windows app
 could not talk to a local Ollama at all without `OLLAMA_ORIGINS` (`docs/SURFACE.md`).
 
-**Decision (recommended option, taken; Rick to accept).**
+**Decision (accepted by Rick 2026-10-17).**
 1. **The companion runs in the app's own process**, as a library: `companion/crates/server` gained
    `serve::serve(ServeOptions, shutdown)`, which `main.rs` (`pnpm companion`) and the shell both
    call — one startup, gated with the companion. Bound on loopback, on 8787 when it is free, else a
@@ -2449,4 +2457,17 @@ non-forced `taskkill` had sent WM_CLOSE to every window of the process, the wind
 the process stayed; not reproduced in two clean runs since. The installer:
 `latentPresence_0.1.0_x64-setup.exe`, 17.6 MiB. **Not yet seen:** a fresh machine (R-56), the
 toast from the installed app (Spike E's AUMID question), the second-launch focus.
+
+**Amended 2026-10-17 — reminders in the app.** Rick's first test of the built exe: a reminder came
+due and no toast appeared. Two causes, both measured. (1) tauri-plugin-notification 2.7.0 replaces
+the page's `Notification` with a plain function that sends the toast and has **no events and no
+`addEventListener`**, so `notifications.ts` threw right after sending; the scheduler caught it and
+left the reminder for her to say (nothing lost, but an installed app would have shown the toast
+*and* had her say it). (2) The plugin sets the toast's app identity **only when the exe is not in
+`target\debug` or `target\release`** (its `desktop.rs`), so from a build folder Windows accepts
+the toast and drops it — Spike E's finding. Now: the page calls `plugin:notification|notify`
+itself (`desktopNotifications`), and the shell's `os_notifications` says whether a toast can be
+drawn; from a build folder the page reports notifications unsupported and the reminder is hers to
+say. In the release build: `os_notifications` false, the notify command allowed by the ACL. The
+toast from the **installed** app is still R-56's to see.
 

@@ -866,3 +866,9 @@ Did: found why zip was yanked: not just 8.x but every release before 9.0.3, for 
 Left: R-56; laptop session (R-13, R-1, R-9); C-7. A fresh worktree needs `git lfs pull` before the gate (vrma.test.ts reads a pointer otherwise).
 Next: P8-T02 or P8-T03, Rick's pick, after R-56.
 Decisions: none.
+
+## 2026-10-17 claude — desktop reminders fixed; ADR-60 accepted; staleness sweep
+Did: Rick's built-exe test showed no toast. The notification plugin's `Notification` stand-in has no events, so `show()` threw (the scheduler left the reminder for her to say); from `target\release` the plugin sets no app identity and Windows drops the toast. The page now calls the plugin itself and the shell's `os_notifications` says whether a toast can be drawn (73a3be2; checked in the release build). ADR-60 accepted and amended. Sweep: PROJECT.md cut to the current state, its Phase 0–6 notes moved word for word to `docs/HISTORY.md`; `site/` (deleted by Rick) traced out of `.gitattributes`, `vitest.config.ts`, ADR-11/16, P9-T04, deploy.md; the icon master restored as `apps/desktop/icon.svg` with `apps/desktop/README.md`; CLAUDE.md names the desktop shell.
+Left: R-56; the laptop session (R-13, R-1, R-9); C-7; README after the next runs (Rick); the server's Caddy still points `latentpresence.com` at `<checkout>/site`?
+Next: P8-T02 or P8-T03, Rick's pick, after R-56.
+Decisions: ADR-60 accepted (Rick) and amended (reminders through the plugin; a toast only when installed).

@@ -2588,3 +2588,19 @@ headers was not reproduced after the switch (Rick, wiped and re-downloaded). Rec
 - The release compile hit **rustc 1.97.1 internal compiler errors** twice (in `zerocopy` via
   `rand`, then in `rmcp`), each gone on a retry with nothing changed: flaky, not the code.
 
+## tauri-plugin-notification 2.7.0 on Windows — read 2026-10-17 (P8-T01)
+
+From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release build:
+
+- The plugin's init script **replaces `window.Notification`** with a plain function: the
+  constructor invokes `plugin:notification|notify` with `{ options: { title, body, … } }` and
+  returns an object with **no `addEventListener`, no `show`/`error`/`click` events and no
+  `close()`**. On Windows `permission` reads `granted` without asking.
+- On Windows the toast gets `app_id(identifier)` — the AppUserModelID the installer's Start menu
+  shortcut carries — **only when the exe's folder does not end in `target\debug` or
+  `target\release`**. From a build folder the toast goes out without an identity and Windows drops
+  it (Rick's test 2026-10-17; Spike E 2026-09-11). Whether the NSIS-installed app's toast draws is
+  R-56's to see.
+- With `notification:default` in the capability, `plugin:notification|notify` is allowed from the
+  page (checked in the release build, 2026-10-17).
+

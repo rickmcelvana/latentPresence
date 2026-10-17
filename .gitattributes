@@ -14,10 +14,6 @@
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 
-# Favicons are under 30 KB. LFS is here to keep character renders out of the repo,
-# not icons, and a site that needs `git lfs pull` before it can be served is worse.
-# `binary` unsets diff, merge and text together: never run eol conversion on a PNG.
-site/img/*.png -filter binary
 
 # The shell's icons (P0-T08), for the same reason and one more. Small; needed at
 # build time on every machine that compiles the shell; and PROJECT.md records that a plain
