@@ -14,6 +14,8 @@ target/
 
 # website
 site/
+#test persona
+personas/zara.persona.json
 
 # model weights are never committed
 *.onnx
