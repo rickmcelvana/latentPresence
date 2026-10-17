@@ -12,6 +12,9 @@ target/
 *.key
 *.pem
 
+# website
+site/
+
 # model weights are never committed
 *.onnx
 *.gguf
