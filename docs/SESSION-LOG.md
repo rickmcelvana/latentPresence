@@ -872,3 +872,9 @@ Did: Rick's built-exe test showed no toast. The notification plugin's `Notificat
 Left: R-56; the laptop session (R-13, R-1, R-9); C-7; README after the next runs (Rick); the server's Caddy still points `latentpresence.com` at `<checkout>/site`?
 Next: P8-T02 or P8-T03, Rick's pick, after R-56.
 Decisions: ADR-60 accepted (Rick) and amended (reminders through the plugin; a toast only when installed).
+
+## 2026-10-17 claude — R-56's first run: keys, Ollama Cloud, toasts
+Did: Rick's install on the dev PC passed on time, single instance and clean exit; four findings fixed. The OpenAI-compatible listing sent no key (DeepSeek/Qwen "v1/models 401" after a passing probe); a typed key is now saved on blur/Enter and vault loads wait for in-flight saves; Ollama Cloud preset through the relay (ollama.com answers no page); desktop relay allows local Ollama's `/api/version` (capabilities were lost in the app) (6d9f749). No toast: the installed exe was the 2026-10-16 build, and WebView2 reports the page visible while minimised/behind — reminders now ask the window (`away()`, 36ec482). End-to-end in a throwaway WebView2 profile from outside `target\`: toasts behind other windows and minimised.
+Left: R-56 re-run with the new installer here, then a fresh machine; Qwen not re-tested (no key here); the laptop session (R-13, R-1, R-9); C-7; README (Rick).
+Next: P8-T02 or P8-T03, Rick's pick, after R-56.
+Decisions: ADR-29 amended (Ollama Cloud relayed); ADR-60 amended (2) (a reminder is a toast when the window is away).

@@ -852,6 +852,13 @@ companion until a test had failed; the relay note now names `pnpm companion`. St
 unmeasured: Local Network Access from the hosted app (P8-T03), Firefox and Safari, and whether
 NVIDIA stops generating when the relay drops a connection.
 
+**Amended 2026-10-17 — Ollama Cloud.** `https://ollama.com` sends no CORS headers to any page (a
+405 preflight, SURFACE), so it is the second `relay` endpoint: a preset (`ollama-cloud`,
+`https://ollama.com/v1`) and `Relay::measured()` targets for `/v1/`, `/api/version` and
+`/api/tags` — the last two so discovery recognises Ollama and reads each model's capabilities.
+The desktop relay's local Ollama gains `/api/version` for the same reason: without it the app
+never recognised Ollama and listed every model with unknown capabilities.
+
 ## ADR-30 The tag protocol (accepted 2026-09-21)
 
 **Decision**, in four parts, all of which P1-T12 had to make explicitly because ADR-23
@@ -2471,3 +2478,10 @@ drawn; from a build folder the page reports notifications unsupported and the re
 say. In the release build: `os_notifications` false, the notify command allowed by the ACL. The
 toast from the **installed** app is still R-56's to see.
 
+**Amended 2026-10-17 (2) — when a reminder is a toast.** ADR-58 sends a reminder to a notification
+"while the page is hidden". In the app the page never is: WebView2 reports it visible and focused
+while the window is minimised or behind another app (SURFACE). `PageNotifications.away()` now says
+whether they are elsewhere — in a browser, the page hidden, as before; in the app, the window not
+focused **or** minimised (a minimised window can still be the focused one). Seen working the same
+day from outside `target\`: toasts behind other windows and minimised; with the window in front
+she said it.

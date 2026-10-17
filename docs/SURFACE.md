@@ -2604,3 +2604,26 @@ From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release bui
 - With `notification:default` in the capability, `plugin:notification|notify` is allowed from the
   page (checked in the release build, 2026-10-17).
 
+## Cloud model listings, Ollama Cloud, and WebView2 visibility — measured 2026-10-17 (R-56)
+
+- **DeepSeek `GET https://api.deepseek.com/v1/models` is 401 without a key** (curl). DashScope
+  (Qwen) behaved the same in Rick's test. Hugging Face, OpenRouter and NVIDIA list without one, so
+  the missing key in `listModels` only showed on these.
+- **Ollama Cloud (`https://ollama.com`) sends no CORS headers to any page.** `OPTIONS
+  /v1/models` with `Origin: http://tauri.localhost`, `https://app.latentpresence.com` or
+  `http://localhost:5173` answers **405**; the `GET` answers 200 with no
+  `Access-Control-Allow-Origin`. `/v1/models` lists without a key; `POST /v1/chat/completions`
+  without one is 401 (`{"error":{"message":"Unauthorized",...}}`). `/api/version` answers
+  `{"version":"0.0.0"}` and `/api/tags` carries `capabilities`, as a local Ollama does. Keys:
+  `ollama.com/settings/keys` (303 to sign-in when signed out).
+- **DeepSeek's CORS** answers `Access-Control-Allow-Origin: http://tauri.localhost` to a preflight
+  with `authorization` — direct works from the app.
+- **WebView2 155 in the Tauri 2.12.4 window:** `document.visibilityState` stays `visible` and
+  `document.hasFocus()` stays true while the window is minimised or behind another app (raw CDP
+  `Runtime.evaluate`, no emulation). `plugin:window|is_focused` is false behind another app; a
+  window minimised with `ShowWindow(SW_MINIMIZE)` straight after being in front still reads
+  `is_focused` **true**, with `is_minimized` true. Both commands are allowed by `core:default`.
+- **Windows keeps the app's toasts** in `ToastNotificationManager.History.GetHistory(
+  'com.latentpresence.desktop')`, and the first one creates
+  `HKCU\...\Notifications\Settings\com.latentpresence.desktop` — neither existed after R-56's
+  first run, so that build never sent one.

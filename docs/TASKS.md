@@ -220,6 +220,19 @@ from the installer's first click.
 place you hesitated, the SmartScreen wording, whether the toast came, and anything left running
 after closing.
 
+**First run, 2026-10-17 (Rick, on the dev PC):** installed smoothly and talking in a few minutes
+(local Ollama, LM Studio, a local OpenAI-compatible server; Hugging Face, Google, OpenRouter and
+NVIDIA with keys); the second launch came to the front; nothing left running after closing,
+several times. **Failed:** (a) a key pasted but not saved was never used, on every provider;
+(b) DeepSeek and Qwen said "v1/models 401" — the listing sent no key; (c) Ollama Cloud was refused
+for CORS — ollama.com answers no page; (d) no toast, she said the reminder. (a)–(c) fixed in
+6d9f749; (d) was the 2026-10-16 installer (built before 73a3be2) **and** WebView2 reporting the
+page visible while minimised or behind other apps — fixed in 36ec482 (the window is asked), and
+seen working from outside `target\` the same day: reminders toasted behind other windows and
+minimised, and she said the one that came due with the window in front.
+**Still to do:** reinstall from the new installer on this PC and re-check (d) and the keys; then
+the fresh machine, which is what R-56 is for.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
