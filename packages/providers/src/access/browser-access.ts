@@ -36,6 +36,8 @@ const ACCESS: Readonly<Record<string, BrowserAccessKind>> = {
   openrouter: 'direct',
   // No Access-Control-Allow-Origin on /v1/models or /v1/chat/completions, preflight or not.
   nvidia: 'relay',
+  // ollama.com: no CORS headers on any path, preflight 405 (measured 2026-10-17).
+  'ollama-cloud': 'relay',
   deepseek: 'direct',
   kimi: 'direct',
   // Only with `anthropic-dangerous-direct-browser-access: true`, which the adapter sends.
@@ -101,8 +103,9 @@ export function corsHelp(id: string, origin: string): CorsHelp | null {
         steps: [`Restart llama-server with --cors-origins ${origin}`],
       };
     case 'nvidia':
+    case 'ollama-cloud':
       return {
-        summary: "NVIDIA's API does not answer web pages, so calls to it go through the companion on this computer.",
+        summary: `${id === 'nvidia' ? "NVIDIA's API" : 'Ollama Cloud'} does not answer web pages, so calls to it go through the companion on this computer.`,
         steps: ['Start the companion: pnpm companion', 'Then test the connection again.'],
       };
     default:

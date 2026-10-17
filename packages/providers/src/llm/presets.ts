@@ -63,6 +63,16 @@ export const llmPresets: readonly LLMPreset[] = [
     hint: 'API key from build.nvidia.com',
   },
   {
+    // No CORS headers for any page (a 405 preflight, measured 2026-10-17), so it goes
+    // through the companion's relay like NVIDIA. `/api/tags` carries capabilities, as locally.
+    id: 'ollama-cloud',
+    label: 'Ollama Cloud',
+    baseUrl: 'https://ollama.com/v1',
+    requiresApiKey: true,
+    native: 'ollama',
+    hint: 'API key from ollama.com/settings/keys',
+  },
+  {
     id: 'deepseek',
     label: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/v1',

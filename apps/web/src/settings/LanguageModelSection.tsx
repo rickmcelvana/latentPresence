@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { LlmModel } from '@latentpresence/protocol';
 import { browserAccess } from '@latentpresence/providers/web';
+import { desktopShell } from '../desktop/desktop';
 import { ConnectionStatus } from './ConnectionStatus';
 import {
   messageForProbe,
@@ -199,7 +200,9 @@ export function LanguageModelSection({ llm, companionUrl, onChangeLlm, onChangeC
       {access === 'local-cors' && (
         <p className="field-hint">This server may need CORS turned on before this page can reach it.</p>
       )}
-      {access === 'relay' && (
+      {/* The desktop app's companion is its own and always running (ADR-60): nothing to start
+          and no address to set (R-56). */}
+      {access === 'relay' && desktopShell() === null && (
         <>
           {/* R-5: without the command here, nothing said how to start the companion until a
               test had already failed. */}

@@ -13,6 +13,7 @@ describe('browserAccess (measured 2026-09-14)', () => {
       'llama-cpp': 'direct',
       openrouter: 'direct',
       nvidia: 'relay',
+      'ollama-cloud': 'relay',
       deepseek: 'direct',
       kimi: 'direct',
       anthropic: 'direct',
@@ -51,8 +52,9 @@ describe('corsHelp', () => {
     expect(help?.steps.join('\n')).toContain('lms server start --cors');
   });
 
-  it('sends NVIDIA users to the companion', () => {
+  it('sends NVIDIA and Ollama Cloud users to the companion', () => {
     expect(corsHelp('nvidia', 'http://localhost:5173')?.steps.join('\n')).toContain('pnpm companion');
+    expect(corsHelp('ollama-cloud', 'http://localhost:5173')?.summary).toContain('Ollama Cloud');
   });
 
   it('has nothing to say for a cloud endpoint that allows every origin', () => {

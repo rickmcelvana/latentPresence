@@ -11,6 +11,7 @@ describe('llmPresets', () => {
       'llama-cpp',
       'openrouter',
       'nvidia',
+      'ollama-cloud',
       'deepseek',
       'kimi',
     ]) {
@@ -29,6 +30,7 @@ describe('llmPresets', () => {
     expect(presetById('openrouter')?.requiresApiKey).toBe(true);
     expect(presetById('deepseek')?.requiresApiKey).toBe(true);
     expect(presetById('kimi')?.requiresApiKey).toBe(true);
+    expect(presetById('ollama-cloud')?.requiresApiKey).toBe(true);
   });
 
   it('has unique ids', () => {
@@ -36,9 +38,9 @@ describe('llmPresets', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('only Ollama enables the native enrichment layer (ADR-22)', () => {
+  it('only Ollama, local and cloud, enables the native enrichment layer (ADR-22)', () => {
     for (const preset of llmPresets) {
-      if (preset.id === 'ollama') {
+      if (preset.id === 'ollama' || preset.id === 'ollama-cloud') {
         expect(preset.native).toBe('ollama');
       } else {
         expect(preset.native).toBeUndefined();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { KeyVault } from './vault';
 
@@ -14,6 +14,10 @@ import type { KeyVault } from './vault';
  * presets) must render this with `key={refKey}`.** That remounts the field instead of
  * patching it in place, so the initial `useState` reads *this* ref's saved-or-not state
  * again rather than carrying the previous endpoint's over.
+ *
+ * **A typed key is saved when the field loses focus, or on Enter**, not only by its button.
+ * Pasting a key and pressing "Test connection" used to test with no key at all, on every
+ * endpoint (R-56, 2026-10-17); the vault makes that test's load wait for this save.
  */
 export interface KeyFieldProps {
   readonly id: string;
@@ -32,9 +36,12 @@ export function KeyField({ id, label, refKey, hint, optional, vault, onChange }:
   const [editing, setEditing] = useState(() => !vault.hasKey(refKey));
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
+  // Blur and the Save button's click both land on one press of Save; save once.
+  const savingRef = useRef(false);
 
   async function save(): Promise<void> {
-    if (value === '') return;
+    if (value === '' || savingRef.current) return;
+    savingRef.current = true;
     setBusy(true);
     try {
       await vault.saveKey(refKey, value);
@@ -43,6 +50,7 @@ export function KeyField({ id, label, refKey, hint, optional, vault, onChange }:
       setValue('');
       onChange?.();
     } finally {
+      savingRef.current = false;
       setBusy(false);
     }
   }
@@ -77,7 +85,11 @@ export function KeyField({ id, label, refKey, hint, optional, vault, onChange }:
             autoComplete="off"
             className="input"
             id={id}
+            onBlur={() => void save()}
             onChange={(event) => setValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') void save();
+            }}
             placeholder="Paste a key"
             spellCheck={false}
             type="password"

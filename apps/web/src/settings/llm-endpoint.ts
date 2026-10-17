@@ -25,7 +25,7 @@ export type LlmEndpointOption =
   | { readonly kind: 'google' }
   | { readonly kind: 'custom' };
 
-/** Every choice the endpoint picker offers, in the brief's order: the eight presets,
+/** Every choice the endpoint picker offers, in the brief's order: the nine presets,
  * then Anthropic, Google, then Custom. */
 export const LLM_ENDPOINT_OPTIONS: readonly LlmEndpointOption[] = [
   ...llmPresets.map(

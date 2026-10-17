@@ -60,7 +60,7 @@ function selectEndpoint(label: string): void {
   fireEvent.change(screen.getByLabelText('Endpoint'), { target: { value: optionValueFor(label) } });
 }
 
-/** The eight presets use their preset id as the option value; the label text alone does
+/** The presets use their preset id as the option value; the label text alone does
  * not say it, so tests name the id they expect for the option they pick. */
 function optionValueFor(label: string): string {
   const option = screen.getByRole('option', { name: label }) as HTMLOptionElement;
@@ -116,6 +116,50 @@ describe('SettingsPanel — Language model', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByText('Key saved')).toBeTruthy());
     expect(container.innerHTML).not.toContain(secret);
+  });
+
+  // R-56 (2026-10-17): a pasted key with no press of Save tested with no key, and the
+  // listing after a passing probe was sent without one ("v1/models 401").
+  it('a key typed but not saved is saved on leaving the field, and both the probe and the listing carry it', async () => {
+    const probed: (Record<string, string> | undefined)[] = [];
+    const listed: (string | null)[] = [];
+    const deps = testDeps({
+      probe: async (_url, options): Promise<EndpointProbe> => {
+        probed.push(options?.headers as Record<string, string> | undefined);
+        return { kind: 'answered', status: 200 };
+      },
+      fetch: (async (_input, init) => {
+        listed.push(new Headers(init?.headers).get('authorization'));
+        return new Response(JSON.stringify({ data: [{ id: 'deepseek-chat' }] }), { status: 200 });
+      }) as HttpFetch,
+    });
+    render(<SettingsPanel deps={deps} />);
+    selectEndpoint('DeepSeek');
+    const field = screen.getByPlaceholderText('Paste a key');
+    fireEvent.change(field, { target: { value: 'sk-typed' } });
+    fireEvent.blur(field);
+    fireEvent.click(screen.getByRole('button', { name: 'Test connection' }));
+    await waitFor(() => expect(screen.getByRole('option', { name: 'deepseek-chat' })).toBeTruthy());
+    expect(screen.getByText('Key saved')).toBeTruthy();
+    expect(probed[0]?.['authorization']).toBe('Bearer sk-typed');
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.every((value) => value === 'Bearer sk-typed')).toBe(true);
+  });
+
+  it('Enter in the key field saves it', async () => {
+    render(<SettingsPanel deps={testDeps()} />);
+    selectEndpoint('DeepSeek');
+    const field = screen.getByPlaceholderText('Paste a key');
+    fireEvent.change(field, { target: { value: 'sk-enter' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(screen.getByText('Key saved')).toBeTruthy());
+  });
+
+  it('Ollama Cloud goes through the companion, like NVIDIA', () => {
+    render(<SettingsPanel deps={testDeps()} />);
+    selectEndpoint('Ollama Cloud');
+    expect(screen.getByLabelText('Base URL')).toHaveProperty('value', 'https://ollama.com/v1');
+    expect(screen.getByLabelText('Companion URL')).toBeTruthy();
   });
 
   it('the model picker hides embedding-only models, once a test finds some', async () => {

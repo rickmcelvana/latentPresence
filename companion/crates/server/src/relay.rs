@@ -49,10 +49,19 @@ pub struct Relay {
 impl Relay {
     /// The endpoints measured to refuse browser origins (`browserAccess` = `relay`).
     pub fn measured() -> Self {
-        Self::with_targets(vec![AllowedTarget {
-            origin: "https://integrate.api.nvidia.com".to_owned(),
-            path_prefix: "/v1/".to_owned(),
-        }])
+        let target = |origin: &str, path_prefix: &str| AllowedTarget {
+            origin: origin.to_owned(),
+            path_prefix: path_prefix.to_owned(),
+        };
+        Self::with_targets(vec![
+            target("https://integrate.api.nvidia.com", "/v1/"),
+            // Ollama Cloud: no CORS headers on any path, a 405 preflight (measured 2026-10-17).
+            // `/api/version` and `/api/tags` are how discovery recognises Ollama and reads
+            // what each model can do.
+            target("https://ollama.com", "/v1/"),
+            target("https://ollama.com", "/api/version"),
+            target("https://ollama.com", "/api/tags"),
+        ])
     }
 
     /// `measured()` plus the model servers on this machine, for the desktop app (P8-T01,
@@ -64,8 +73,9 @@ impl Relay {
         let mut targets = Self::measured().targets;
         for host in ["127.0.0.1", "localhost"] {
             for (port, prefixes) in [
-                // Ollama: its OpenAI-compatible API, and `/api/tags` for what each model can do.
-                ("11434", &["/v1/", "/api/tags"][..]),
+                // Ollama: its OpenAI-compatible API, and `/api/version` + `/api/tags`, which
+                // discovery needs to know it is Ollama and what each model can do.
+                ("11434", &["/v1/", "/api/version", "/api/tags"][..]),
                 // LM Studio.
                 ("1234", &["/v1/"][..]),
             ] {
@@ -294,7 +304,19 @@ mod tests {
                 .allowed("https://integrate.api.nvidia.com/v1/models")
                 .is_some()
         );
+        for allowed in [
+            "https://ollama.com/v1/chat/completions",
+            "https://ollama.com/api/version",
+            "https://ollama.com/api/tags",
+        ] {
+            assert!(relay.allowed(allowed).is_some(), "{allowed}");
+        }
         for refused in [
+            // Ollama Cloud's account and model-management routes.
+            "https://ollama.com/api/pull",
+            "https://ollama.com/api/me",
+            "https://ollama.com/settings/keys",
+            "http://ollama.com/v1/models",
             "http://integrate.api.nvidia.com/v1/models",
             "https://integrate.api.nvidia.com:8443/v1/models",
             "https://integrate.api.nvidia.com.evil.example/v1/models",
@@ -317,6 +339,7 @@ mod tests {
             "http://127.0.0.1:11434/v1/chat/completions",
             "http://localhost:11434/v1/models",
             "http://127.0.0.1:11434/api/tags",
+            "http://127.0.0.1:11434/api/version",
             "http://127.0.0.1:1234/v1/models",
             "http://localhost:1234/v1/chat/completions",
         ] {

@@ -1,4 +1,4 @@
-import type { KeyVault } from '../settings/vault';
+import { PendingSaves, type KeyVault } from '../settings/vault';
 import type { Invoke } from './desktop';
 
 /**
@@ -14,6 +14,7 @@ export const KEYCHAIN_INDEX_KEY = 'latentpresence.keychain.v1';
 export class KeychainVault implements KeyVault {
   private readonly invoke: Invoke;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+  private readonly pending = new PendingSaves();
 
   constructor(invoke: Invoke, storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = window.localStorage) {
     this.invoke = invoke;
@@ -33,7 +34,11 @@ export class KeychainVault implements KeyVault {
     this.storage.setItem(KEYCHAIN_INDEX_KEY, JSON.stringify([...refs].toSorted()));
   }
 
-  async saveKey(ref: string, secret: string): Promise<void> {
+  saveKey(ref: string, secret: string): Promise<void> {
+    return this.pending.track(ref, this.write(ref, secret));
+  }
+
+  private async write(ref: string, secret: string): Promise<void> {
     await this.invoke('secret_set', { name: ref, value: secret });
     const refs = this.refs();
     refs.add(ref);
@@ -43,6 +48,7 @@ export class KeychainVault implements KeyVault {
   /** The key, or null when there is none — or when the OS no longer has it (removed in
    * Credential Manager by hand), which also drops it from the index. */
   async loadKey(ref: string): Promise<string | null> {
+    await this.pending.settled(ref);
     if (!this.refs().has(ref)) return null;
     const secret = await this.invoke<string | null>('secret_get', { name: ref });
     if (secret === null) {

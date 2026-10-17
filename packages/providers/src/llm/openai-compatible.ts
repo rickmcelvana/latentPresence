@@ -45,11 +45,24 @@ export class OpenAICompatibleLLMProvider implements LLMProvider {
   }
 
   /** Models the endpoint offers, enriched when it is Ollama (capabilities known) and
-   * `null`-capabilities otherwise (ADR-22). */
+   * `null`-capabilities otherwise (ADR-22). The listing carries the key and headers a
+   * completion does: DeepSeek and DashScope answer a key-less `/models` with 401, so a
+   * listing without them failed after the connection test had passed (R-56, 2026-10-17). */
   async listModels(): Promise<LlmModel[]> {
-    const fetchFn = this.config.fetch ?? fetch;
-    const { models } = await discoverModels(fetchFn, this.config.baseUrl);
+    const { models } = await discoverModels(this.authedFetch(), this.config.baseUrl);
     return models;
+  }
+
+  private authedFetch(): HttpFetch {
+    const base = this.config.fetch ?? fetch;
+    const { apiKey, headers: extra } = this.config;
+    if (apiKey === undefined && extra === undefined) return base;
+    return (input, init) => {
+      const headers = new Headers(init?.headers);
+      for (const [name, value] of Object.entries(extra ?? {})) headers.set(name, value);
+      if (apiKey !== undefined) headers.set('authorization', `Bearer ${apiKey}`);
+      return base(input, { ...init, headers });
+    };
   }
 
   /** Stream a chat completion as protocol chunks. Cancellation (barge-in) aborts the

@@ -10,9 +10,9 @@ import {
 } from './llm-endpoint';
 
 describe('LLM_ENDPOINT_OPTIONS', () => {
-  it('lists the eight presets, then Anthropic, then Google, then Custom, in order', () => {
+  it('lists the nine presets, then Anthropic, then Google, then Custom, in order', () => {
     const kinds = LLM_ENDPOINT_OPTIONS.map((option) => option.kind);
-    expect(kinds.filter((k) => k === 'preset')).toHaveLength(8);
+    expect(kinds.filter((k) => k === 'preset')).toHaveLength(9);
     expect(kinds.slice(-3)).toEqual(['anthropic', 'google', 'custom']);
   });
 });

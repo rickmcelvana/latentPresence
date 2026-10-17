@@ -127,9 +127,33 @@ export interface KeyVault {
   forgetAll(): void;
 }
 
+/**
+ * Saves still in flight, by ref, so a load waits for the save it follows. A key field saves
+ * when it loses focus, and the click that took the focus ("Test connection", "Add server")
+ * loads the key straight after — before an encrypting or keychain save has finished, that
+ * load found nothing (R-56, 2026-10-17). Both vaults use this.
+ */
+export class PendingSaves {
+  private readonly inFlight = new Map<string, Promise<void>>();
+
+  track(ref: string, save: Promise<void>): Promise<void> {
+    const tracked = save.finally(() => {
+      if (this.inFlight.get(ref) === tracked) this.inFlight.delete(ref);
+    });
+    this.inFlight.set(ref, tracked);
+    return tracked;
+  }
+
+  /** Resolves once any save of `ref` has finished, whether or not it succeeded. */
+  async settled(ref: string): Promise<void> {
+    await this.inFlight.get(ref)?.catch(() => undefined);
+  }
+}
+
 export class Vault implements KeyVault {
   private readonly port: MasterKeyPort;
   private readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+  private readonly pending = new PendingSaves();
 
   constructor(port: MasterKeyPort, storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = window.localStorage) {
     this.port = port;
@@ -177,7 +201,11 @@ export class Vault implements KeyVault {
 
   /** Encrypt and save `secret` under `ref`, replacing anything already there. A fresh IV
    * every call, so saving the same secret twice never produces the same ciphertext. */
-  async saveKey(ref: string, secret: string): Promise<void> {
+  saveKey(ref: string, secret: string): Promise<void> {
+    return this.pending.track(ref, this.write(ref, secret));
+  }
+
+  private async write(ref: string, secret: string): Promise<void> {
     const master = await this.getOrCreateMaster();
     const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
     const encrypted = await crypto.subtle.encrypt({ name: AES_ALGORITHM, iv }, master, new TextEncoder().encode(secret));
@@ -192,6 +220,7 @@ export class Vault implements KeyVault {
    * be read at all (IndexedDB failing) throws instead**: that is not proof the entry is
    * unreadable, and deleting on it would lose a good key to a transient error. */
   async loadKey(ref: string): Promise<string | null> {
+    await this.pending.settled(ref);
     const all = this.readAll();
     const entry = all[ref];
     if (entry === undefined) return null;
