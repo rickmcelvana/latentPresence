@@ -65,6 +65,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-60 | The desktop app: the companion runs inside the Tauri process (not a sidecar), on 8787 or a free port, paired by a per-launch token on every request; its relay reaches this machine's Ollama and LM Studio; API keys in Windows Credential Manager; one window, remembered; a per-user NSIS installer, unsigned for now; **amended 2026-10-17: reminders through the notification plugin itself, a toast only from the installed app** | accepted (amended 2026-10-17) | 2026-10-16 |
 | ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | accepted 2026-10-17 | 2026-10-17 |
 | ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
+| ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
 
 ---
 
@@ -2550,4 +2551,46 @@ variable. Rick asked for the field.
 Checked in the release app against the dev MariaDB (throwaway WebView2 profile): a `postgres://`
 address refused in a sentence; the real one saved → `/health` `mariadb`, connected; forgotten →
 `none`; no `companion:database` left in Credential Manager; the log says only whether one is saved.
+
+## ADR-63 The companion's own settings, from the app (accepted 2026-10-17, P8-T06)
+
+**Context.** Everything the companion can reach beyond memory — Home Assistant, the folders the
+Files server reads, web search, the person's databases (ADR-43, 46, 47, 48), the documents it
+indexes (ADR-44) — is set in `mcp.json` and `documents.json` under `%APPDATA%\latentPresence`,
+by hand, secrets in plain text. After R-57 Rick asked how the app should handle them: without the
+files a new person has none of it and nothing says so; with them, a typo is a terminal error.
+And "Add a server" with Home Assistant read as "not up" — it answered, and refused the page
+(a 403 preflight with no CORS headers for `http://tauri.localhost` and `http://localhost:5173`).
+
+**Decision (accepted by Rick).**
+1. **The files stay the source**, in the same place, still read by the companion at start and
+   still editable by hand. The app reads them (`config_edit::view`) and changes them one `Change`
+   at a time (`config_edit::apply`), each checked with the companion's own parsers before anything
+   is written, unknown fields kept. Each change restarts the companion (the socket and token stay,
+   ADR-62).
+2. **Secrets leave the files.** A token, key or database address goes to Windows Credential
+   Manager (`companion:homeAssistant.token`, `companion:web.search.key`,
+   `companion:databases.<name>.url`), and one found in the file is moved there when its section is
+   saved. **The companion itself looks a missing secret up there** (`secrets`, Windows only), so
+   the app's companion and a checkout's `pnpm companion` on the same machine read the same setup;
+   a secret written in the file still wins. The page only ever sees where a secret is.
+3. **The page never names a folder** (ADR-43/44's guarantee, kept). There is no change that adds
+   one; the shell opens the system's folder (or SQLite file) dialog and adds what the person picks
+   (`tauri-plugin-dialog`, used from Rust only). Removing is a change.
+4. **Programs stay file-only.** `mcpServers` entries start programs; a page that could add one
+   could run anything. They are listed read-only, with "Open mcp.json" and "Reload".
+5. **Desktop only.** In a browser the companion is the person's own process, unpaired; a page that
+   could rewrite its config would be any page. There the files stay hand-edited.
+6. **Settings and the wizard.** Settings gets a section per topic; the wizard (in the app) a
+   skippable "Your home, notes and documents" step. Adding something turns on the switch that
+   offers it to her (Tools → companion, Documents → search), never off.
+7. **A Test that says why.** Tools → Test, on a failure, takes a plain second look at the address:
+   "up, and refusing this app" (with Home Assistant sent to its own section), nothing there, slow,
+   no MCP endpoint at that path, or the token refused.
+
+Checked in the release app against copies of Rick's files (`COMPANION_MCP_CONFIG`,
+`COMPANION_DOCUMENTS_CONFIG`): every section in the view, no secret in it; a bad Home Assistant
+address refused in the companion's words; saving Home Assistant moved its token from the file to
+Credential Manager and kept `mcpServers`; Home Assistant came up `ready` with 20 tools on the
+stored token. The test's credential was deleted after.
 

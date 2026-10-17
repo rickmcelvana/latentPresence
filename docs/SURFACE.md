@@ -2653,3 +2653,18 @@ From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release bui
   out, and nothing after "starting" was logged. `set_nonblocking(true)` on the clone fixed it.
 - sqlx-mysql 0.9.0 accepts both `mysql://` and `mariadb://` (`URL_SCHEMES`, `database.rs`).
 
+## Home Assistant's MCP endpoint from a page, and the dialog plugin — 2026-10-17 (P8-T06)
+
+- Rick's Home Assistant (`http://192.168.40.168/api/mcp`): `OPTIONS` with `Origin:
+  http://tauri.localhost` or `http://localhost:5173` and `Access-Control-Request-Headers:
+  authorization,content-type,mcp-protocol-version` → **403, no `Access-Control-*` headers**. A
+  `POST` without a token → 401. So a page reaches it only if Home Assistant lists its origin in
+  `http: cors_allowed_origins`; the companion (no CORS) reaches it as it is.
+- `tauri-plugin-dialog`: 2.8.1 (2026-10-01) needs `tauri ^2.12`, `rfd ^0.16`,
+  `tauri-plugin-fs ^2.6.0`; 2.8.3 was the newest 2.x (2026-10-14, three days old) and 3.0 is in
+  alpha. Pinned at 2.8.1 (`cargo update --precise`); used from Rust (`DialogExt`,
+  `blocking_pick_folder` / `blocking_pick_file` on a blocking thread), so no JS permission.
+- `keyring` 4.2.0 in the companion as a Windows-only dependency: the companion's `Cargo.lock`
+  gains the other platforms' stores too (zbus, secret-service), never built on Windows or for the
+  Linux CI's companion, which has no `keyring` at all.
+

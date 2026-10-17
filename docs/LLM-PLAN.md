@@ -480,6 +480,13 @@ Brief: `docs/briefs/P8-T02.md` (2026-10-17). Main landed first: the shell grants
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
 Done when: no step requires the docs.
 
+### P8-T06 The companion's own settings, in the app — owner: main + sub (added 2026-10-17)
+Home Assistant, the Files folders, web search, databases and documents from Settings and the wizard
+instead of hand-edited `mcp.json` / `documents.json`; secrets to Credential Manager; a folder only
+from the system dialog; programs stay file-only; Tools → Test says why it failed. ADR-63, brief
+`docs/briefs/P8-T06.md`.
+Done when: a new person connects Home Assistant and a notes folder from the app, with no file edited.
+
 ### P8-T03 Hosted app to local services — owner: main
 `app.latentpresence.com` reaching the companion, Ollama and LM Studio on `localhost`: pairing code, CORS allowlist, Chrome Local Network Access preflight (`Access-Control-Allow-Private-Network: true`) and its permission prompt, onboarding copy per backend, Firefox behaviour verified. Facts recorded in `docs/SURFACE.md`.
 Done when: the deployed app talks to a local companion and a local Ollama from Chrome and Firefox after the prompts; a fresh user can follow the on-screen copy.
