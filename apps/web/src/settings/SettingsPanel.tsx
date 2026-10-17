@@ -61,7 +61,12 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
 
       <HearingSection deps={deps} onChange={(stt: SttSettings) => setSettings((prev) => ({ ...prev, stt }))} stt={settings.stt} />
 
-      <MemorySection memory={settings.memory} onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))} />
+      <MemorySection
+        companionUrl={settings.companionUrl}
+        fetch={deps.fetch}
+        memory={settings.memory}
+        onChange={(memory) => setSettings((prev) => ({ ...prev, memory }))}
+      />
 
       <InitiativeSection initiative={settings.initiative} onChange={(initiative) => setSettings((prev) => ({ ...prev, initiative }))} />
 

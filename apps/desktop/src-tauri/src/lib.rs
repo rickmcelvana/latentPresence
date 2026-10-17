@@ -9,13 +9,15 @@
 //!   window's origin.
 //! - **Secrets** — the API keys the page saves — go to Windows Credential Manager through
 //!   `secret_set` / `secret_get` / `secret_delete` (the `keyring` crate), not into the webview.
+//! - **The database address** (ADR-62), if the person gave one, is kept in Credential Manager too
+//!   and handed to the companion at each start; changing it restarts the companion on the same
+//!   socket and token (`database_set` / `database_clear`), so the page carries on.
 //! - **One window**: a second launch focuses the first (`single-instance`), and its size and place
 //!   are remembered (`window-state`).
 //!
 //! Spike E's probe command and test tray are gone; the tray mode is P8-T05.
 
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
-use std::sync::Mutex;
 use std::time::Duration;
 
 use latentpresence_companion::{DEFAULT_PORT, pairing, relay, serve};
@@ -34,16 +36,183 @@ struct CompanionInfo {
     token: String,
 }
 
-/// The running companion: what the page is told, and how to stop it.
+/// One run of the companion, and how to end it.
+struct Running {
+    stop: oneshot::Sender<()>,
+    done: tauri::async_runtime::JoinHandle<()>,
+}
+
+/// The companion: its socket and token for the app's whole life (the page keeps the address it
+/// was given), and the run on it now. A new database address restarts the run, not the socket.
 struct Companion {
     info: CompanionInfo,
-    stop: Mutex<Option<oneshot::Sender<()>>>,
-    done: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    listener: TcpListener,
+    running: tokio::sync::Mutex<Option<Running>>,
+}
+
+impl Companion {
+    /// A run on a clone of the socket, with the database address kept in Credential Manager if
+    /// there is one (else the companion reads `DATABASE_URL` as it always has).
+    fn start(&self) -> std::io::Result<Running> {
+        let listener = self.listener.try_clone()?;
+        // A duplicated socket does not carry the original's non-blocking mode on Windows, and
+        // tokio needs it: without it the run never answered (2026-10-17).
+        listener.set_nonblocking(true)?;
+        let token = self.info.token.clone();
+        let database_url = match stored_database_url() {
+            Ok(url) => url,
+            Err(error) => {
+                log::warn!(
+                    "companion: the database address could not be read from Credential Manager: {error}"
+                );
+                None
+            }
+        };
+        log::info!(
+            "companion: starting ({})",
+            if database_url.is_some() {
+                "the database address saved in the app"
+            } else {
+                "no saved database address"
+            }
+        );
+        let (stop, stopped) = oneshot::channel::<()>();
+        let done = tauri::async_runtime::spawn(async move {
+            let listener = match tokio::net::TcpListener::from_std(listener) {
+                Ok(listener) => listener,
+                Err(error) => {
+                    log::error!("companion: the listener could not be handed to tokio: {error}");
+                    return;
+                }
+            };
+            let options = serve::ServeOptions {
+                listener,
+                token: Some(token),
+                relay: relay::Relay::desktop(),
+                database_url,
+            };
+            let shutdown = async {
+                let _ = stopped.await;
+            };
+            if let Err(error) = serve::serve(options, shutdown).await {
+                log::error!("companion stopped: {error}");
+            }
+        });
+        Ok(Running { stop, done })
+    }
+
+    /// Ends the run now, if there is one, and waits a moment for the MCP servers it started.
+    async fn stop(&self) {
+        let running = self.running.lock().await.take();
+        if let Some(running) = running {
+            let _ = running.stop.send(());
+            let _ = tokio::time::timeout(Duration::from_secs(3), running.done).await;
+        }
+    }
+
+    /// A fresh run, for a changed database address. The page's address and token stay valid.
+    async fn restart(&self) -> Result<(), String> {
+        let mut running = self.running.lock().await;
+        if let Some(previous) = running.take() {
+            let _ = previous.stop.send(());
+            let _ = tokio::time::timeout(Duration::from_secs(5), previous.done).await;
+        }
+        *running = Some(self.start().map_err(|error| error.to_string())?);
+        log::info!("companion: restarted");
+        Ok(())
+    }
 }
 
 #[tauri::command]
 fn companion_info(companion: tauri::State<'_, Companion>) -> CompanionInfo {
     companion.info.clone()
+}
+
+/// The Credential Manager account the database address is filed under. Not a page ref: the page's
+/// `secret_*` refs are `llm:*`, `tts`, `stt` and `mcp:*`.
+const DATABASE_SECRET: &str = "companion:database";
+
+fn stored_database_url() -> Result<Option<String>, String> {
+    match entry(DATABASE_SECRET)?.get_password() {
+        Ok(value) if !value.trim().is_empty() => Ok(Some(value)),
+        Ok(_) | Err(keyring::v1::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+/// What the page may know about the saved database address: that there is one, and where it
+/// points — never the password, which stays between Credential Manager and the companion.
+#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+struct DatabaseInfo {
+    saved: bool,
+    /// `mysql://user@host:3306/name`, the password left out.
+    address: Option<String>,
+}
+
+/// A MariaDB address the companion can use: `mysql://` or `mariadb://`, with a host.
+fn checked_database_url(raw: &str) -> Result<tauri::Url, String> {
+    let url = tauri::Url::parse(raw.trim()).map_err(|_| {
+        "That is not a database address. It looks like mysql://user:password@host:3306/latentpresence".to_owned()
+    })?;
+    if !matches!(url.scheme(), "mysql" | "mariadb") {
+        return Err("A MariaDB address starts with mysql:// (or mariadb://).".to_owned());
+    }
+    if url.host_str().is_none_or(str::is_empty) {
+        return Err("The address has no server name after the //.".to_owned());
+    }
+    Ok(url)
+}
+
+fn redacted(url: &tauri::Url) -> String {
+    let mut shown = url.clone();
+    let _ = shown.set_password(None);
+    shown.to_string()
+}
+
+fn database_info_now() -> Result<DatabaseInfo, String> {
+    Ok(match stored_database_url()? {
+        Some(raw) => DatabaseInfo {
+            saved: true,
+            address: Some(checked_database_url(&raw).map_or_else(
+                |_| "(saved, but not an address)".to_owned(),
+                |url| redacted(&url),
+            )),
+        },
+        None => DatabaseInfo {
+            saved: false,
+            address: None,
+        },
+    })
+}
+
+#[tauri::command]
+fn database_info() -> Result<DatabaseInfo, String> {
+    database_info_now()
+}
+
+/// Saves the database address in Credential Manager and restarts the companion on it (ADR-62).
+#[tauri::command]
+async fn database_set(
+    url: String,
+    companion: tauri::State<'_, Companion>,
+) -> Result<DatabaseInfo, String> {
+    let checked = checked_database_url(&url)?;
+    entry(DATABASE_SECRET)?
+        .set_password(checked.as_str())
+        .map_err(|error| error.to_string())?;
+    companion.restart().await?;
+    database_info_now()
+}
+
+/// Forgets the saved address and restarts the companion without it.
+#[tauri::command]
+async fn database_clear(companion: tauri::State<'_, Companion>) -> Result<DatabaseInfo, String> {
+    match entry(DATABASE_SECRET)?.delete_credential() {
+        Ok(()) | Err(keyring::v1::Error::NoEntry) => {}
+        Err(error) => return Err(error.to_string()),
+    }
+    companion.restart().await?;
+    database_info_now()
 }
 
 /// Whether Windows will draw this app's toasts. It routes a toast by the app's identity, which the
@@ -104,38 +273,21 @@ fn bind_companion() -> std::io::Result<TcpListener> {
 fn start_companion() -> std::io::Result<Companion> {
     let listener = bind_companion()?;
     let address = listener.local_addr()?;
-    let token = pairing::new_token();
-    let (stop, stopped) = oneshot::channel::<()>();
-    let serve_token = token.clone();
-    let done = tauri::async_runtime::spawn(async move {
-        let listener = match tokio::net::TcpListener::from_std(listener) {
-            Ok(listener) => listener,
-            Err(error) => {
-                log::error!("companion: the listener could not be handed to tokio: {error}");
-                return;
-            }
-        };
-        let options = serve::ServeOptions {
-            listener,
-            token: Some(serve_token),
-            relay: relay::Relay::desktop(),
-        };
-        let shutdown = async {
-            let _ = stopped.await;
-        };
-        if let Err(error) = serve::serve(options, shutdown).await {
-            log::error!("companion stopped: {error}");
-        }
-    });
-    log::info!("companion: http://{address} (paired)");
-    Ok(Companion {
+    let companion = Companion {
         info: CompanionInfo {
             url: format!("http://{address}"),
-            token,
+            token: pairing::new_token(),
         },
-        stop: Mutex::new(Some(stop)),
-        done: Mutex::new(Some(done)),
-    })
+        listener,
+        running: tokio::sync::Mutex::new(None),
+    };
+    let first = companion.start()?;
+    *companion
+        .running
+        .try_lock()
+        .expect("nothing else holds a companion being built") = Some(first);
+    log::info!("companion: http://{address} (paired)");
+    Ok(companion)
 }
 
 /// The app's answer to the webview's permission requests (P8-T02, ADR-61). Left to WebView2, the
@@ -155,14 +307,7 @@ fn stop_companion(app: &tauri::AppHandle) {
     let Some(companion) = app.try_state::<Companion>() else {
         return;
     };
-    if let Some(stop) = companion.stop.lock().ok().and_then(|mut stop| stop.take()) {
-        let _ = stop.send(());
-    }
-    if let Some(done) = companion.done.lock().ok().and_then(|mut done| done.take()) {
-        let _ = tauri::async_runtime::block_on(async {
-            tokio::time::timeout(Duration::from_secs(3), done).await
-        });
-    }
+    tauri::async_runtime::block_on(companion.stop());
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -188,7 +333,10 @@ pub fn run() {
             os_notifications,
             secret_set,
             secret_get,
-            secret_delete
+            secret_delete,
+            database_info,
+            database_set,
+            database_clear
         ])
         .setup(|app| {
             match tauri::webview_version() {
@@ -227,6 +375,26 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_database_address_must_be_mariadb_with_a_server_and_is_shown_without_its_password() {
+        let url =
+            checked_database_url(" mysql://lp:s3cret@192.168.40.101:3306/latentpresence ").unwrap();
+        assert_eq!(
+            redacted(&url),
+            "mysql://lp@192.168.40.101:3306/latentpresence"
+        );
+        assert!(checked_database_url("mariadb://lp:pw@db.example/lp").is_ok());
+        for refused in [
+            "",
+            "not a url",
+            "postgres://u:p@host/db",
+            "http://host/db",
+            "mysql:///lp",
+        ] {
+            assert!(checked_database_url(refused).is_err(), "{refused}");
+        }
+    }
 
     #[test]
     fn the_app_grants_the_microphone_and_camera_and_leaves_everything_else_to_the_webview() {

@@ -18,6 +18,10 @@ pub struct ServeOptions {
     /// Who the relay may reach: `Relay::measured()` for the binary; plus this machine's local
     /// model servers for the desktop app (`Relay::desktop()`).
     pub relay: relay::Relay,
+    /// The database address the caller holds (the desktop app keeps one in Credential Manager,
+    /// ADR-62). When set it is used instead of `DATABASE_URL` or a `.env`; when not, those are
+    /// read as before. Never logged: it carries a password.
+    pub database_url: Option<String>,
 }
 
 /// Everything `main.rs` used to start, then serves until `shutdown` resolves. The MCP servers it
@@ -30,7 +34,10 @@ pub async fn serve(
     // with `bench` and `memory-check` rather than read again here. `has_database_url`
     // distinguishes "not configured" from "configured but did not come up" for `/health`
     // (`HealthResponseSchema.database.kind`); connecting also runs the migrations.
-    let database_url = bench::database_url();
+    let database_url = match options.database_url.clone() {
+        Some(url) if !url.trim().is_empty() => Ok(url),
+        _ => bench::database_url(),
+    };
     let has_database_url = database_url.is_ok();
     let pool = match database_url {
         Ok(url) => match latentpresence_db::connect(&url).await {

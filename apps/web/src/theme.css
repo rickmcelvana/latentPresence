@@ -964,6 +964,13 @@ kbd {
   gap: var(--gap-sm);
 }
 
+/* The saved database address (ADR-62), password already left out by the shell: shown so the
+   person can see which server it is, and allowed to break anywhere on a narrow window. */
+.companion-database-address {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 .settings-test-row {
   display: flex;
   flex-wrap: wrap;

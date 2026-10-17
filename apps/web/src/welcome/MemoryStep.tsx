@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { HttpFetch } from '@latentpresence/providers/web';
 import type { ConnectionResult } from '../settings/connection';
+import { desktopShell } from '../desktop/desktop';
+import { desktopDatabase, type DesktopDatabase } from '../desktop/database';
+import { CompanionDatabase } from '../settings/CompanionDatabase';
 import { ConnectionStatus } from '../settings/ConnectionStatus';
 import type { MemorySetting } from '../settings/settings';
-import { checkCompanionDatabase, describeMemoryCheck } from './memory-check';
+import { checkCompanionDatabase, describeMemoryCheck } from '../settings/memory-check';
 
 export interface MemoryStepProps {
   readonly memory: MemorySetting;
@@ -15,6 +18,8 @@ export interface MemoryStepProps {
   readonly inApp: boolean;
   /** A page served from the internet (not from this computer): it has no companion of its own. */
   readonly hosted: boolean;
+  /** The app's database commands (ADR-62); the shell's own when omitted. A test passes a fake. */
+  readonly database?: DesktopDatabase;
 }
 
 interface Choice {
@@ -48,7 +53,12 @@ function choices(inApp: boolean): readonly Choice[] {
  * Choosing MariaDB shows the exact steps for where this page is running and a Check button, but a
  * passing check is not required: they may set the database up later, and the page says what happens until then.
  */
-export function MemoryStep({ memory, onChange, companionUrl, fetch, inApp, hosted }: MemoryStepProps): ReactElement {
+export function MemoryStep({ memory, onChange, companionUrl, fetch, inApp, hosted, database: injected }: MemoryStepProps): ReactElement {
+  const database = useMemo(() => {
+    if (injected !== undefined) return injected;
+    const shell = desktopShell();
+    return shell === null ? null : desktopDatabase(shell.invoke);
+  }, [injected]);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ConnectionResult | null>(null);
 
@@ -88,23 +98,16 @@ export function MemoryStep({ memory, onChange, companionUrl, fetch, inApp, hoste
       {memory === 'companion' && (
         <div className="welcome-detail">
           <h2 className="welcome-subheading">Connect your MariaDB server</h2>
-          <p className="field-hint">It must be MariaDB 11.8 or newer. The companion reads the database address from a setting called DATABASE_URL.</p>
-          {hosted && !inApp ? (
+          <p className="field-hint">
+            It must be MariaDB 11.8 or newer.{inApp ? ' Paste the address someone gave you, or your own, and press Save.' : ' The companion reads the database address from a setting called DATABASE_URL.'}
+          </p>
+          {inApp && database !== null ? (
+            <CompanionDatabase companionUrl={companionUrl} database={database} fetch={fetch} />
+          ) : hosted && !inApp ? (
             <p className="field-hint">
               This page is hosted on the internet, so it has no companion of its own, and MariaDB is not available here. Choose
               On this computer, or use the desktop app, or run latentPresence from its folder on your computer.
             </p>
-          ) : inApp ? (
-            <ol className="settings-help-steps">
-              <li>Press Start and search for &ldquo;environment variables&rdquo;.</li>
-              <li>Choose &ldquo;Edit environment variables for your account&rdquo;.</li>
-              <li>
-                Under User variables choose New, then type the name <code>DATABASE_URL</code> and the value, for example{' '}
-                <code>mysql://user:password@host:3306/latentpresence</code>
-              </li>
-              <li>Press OK, then quit this app and open it again. The companion starts with the app and reads the variable then.</li>
-              <li>Come back to this step and press Check.</li>
-            </ol>
           ) : (
             <ol className="settings-help-steps">
               <li>
@@ -117,12 +120,14 @@ export function MemoryStep({ memory, onChange, companionUrl, fetch, inApp, hoste
               <li>Press Check.</li>
             </ol>
           )}
-          <div className="settings-test-row">
-            <button className="btn btn-sm" disabled={pending} onClick={() => void check()} type="button">
-              Check
-            </button>
-            <ConnectionStatus pending={pending} result={result} />
-          </div>
+          {!(inApp && database !== null) && (
+            <div className="settings-test-row">
+              <button className="btn btn-sm" disabled={pending} onClick={() => void check()} type="button">
+                Check
+              </button>
+              <ConnectionStatus pending={pending} result={result} />
+            </div>
+          )}
           <p className="field-hint">You do not have to pass the check now. Nothing is remembered while the companion has no database.</p>
         </div>
       )}

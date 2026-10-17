@@ -1,6 +1,6 @@
 import { HealthResponseSchema } from '@latentpresence/protocol';
 import { normaliseBaseUrl, type HttpFetch } from '@latentpresence/providers/web';
-import type { ConnectionResult } from '../settings/connection';
+import type { ConnectionResult } from './connection';
 
 /**
  * The wizard's "Check" for a MariaDB memory (P8-T02): `GET {companion}/health`, read with the
@@ -39,7 +39,8 @@ export async function checkCompanionDatabase(options: {
 
 /**
  * What to tell the person about a check, and what to do next. `inApp` is the desktop app, where
- * the companion starts with the window and a restart is the fix; elsewhere they start it themselves.
+ * the address is typed into the app itself (ADR-62) and saving it restarts the companion; elsewhere
+ * they edit `.env` and start the companion themselves.
  * Command steps end in the command, which `ConnectionStatus` shows in `code`.
  */
 export function describeMemoryCheck(check: MemoryCheck, inApp: boolean, companionUrl: string): ConnectionResult {
@@ -49,11 +50,13 @@ export function describeMemoryCheck(check: MemoryCheck, inApp: boolean, companio
     case 'no-database':
       return {
         tone: 'warn',
-        text: 'The companion is running but has no database address (DATABASE_URL), so nothing is remembered yet.',
+        text: inApp
+          ? 'No database address is saved yet, so nothing is remembered.'
+          : 'The companion is running but has no database address (DATABASE_URL), so nothing is remembered yet.',
         help: {
-          summary: 'No DATABASE_URL.',
+          summary: inApp ? 'No database address.' : 'No DATABASE_URL.',
           steps: inApp
-            ? ['Set the DATABASE_URL user variable as shown above.', 'Quit the app and open it again, so the companion starts with it.', 'Press Check again.']
+            ? ['Type your database address above and press Save. The companion restarts with it.']
             : [
                 'Put the DATABASE_URL line in the file named .env in the latentPresence folder.',
                 'Stop the companion (Ctrl+C in its terminal), then start it again with pnpm companion',
@@ -69,9 +72,9 @@ export function describeMemoryCheck(check: MemoryCheck, inApp: boolean, companio
           summary: 'The database did not answer.',
           steps: [
             'Check that the MariaDB server is running and that you can reach it from this computer.',
-            'Check the user name, password, host and database name in DATABASE_URL.',
+            `Check the user name, password, host and database name in ${inApp ? 'the address' : 'DATABASE_URL'}.`,
             'It must be MariaDB 11.8 or newer.',
-            inApp ? 'Quit the app and open it again, then press Check.' : 'Restart the companion, then press Check.',
+            inApp ? 'Fix the address above (Replace), then Save it again.' : 'Restart the companion, then press Check.',
           ],
         },
       };

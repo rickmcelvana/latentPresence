@@ -36,14 +36,18 @@ describe('checkCompanionDatabase (P8-T02)', () => {
     expect(await checkCompanionDatabase({ companionUrl: 'http://127.0.0.1:8787', fetch: hang, timeoutMs: 20 })).toBe('not-running');
   });
 
-  it('says what to do next for every outcome, and only the app is told to restart', () => {
+  it('says what to do next for every outcome: in the app, the address field (ADR-62); elsewhere, .env and the companion', () => {
     for (const check of ['no-database', 'database-down', 'not-running'] as const) {
       const app = describeMemoryCheck(check, true, 'http://127.0.0.1:8790');
       const browser = describeMemoryCheck(check, false, 'http://127.0.0.1:8787');
       expect(app.tone, check).not.toBe('ok');
-      expect(JSON.stringify(app), check).toMatch(/quit/i);
+      expect(JSON.stringify(app), check).not.toMatch(/DATABASE_URL|environment variable/);
       expect(JSON.stringify(browser), check).not.toMatch(/quit the app/i);
     }
+    expect(JSON.stringify(describeMemoryCheck('no-database', true, ''))).toMatch(/Save/);
+    expect(JSON.stringify(describeMemoryCheck('database-down', true, ''))).toMatch(/Save it again/);
+    expect(JSON.stringify(describeMemoryCheck('not-running', true, ''))).toMatch(/quit the app/i);
+    expect(JSON.stringify(describeMemoryCheck('no-database', false, ''))).toMatch(/\.env/);
     expect(describeMemoryCheck('connected', false, '').tone).toBe('ok');
   });
 });

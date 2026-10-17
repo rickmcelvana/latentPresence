@@ -34,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             listener,
             token: None,
             relay: relay::Relay::measured(),
+            database_url: None,
         },
         async {
             let _ = tokio::signal::ctrl_c().await;

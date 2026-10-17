@@ -97,7 +97,11 @@ function fakeMedia(options: { fail?: string; durationMs?: number } = {}): FakeMe
 
 async function inTheApp(): Promise<void> {
   const invoke = vi.fn(async (command: string) =>
-    command === 'os_notifications' ? false : { url: 'http://127.0.0.1:8790', token: 'tok' },
+    command === 'os_notifications'
+      ? false
+      : command === 'database_info'
+        ? { saved: false, address: null }
+        : { url: 'http://127.0.0.1:8790', token: 'tok' },
   ) as unknown as Invoke;
   await initDesktop({ __TAURI__: { core: { invoke } }, fetch: vi.fn() as unknown as typeof fetch });
 }
@@ -281,13 +285,13 @@ describe('Wizard — the memory step', () => {
     expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('shows the Windows steps in the desktop app', async () => {
+  it('in the desktop app, asks for the database address itself (ADR-62): no variables, no terminal', async () => {
     await inTheApp();
     const { container } = render(<Wizard deps={testDeps()} initialStep={3} navigate={() => {}} />);
     chooseMariaDb();
-    expect(container.textContent).toContain('environment variables');
-    expect(container.textContent).toContain('Edit environment variables for your account');
-    expect(container.textContent).toContain('quit this app and open it again');
+    expect(await screen.findByLabelText('Database address')).toBeTruthy();
+    expect(container.textContent).toContain('Windows Credential Manager');
+    expect(container.textContent).not.toContain('environment variables');
     expect(container.textContent).not.toContain('pnpm companion');
   });
 
