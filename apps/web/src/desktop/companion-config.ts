@@ -101,6 +101,8 @@ export interface CompanionConfigApi {
   pickSqlite(name: string): Promise<CompanionConfig | null>;
   /** Opens `mcp.json` in the app Windows uses for `.json`. */
   openFile(): Promise<void>;
+  /** Restarts the companion on the files as they are: after a hand edit. */
+  reload(): Promise<CompanionConfig>;
 }
 
 export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
@@ -110,5 +112,6 @@ export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
     pickFolder: (target) => invoke<CompanionConfig | null>('companion_config_pick_folder', { target }),
     pickSqlite: (name) => invoke<CompanionConfig | null>('companion_config_pick_sqlite', { name }),
     openFile: () => invoke<void>('companion_config_open'),
+    reload: () => invoke<CompanionConfig>('companion_config_reload'),
   };
 }

@@ -362,6 +362,15 @@ async fn companion_config_pick_sqlite(
     Ok(Some(config_edit::view(&files, &OsStore)))
 }
 
+/// Restarts the companion on the files as they are now: after `mcp.json` was edited by hand.
+#[tauri::command]
+async fn companion_config_reload(
+    companion: tauri::State<'_, Companion>,
+) -> Result<ConfigView, String> {
+    companion.restart().await?;
+    Ok(config_edit::view(&config_files()?, &OsStore))
+}
+
 /// Opens `mcp.json` in whatever Windows opens `.json` with, for the programs it lists, which are
 /// changed only by hand. An empty file is made first if there is none.
 #[tauri::command]
@@ -463,7 +472,8 @@ pub fn run() {
             companion_config_change,
             companion_config_pick_folder,
             companion_config_pick_sqlite,
-            companion_config_open
+            companion_config_open,
+            companion_config_reload
         ])
         .setup(|app| {
             match tauri::webview_version() {
