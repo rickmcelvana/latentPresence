@@ -34,9 +34,6 @@ export const DEV_FACE_PATH = '/dev/face';
 /** The dev-only avatar and lip-sync measurement page (P0-T05). */
 export const SPIKE_AVATAR_PATH = '/spike/avatar';
 
-/** The dev-only webview capability probe (P0-T08). */
-export const SPIKE_SHELL_PATH = '/spike/shell';
-
 /** The settings page (P1-T10). Ships in production — providers, voice and hearing are
  * configured here — unlike every other route in this file. */
 export const SETTINGS_PATH = '/settings';
@@ -100,17 +97,6 @@ const FaceBench = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./dev/FaceBench');
   return { default: module.FaceBench };
-});
-
-/**
- * Spike E (P0-T08). Guarded like the rest, though this one costs nothing to bundle — it
- * imports no model and no renderer. The guard is here for consistency and because the
- * route names an internal measurement page that has no business in a shipped build.
- */
-const ShellProbe = lazy(async () => {
-  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
-  const module = await import('./spikes/ShellProbe');
-  return { default: module.ShellProbe };
 });
 
 /**
@@ -192,14 +178,6 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
     );
   }
 
-  if (import.meta.env.DEV && path === SPIKE_SHELL_PATH) {
-    return (
-      <Suspense fallback={<p className="boot-status">Loading the spike…</p>}>
-        <ShellProbe />
-      </Suspense>
-    );
-  }
-
   if (path === SETTINGS_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading settings…</p>}>
@@ -227,14 +205,13 @@ export function App({ path = window.location.pathname }: { path?: string }): Rea
       <p className="boot-status">
         <a href={SETTINGS_PATH}>Settings</a> · <a href={CHAT_PATH}>Chat</a>
       </p>
-      {/* P0-T08. A Tauri window has no address bar, so without this list the shell opens
-          on `/` and no spike route is reachable from inside it at all. Dev-only, like
-          every route it links to. */}
+      {/* P0-T08. A Tauri window has no address bar, so without this list no dev route is
+          reachable from inside it at all. Dev-only, like every route it links to. (Spike E's
+          own page went 2026-10-17, once R-56 had answered its last question.) */}
       {import.meta.env.DEV && (
         <ul className="boot-routes">
           {[
             [GALLERY_PATH, 'Design-system gallery'],
-            [SPIKE_SHELL_PATH, 'Spike E — webview capabilities'],
             [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
             [DEV_AVATAR_PATH, 'Avatar — VRM renderer debug panel (P2-T01)'],
             [DEV_SER_PATH, 'Voice emotion — worker timing (P3-T05)'],
