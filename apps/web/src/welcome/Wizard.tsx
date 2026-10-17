@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import { packFor } from '../characters/packs';
+import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
+import { useCompanionConfig, type CompanionController, type CompanionConfigOptions } from '../settings/companion-config-state';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { LanguageModelSection } from '../settings/LanguageModelSection';
 import { endpointLabel } from '../settings/llm-endpoint';
@@ -10,6 +12,7 @@ import { loadSettings, saveSettings, type LlmSettings, type MemorySetting, type 
 import { VaultNote } from '../settings/VaultNote';
 import { browserModelsFor } from '../voice/models';
 import { CharacterStep, type BodyChoice } from './CharacterStep';
+import { CompanionStep, connectedSummary } from './CompanionStep';
 import { defaultDevices, type WizardDevices } from './devices';
 import { MemoryStep } from './MemoryStep';
 import { VoiceStep, type VoiceChoice } from './VoiceStep';
@@ -17,14 +20,17 @@ import { VoiceStep, type VoiceChoice } from './VoiceStep';
 /** Where "Start talking" and "Skip setup" go. */
 const CHAT_ROUTE = '/chat';
 
-const STEPS = ['welcome', 'model', 'character', 'memory', 'voice', 'done'] as const;
-type StepId = (typeof STEPS)[number];
+const BROWSER_STEPS = ['welcome', 'model', 'character', 'memory', 'voice', 'done'] as const;
+type StepId = (typeof BROWSER_STEPS)[number] | 'companion';
+/** The desktop app has one more step: the companion's own settings (P8-T06). */
+const APP_STEPS: readonly StepId[] = ['welcome', 'model', 'character', 'memory', 'companion', 'voice', 'done'];
 
 const TITLES: Record<StepId, string> = {
   welcome: 'Welcome to latentPresence',
   model: 'Choose a language model',
   character: 'Choose who you talk to',
   memory: 'Choose where she remembers',
+  companion: 'Your home, notes and documents',
   voice: 'Voice and hearing',
   done: 'You are ready',
 };
@@ -45,6 +51,10 @@ export interface WizardProps {
   readonly navigate?: (path: string) => void;
   /** Start on this step (0 is the welcome). */
   readonly initialStep?: number;
+  /** The companion's own settings (P8-T06), desktop app only; the shell's own when omitted. A test passes a fake. */
+  readonly companionConfig?: CompanionConfigApi;
+  /** Test seam: what the Home Assistant state asks the companion. */
+  readonly listCompanion?: CompanionConfigOptions['listCompanion'];
 }
 
 function isLocalHost(origin: string): boolean {
@@ -62,17 +72,19 @@ function isLocalHost(origin: string): boolean {
  * nothing; it records consent and downloads nothing; and it opens a microphone or camera only
  * when a button is pressed.
  */
-export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate, initialStep = 0 }: WizardProps = {}): ReactElement {
+export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate, initialStep = 0, companionConfig, listCompanion }: WizardProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const devices = useMemo<WizardDevices>(() => ({ ...defaultDevices(), ...devicesOverride }), [devicesOverride]);
-  const inApp = desktopShell() !== null;
+  const shell = desktopShell();
+  const inApp = shell !== null;
+  const steps: readonly StepId[] = inApp ? APP_STEPS : BROWSER_STEPS;
   const hosted = !isLocalHost(deps.origin);
   const go = navigate ?? ((path: string) => window.location.assign(path));
 
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
   // Read through a ref so two changes in one event (a preset picked, then its URL) both land.
   const latest = useRef(settings);
-  const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), STEPS.length - 1));
+  const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), steps.length - 1));
   const [body, setBody] = useState<BodyChoice>(() => (deps.consent.has([AVATAR_DESCRIPTOR]) ? 'agreed' : 'unset'));
   const voiceModels = browserModelsFor(settings);
   const [voice, setVoice] = useState<VoiceChoice>(() => (deps.consent.has(browserModelsFor(settings)) ? 'agreed' : 'unset'));
@@ -94,6 +106,20 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
     setSettings(next);
   }
 
+  // Adding something in the companion step turns on the switch it needs, and never one off.
+  const api = useMemo(() => (shell === null ? null : (companionConfig ?? companionConfigApi(shell.invoke))), [shell, companionConfig]);
+  const turnOn = (which: 'tools' | 'search'): void =>
+    commit((previous) =>
+      which === 'tools' ? { ...previous, tools: { ...previous.tools, companion: true } } : { ...previous, documents: { ...previous.documents, search: true } },
+    );
+  const companion = useCompanionConfig({
+    api,
+    switches: { tools: settings.tools.companion, search: settings.documents.search, turnOn },
+    companionUrl: settings.companionUrl,
+    fetch: deps.fetch,
+    listCompanion,
+  });
+
   function finish(): void {
     commit((previous) => ({ ...previous, welcomed: true }));
     go(CHAT_ROUTE);
@@ -109,9 +135,10 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
     setVoice(choice);
   }
 
-  const id = STEPS[step] ?? 'welcome';
+  const id = steps[step] ?? 'welcome';
   const modelChosen = settings.llm.endpoint !== null && settings.llm.modelId !== null;
-  const last = step === STEPS.length - 1;
+  const last = step === steps.length - 1;
+  const goTo = (target: StepId): void => setStep(Math.max(steps.indexOf(target), 0));
 
   let content: ReactNode;
   switch (id) {
@@ -176,6 +203,9 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
         />
       );
       break;
+    case 'companion':
+      content = <CompanionStep controller={companion} />;
+      break;
     case 'voice':
       content = <VoiceStep devices={devices} inApp={inApp} models={voiceModels} onVoice={agreeVoice} voice={voice} />;
       break;
@@ -184,7 +214,8 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
         <Summary
           body={body}
           model={modelChosen ? `${endpointLabel(settings.llm.endpoint ?? '')}, ${settings.llm.modelId ?? ''}` : null}
-          onGo={setStep}
+          companion={inApp ? companion : null}
+          onGo={goTo}
           settings={settings}
           voice={voice}
         />
@@ -195,7 +226,7 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
   return (
     <section aria-labelledby="welcome-heading" className="welcome-step">
       <p className="welcome-progress">
-        {step + 1} of {STEPS.length}
+        {step + 1} of {steps.length}
       </p>
       <h1 className="welcome-heading" id="welcome-heading" key={id} ref={focusHeading} tabIndex={-1}>
         {TITLES[id]}
@@ -216,6 +247,11 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
           ) : (
             <>
               {id === 'model' && !modelChosen && (
+                <button className="btn btn-ghost" onClick={() => setStep(step + 1)} type="button">
+                  Skip for now
+                </button>
+              )}
+              {id === 'companion' && connectedSummary(companion).length === 0 && (
                 <button className="btn btn-ghost" onClick={() => setStep(step + 1)} type="button">
                   Skip for now
                 </button>
@@ -247,36 +283,51 @@ interface SummaryProps {
   readonly model: string | null;
   readonly body: BodyChoice;
   readonly voice: VoiceChoice;
-  readonly onGo: (step: number) => void;
+  /** The companion's settings, in the desktop app; null in a browser, where the step does not exist. */
+  readonly companion: CompanionController | null;
+  readonly onGo: (step: StepId) => void;
 }
 
-/** Step 6: what was chosen, and a way back to anything skipped. */
-function Summary({ settings, model, body, voice, onGo }: SummaryProps): ReactElement {
-  const rows: { label: string; value: string; fix: { step: number; label: string } | null }[] = [
+/** The last step: what was chosen, and a way back to anything skipped. */
+function Summary({ settings, model, body, voice, companion, onGo }: SummaryProps): ReactElement {
+  const connected = companion === null ? [] : connectedSummary(companion);
+  const rows: { label: string; value: string; fix: { step: StepId; label: string } | null }[] = [
     {
       label: 'Language model',
       value: model ?? 'None chosen yet. She cannot answer until you choose one.',
-      fix: model === null ? { step: 1, label: 'Choose a language model' } : null,
+      fix: model === null ? { step: 'model', label: 'Choose a language model' } : null,
     },
     {
       label: 'Character',
       value:
         packFor(settings.character).persona.name +
         (body === 'agreed' ? ', shown on screen.' : ', not shown yet. Chat asks again when you start.'),
-      fix: body === 'agreed' ? null : { step: 2, label: 'Show the character' },
+      fix: body === 'agreed' ? null : { step: 'character', label: 'Show the character' },
     },
     {
       label: 'Memory',
       value:
         MEMORY_LABELS[settings.memory] +
         (settings.memory === 'companion' ? '. Nothing is remembered while the companion has no database.' : '.'),
-      fix: settings.memory === 'companion' ? { step: 3, label: 'Check the database' } : null,
+      fix: settings.memory === 'companion' ? { step: 'memory', label: 'Check the database' } : null,
     },
     {
       label: 'Voice and hearing',
       value: voice === 'agreed' ? 'On. The models download the first time you speak.' : 'Text only for now.',
-      fix: voice === 'agreed' ? null : { step: 4, label: 'Set up voice' },
+      fix: voice === 'agreed' ? null : { step: 'voice', label: 'Set up voice' },
     },
+    ...(companion === null
+      ? []
+      : [
+          {
+            label: 'Home, notes and documents',
+            value:
+              connected.length > 0
+                ? `${connected.join(', ')}.`
+                : 'Nothing connected yet. You can do it later in Settings, under On this computer.',
+            fix: connected.length > 0 ? null : { step: 'companion' as const, label: 'Connect them' },
+          },
+        ]),
   ];
 
   return (
@@ -287,7 +338,7 @@ function Summary({ settings, model, body, voice, onGo }: SummaryProps): ReactEle
             <span className="field-label">{row.label}</span>
             <span>{row.value}</span>
             {row.fix !== null && (
-              <button className="btn btn-sm btn-ghost" onClick={() => onGo(row.fix?.step ?? 0)} type="button">
+              <button className="btn btn-sm btn-ghost" onClick={() => onGo(row.fix?.step ?? 'welcome')} type="button">
                 {row.fix.label}
               </button>
             )}

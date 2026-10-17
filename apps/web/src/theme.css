@@ -971,6 +971,83 @@ kbd {
   overflow-wrap: anywhere;
 }
 
+/* The companion's own settings, in the desktop app (P8-T06): a heading over a run of panels,
+   rows for the folders and databases in them, a quieter sub-block inside a panel. */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.settings-group-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.companion-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.companion-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm) var(--gap-md);
+  padding: var(--gap-sm) var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.companion-database {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.companion-database-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.companion-database-head .btn {
+  margin-left: auto;
+}
+
+.companion-path {
+  min-width: 0;
+  flex: 1 1 200px;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.companion-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+}
+
+.companion-problems {
+  border-color: var(--danger);
+}
+
+/* In a column row (a database, a program) the path's flex basis would be a 200px height. */
+.companion-database .companion-path {
+  flex: none;
+}
+
 .settings-test-row {
   display: flex;
   flex-wrap: wrap;

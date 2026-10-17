@@ -1,5 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
+import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
+import { desktopShell } from '../desktop/desktop';
+import { useCompanionConfig, type CompanionConfigOptions } from './companion-config-state';
+import { CompanionSettings } from './CompanionSettings';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
@@ -23,15 +27,35 @@ import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSe
  */
 export interface SettingsPanelProps {
   readonly deps?: Partial<SettingsDeps>;
+  /** The companion's own settings (P8-T06), desktop app only; the shell's own when omitted. A test passes a fake. */
+  readonly companionConfig?: CompanionConfigApi;
+  /** Test seam: what the Home Assistant state asks the companion. */
+  readonly listCompanion?: CompanionConfigOptions['listCompanion'];
+  readonly homeWaitMs?: number;
+  readonly homePollMs?: number;
 }
 
-export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): ReactElement {
+export function SettingsPanel({ deps: depsOverride, companionConfig, listCompanion, homeWaitMs, homePollMs }: SettingsPanelProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
 
   useEffect(() => {
     saveSettings(settings, deps.storage);
   }, [settings, deps.storage]);
+
+  // The companion's own settings exist only in the desktop app (the browser's companion is the person's own process).
+  const shell = desktopShell();
+  const api = useMemo(() => (shell === null ? null : (companionConfig ?? companionConfigApi(shell.invoke))), [shell, companionConfig]);
+  const turnOn = useCallback((which: 'tools' | 'search'): void => {
+    setSettings((prev) =>
+      which === 'tools' ? { ...prev, tools: { ...prev.tools, companion: true } } : { ...prev, documents: { ...prev.documents, search: true } },
+    );
+  }, []);
+  const switches = useMemo(
+    () => ({ tools: settings.tools.companion, search: settings.documents.search, turnOn }),
+    [settings.tools.companion, settings.documents.search, turnOn],
+  );
+  const companion = useCompanionConfig({ api, switches, companionUrl: settings.companionUrl, fetch: deps.fetch, listCompanion, waitMs: homeWaitMs, pollMs: homePollMs });
 
   function updateLlm(patch: Partial<LlmSettings>): void {
     setSettings((prev) => ({ ...prev, llm: { ...prev.llm, ...patch } }));
@@ -71,6 +95,8 @@ export function SettingsPanel({ deps: depsOverride }: SettingsPanelProps = {}): 
       <InitiativeSection initiative={settings.initiative} onChange={(initiative) => setSettings((prev) => ({ ...prev, initiative }))} />
 
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
+
+      {api !== null && <CompanionSettings controller={companion} />}
 
       <DocumentsSection
         companionUrl={settings.companionUrl}

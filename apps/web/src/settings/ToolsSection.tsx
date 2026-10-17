@@ -343,8 +343,9 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch, companion
       <div className="tools-companion">
         <span className="panel-title">From the companion</span>
         <p className="panel-note">
-          The companion can run servers listed in its own mcp.json, on this computer and edited by you, including a read-only Files server for
-          folders you name there. They are off until you turn this on.
+          {desktopShell() === null
+            ? 'The companion can run servers listed in its own mcp.json, on this computer and edited by you, including a read-only Files server for folders you name there. They are off until you turn this on.'
+            : 'The companion can run servers on this computer: Home Assistant, a read-only Files server for your notes, web search and databases. Set them up under On this computer, below. They are off until you turn this on.'}
         </p>
         <label className="tools-switch">
           <input

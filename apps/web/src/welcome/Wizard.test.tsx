@@ -1,9 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { MinimalCacheStorage } from '../consent/deps';
+import { FakeCompanionConfig, emptyCompanionConfig } from '../desktop/companion-config.fake';
 import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import type { SettingsDeps } from '../settings/deps';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, type Settings } from '../settings/settings';
@@ -435,7 +436,8 @@ describe('Wizard — the voice step', () => {
   it('a refusal in the desktop app says how to allow it in Windows privacy settings', async () => {
     await inTheApp();
     const media = fakeMedia({ fail: 'NotAllowedError' });
-    const { container } = render(<Wizard deps={testDeps()} devices={media.devices} initialStep={4} navigate={() => {}} />);
+    // In the app the companion step comes before voice, so voice is step 5 there.
+    const { container } = render(<Wizard companionConfig={new FakeCompanionConfig()} deps={testDeps()} devices={media.devices} initialStep={5} navigate={() => {}} />);
     press('Agree');
     press('Test microphone');
     await waitFor(() => expect(screen.getByText(/Windows is not letting this app use the microphone/)).toBeTruthy());
@@ -507,5 +509,87 @@ describe('Wizard — finishing', () => {
     expect(screen.queryByRole('button', { name: 'Choose a language model' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Show the character' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Set up voice' })).toBeNull();
+  });
+});
+
+describe('Wizard — the companion step, in the app only (P8-T06)', () => {
+  it('a browser keeps six steps and has no such step', () => {
+    const api = new FakeCompanionConfig();
+    render(<Wizard companionConfig={api} deps={testDeps()} initialStep={3} navigate={() => {}} />);
+    expect(screen.getByText('4 of 6')).toBeTruthy();
+    press('Next');
+    expect(heading()).toBe('Voice and hearing');
+    expect(screen.getByText('5 of 6')).toBeTruthy();
+    expect(api.reads).toBe(0);
+  });
+
+  it('the app has seven, with the step between memory and voice, and Back and Next follow the list', async () => {
+    await inTheApp();
+    render(<Wizard companionConfig={new FakeCompanionConfig()} deps={testDeps()} initialStep={3} navigate={() => {}} />);
+    expect(screen.getByText('4 of 7')).toBeTruthy();
+    press('Next');
+    expect(heading()).toBe('Your home, notes and documents');
+    expect(screen.getByText('5 of 7')).toBeTruthy();
+    press('Back');
+    expect(heading()).toBe('Choose where she remembers');
+    press('Next');
+    press('Skip for now');
+    expect(heading()).toBe('Voice and hearing');
+    expect(screen.getByText('6 of 7')).toBeTruthy();
+    press('Skip for now');
+    expect(heading()).toBe('You are ready');
+    expect(screen.getByText('7 of 7')).toBeTruthy();
+  });
+
+  it('shows Home Assistant, folders and documents, and not web search, databases or programs', async () => {
+    await inTheApp();
+    render(<Wizard companionConfig={new FakeCompanionConfig()} deps={testDeps()} initialStep={4} navigate={() => {}} />);
+    await screen.findByRole('region', { name: 'Home Assistant' });
+    expect(screen.getByRole('region', { name: 'Folders she may read' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Documents she can search' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Web search' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Databases she may query' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Programs' })).toBeNull();
+    expect(screen.getByRole('button', { name: "Use Ollama's nomic-embed-text" })).toBeTruthy();
+  });
+
+  it('adding a folder turns the Tools switch on, saved with the other choices, and the summary says what was connected', async () => {
+    await inTheApp();
+    const deps = testDeps();
+    const api = new FakeCompanionConfig();
+    api.nextFolder = 'C:\\Notes';
+    render(<Wizard companionConfig={api} deps={deps} initialStep={4} navigate={() => {}} />);
+    const files = within(await screen.findByRole('region', { name: 'Folders she may read' }));
+    expect(saved(deps.storage).tools.companion).toBe(false);
+    fireEvent.click(files.getByRole('button', { name: 'Add a folder…' }));
+    await files.findByText('C:\\Notes');
+    expect(saved(deps.storage).tools.companion).toBe(true);
+    // Something is connected, so there is nothing to skip.
+    expect(screen.queryByRole('button', { name: 'Skip for now' })).toBeNull();
+
+    press('Next');
+    press('Skip for now');
+    expect(heading()).toBe('You are ready');
+    expect(screen.getByText('1 folder she can read.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Connect them' })).toBeNull();
+  });
+
+  it('skipped, the summary says nothing is connected and links back to the step', async () => {
+    await inTheApp();
+    const api = new FakeCompanionConfig(emptyCompanionConfig());
+    render(<Wizard companionConfig={api} deps={testDeps()} initialStep={4} navigate={() => {}} />);
+    await screen.findByRole('region', { name: 'Home Assistant' });
+    press('Skip for now');
+    press('Skip for now');
+    expect(heading()).toBe('You are ready');
+    expect(screen.getByText(/Nothing connected yet/)).toBeTruthy();
+    press('Connect them');
+    expect(heading()).toBe('Your home, notes and documents');
+    expect(api.reads).toBe(1);
+  });
+
+  it('a browser summary has no row for it', () => {
+    render(<Wizard companionConfig={new FakeCompanionConfig()} deps={testDeps()} initialStep={5} navigate={() => {}} />);
+    expect(screen.queryByText('Home, notes and documents')).toBeNull();
   });
 });
