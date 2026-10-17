@@ -884,3 +884,9 @@ Did: Rick reinstalled fresh on two PCs: every key worked, the toast came minimis
 Left: the laptop session (R-13, R-1, R-9); C-7; README (Rick); friends-and-family testing can start.
 Next: P8-T02 or P8-T03, Rick's pick.
 Decisions: none.
+
+## 2026-10-17 claude — P8-T02 first-run wizard
+Did: measured the app's microphone prompt (WebView2's own, naming http://tauri.localhost, a Block unrecoverable) and how the companion finds MariaDB (env var or `.env` only); the shell now grants mic/camera via `on_permission_request`, window built in setup (9c37155). Brief `docs/briefs/P8-T02.md`; a Sonnet subagent built `/welcome` (six steps, `welcomed` setting with migration, consent recorded not downloaded, device checks, MariaDB steps + Check, Credential Manager note); reviewed, walked in the dev server and the release app, one copy fix (bf69c94).
+Left: R-57 (a new person through the wizard); real-device mic/camera test in the wizard; the laptop session; C-7; README (Rick).
+Next: P8-T03 or P8-T05, Rick's pick.
+Decisions: ADR-61 proposed (wizard; consent without download; memory choices; the shell grants mic/camera).

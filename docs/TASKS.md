@@ -198,6 +198,19 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-57 · Someone new meets the first-run wizard · ~10 minutes, ideally not you
+**Why:** P8-T02's done-when — "no step requires the docs". Only a person who has not set it up
+before can show that.
+1. Install from `apps/desktop/src-tauri/target/release/bundle/nsis/latentPresence_0.1.0_x64-setup.exe`
+   on a PC that has never had the app (or uninstall first; the uninstaller keeps the app's data
+   unless you tick the box to remove it — tick it, or the wizard will not show).
+2. Hand it over and watch without helping: setup opens by itself. They choose a model (their own
+   Ollama, or a cloud key), a character, memory, voice, test the microphone, then Start talking.
+3. Also try "Skip setup" once, and Settings → "Run setup again".
+
+**Pass:** they reach a reply without asking you anything. **Paste back:** every place they paused
+or asked, what any error said, and whether the microphone test worked.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane

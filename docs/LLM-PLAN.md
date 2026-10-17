@@ -475,7 +475,7 @@ Bundle companion as a sidecar (built in-process instead, ADR-60); local pairing 
 Done when: fresh Windows VM installs and talks in under 10 minutes.
 **Built 2026-10-16 (main, ADR-60 accepted 2026-10-17):** the companion runs in the app's process (not a sidecar — ADR-60 says why), paired by a per-launch token; the page wraps `fetch` to add it and to send local Ollama/LM Studio through the companion's relay (Ollama 403s the Windows webview's origin); keys in Windows Credential Manager; single instance and remembered window; per-user NSIS installer, unsigned (`pnpm desktop:build`, 17.6 MiB). Checked from inside the release build's window, including a typed conversation. The fresh-VM done-when is Rick's: R-56. **2026-10-17:** reminders go through the notification plugin directly, and a toast is expected only from the installed app (ADR-60 amended).
 
-### P8-T02 First-run wizard — owner: sub
+### P8-T02 First-run wizard — owner: sub (**built 2026-10-17**, bf69c94; R-57 open)
 Brief: `docs/briefs/P8-T02.md` (2026-10-17). Main landed first: the shell grants the microphone and camera (ADR-61).
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
 Done when: no step requires the docs.
