@@ -1,6 +1,6 @@
 # latentPresence W.I.P.
 
-A conversational AI you talk to face to face. A realistic-styled, full-body character lives in a small 3D set and joins you in a video call: you speak or type, it listens, reacts, and answers in voice with matching expression and body language. It remembers you, helps you brainstorm and plan, runs tasks you schedule, answers from your own documents and databases, and can run your smart home through Home Assistant.
+A conversational AI you talk to face to face. A full-body character lives in a small 3D set and joins you in a video call: you speak or type, it listens, reacts, and answers in voice with matching expression and body language. It remembers you, helps you brainstorm and plan, runs tasks you schedule, answers from your own documents and databases, and can run your smart home through Home Assistant.
 
 Site: https://latentpresence.com · App: https://app.latentpresence.com
 
