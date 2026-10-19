@@ -200,6 +200,8 @@ passes with 2× margin.**
 
 ### R-62 · The release key, then the first release · ~20 minutes
 **Why:** P8-T04 — updates need a key only you hold; then one real release proves the workflow.
+**Step 1 done 2026-10-19:** the key made, both secrets set (`gh secret list`), the public key
+(minisign key ID AB76E78B7E5AB1A9) in `tauri.conf.json`.
 1. **The key:** `docs/release.md` → "Once: the release key", steps 1–3 (generate, back up, two
    repository secrets). Then paste the **public** key (the one line in
    `%USERPROFILE%\.tauri\latentpresence-release.key.pub`) here, and the architect puts it in

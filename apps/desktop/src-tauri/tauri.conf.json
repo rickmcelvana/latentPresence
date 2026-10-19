@@ -30,7 +30,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFCNzZFNzhCN0U1QUIxQTkKUldTcHNWcCtpK2QycXliMzNPMFAvZ0hpMlF3NGh1WVFER1RzSTBHMUVJc1BodGVick9DQ25lNXYK",
       "endpoints": ["https://github.com/rickmcelvana/latentPresence/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }

@@ -926,3 +926,9 @@ Did: R-61 passed (D-63), ADR-65 accepted. P8-T04 (ADR-66 proposed): tauri-plugin
 Left: R-62 (Rick's release key, then 0.2.0 → 0.2.1); the public key into tauri.conf.json; ADR-66 to accept; the laptop session; C-7; README (Rick).
 Next: after R-62, Phase 8 is done — Phase 9, or the laptop session.
 Decisions: ADR-66 proposed, recommended option taken (update checks off by default).
+
+## 2026-10-19 claude — the release key
+Did: Rick made the release key; the public key (minisign key ID AB76E78B7E5AB1A9, checked by decoding it) went into `plugins.updater.pubkey`; `gh secret list` shows TAURI_SIGNING_PRIVATE_KEY and its password. Gate green.
+Left: R-62 steps 2–4 (0.2.0, then 0.2.1 through the updater); ADR-66 to accept.
+Next: Phase 9, or the laptop session.
+Decisions: none new.
