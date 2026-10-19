@@ -66,6 +66,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | accepted 2026-10-17 | 2026-10-17 |
 | ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
+| ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | proposed 2026-10-19 (P8-T03), recommended option taken | 2026-10-19 |
 
 ---
 
@@ -2593,4 +2594,51 @@ Checked in the release app against copies of Rick's files (`COMPANION_MCP_CONFIG
 address refused in the companion's words; saving Home Assistant moved its token from the file to
 Credential Manager and kept `mcpServers`; Home Assistant came up `ready` with 20 tools on the
 stored token. The test's credential was deleted after.
+
+## ADR-64 The hosted app and this machine (proposed 2026-10-19, P8-T03)
+
+**Context.** ADR-16 assumed Chrome's Private Network Access: the companion answers a preflight
+with `Access-Control-Allow-Private-Network: true`. Measured 2026-10-19 (SURFACE) in throwaway
+profiles of **Chrome 155** and **Firefox 154**, from `https://app.latentpresence.com` to
+`http://127.0.0.1:8787` and Ollama on `11434`:
+- No Private Network preflight is sent any more; both browsers instead gate a public site's
+  requests to this machine behind a **per-site permission**, `loopback-network` (Chrome's site
+  setting "Apps on device", Firefox's "Device apps and services"), and to the LAN behind
+  `local-network`. No `targetAddressSpace` and no mixed-content error: `http://127.0.0.1` and
+  `http://localhost` both work once granted.
+- **While the prompt is up, the request waits** (our 5 s probe timed out); **once denied it fails
+  as a plain network error** ("Failed to fetch" / "NetworkError"), identical to a server that is
+  not running. Only `navigator.permissions.query({ name: 'loopback-network' })` tells them apart.
+- Granting `loopback-network` for Ollama also opens the companion to the site, and the companion
+  let in any request from the hosted origin.
+
+**Decision (recommended option, taken).**
+1. **The page tells the three apart.** When a request from a page that is not on this machine to
+   one that is (or to the LAN) times out or fails, `probeEndpoint` asks the permission:
+   `prompt` → "your browser is asking… choose Allow, then try again"; `denied` → how to allow it
+   again, in each browser's words. Every Test that probes (language model, voice, hearing, tools,
+   the companion) says so instead of "is it running?".
+2. **The standalone companion answers the hosted site only with its pairing code.** It keeps one
+   code in its config folder (`pairing-code.txt` beside `mcp.json`, made on first start, 120
+   random bits as six groups of four), prints it at start, and requires it in
+   `x-lp-companion-token` on any request whose `Origin` is not on this machine. Pages on this
+   machine (`pnpm dev`, a preview) and requests with no `Origin` are as before; the desktop app
+   keeps its per-launch token for everything (ADR-60). A refusal is a 401 inside CORS, so the
+   page can say "needs its pairing code". Delete the file for a new code.
+3. **The page keeps the code** in its own storage (not the vault: the code already sits in a file
+   any program here can read, and anything running as this origin could decrypt the vault too),
+   and adds it to every request to the companion's address — the desktop wrapper's shape.
+   Settings in a browser gains a **Companion** section: its address, the code (asked only when the
+   page is not on this machine), and a Check.
+4. **The Private Network header goes**: no browser we measured sends the preflight.
+
+**Rejected.** *No pairing, the browser's permission as the only consent* — one grant for Ollama
+silently opens memory, files and Home Assistant to whatever the hosted site serves, and Safari and
+older browsers ask nothing. *A code made fresh at each start* (the desktop's way) — the person
+would paste it again after every restart. *Ollama and LM Studio through a paired companion's relay
+in a browser* (no `OLLAMA_ORIGINS`) — worth doing, but a separate change; the copy says what each
+needs today.
+
+**Not measured.** The prompt's own look (CDP sets the permission; Rick sees the prompt in R-59);
+Safari; Edge (Chromium, expected to match Chrome).
 

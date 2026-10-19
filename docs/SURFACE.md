@@ -2668,3 +2668,38 @@ From the crate source (`src/init-iife.js`, `src/desktop.rs`) and the release bui
   gains the other platforms' stores too (zbus, secret-service), never built on Windows or for the
   Linux CI's companion, which has no `keyring` at all.
 
+## Local network access from the hosted app — measured 2026-10-19 (P8-T03, ADR-64)
+
+Throwaway profiles driven over CDP (Chrome) and WebDriver BiDi (Firefox), page
+`https://app.latentpresence.com/settings`, the companion on `http://127.0.0.1:8787`, Ollama 0.40.6
+on `11434` (with `OLLAMA_ORIGINS=https://app.latentpresence.com`).
+
+- **Chrome 155.0.8059.85** and **Firefox 154.0** both gate a public page's requests to this
+  machine behind a per-site permission. `navigator.permissions.query`: `loopback-network` and
+  `local-network` in both; `local-network-access` (the older combined name) in Chrome only —
+  Firefox throws ("not a valid value for enumeration PermissionName"). In Chrome, granting
+  `loopback-network` left `local-network-access` reading `prompt`.
+- **Prompt pending: the request waits** (a 5 s `AbortSignal.timeout` fired; CDP showed the request
+  sent and then `net::ERR_ABORTED` from our abort). **Granted:** `127.0.0.1` and `localhost` both
+  200, no `targetAddressSpace`, no mixed-content error. **Denied:** Chrome `TypeError: Failed to
+  fetch` (CDP `corsError: LocalNetworkAccessPermissionDenied`); Firefox `TypeError: NetworkError
+  when attempting to fetch resource.` — the same as a closed port, so only the permission's state
+  tells them apart.
+- **No Private Network Access preflight.** Chrome's preflight for a POST with `content-type` and
+  `x-lp-companion-token` carried `Access-Control-Request-Method/Headers` and no
+  `Access-Control-Request-Private-Network`. The companion's `Access-Control-Allow-Private-Network`
+  answer was dead code; removed.
+- **The browsers' words.** Chrome 155 (`Locales/en-US.pak`): site settings "Apps on device" and
+  "Local network"; the prompt "Access other apps and services on this device", "Allow while
+  visiting the site", "Never allow". Firefox 154 (`browser/omni.ja`, `permissions.ftl`,
+  `preferences.ftl`, `browser.ftl`): "Device apps and services", "Local network devices"; the
+  blocked icon's tooltip "You have blocked local network connections for this website."
+- **A LAN address from the hosted page** (`http://192.168.40.101:3306`, `local-network` not
+  granted) also waited (timed out at 5 s).
+- **Local stand-in for the hosted site:** Chrome flags `--host-resolver-rules=MAP
+  app.latentpresence.com:443 127.0.0.1:4443 --ignore-certificate-errors
+  --ip-address-space-overrides=127.0.0.1:4443=public` serve a local build as the real origin, with
+  the page in the public address space (the prompt state was reached through it). That is how the
+  pairing flow was checked end to end before deploying.
+- **Not seen:** the prompt itself (CDP and BiDi set the permission), Safari, Edge.
+

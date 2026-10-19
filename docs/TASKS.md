@@ -198,26 +198,27 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-58 · Home, notes and documents from the app · ~10 minutes
-**Why:** P8-T06's done-when — a person connects Home Assistant and a notes folder from the app,
-with no file edited.
-1. Install the new installer here (over the old one is fine).
-2. **On this PC (your files exist):** Settings → On this computer. Each of Home Assistant, Web
-   search and the "mine" database shows "In mcp.json, in plain text". Press Save on each: they
-   should change to "Saved in Credential Manager", and `%APPDATA%\latentPresence\mcp.json` should
-   no longer hold the token, the key or the password (open it with the Open mcp.json button —
-   Playwright and "everything" are still there). Home Assistant should say Connected. Then ask
-   her to turn on a light, read a note, and look something up in a manual. Also run
-   `pnpm companion` from the checkout once: it should still reach Home Assistant (it reads the
-   token from Credential Manager now).
-3. **On your wife's PC (no files):** setup's step 5 "Your home, notes and documents": your Home
-   Assistant address and a token, a notes folder with Add a folder…, then ask her something about
-   a note.
-4. Tools → Add a server with the Home Assistant address: Test should now say it is running but
-   refuses the app, and point to Settings → Home Assistant.
+### R-59 · The hosted app and this computer · ~15 minutes
+**Why:** P8-T03's done-when — the deployed app talks to a local companion and a local Ollama from
+Chrome and Firefox after the prompts, and a new person can follow the words on screen.
+1. **Deploy** the new build to `app.latentpresence.com` as usual (`docs/deploy.md`).
+2. In a terminal in the checkout: `pnpm companion`. Its last lines include **"enter this pairing
+   code under Settings → Companion: XXXX-XXXX-…"**.
+3. **Chrome:** open `https://app.latentpresence.com/settings` → **Companion** → **Check**. Chrome
+   should ask to let the site access apps and services on this device: **Allow**. Check again: it
+   should say the companion needs its pairing code. Paste the code, **Save**: "Connected."
+4. Settings → Memory → "The companion" (or "Automatic"), then talk to her on `/chat` and ask what
+   she remembers. Settings → Language model → your local Ollama → **Test connection**: Connected.
+5. **Firefox:** the same steps 3–4 (its prompt is beside the address bar: "Device apps and
+   services").
+6. Optional, to see the help: in Chrome click the icon left of the address → Site settings →
+   "Apps on device" → Block, reload, Check: it should say the browser is blocking the site and how
+   to allow it again. Follow its steps back to Allow.
+7. `http://localhost:5173` (`pnpm dev`) still needs no code: Settings → Companion shows no pairing
+   field there, and Check says Connected.
 
-**Pass:** all of it with no file opened by hand. **Paste back:** anything confusing, and anything
-that said an error.
+**Pass:** steps 3–5 in both browsers, by the words on screen alone. **Paste back:** the exact
+prompt wording if it differs, and anything confusing.
 
 ## Open — claude (say go, or add the key)
 
@@ -237,6 +238,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-60 · R-58: home, notes and documents from the app** — Rick 2026-10-19: **passed** on both
+  PCs, "no issues at all": each section saved and its secret moved to Credential Manager;
+  `pnpm companion` still reaches Home Assistant on the stored token; the fresh install's wizard step
+  worked. The one secret left in mcp.json was the read-only database's address (rows had no Save),
+  so a row now has "Move to Credential Manager" (cac7bd9).
 - **D-59 · R-57: someone new through the first-run wizard** — Rick's wife, 2026-10-17: **passed** —
   she installed and ran setup herself, with Rick's local OpenAI-compatible server; microphone,
   camera and voice all worked. **The only pause: the MariaDB step** (an environment variable) — she

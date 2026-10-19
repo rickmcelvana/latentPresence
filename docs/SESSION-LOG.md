@@ -902,3 +902,9 @@ Did: Rick's wife's fresh install took the database address (ADR-62 confirmed). T
 Left: R-58; the laptop session; C-7; README (Rick). Rick's real mcp.json still holds its secrets in plain text until each section is saved.
 Next: P8-T03 or P8-T05, Rick's pick.
 Decisions: ADR-63 accepted (Rick asked for all of it).
+
+## 2026-10-19 claude — R-58 passed; P8-T03 the hosted app and this computer
+Did: R-58 passed on both PCs (D-60); the one leftover, a database address still in mcp.json, gets "Move to Credential Manager" (cac7bd9). P8-T03: measured Chrome 155 and Firefox 154 in throwaway profiles (CDP, WebDriver BiDi) from the hosted origin — a per-site `loopback-network` permission, no Private Network preflight, a waiting or refused request indistinguishable from a dead server. `probeEndpoint` now asks the permission after a failure (browser-asking / browser-blocked, each browser's own setting names); the standalone companion answers the hosted app only with a pairing code kept beside mcp.json; Settings → Companion in a browser. Checked end to end against a local build served as the hosted origin in the public address space (Chrome flags in SURFACE).
+Left: R-59 (deploy first); ADR-64 to accept; the laptop session; C-7; README (Rick).
+Next: P8-T05 or P8-T04, Rick's pick. Possible follow-up: Ollama and LM Studio through a paired companion's relay in a browser (no OLLAMA_ORIGINS).
+Decisions: ADR-64 proposed, recommended option taken (pairing code for the hosted origin only; no Private Network header).

@@ -92,6 +92,10 @@ Expect `200`, `Cross-Origin-Opener-Policy: same-origin` and
   then restart Ollama. Settings → Language model → Test says so, with the steps for their OS,
   when it is missing. LM Studio needs "Enable CORS" turned on.
 - **Chrome or Edge** for the voice: it needs WebGPU (ADR-20).
-- Browsers will ask before letting a public site reach `localhost` (Chrome's local network
-  access). How that prompt behaves, and the companion's pairing, are P8-T03; until it lands, a
-  local Ollama with `OLLAMA_ORIGINS` set is the tested path.
+- **The browser asks first.** Chrome, Edge and Firefox ask before this site may reach anything on
+  the visitor's own computer ("Apps on device" in Chrome, "Device apps and services" in Firefox).
+  Until they choose Allow, requests to Ollama, LM Studio or the companion wait; once blocked, they
+  fail. Every Test says which, and how to undo a block (ADR-64).
+- **The companion needs its pairing code here.** `pnpm companion` prints a pairing code when it
+  starts (kept in `pairing-code.txt` beside `mcp.json`; delete the file for a new one). The visitor
+  enters it once under Settings → Companion. Pages on their own computer (`pnpm dev`) need none.
