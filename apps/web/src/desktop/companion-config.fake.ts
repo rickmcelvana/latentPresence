@@ -115,6 +115,11 @@ export class FakeCompanionConfig implements CompanionConfigApi {
         };
       case 'removeDatabase':
         return { ...config, databases: config.databases.filter((database) => database.name !== change.name) };
+      case 'storeDatabase': {
+        const found = config.databases.find((database) => database.name === change.name);
+        if (found?.secret !== 'inFile') throw new Error(`"${change.name}" has no address in mcp.json to move.`);
+        return { ...config, databases: config.databases.map((database) => (database === found ? { ...database, secret: 'stored' } : database)) };
+      }
       case 'removeDocumentsFolder':
         return { ...config, folders: config.folders.filter((path) => path !== change.path) };
       case 'embedding':

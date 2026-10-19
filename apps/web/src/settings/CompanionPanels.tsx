@@ -527,6 +527,17 @@ function DatabaseRow({ database, controller, locked }: PanelProps & { readonly d
         <span className="tools-server-label">{database.name}</span>
         {database.disabled && <span className="pill pill-warn">off</span>}
         {database.path === null && <span className={`pill ${pill.tone}`}>{pill.text}</span>}
+        {database.path === null && database.secret === 'inFile' && (
+          <button
+            aria-label={`Move ${database.name}'s address to Credential Manager`}
+            className="btn btn-sm"
+            disabled={controller.busy || locked}
+            onClick={() => void controller.change('databases', { kind: 'storeDatabase', name: database.name })}
+            type="button"
+          >
+            Move to Credential Manager
+          </button>
+        )}
         <button
           aria-label={`Remove ${database.name}`}
           className="btn btn-sm btn-danger"

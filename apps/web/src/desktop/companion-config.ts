@@ -88,6 +88,8 @@ export type CompanionConfigChange =
   | { readonly kind: 'removeRoot'; readonly path: string }
   | { readonly kind: 'addDatabase'; readonly name: string; readonly url: string; readonly description?: string }
   | { readonly kind: 'removeDatabase'; readonly name: string }
+  /** A database whose address is written in `mcp.json`: the address moves to Credential Manager. */
+  | { readonly kind: 'storeDatabase'; readonly name: string }
   | { readonly kind: 'removeDocumentsFolder'; readonly path: string }
   | { readonly kind: 'embedding'; readonly embedding: EmbeddingView | null };
 

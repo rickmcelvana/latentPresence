@@ -408,6 +408,24 @@ describe('Settings → On this computer (P8-T06)', () => {
     expect(api.picks).toEqual(['sqlite:notes']);
   });
 
+  it('a database whose address is in mcp.json moves it to Credential Manager with one button', async () => {
+    const api = new FakeCompanionConfig(
+      emptyCompanionConfig({
+        databases: [
+          { name: 'mine', description: 'Whisperwind', address: 'mysql://reader@db.local/w', path: null, secret: 'inFile', disabled: false, problem: null },
+          { name: 'recipes', description: null, address: 'postgres://me@db.local/recipes', path: null, secret: 'stored', disabled: false, problem: null },
+        ],
+      }),
+    );
+    await loaded(api, { tools: true });
+    const databases = within(panel('Databases she may query'));
+    expect(databases.getAllByRole('button', { name: /to Credential Manager/ })).toHaveLength(1);
+    fireEvent.click(databases.getByRole('button', { name: "Move mine's address to Credential Manager" }));
+    await waitFor(() => expect(api.changes).toStrictEqual([{ kind: 'storeDatabase', name: 'mine' }]));
+    expect(await databases.findAllByText('Saved in Credential Manager')).toHaveLength(2);
+    expect(databases.queryByRole('button', { name: /to Credential Manager/ })).toBeNull();
+  });
+
   it('programs are read-only: listed, with Open mcp.json and Reload', async () => {
     const api = new FakeCompanionConfig(
       emptyCompanionConfig({

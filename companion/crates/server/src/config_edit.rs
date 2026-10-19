@@ -211,6 +211,10 @@ pub enum Change {
     RemoveDatabase {
         name: String,
     },
+    /// A database whose address is written in the file: the address moves to the store.
+    StoreDatabase {
+        name: String,
+    },
     RemoveDocumentsFolder {
         path: String,
     },
@@ -643,6 +647,21 @@ pub fn apply(files: &ConfigFiles, change: Change, store: &dyn SecretStore) -> Re
             write_json(&files.mcp, &mcp)?;
             store.delete(&secrets::database_url(&name))
         }
+        Change::StoreDatabase { name } => {
+            let mut mcp = read_json(&files.mcp)?;
+            let entry = object(&mut mcp, "databases")
+                .get_mut(&name)
+                .and_then(Value::as_object_mut)
+                .ok_or_else(|| format!("There is no database called \"{name}\"."))?;
+            let url = match entry.remove("url") {
+                Some(Value::String(url)) if !url.trim().is_empty() => url.trim().to_owned(),
+                _ => return Err(format!("\"{name}\" has no address in mcp.json to move.")),
+            };
+            let account = secrets::database_url(&name);
+            check_mcp(&mcp, store, &[(account.as_str(), url.as_str())])?;
+            store.set(&account, &url)?;
+            write_json(&files.mcp, &mcp)
+        }
         Change::RemoveDocumentsFolder { path } => {
             let mut documents = read_json(&files.documents)?;
             if let Some(folders) = documents.get_mut("folders").and_then(Value::as_array_mut) {
@@ -839,6 +858,43 @@ mod tests {
             view(&files, &store).home.unwrap().token,
             SecretState::Stored
         );
+    }
+
+    #[test]
+    fn a_database_address_in_the_file_moves_to_the_store_and_keeps_its_description() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = rick_like(&dir);
+        let store = MapStore::default();
+        apply(
+            &files,
+            Change::StoreDatabase {
+                name: "mine".into(),
+            },
+            &store,
+        )
+        .unwrap();
+        let text = std::fs::read_to_string(&files.mcp).unwrap();
+        assert!(!text.contains("db-secret"), "{text}");
+        assert_eq!(
+            store.get(&secrets::database_url("mine")).as_deref(),
+            Some("postgres://reader:db-secret@10.0.0.1/w")
+        );
+        let shown = view(&files, &store);
+        assert_eq!(shown.databases[0].secret, SecretState::Stored);
+        assert_eq!(
+            shown.databases[0].description.as_deref(),
+            Some("Whisperwind")
+        );
+        assert_eq!(
+            shown.databases[0].address.as_deref(),
+            Some("postgres://reader@10.0.0.1/w")
+        );
+        // Nothing left to move, and no such database: refused, nothing written.
+        let before = std::fs::read_to_string(&files.mcp).unwrap();
+        for name in ["mine", "nope"] {
+            assert!(apply(&files, Change::StoreDatabase { name: name.into() }, &store).is_err());
+        }
+        assert_eq!(std::fs::read_to_string(&files.mcp).unwrap(), before);
     }
 
     #[test]
