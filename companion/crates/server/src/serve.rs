@@ -13,8 +13,11 @@ use crate::{bench, ingest, mcp, memory_api, pairing, relay, routes, schedules, w
 pub struct ServeOptions {
     /// Bound by the caller, so it knows the port before anything is served.
     pub listener: tokio::net::TcpListener,
-    /// Required on every request when set (`pairing`). The binary runs without one, as before.
+    /// Required on every request when set (`pairing`): the desktop app's.
     pub token: Option<String>,
+    /// The binary's pairing code: required only from a page that is not on this machine — the
+    /// hosted app (ADR-64). Ignored when `token` is set.
+    pub pairing_code: Option<String>,
     /// Who the relay may reach: `Relay::measured()` for the binary; plus this machine's local
     /// model servers for the desktop app (`Relay::desktop()`).
     pub relay: relay::Relay,
@@ -129,9 +132,15 @@ pub async fn serve(
         host.clone(),
         ingester,
     );
-    let app = with_cors(match options.token {
-        Some(token) => pairing::require(app, token),
-        None => app,
+    let app = with_cors(match (options.token, options.pairing_code) {
+        (Some(token), _) => pairing::require(app, token),
+        (None, Some(code)) => {
+            println!(
+                "companion: to use it from https://app.latentpresence.com, enter this pairing code under Settings → Companion: {code}"
+            );
+            pairing::require_from_elsewhere(app, &code)
+        }
+        (None, None) => app,
     });
     axum::serve(options.listener, app)
         .with_graceful_shutdown(shutdown)

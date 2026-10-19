@@ -21,6 +21,14 @@ describe('describeToolServerFailure (P8-T06)', () => {
     expect(describeToolServerFailure({ ...base, url: 'http://nas.local:3000/mcp', probe: { kind: 'cors-blocked' }, inApp: true })).toContain('Open mcp.json');
   });
 
+  it('from the hosted app, says the browser is asking or blocking rather than "nothing answered" (ADR-64)', () => {
+    const asking = describeToolServerFailure({ ...base, origin: 'https://app.latentpresence.com', url: 'http://192.168.40.168/api/mcp', probe: { kind: 'browser-asking', space: 'local' }, inApp: false });
+    expect(asking).toContain('Choose Allow');
+    const blocked = describeToolServerFailure({ ...base, origin: 'https://app.latentpresence.com', url: 'http://192.168.40.168/api/mcp', probe: { kind: 'browser-blocked', space: 'local' }, inApp: false });
+    expect(blocked).toContain('blocking this site from reaching devices on your network');
+    expect(blocked).not.toContain('Nothing answered');
+  });
+
   it('tells nothing-there, slow, wrong path and a refused token apart', () => {
     expect(describeToolServerFailure({ ...base, url: 'http://10.0.0.9/mcp', probe: { kind: 'unreachable' }, inApp: true })).toContain('Nothing answered at 10.0.0.9');
     expect(describeToolServerFailure({ ...base, url: 'http://10.0.0.9/mcp', probe: { kind: 'timeout' }, inApp: true })).toContain('within 5 seconds');

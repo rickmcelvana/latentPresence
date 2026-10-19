@@ -7,6 +7,7 @@ import {
   isLocalHost,
   messageForProbe,
   openAiCompatibleListing,
+  COMPANION_NEEDS_PAIRING,
   resolveTransport,
   runTestMessage,
   type ProbeContext,
@@ -111,6 +112,15 @@ describe('messageForProbe — the outcome table', () => {
     });
   });
 
+  it('the browser asking or blocking (hosted app to this computer): its own words and steps, not "is it running?"', () => {
+    const asking = messageForProbe({ kind: 'browser-asking', space: 'loopback' }, ctx({ origin: 'https://app.latentpresence.com' }));
+    expect(asking.tone).toBe('warn');
+    expect(asking.text).toBe('Your browser is asking whether this site may reach apps on this computer. Choose Allow, then try again.');
+    const blocked = messageForProbe({ kind: 'browser-blocked', space: 'loopback' }, ctx({ origin: 'https://app.latentpresence.com' }));
+    expect(blocked.tone).toBe('danger');
+    expect(blocked.help?.steps.join('\n')).toContain('Apps on device');
+  });
+
   it('unreachable, local host: asks if the label is running', () => {
     expect(messageForProbe({ kind: 'unreachable' }, ctx({ url: 'http://127.0.0.1:1234/v1/models', label: 'LM Studio' }))).toEqual({
       tone: 'danger',
@@ -198,6 +208,14 @@ describe('resolveTransport', () => {
     const probe = vi.fn().mockResolvedValue({ kind: 'answered', status: 500 });
     const transport = await resolveTransport({ endpointId: 'nvidia', companionUrl: DEFAULT_COMPANION_URL, origin: ORIGIN, probe });
     expect(transport.ok).toBe(false);
+  });
+
+  it('a relay endpoint whose companion wants its pairing code, or that the browser stopped, says so (ADR-64)', async () => {
+    const paired = await resolveTransport({ endpointId: 'nvidia', companionUrl: DEFAULT_COMPANION_URL, origin: 'https://app.latentpresence.com', probe: vi.fn().mockResolvedValue({ kind: 'answered', status: 401 }) });
+    expect(paired).toEqual({ ok: false, result: { tone: 'warn', text: COMPANION_NEEDS_PAIRING } });
+    const blocked = await resolveTransport({ endpointId: 'nvidia', companionUrl: DEFAULT_COMPANION_URL, origin: 'https://app.latentpresence.com', probe: vi.fn().mockResolvedValue({ kind: 'browser-blocked', space: 'loopback' }) });
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) expect(blocked.result.text).toBe('Your browser is blocking this site from reaching apps on this computer.');
   });
 
   it('a relay endpoint with the companion up: the returned fetch goes through relayFetch', async () => {

@@ -1,4 +1,4 @@
-import type { EndpointProbe } from '@latentpresence/providers/web';
+import { localNetworkHelp, type EndpointProbe } from '@latentpresence/providers/web';
 
 /**
  * Why a tool server's Test failed, in words a person can act on (P8-T06, R-57's follow-up).
@@ -56,6 +56,11 @@ export function describeToolServerFailure({ url, detail, probe, origin, inApp }:
       return `Nothing answered at ${host}. Check the address, and that this computer can reach it.`;
     case 'timeout':
       return `${host} did not answer within 5 seconds.`;
+    case 'browser-asking':
+    case 'browser-blocked': {
+      const help = localNetworkHelp(probe.kind === 'browser-asking' ? 'prompt' : 'denied', probe.space);
+      return [help.summary, ...help.steps].join(' ');
+    }
     case 'answered':
       // The probe carries no token, so only the client's own error can say the token was refused.
       if (/\b(401|403)\b/.test(detail)) return `${host} answered and refused the token. Check that it is a token this server accepts, then save it again.`;

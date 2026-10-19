@@ -138,6 +138,12 @@ pub fn page_origin_allowed(origin: &str) -> bool {
     matches!(host, "localhost" | "127.0.0.1" | "[::1]")
 }
 
+/// True for a page served from this machine: localhost on any port, or the desktop app's webview.
+/// The one page that is not — the hosted app — needs the pairing code (ADR-64).
+pub fn page_origin_on_this_machine(origin: &str) -> bool {
+    page_origin_allowed(origin) && origin != "https://app.latentpresence.com"
+}
+
 fn text(status: StatusCode, message: &'static str) -> Response {
     (status, message).into_response()
 }
@@ -184,17 +190,8 @@ pub async fn cors(request: Request, next: Next) -> Response {
             HeaderValue::from_static("600"),
         );
         headers.insert(header::VARY, HeaderValue::from_static("Origin"));
-        // Chrome's Local Network Access asks this of the hosted app. Unverified until P8-T03.
-        if request
-            .headers()
-            .get("access-control-request-private-network")
-            .is_some_and(|value| value == "true")
-        {
-            headers.insert(
-                "access-control-allow-private-network",
-                HeaderValue::from_static("true"),
-            );
-        }
+        // No `Access-Control-Allow-Private-Network`: Chrome 155 and Firefox 154 send no such
+        // preflight; they ask the person instead (a per-site permission, ADR-64).
         return response;
     }
 

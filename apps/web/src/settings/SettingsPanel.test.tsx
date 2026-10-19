@@ -109,7 +109,9 @@ describe('SettingsPanel — Language model', () => {
     expect(screen.getByLabelText('API key')).toBeTruthy();
     expect(screen.getByLabelText('Companion URL')).toBeTruthy();
     // R-5: the start command is on screen before any test fails, not only after.
-    expect(screen.getByText('pnpm companion').tagName).toBe('CODE');
+    expect(screen.getAllByText('pnpm companion').every((element) => element.tagName === 'CODE')).toBe(true);
+    // ADR-64: in a browser the Companion section is there too, with its own address field.
+    expect(screen.getByRole('region', { name: 'Companion' })).toBeTruthy();
   });
 
   it('a saved key never appears in the DOM', async () => {

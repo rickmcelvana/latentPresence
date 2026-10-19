@@ -21,7 +21,7 @@ export interface MinimalAudioContext {
 
 export interface SettingsDeps {
   readonly vault: KeyVault;
-  readonly storage: Pick<Storage, 'getItem' | 'setItem'>;
+  readonly storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
   readonly fetch: HttpFetch;
   readonly probe: typeof probeEndpoint;
   readonly origin: string;

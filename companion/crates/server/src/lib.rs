@@ -246,9 +246,8 @@ mod tests {
             .header("access-control-request-method", "POST")
             .header(
                 "access-control-request-headers",
-                "authorization,content-type,x-lp-target",
+                "authorization,content-type,x-lp-target,x-lp-companion-token",
             )
-            .header("access-control-request-private-network", "true")
             .body(Body::empty())
             .expect("request builds");
         let response = router().oneshot(preflight).await.expect("router answers");
@@ -261,7 +260,12 @@ mod tests {
         let allowed = headers["access-control-allow-headers"]
             .to_str()
             .expect("ascii");
-        for name in ["authorization", "content-type", "x-lp-target"] {
+        for name in [
+            "authorization",
+            "content-type",
+            "x-lp-target",
+            "x-lp-companion-token",
+        ] {
             assert!(allowed.contains(name), "{name} in {allowed}");
         }
         assert!(
@@ -270,7 +274,8 @@ mod tests {
                 .expect("ascii")
                 .contains("POST")
         );
-        assert_eq!(headers["access-control-allow-private-network"], "true");
+        // Measured 2026-10-19: no browser sends a Private Network preflight now (ADR-64).
+        assert!(!headers.contains_key("access-control-allow-private-network"));
     }
 
     #[tokio::test]

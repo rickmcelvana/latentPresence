@@ -94,6 +94,7 @@ impl Companion {
             let options = serve::ServeOptions {
                 listener,
                 token: Some(token),
+                pairing_code: None,
                 relay: relay::Relay::desktop(),
                 database_url,
             };

@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
 import { useCompanionConfig, type CompanionConfigOptions } from './companion-config-state';
+import { CompanionSection } from './CompanionSection';
 import { CompanionSettings } from './CompanionSettings';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
@@ -97,6 +98,18 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
       {api !== null && <CompanionSettings controller={companion} />}
+
+      {/* In a browser the companion is the person's own `pnpm companion` (ADR-64). */}
+      {desktopShell() === null && (
+        <CompanionSection
+          companionUrl={settings.companionUrl}
+          fetch={deps.fetch}
+          onChangeCompanionUrl={(companionUrl) => setSettings((prev) => ({ ...prev, companionUrl }))}
+          origin={deps.origin}
+          probe={deps.probe}
+          storage={deps.storage}
+        />
+      )}
 
       <DocumentsSection
         companionUrl={settings.companionUrl}

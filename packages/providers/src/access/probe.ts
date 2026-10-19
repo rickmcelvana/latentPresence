@@ -1,4 +1,5 @@
 import type { HttpFetch } from '../llm/discovery';
+import { localNetworkNeeded, localNetworkPermission, type PermissionsLike } from './local-network';
 
 /**
  * What a page learns by calling a URL (P1-T10).
@@ -14,12 +15,17 @@ import type { HttpFetch } from '../llm/discovery';
  * - `cors-blocked`: the server answered and the browser would not let the page read it.
  * - `unreachable`: nothing answered — not running, wrong host or port, or offline.
  * - `timeout`: no answer inside `timeoutMs` (an unroutable LAN address hangs, not fails).
+ * - `browser-asking` / `browser-blocked`: a public page called this computer or the LAN, and the
+ *   browser is still asking the person, or was told no (ADR-64, `local-network.ts`). Without
+ *   asking the permission these read as `timeout` and `unreachable`.
  */
 export type EndpointProbe =
   | { readonly kind: 'answered'; readonly status: number }
   | { readonly kind: 'cors-blocked' }
   | { readonly kind: 'unreachable' }
-  | { readonly kind: 'timeout' };
+  | { readonly kind: 'timeout' }
+  | { readonly kind: 'browser-asking'; readonly space: 'loopback' | 'local' }
+  | { readonly kind: 'browser-blocked'; readonly space: 'loopback' | 'local' };
 
 export interface ProbeOptions {
   /** Defaults to the global `fetch`. */
@@ -28,6 +34,27 @@ export interface ProbeOptions {
   readonly headers?: Record<string, string>;
   /** Per request. Defaults to 5000 ms. */
   readonly timeoutMs?: number;
+  /** The page's origin and the browser's permissions, for a failure the browser caused.
+   * Defaults to `location.origin` and `navigator.permissions`; null skips the question. */
+  readonly localNetwork?: { readonly pageOrigin: string; readonly permissions: PermissionsLike | null } | null;
+}
+
+function defaultLocalNetwork(): ProbeOptions['localNetwork'] {
+  const pageOrigin = globalThis.location?.origin;
+  if (typeof pageOrigin !== 'string') return null;
+  return { pageOrigin, permissions: (globalThis.navigator?.permissions as PermissionsLike | undefined) ?? null };
+}
+
+/** `browser-asking` or `browser-blocked` when the browser, not the server, is why `url` failed. */
+async function browserVerdict(url: string, options: ProbeOptions): Promise<EndpointProbe | null> {
+  const local = options.localNetwork === undefined ? defaultLocalNetwork() : options.localNetwork;
+  if (local === null || local === undefined) return null;
+  const space = localNetworkNeeded(local.pageOrigin, url);
+  if (space === null) return null;
+  const state = await localNetworkPermission(space, local.permissions);
+  if (state === 'prompt') return { kind: 'browser-asking', space };
+  if (state === 'denied') return { kind: 'browser-blocked', space };
+  return null;
 }
 
 export const DEFAULT_PROBE_TIMEOUT_MS = 5000;
@@ -48,6 +75,8 @@ export async function probeEndpoint(url: string, options: ProbeOptions = {}): Pr
     });
     return { kind: 'answered', status: response.status };
   } catch (error) {
+    const verdict = await browserVerdict(url, options);
+    if (verdict !== null) return verdict;
     if (isTimeout(error)) return { kind: 'timeout' };
   }
   try {

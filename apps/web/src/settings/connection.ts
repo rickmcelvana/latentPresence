@@ -2,6 +2,7 @@ import type { LlmFinishReason, LlmStreamChunk } from '@latentpresence/protocol';
 import {
   browserAccess,
   corsHelp,
+  localNetworkHelp,
   normaliseBaseUrl,
   probeEndpoint,
   relayFetch,
@@ -80,6 +81,11 @@ export function messageForProbe(probe: EndpointProbe, ctx: ProbeContext): Connec
         : { tone: 'danger', text: `Could not reach ${hostOf(ctx.url)}. Check the address and your connection.` };
     case 'timeout':
       return { tone: 'danger', text: `No answer within 5 seconds from ${ctx.url}.` };
+    case 'browser-asking':
+    case 'browser-blocked': {
+      const help = localNetworkHelp(probe.kind === 'browser-asking' ? 'prompt' : 'denied', probe.space);
+      return { tone: probe.kind === 'browser-asking' ? 'warn' : 'danger', text: help.summary, help };
+    }
   }
 }
 
@@ -133,6 +139,10 @@ function messageForStatus(status: number, ctx: ProbeContext): ConnectionResult {
   return { tone: 'danger', text: `The server answered ${status}.` };
 }
 
+/** The companion answered 401 to a page that is not on this computer (ADR-64). */
+export const COMPANION_NEEDS_PAIRING =
+  'The companion is running and needs its pairing code before it answers this site. Enter it under Settings → Companion: the companion prints it when it starts.';
+
 /** Either a working transport to probe and call the endpoint with, or the reason there
  * is none — a `relay` endpoint whose companion is not answering. */
 export type Transport = { readonly ok: true; readonly fetch: HttpFetch } | { readonly ok: false; readonly result: ConnectionResult };
@@ -159,6 +169,13 @@ export async function resolveTransport(options: ResolveTransportOptions): Promis
   const health = await probe(`${normaliseBaseUrl(options.companionUrl)}/health`, { fetch: fetchFn });
   if (health.kind === 'answered' && health.status === 200) {
     return { ok: true, fetch: relayFetch(options.companionUrl, fetchFn) };
+  }
+  // ADR-64: running, and waiting for its pairing code — or the browser stopped the request.
+  if (health.kind === 'answered' && health.status === 401) {
+    return { ok: false, result: { tone: 'warn', text: COMPANION_NEEDS_PAIRING } };
+  }
+  if (health.kind === 'browser-asking' || health.kind === 'browser-blocked') {
+    return { ok: false, result: messageForProbe(health, { endpointId: 'companion', label: 'the companion', url: options.companionUrl, origin: options.origin, hasKey: false }) };
   }
   const help = corsHelp(options.endpointId, options.origin);
   return {
