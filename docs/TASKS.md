@@ -198,6 +198,29 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-60 · Tray mode · ~15 minutes
+**Why:** P8-T05's done-when — a schedule fires with the window closed and the notification
+appears; the app in the tray stays small. And the tray's look, which no test can see.
+1. Install the new installer (over the old one is fine). Open the app, go to the conversation.
+2. Ask her: "remind me in three minutes to stretch". Then close the window with the X. A
+   notification should say latentPresence is still running, and an icon should be in the tray (by
+   the clock; it may be under the ^ arrow).
+3. Open Task Manager → Processes, find latentPresence, expand it, and add up the Memory column
+   (WebView2 rows included; the "node" rows are the programs in mcp.json, count them separately).
+4. At the three minutes: the reminder should come as a Windows notification, the window still
+   closed.
+5. Click the tray icon: the window comes back. Right-click it: Open, "Small window, always on top",
+   Quit. Try the small window — her in a corner, on top of other windows, with Start voice; "Full
+   window" puts it back where it was.
+6. Start a voice call, then close the window: the call should end (no microphone light in the
+   taskbar). Open it again from the tray.
+7. Right-click the tray icon → Quit: everything ends (nothing latentPresence left in Task Manager).
+8. Settings → This app → turn off "Closing the window keeps her running in the tray"; close the
+   window: the app quits.
+
+**Pass:** 2, 4, 5, 6, 7 and 8 as described. **Paste back:** the Memory total from step 3 (with and
+without the node rows), and anything that looked wrong.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane

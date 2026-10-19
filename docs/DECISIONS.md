@@ -67,6 +67,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
+| ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | proposed 2026-10-19 (P8-T05), recommended option taken | 2026-10-19 |
 
 ---
 
@@ -2641,4 +2642,50 @@ needs today.
 
 **Not measured.** The prompt's own look (CDP sets the permission; Rick sees the prompt in R-59);
 Safari; Edge (Chromium, expected to match Chrome).
+
+## ADR-65 Tray mode (proposed 2026-10-19, P8-T05)
+
+**Context.** P8-T05: "close-to-tray keeps the core alive for schedules and check-ins; a compact
+always-on-top presence window option; OS notifications; explicit quit ends everything". Her
+schedules and reminders run in the chat page (ADR-56, ADR-58); only tool-only jobs run in the
+companion with no page (ADR-57). So the page has to keep running when the window is closed.
+
+**Decision (recommended option, taken).**
+1. **The close button hides the window** and a tray icon stays (left click opens; its menu: Open,
+   "Small window, always on top", Quit). On by default; Settings → This app turns it off, and then
+   closing quits. The first hide in a run shows a notification saying where the app went.
+2. **Hiding ends what listens or watches**: the shell tells the page (`tray-hidden`), which ends a
+   voice call, the camera and face reading, and the voice speaking typed replies — their models
+   go with them. A microphone live in a window no one can see is not acceptable, whatever the
+   memory budget. Text chat, memory and her schedules carry on.
+3. **Quit is only in the tray's menu** (and closing with the switch off); it stops the companion
+   as before.
+4. **The presence window is the main window made small** (360×560 logical, bottom-right of the
+   work area, always on top, the minimum size lifted), not a second window: one page, one
+   conversation, one set of models. The page shows her, the call card and "Full window"; the
+   drawer, the text box and the camera picture wait. Leaving it restores the size, place and
+   maximised state; Quit restores first, so the remembered size is never the small one.
+5. **A second launch shows the window**, from the tray too (single-instance, ADR-60).
+
+**Rejected.** *A separate presence window* (a second webview): a second copy of the page, its
+models and its renderer, or a cross-window protocol for one avatar. *Moving schedules to the shell
+or the companion*: they run the agent loop with her tools in the page (ADR-56); a second runner
+is P6-T07b's scope, kept to tool-only jobs. *Keeping a call alive in the tray*: listening with no
+window is a surprise, not a feature.
+
+**Measured.**
+Release build, run from outside `target\` (so toasts carry the installed app's identity), in a
+throwaway WebView2 profile, 2026-10-19 (SURFACE): asked in chat for a reminder in three minutes
+(`glm-5.3:cloud` through Ollama, memory in the browser), closed the window (`WM_CLOSE`, as the X
+does) — the process stayed, the window hid, and **Windows' toast history shows both the first-hide
+notice and "Alice — Stand up and stretch" at its time**, the window closed. The hidden page's
+one-second timer never lagged (largest gap 1.006 s over four minutes): WebView2 keeps reporting
+it `visible`, so nothing is throttled. **Memory hidden, by Task Manager's measure (private
+working set): the app and WebView2 131 MB** (renderer 45, GPU 38, browser 29, the rest under 10)
+— the character not downloaded in that profile, so with her on stage it is more; the MCP programs
+in Rick's `mcp.json` (three `node` processes) add about 180 MB of their own. Committed private
+memory: 311 MB for the app and WebView2. The presence window: 360×560 page, always on top, in the
+corner; two round trips back to exactly the size it had (the first build saved the outer size and
+grew the window by its frame each time — fixed). The switch off, closing quit: the companion's
+port freed and its programs gone.
 

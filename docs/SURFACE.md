@@ -2703,3 +2703,33 @@ on `11434` (with `OLLAMA_ORIGINS=https://app.latentpresence.com`).
   pairing flow was checked end to end before deploying.
 - **Not seen:** the prompt itself (CDP and BiDi set the permission), Safari, Edge.
 
+## Tray mode in the Tauri window — measured 2026-10-19 (P8-T05, ADR-65)
+
+- **tauri 2.12.4 `tray-icon`** (tray-icon 0.25.1, muda 0.20.0, already in the lockfile from Spike E):
+  `TrayIconBuilder::with_id`, `.menu`, `.show_menu_on_left_click(false)`, `.on_menu_event`,
+  `.on_tray_icon_event` (`TrayIconEvent::Click { button: Left, button_state: Up }`);
+  `CheckMenuItem::set_checked`; `Monitor::work_area()`; `WindowEvent::CloseRequested { api }` with
+  `api.prevent_close()`.
+- **The menu needs Common Controls 6.** With the tray linked, the shell's *unit-test* binary died
+  before `main` with `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139): tauri-build declares Common
+  Controls 6 in a manifest it puts in the binary's resources only. Cargo refuses
+  `rustc-link-arg-tests` for a package with no `[[test]]` target, so `build.rs` passes
+  `/MANIFEST:EMBED /MANIFESTINPUT:windows-app-manifest.xml` to every target and builds tauri with
+  `WindowsAttributes::new_without_app_manifest()`. The app's exe carries the manifest once.
+- **`set_size` takes the inner size**; `outer_size` is 16×39 px larger on Windows 11 at 100 %
+  (the frame and title bar). Saving the outer size and restoring it grew the window each round
+  trip.
+- **A hidden Tauri window's page is not throttled.** After `window.hide()` the page still read
+  `document.visibilityState === 'visible'` (`hasFocus()` false), no `visibilitychange` fired, and a
+  one-second `setInterval` never lagged more than 1.006 s over four minutes (WebView2 155.0.4283.62).
+- **Toasts from the hidden window**: Windows' `ToastNotificationManager.History` for
+  `com.latentpresence.desktop` held the first-hide notice and the reminder, from a release exe run
+  outside `target\` (the plugin sets the app identity only there; the Start menu shortcut of the
+  installed app carries it).
+- **Memory, hidden, no character loaded, private working set** (`Win32_PerfFormattedData_PerfProc_Process`):
+  the shell 7 MB, WebView2 renderer 45, GPU 38, browser 29, two utilities 10, crashpad 2 — 131 MB.
+  The three `node` MCP servers from `mcp.json`: 166 MB more. Committed private bytes for the app and
+  WebView2: 311 MB.
+- **A second launch** (single-instance) shows the hidden window; with the switch off, `WM_CLOSE`
+  quits: port 8787 freed and the MCP servers' processes gone.
+

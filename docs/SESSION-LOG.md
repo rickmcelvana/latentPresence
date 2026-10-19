@@ -908,3 +908,9 @@ Did: R-58 passed on both PCs (D-60); the one leftover, a database address still 
 Left: R-59 (deploy first); ADR-64 to accept; the laptop session; C-7; README (Rick).
 Next: P8-T05 or P8-T04, Rick's pick. Possible follow-up: Ollama and LM Studio through a paired companion's relay in a browser (no OLLAMA_ORIGINS).
 Decisions: ADR-64 proposed, recommended option taken (pairing code for the hosted origin only; no Private Network header).
+
+## 2026-10-19 claude — R-59 passed, ADR-64 accepted; P8-T05 tray mode
+Did: R-59 passed (D-61), ADR-64 accepted. P8-T05 (ADR-65 proposed): `tray.rs` — close hides to a tray icon (Open, "Small window, always on top", Quit; left click opens), a first-hide notice, the presence window as the main window made small and on top in the work area's corner; `tray-hidden` / `presence` events to the page, which ends a call, the camera, face reading and the speaking voice when hidden, and shows only her, the call and "Full window" when small; Settings → This app turns closing-to-tray off. Live in a release build with a throwaway profile: a reminder made in chat came as a Windows toast with the window closed; the hidden page's timers never lagged; 131 MB private working set for the app and WebView2 (no character loaded); presence round trips exact after fixing an outer/inner size mix-up; the switch off, close quit everything. `build.rs` embeds the Common Controls manifest for every target (unit tests died with 0xc0000139).
+Left: R-60 (tray mode with the installer, Task Manager's figure with the character on stage); ADR-65 to accept; the laptop session; C-7; README (Rick).
+Next: P8-T04 (auto-update and CI releases).
+Decisions: ADR-65 proposed, recommended option taken.

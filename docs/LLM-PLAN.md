@@ -495,7 +495,7 @@ Done when: the deployed app talks to a local companion and a local Ollama from C
 Tauri updater, unsigned artifacts (owner decision as in latentCreate; SmartScreen will warn), release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E passed.
 Done when: an update installs from a test channel.
 
-### P8-T05 Tray mode: background presence — owner: main
+### P8-T05 Tray mode: background presence — owner: main (**built 2026-10-19**, ADR-65; R-60 open)
 Depends: P6-T07. Close-to-tray keeps the core alive for schedules and check-ins; a compact always-on-top "presence" window option; OS notifications; explicit "quit" ends everything.
 Done when: a schedule fires with the main window closed and the notification appears; memory use in tray mode under 300 MB with browser models unloaded.
 
