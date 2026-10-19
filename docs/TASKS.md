@@ -198,15 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-61 · A reminder from the tray, with memory in the companion · ~5 minutes
-**Why:** R-60's one failure, fixed in 50e6f60.
-1. Install the new installer over the old one.
-2. Ask her to remind you in two minutes; close the window with the X.
-3. At the time: a Windows notification, the window still closed. Open it from the tray: she should
-   not say the reminder again, and no `[ user:… ]` should show in her replies.
-
-**Pass:** the notification arrives with the window in the tray.
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -225,6 +216,9 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-63 · R-61: a reminder from the tray, memory in the companion** — Rick 2026-10-19:
+  **passed**, "notification landed perfectly" with the window closed to the tray. P8-T05 done;
+  ADR-65 accepted.
 - **D-62 · R-60: tray mode** — Rick 2026-10-19: installed smoothly; the tray icon and its menu,
   the small window, a call ending when the window closed, Quit, and the Settings switch all
   **passed**. Memory in the tray with her on stage: WebView2 288 MB + latentPresence 7.1 MB, about
