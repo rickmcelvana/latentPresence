@@ -44,8 +44,38 @@ export interface DesktopShell {
   readonly osNotifications: boolean;
 }
 
+type Unlisten = () => void;
+type Listen = (event: string, handler: (event: { readonly payload: unknown }) => void) => Promise<Unlisten>;
+
 interface TauriGlobal {
   readonly core?: { readonly invoke?: Invoke };
+  readonly event?: { readonly listen?: Listen };
+}
+
+/**
+ * Calls `handler` with each `event` the shell sends this window (P8-T05: `tray-hidden`,
+ * `presence`); returns how to stop. In a browser nothing is ever sent, and stopping does nothing.
+ */
+export function listenShell(
+  event: string,
+  handler: (payload: unknown) => void,
+  scope: { readonly __TAURI__?: TauriGlobal } = window as unknown as { readonly __TAURI__?: TauriGlobal },
+): Unlisten {
+  const listen = scope.__TAURI__?.event?.listen;
+  if (listen === undefined) return () => undefined;
+  let stopped = false;
+  let unlisten: Unlisten | null = null;
+  void listen(event, (message) => handler(message.payload)).then(
+    (stop) => {
+      if (stopped) stop();
+      else unlisten = stop;
+    },
+    (error: unknown) => console.warn(`latentPresence: could not listen for ${event} from the shell`, error),
+  );
+  return () => {
+    stopped = true;
+    unlisten?.();
+  };
 }
 
 let shell: DesktopShell | null = null;

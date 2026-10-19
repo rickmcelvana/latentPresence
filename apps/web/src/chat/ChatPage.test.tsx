@@ -21,6 +21,7 @@ import type { ChatLlmOptions } from './chat-llm';
 import { connectDocuments } from './chat-documents';
 import type { NotificationPermissionState, PageNotifications } from './notifications';
 import { InMemoryBodyShelf } from '../characters/body-shelf';
+import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { BodyReport } from '@latentpresence/avatar/vrm';
 
@@ -1830,5 +1831,77 @@ describe('ChatPage — her body, worn live (P7-T02, ADR-59)', () => {
       Reflect.deleteProperty(URL, 'createObjectURL');
       Reflect.deleteProperty(URL, 'revokeObjectURL');
     }
+  });
+});
+
+describe('ChatPage — tray mode (P8-T05, ADR-65)', () => {
+  type Handler = (event: { readonly payload: unknown }) => void;
+  const tauriWindow = window as unknown as { __TAURI__?: unknown };
+
+  afterEach(() => {
+    resetDesktopForTests();
+    delete tauriWindow.__TAURI__;
+  });
+
+  async function inApp() {
+    const handlers = new Map<string, Set<Handler>>();
+    const listen = vi.fn(async (event: string, handler: Handler) => {
+      const set = handlers.get(event) ?? new Set<Handler>();
+      set.add(handler);
+      handlers.set(event, set);
+      return () => set.delete(handler);
+    });
+    const invoke = vi.fn(async (command: string) => (command === 'companion_info' ? { url: 'http://127.0.0.1:8790', token: 't' } : null));
+    tauriWindow.__TAURI__ = { core: { invoke }, event: { listen } };
+    await initDesktop({ __TAURI__: { core: { invoke: invoke as unknown as Invoke } }, fetch: vi.fn() as unknown as typeof fetch });
+    const emit = (event: string, payload: unknown = null): void => {
+      for (const handler of handlers.get(event) ?? []) handler({ payload });
+    };
+    await waitFor(() => expect(handlers.get('presence')?.size).toBe(1));
+    return { invoke, emit };
+  }
+
+  it('a browser offers no small window', () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    expect(screen.queryByRole('button', { name: 'Small window' })).toBeNull();
+  });
+
+  it('the small window keeps her, the call and a way back, and the full window returns the rest', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const pending = inApp();
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const { invoke, emit } = await pending;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Small window' }));
+    expect(invoke).toHaveBeenCalledWith('presence_set', { on: true });
+    act(() => emit('presence', true));
+    expect(container.querySelector('.call-page-presence')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Start voice' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Camera' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Transcript' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Full window' }));
+    expect(invoke).toHaveBeenCalledWith('presence_set', { on: false });
+    act(() => emit('presence', false));
+    expect(container.querySelector('.call-page-presence')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Camera' })).toBeTruthy();
+  });
+
+  it('hidden to the tray, the voice panel closes: nothing listens from a window no one can see', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const pending = inApp();
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const { emit } = await pending;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await waitFor(() => expect(screen.getByText(/A browser voice and hearing/u)).toBeTruthy());
+    act(() => emit('tray-hidden'));
+    await waitFor(() => expect(screen.queryByText(/A browser voice and hearing/u)).toBeNull());
+    expect(screen.getByRole('button', { name: 'Start voice' })).toBeTruthy();
+    expect(screen.getByRole('textbox')).toBeTruthy();
   });
 });

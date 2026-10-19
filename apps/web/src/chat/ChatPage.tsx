@@ -72,6 +72,7 @@ import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
+import { setPresence, useDesktopTray } from '../desktop/tray';
 import { hostTimers } from './host-timers';
 import { pageNotifications, type PageNotifications } from './notifications';
 import { PermissionPrompt } from './PermissionPrompt';
@@ -1089,6 +1090,18 @@ function ConfiguredChatPage({
     }
   }, [stopFace, userCamera]);
 
+  // P8-T05 (ADR-65): hidden to the tray, nothing listens or watches from a window no one can see —
+  // the call, the camera and face reading end, and the voice speaking typed replies goes with its
+  // models. Her schedules and reminders carry on.
+  const toTray = useCallback(() => {
+    onVoiceEnd();
+    faceOwnsCameraRef.current = false;
+    stopFace();
+    userCamera.stop();
+    stopSpeaking();
+  }, [onVoiceEnd, stopFace, stopSpeaking, userCamera]);
+  const tray = useDesktopTray(toTray);
+
   function send(): void {
     if (draft.trim() === '') return;
     if (chat.send(draft)) {
@@ -1120,7 +1133,8 @@ function ConfiguredChatPage({
   // The two centred cards shift left of an open drawer rather than sliding under it (R-14).
   // `/chat?affect`: the fused state, for a person checking what she thinks they feel (P3-T07).
   const showAffectOverlay = new URLSearchParams(window.location.search).has('affect');
-  const pageClass = drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
+  // The presence window (P8-T05): her, the call and a way back; the drawer and the rest wait.
+  const pageClass = tray.presence ? 'call-page call-page-presence' : drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
   return (
     <main className={pageClass}>
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
@@ -1290,6 +1304,13 @@ function ConfiguredChatPage({
         <button aria-pressed={muted} className="btn call-control-btn" disabled={!callActive} onClick={toggleMute} type="button">
           {muted ? 'Unmute' : 'Mute'}
         </button>
+        {tray.presence && (
+          <button className="btn call-control-btn" onClick={() => setPresence(false)} title="Back to the full window" type="button">
+            Full window
+          </button>
+        )}
+        {!tray.presence && (
+          <>
         <button aria-pressed={userCamera.active} className="btn call-control-btn" onClick={toggleCamera} type="button">
           Camera
         </button>
@@ -1348,9 +1369,16 @@ function ConfiguredChatPage({
         <button aria-pressed={drawerOpen && drawerView === 'body'} className="btn call-control-btn" onClick={() => toggleDrawerView('body')} title="What she looks like — changes live" type="button">
           Body
         </button>
+        {tray.available && (
+          <button className="btn call-control-btn" onClick={() => setPresence(true)} title="A small window that stays on top" type="button">
+            Small window
+          </button>
+        )}
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings
         </a>
+          </>
+        )}
       </div>
     </main>
   );

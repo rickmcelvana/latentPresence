@@ -69,9 +69,17 @@ describe('loadSettings', () => {
       tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1.1 },
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
       welcomed: true,
+      closeToTray: false,
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
+  });
+
+  it('a document saved before tray mode closes to the tray (P8-T05)', () => {
+    const storage = memoryStorage();
+    const { closeToTray: _closeToTray, ...beforeTray } = DEFAULT_SETTINGS;
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(beforeTray));
+    expect(loadSettings(storage).closeToTray).toBe(true);
   });
 
   it('loads a document saved before memory existed, remembering in this browser (P4-T04b)', () => {

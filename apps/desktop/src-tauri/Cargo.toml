@@ -20,7 +20,7 @@ tauri-build = { version = "2.7.3", features = [] }
 
 [dependencies]
 # Versions read from crates.io on 2026-10-16 (docs/SURFACE.md). The plugins below need tauri ^2.12.
-tauri = { version = "2.12.4", features = [] }
+tauri = { version = "2.12.4", features = ["tray-icon"] }
 tauri-plugin-log = "2.10.1"
 # The page's `Notification` goes through this plugin's polyfill (ADR-58's reminders when hidden).
 tauri-plugin-notification = "2.7.0"

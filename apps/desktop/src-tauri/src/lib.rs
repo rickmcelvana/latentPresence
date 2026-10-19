@@ -19,7 +19,10 @@
 //! - **One window**: a second launch focuses the first (`single-instance`), and its size and place
 //!   are remembered (`window-state`).
 //!
-//! Spike E's probe command and test tray are gone; the tray mode is P8-T05.
+//! - **Tray mode** (P8-T05, ADR-65, `tray.rs`): closing the window hides it to the tray, where the
+//!   app and her schedules carry on; Quit in the tray's menu ends everything.
+
+mod tray;
 
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
 use std::time::Duration;
@@ -446,11 +449,8 @@ pub fn run() {
     let app = tauri::Builder::default()
         // First: a second launch hands over to this one and exits before starting anything.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            // From the taskbar, behind other windows, or hidden in the tray.
+            tray::show(app);
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_notification::init())
@@ -474,8 +474,12 @@ pub fn run() {
             companion_config_pick_folder,
             companion_config_pick_sqlite,
             companion_config_open,
-            companion_config_reload
+            companion_config_reload,
+            tray::tray_close_to_tray,
+            tray::presence_set
         ])
+        .manage(tray::Tray::default())
+        .on_window_event(tray::on_window_event)
         .setup(|app| {
             match tauri::webview_version() {
                 Ok(version) => log::info!("webview runtime: {version}"),
@@ -495,6 +499,7 @@ pub fn run() {
             tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
                 .on_permission_request(|_, kind| permission_for(kind))
                 .build()?;
+            tray::build(app.handle())?;
             Ok(())
         })
         .build(tauri::generate_context!())

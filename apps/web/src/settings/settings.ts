@@ -189,6 +189,11 @@ export const SettingsSchema = z.object({
    * a document with a language model chosen as already welcomed (`markWelcomed`).
    */
   welcomed: z.boolean().default(false),
+  /**
+   * The desktop app (P8-T05, ADR-65): closing the window hides it to the tray, where her schedules
+   * and reminders carry on; off, closing quits. Defaulted, so an earlier document loads.
+   */
+  closeToTray: z.boolean().default(true),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -207,6 +212,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tts: { kind: 'kokoro-browser', voiceId: KOKORO_DEFAULT_VOICE, speed: 1 },
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
   welcomed: false,
+  closeToTray: true,
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets

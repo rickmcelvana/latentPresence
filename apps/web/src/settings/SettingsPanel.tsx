@@ -5,6 +5,8 @@ import { desktopShell } from '../desktop/desktop';
 import { useCompanionConfig, type CompanionConfigOptions } from './companion-config-state';
 import { CompanionSection } from './CompanionSection';
 import { CompanionSettings } from './CompanionSettings';
+import { syncCloseToTray } from '../desktop/tray';
+import { DesktopAppSection } from './DesktopAppSection';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
@@ -98,6 +100,16 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
       {api !== null && <CompanionSettings controller={companion} />}
+
+      {desktopShell() !== null && (
+        <DesktopAppSection
+          closeToTray={settings.closeToTray}
+          onChange={(closeToTray) => {
+            setSettings((prev) => ({ ...prev, closeToTray }));
+            syncCloseToTray(closeToTray);
+          }}
+        />
+      )}
 
       {/* In a browser the companion is the person's own `pnpm companion` (ADR-64). */}
       {desktopShell() === null && (

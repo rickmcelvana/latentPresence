@@ -2663,6 +2663,18 @@ kbd {
   max-width: calc(100% - 2 * var(--call-drawer-width) - 2 * var(--gap-md));
 }
 
+/* The presence window (P8-T05): a 360-wide window kept on top — her, the call card and the bar;
+   the drawer, the text box and the camera picture wait for the full window. */
+.call-page-presence .call-drawer,
+.call-page-presence .call-text-dock,
+.call-page-presence .call-pip {
+  display: none;
+}
+
+.call-page-presence .call-voice-card {
+  width: calc(100vw - 2 * var(--gap-sm));
+}
+
 @media (min-width: 2400px) {
   .call-page {
     --call-ui-zoom: 1.35;
