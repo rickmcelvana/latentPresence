@@ -152,11 +152,17 @@ export const TAG_PATTERN = /^\[(emote|emotion|emotive|gesture|user|cite):([a-z][
  * `user`, a dash, `=` or a space for the colon, any case — but **only with a label on the user
  * list**, so `[user manual]` or `[user guide - v2]` stays text.
  */
-const LOOSE_USER_TAG = new RegExp(`^\\[(?:[a-z]+[ _-])?user\\s*(?:[-:=]\\s*)?(${[...knownUserEmotions].join('|')})\\]`, 'i');
+const LOOSE_USER_TAG = new RegExp(`^\\[\\s*(?:[a-z]+[ _-])?user\\s*(?:[-:=]\\s*)?(${[...knownUserEmotions].join('|')})\\s*\\]`, 'i');
+
+/**
+ * The grammar with spaces inside the brackets and around the colon: `qwen3.6` wrote
+ * `[ user:happy ]` in /chat and it was shown (R-60, 2026-10-19).
+ */
+const PADDED_TAG = /^\[\s*(emote|emotion|emotive|gesture|user|cite)\s*:\s*([a-z][a-z0-9-]*)\s*\]/;
 
 /** A tag at the start of `rest`: its length, kind (`emotion`/`emotive` normalised to `emote`) and value, or null. */
 export function matchTag(rest: string): { readonly length: number; readonly kind: InlineTagKind; readonly value: string } | null {
-  const strict = TAG_PATTERN.exec(rest);
+  const strict = TAG_PATTERN.exec(rest) ?? PADDED_TAG.exec(rest);
   if (strict !== null) {
     const kind = strict[1] === 'gesture' || strict[1] === 'user' || strict[1] === 'cite' ? strict[1] : 'emote';
     return { length: strict[0].length, kind, value: strict[2] ?? '' };

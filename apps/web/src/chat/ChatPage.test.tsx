@@ -604,6 +604,24 @@ describe('ChatPage — schedules (P6-T08, ADR-58)', () => {
     }
   });
 
+  it('in the app with the window in the tray (the page still reads visible), a run the companion kept is a notification, not said (R-60)', async () => {
+    setViewportWidth(1024);
+    expect(document.visibilityState).toBe('visible');
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const store = new FakeMemoryStore();
+    await store.saveSchedule(toldLater());
+    const { chats, build } = schedulingModel();
+    const { notifications, shown } = fakeNotifications('granted');
+    const away: PageNotifications = { ...notifications, away: async () => true };
+    const chooseMemory = async () => ({ store, kind: 'companion' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} notifications={away} />);
+    await waitFor(() => expect(shown).toEqual([[defaultPersona.name, 'call the vet', 'run-1']]));
+    await waitFor(async () => expect((await store.listSchedules(defaultPersona.id))[0]?.lastRun?.deliveredAt).not.toBeNull());
+    await act(() => settle());
+    expect(chats).toHaveLength(0);
+  });
+
   it('she can make one: schedule_create with a time worked out from now saves it, reads the time back, and the panel shows it', async () => {
     setViewportWidth(1024);
     const storage = memoryStorage();

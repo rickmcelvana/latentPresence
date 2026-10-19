@@ -25,8 +25,11 @@ export interface AttachDeliveriesOptions {
   readonly chat: Pick<InitiativeChat, 'speakUp'>;
   /** They are typing, a voice panel or a permission prompt is open: the page knows these (initiative's own). */
   readonly blocked: () => boolean;
-  /** The page is showing; hidden is when a notification is worth showing. */
-  readonly visible: () => boolean;
+  /**
+   * They are looking at her; otherwise a notification is worth showing. May ask the window: in the
+   * desktop app the page reads visible even with the window hidden in the tray (R-60, 2026-10-19).
+   */
+  readonly visible: () => boolean | Promise<boolean>;
   /** Shows an OS notification; true when it did. */
   readonly notify?: (schedule: Schedule, run: ScheduleRun) => Promise<boolean>;
   /** The person's zone, for saying when a late one was due. */
@@ -93,7 +96,7 @@ export function attachDeliveries(machine: { getState(): ConversationState }, opt
     await options.schedules.load();
     const pending = pendingDeliveries(options.schedules.snapshot());
     if (pending.length === 0) return false;
-    if (!options.visible()) {
+    if (!(await options.visible())) {
       // Away from the page: a notification, if they allow one. Whatever it cannot show waits.
       const shown: string[] = [];
       for (const item of pending) {

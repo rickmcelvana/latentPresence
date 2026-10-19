@@ -152,6 +152,20 @@ describe('SentenceChunker tags', () => {
     expect(chunkText('See [user guide - v2] here.')[0]?.text).toBe('See [user guide - v2] here.');
   });
 
+  it('lifts a tag padded with spaces inside its brackets (qwen3.6 wrote "[ user:happy ]", R-60 2026-10-19)', () => {
+    const [chunk] = chunkText('[ user:happy ] [ emote:joy ] Done, I will nudge you at 12:52.');
+    expect(chunk?.text).toBe('Done, I will nudge you at 12:52.');
+    expect(chunk?.tags).toEqual([
+      { kind: 'user', value: 'happy', known: 'happy', offset: 0 },
+      { kind: 'emote', value: 'joy', known: 'joy', offset: 0 },
+    ]);
+    for (const padded of ['[ user : sad ]', '[ gesture:nod]', '[cite: c12 ]', '[ sim user - neutral ]']) {
+      expect(chunkText(`${padded} Hi.`)[0]?.text).toBe('Hi.');
+    }
+    // Brackets that are not a tag stay text.
+    expect(chunkText('Press [ OK ] to go on.')[0]?.text).toBe('Press [ OK ] to go on.');
+  });
+
   it('lifts [cite:c123] out as a citation, never spoken and never a known label (P5-T04)', () => {
     const chunks = chunkText('Hold reset for five seconds. [cite:c6612] Then wait. [cite:c6613]');
     expect(chunks.map((chunk) => chunk.text).join(' ')).toBe('Hold reset for five seconds. Then wait.');

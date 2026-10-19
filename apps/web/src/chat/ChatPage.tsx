@@ -587,7 +587,10 @@ function ConfiguredChatPage({
             schedules: builtSchedules,
             chat,
             blocked,
-            visible: () => document.visibilityState === 'visible',
+            // The same question as `pageNotify`'s: in the app the page reads visible even with the
+            // window in the tray, so the window is asked (R-60: a companion-run reminder was said
+            // in the hidden chat instead of a notification).
+            visible: async () => !(await notifications.away()),
             notify: pageNotify,
             timeZone,
             scheduler: hostTimers(),
