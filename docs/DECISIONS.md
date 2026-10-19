@@ -2689,3 +2689,11 @@ corner; two round trips back to exactly the size it had (the first build saved t
 grew the window by its frame each time — fixed). The switch off, closing quit: the companion's
 port freed and its programs gone.
 
+**Found in R-60 (2026-10-19), fixed (50e6f60).** With memory in the companion, a reminder is
+the companion's to run (`runOn: companion`, ADR-57), and the page tells it on its next tick
+(`attachDeliveries`). That tick asked `document.visibilityState`, which the window in the tray
+never changes, so she said it in the hidden chat instead of a notification; the live check had
+used memory in the browser, where the page runs the reminder itself and asks the window. The
+tick now asks the same `away()`. Memory in the tray with her on stage: about 295 MB in Task
+Manager (WebView2 288 MB, the shell 7.1 MB), the MCP programs apart.
+

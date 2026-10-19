@@ -914,3 +914,9 @@ Did: R-59 passed (D-61), ADR-64 accepted. P8-T05 (ADR-65 proposed): `tray.rs` �
 Left: R-60 (tray mode with the installer, Task Manager's figure with the character on stage); ADR-65 to accept; the laptop session; C-7; README (Rick).
 Next: P8-T04 (auto-update and CI releases).
 Decisions: ADR-65 proposed, recommended option taken.
+
+## 2026-10-19 claude — R-60: the reminder from the tray
+Did: R-60 passed but for the reminder (D-62): with memory in the companion the companion runs a reminder and the page's telling-tick asked `document.visibilityState`, which the tray never changes — so she said it in the hidden chat. The tick now asks the window, as the page's own runs do (50e6f60); a test of exactly that case fails without the fix. `[ user:happy ]` from qwen3.6: padded tags are lifted. Memory in the tray with her on stage ~295 MB (Rick's Task Manager). Installer rebuilt.
+Left: R-61; ADR-65 to accept; the laptop session; C-7; README (Rick).
+Next: P8-T04.
+Decisions: none new.
