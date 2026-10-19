@@ -1,0 +1,67 @@
+name: release
+
+# P8-T04 (ADR-66). On a `v*` tag (or by hand): build the Windows installer, sign it for the
+# updater, and attach both, with the `latest.json` the app's updater reads, to a **draft**
+# GitHub release. Nothing reaches anyone until Rick publishes the draft — a draft is never the
+# "latest" release the app asks for. Steps: docs/release.md.
+#
+# Unsigned for Windows itself (owner decision, as in latentCreate): SmartScreen warns until code
+# signing lands. The updater's signature is separate: TAURI_SIGNING_PRIVATE_KEY (and its
+# password) are repository secrets, and the app checks every installer against the public key in
+# tauri.conf.json before running it.
+#
+# Windows only: Linux ships as the companion and Chrome (Spike E, ADR-07), so no AppImage.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: release (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        # The clips (P2-T03) are in LFS; without this the build would ship pointer files.
+        with:
+          lfs: true
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      # The same gate as every commit, so a tag on a red commit releases nothing.
+      - run: pnpm gate
+
+      - uses: tauri-apps/tauri-action@action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          # The updater's installer and its .sig (createUpdaterArtifacts), release builds only.
+          args: --config src-tauri/tauri.release.conf.json
+          tagName: v__VERSION__
+          releaseName: latentPresence v__VERSION__
+          releaseBody: 'Windows installer (unsigned: SmartScreen asks "More info → Run anyway"). Installed copies with "Check for updates" find this version once the release is published.'
+          releaseDraft: true
+          prerelease: false
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true

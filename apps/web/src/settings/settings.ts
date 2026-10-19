@@ -194,6 +194,11 @@ export const SettingsSchema = z.object({
    * and reminders carry on; off, closing quits. Defaulted, so an earlier document loads.
    */
   closeToTray: z.boolean().default(true),
+  /**
+   * The desktop app (P8-T04, ADR-66): ask GitHub for a newer version at each start. Off by
+   * default — a request to a server they did not point anywhere; Check now is always there.
+   */
+  checkUpdates: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -213,6 +218,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
   welcomed: false,
   closeToTray: true,
+  checkUpdates: false,
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { initDesktop } from './desktop/desktop';
 import { syncCloseToTray } from './desktop/tray';
+import { checkAtStart } from './desktop/updates';
 import { initCompanionPairing } from './settings/companion-pairing';
 import { loadSettings } from './settings/settings';
 import './theme.css';
@@ -18,7 +19,12 @@ if (!container) {
 void initDesktop().then((shell) => {
   if (shell === null) initCompanionPairing();
   // P8-T05: whether the close button hides to the tray (on unless turned off in Settings).
-  else syncCloseToTray(loadSettings().closeToTray);
+  else {
+    const settings = loadSettings();
+    syncCloseToTray(settings.closeToTray);
+    // P8-T04: only when they turned it on.
+    checkAtStart(settings.checkUpdates);
+  }
   createRoot(container).render(
     <StrictMode>
       <App />

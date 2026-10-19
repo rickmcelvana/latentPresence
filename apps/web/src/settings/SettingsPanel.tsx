@@ -103,7 +103,9 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
 
       {desktopShell() !== null && (
         <DesktopAppSection
+          checkUpdates={settings.checkUpdates}
           closeToTray={settings.closeToTray}
+          onCheckUpdatesChange={(checkUpdates) => setSettings((prev) => ({ ...prev, checkUpdates }))}
           onChange={(closeToTray) => {
             setSettings((prev) => ({ ...prev, closeToTray }));
             syncCloseToTray(closeToTray);

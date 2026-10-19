@@ -1082,6 +1082,24 @@ kbd {
   font-size: 13px;
 }
 
+/* P8-T04: a newer version, its notes as written on the release, and Install. */
+.update-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-sm);
+  margin: var(--gap-sm) 0;
+}
+
+.update-notes {
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .settings-status-ok {
   color: var(--success);
 }

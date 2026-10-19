@@ -21,8 +21,10 @@
 //!
 //! - **Tray mode** (P8-T05, ADR-65, `tray.rs`): closing the window hides it to the tray, where the
 //!   app and her schedules carry on; Quit in the tray's menu ends everything.
+//! - **Updates** (P8-T04, ADR-66, `updates.rs`): checked when asked, signed, installed on a press.
 
 mod tray;
+mod updates;
 
 use std::net::{Ipv4Addr, SocketAddr, TcpListener};
 use std::time::Duration;
@@ -455,6 +457,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(log::LevelFilter::Info)
@@ -476,7 +479,10 @@ pub fn run() {
             companion_config_open,
             companion_config_reload,
             tray::tray_close_to_tray,
-            tray::presence_set
+            tray::presence_set,
+            updates::app_version,
+            updates::update_check,
+            updates::update_install
         ])
         .manage(tray::Tray::default())
         .on_window_event(tray::on_window_event)

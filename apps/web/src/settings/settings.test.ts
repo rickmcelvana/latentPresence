@@ -70,6 +70,7 @@ describe('loadSettings', () => {
       stt: { kind: 'whisper-browser', model: 'whisper-tiny-en' },
       welcomed: true,
       closeToTray: false,
+      checkUpdates: true,
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
@@ -80,6 +81,13 @@ describe('loadSettings', () => {
     const { closeToTray: _closeToTray, ...beforeTray } = DEFAULT_SETTINGS;
     storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(beforeTray));
     expect(loadSettings(storage).closeToTray).toBe(true);
+  });
+
+  it('a document saved before updates asks GitHub nothing at start (P8-T04)', () => {
+    const storage = memoryStorage();
+    const { checkUpdates: _checkUpdates, ...beforeUpdates } = DEFAULT_SETTINGS;
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(beforeUpdates));
+    expect(loadSettings(storage).checkUpdates).toBe(false);
   });
 
   it('loads a document saved before memory existed, remembering in this browser (P4-T04b)', () => {

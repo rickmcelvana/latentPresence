@@ -30,6 +30,9 @@ tauri-plugin-window-state = "2.5.0"
 # P8-T06 (ADR-63): the system folder and file dialogs, so a person picks every folder the
 # companion may read; the page never names one. Used from Rust only, no JS permission.
 tauri-plugin-dialog = "2.8.1"
+# Read from crates.io 2026-10-19: 2.13.1 is the newest older than two weeks. No zip feature: our
+# updates are the NSIS installer itself (createUpdaterArtifacts v2), never an archive.
+tauri-plugin-updater = { version = "2.13.1", default-features = false, features = ["rustls-tls", "system-proxy"] }
 # API keys in Windows Credential Manager (ADR-60). Default feature `v1`: Windows' native store.
 keyring = "4.2.0"
 log = "0.4"
@@ -37,3 +40,5 @@ log = "0.4"
 latentpresence-companion = { path = "../../../companion/crates/server" }
 tokio = { version = "1.53", features = ["net", "sync", "time"] }
 serde = { version = "1.0", features = ["derive"] }
+# `generate_context!` embeds the plugins' config (the updater's, P8-T04) through it.
+serde_json = "1.0.151"
