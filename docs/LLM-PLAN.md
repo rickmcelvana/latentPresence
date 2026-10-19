@@ -487,7 +487,7 @@ from the system dialog; programs stay file-only; Tools → Test says why it fail
 `docs/briefs/P8-T06.md`.
 Done when: a new person connects Home Assistant and a notes folder from the app, with no file edited.
 
-### P8-T03 Hosted app to local services — owner: main (**built 2026-10-19**, ADR-64; R-59 open)
+### P8-T03 Hosted app to local services — owner: main (**done 2026-10-19**, ADR-64 accepted, R-59 passed: D-61)
 `app.latentpresence.com` reaching the companion, Ollama and LM Studio on `localhost`: pairing code, CORS allowlist, Chrome Local Network Access preflight (`Access-Control-Allow-Private-Network: true`) and its permission prompt, onboarding copy per backend, Firefox behaviour verified. Facts recorded in `docs/SURFACE.md`.
 Done when: the deployed app talks to a local companion and a local Ollama from Chrome and Firefox after the prompts; a fresh user can follow the on-screen copy.
 

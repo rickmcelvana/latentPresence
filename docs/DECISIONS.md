@@ -66,7 +66,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-61 | First run: a `/welcome` wizard until `welcomed`; it records consent and downloads nothing; memory is on this computer, MariaDB through the companion (`DATABASE_URL`, no in-app field yet) or off; the desktop shell grants the microphone and camera itself | accepted 2026-10-17 | 2026-10-17 |
 | ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
-| ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | proposed 2026-10-19 (P8-T03), recommended option taken | 2026-10-19 |
+| ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
 
 ---
 
@@ -2595,7 +2595,7 @@ address refused in the companion's words; saving Home Assistant moved its token 
 Credential Manager and kept `mcpServers`; Home Assistant came up `ready` with 20 tools on the
 stored token. The test's credential was deleted after.
 
-## ADR-64 The hosted app and this machine (proposed 2026-10-19, P8-T03)
+## ADR-64 The hosted app and this machine (accepted 2026-10-19, P8-T03)
 
 **Context.** ADR-16 assumed Chrome's Private Network Access: the companion answers a preflight
 with `Access-Control-Allow-Private-Network: true`. Measured 2026-10-19 (SURFACE) in throwaway
@@ -2612,7 +2612,7 @@ profiles of **Chrome 155** and **Firefox 154**, from `https://app.latentpresence
 - Granting `loopback-network` for Ollama also opens the companion to the site, and the companion
   let in any request from the hosted origin.
 
-**Decision (recommended option, taken).**
+**Decision (accepted by Rick 2026-10-19, after R-59 passed).**
 1. **The page tells the three apart.** When a request from a page that is not on this machine to
    one that is (or to the LAN) times out or fails, `probeEndpoint` asks the permission:
    `prompt` → "your browser is asking… choose Allow, then try again"; `denied` → how to allow it

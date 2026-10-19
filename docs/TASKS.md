@@ -198,28 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-59 · The hosted app and this computer · ~15 minutes
-**Why:** P8-T03's done-when — the deployed app talks to a local companion and a local Ollama from
-Chrome and Firefox after the prompts, and a new person can follow the words on screen.
-1. **Deploy** the new build to `app.latentpresence.com` as usual (`docs/deploy.md`).
-2. In a terminal in the checkout: `pnpm companion`. Its last lines include **"enter this pairing
-   code under Settings → Companion: XXXX-XXXX-…"**.
-3. **Chrome:** open `https://app.latentpresence.com/settings` → **Companion** → **Check**. Chrome
-   should ask to let the site access apps and services on this device: **Allow**. Check again: it
-   should say the companion needs its pairing code. Paste the code, **Save**: "Connected."
-4. Settings → Memory → "The companion" (or "Automatic"), then talk to her on `/chat` and ask what
-   she remembers. Settings → Language model → your local Ollama → **Test connection**: Connected.
-5. **Firefox:** the same steps 3–4 (its prompt is beside the address bar: "Device apps and
-   services").
-6. Optional, to see the help: in Chrome click the icon left of the address → Site settings →
-   "Apps on device" → Block, reload, Check: it should say the browser is blocking the site and how
-   to allow it again. Follow its steps back to Allow.
-7. `http://localhost:5173` (`pnpm dev`) still needs no code: Settings → Companion shows no pairing
-   field there, and Check says Connected.
-
-**Pass:** steps 3–5 in both browsers, by the words on screen alone. **Paste back:** the exact
-prompt wording if it differs, and anything confusing.
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -238,6 +216,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-61 · R-59: the hosted app and this computer** — Rick 2026-10-19: **passed**, every step:
+  deployed, then in Chrome and Firefox the browser's prompt, the companion's pairing code from
+  `pnpm companion`, "Connected.", memory through the companion and a local Ollama from
+  `app.latentpresence.com`; the block-and-unblock steps; `pnpm dev` still needing no code. ADR-64
+  accepted.
 - **D-60 · R-58: home, notes and documents from the app** — Rick 2026-10-19: **passed** on both
   PCs, "no issues at all": each section saved and its secret moved to Credential Manager;
   `pnpm companion` still reaches Home Assistant on the stored token; the fresh install's wizard step
