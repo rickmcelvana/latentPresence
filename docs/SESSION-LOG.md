@@ -932,3 +932,9 @@ Did: Rick made the release key; the public key (minisign key ID AB76E78B7E5AB1A9
 Left: R-62 steps 2–4 (0.2.0, then 0.2.1 through the updater); ADR-66 to accept.
 Next: Phase 9, or the laptop session.
 Decisions: none new.
+
+## 2026-10-19 claude — v0.2.0 released; the README for users
+Did: Rick released v0.2.0 through the workflow (27 minutes; release and gate green) and installed it; ADR-66 accepted. README rewritten for someone who finds the repo: what she is, getting the Windows app (SmartScreen) or the website, what you need (a model, the consented downloads, a GPU), what she can do, your data, the companion, troubleshooting, characters, building from source, licence — claims checked against the code (setup steps, the Memory panel's correct/forget, tools asking first, the placeholder's licence). Places marked for Rick's screenshots and the character-tools link.
+Left: R-62 step 4 (0.2.1 through the updater); README screenshots and additions (Rick); the character-tools repository; the laptop session; C-7.
+Next: Phase 9, or the laptop session.
+Decisions: none new.

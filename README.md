@@ -1,73 +1,164 @@
-# latentPresence W.I.P.
+# latentPresence
 
-A conversational AI you talk to face to face. A full-body character lives in a small 3D set and joins you in a video call: you speak or type, it listens, reacts, and answers in voice with matching expression and body language. It remembers you, helps you brainstorm and plan, runs tasks you schedule, answers from your own documents and databases, and can run your smart home through Home Assistant.
+**A companion you talk to face to face.** A full-body character joins you in what feels like a
+video call: you speak or type, she listens, reacts and answers out loud, with expressions,
+gestures and lip sync. She remembers you between visits, plans things with you, reminds you when
+you ask, looks things up in your own notes and documents, and can run your smart home through
+Home Assistant.
 
-Site: https://latentpresence.com · App: https://app.latentpresence.com
+You choose the AI model that does the thinking. It can run on your own computer or be a cloud
+service you already use. latentPresence ships no models, sends nothing to us, and collects no
+telemetry.
 
-**Status: Phase 7, the character pipeline — started: a documented path from three images to a validated VRM, and Alice's concept approved; Phases 5 and 6 are complete, and the last checks of Phases 1 and 2 wait for a laptop.** `/chat` is a video call with a full-body character in a lit room: you type or talk, she answers in voice with expression, gestures and lip sync, and a mood engine reads your words, voice and (if you allow it) face. She remembers you across visits (in this browser, or MariaDB through the companion), plans things with you, keeps her own notes, uses tools — MCP servers, your documents with citations, a read-only database, web search, Home Assistant — and asks before anything leaves the page. Since Phase 6 she idles on her own when nobody is talking, knows how long it has been and speaks first when you come back, checks in on a budget you set, rests and tidies her memory when it is quiet, has private thoughts you can peek at, has company — a second character, Theo, with memories of his own — and keeps a schedule: ask her to remind you Thursday at 9 and she reads the time back, then tells you when it comes due (a notification if you are away from the page; the companion runs reminders with no page open). See `PROJECT.md` for the current task.
+<!-- Screenshot: the call view, a character on stage mid-conversation. Suggested file: docs/images/call.png -->
 
-## Quick start
+> **Early release (0.2).** latentPresence works and is used daily, but it is young: expect rough
+> edges, and please [open an issue](https://github.com/rickmcelvana/latentPresence/issues) when you
+> hit one.
 
-Requires Node 22+, pnpm 12+ and a stable Rust toolchain (`rustfmt` and `clippy` components).
+## Get it
+
+### Windows app (recommended)
+
+1. Download `latentPresence_x.y.z_x64-setup.exe` from the
+   [latest release](https://github.com/rickmcelvana/latentPresence/releases/latest).
+2. Run it. The installer is not code-signed yet, so Windows SmartScreen will say "Windows protected
+   your PC": choose **More info → Run anyway**. It installs for your user only, no administrator
+   needed.
+3. A short setup walks you through choosing a model, showing the character, her voice and your
+   microphone, where she keeps her memory, and your home, notes and documents. Every step can be
+   skipped and changed later in Settings.
+
+The app keeps itself up to date when you ask it to: **Settings → This app → Check for updates**.
+
+### In your browser
+
+Open **[app.latentpresence.com](https://app.latentpresence.com)** in Chrome or Edge. Everything
+runs in the page, and what she remembers stays in your browser. Talking out loud needs WebGPU,
+which Chrome and Edge have and most other browsers do not yet; typing works anywhere.
+
+macOS and Linux have no app yet. On those, use the browser, and build the companion from source if
+you want its extras (below).
+
+## What you need
+
+**A language model.** Pick one in setup or in Settings → Language model, and press Test:
+
+- **On your own computer:** [Ollama](https://ollama.com), [LM Studio](https://lmstudio.ai),
+  llama.cpp or vLLM.
+- **In the cloud, with your own key:** OpenRouter, DeepSeek, Kimi, NVIDIA NIM, Ollama Cloud,
+  Anthropic, Google, or any OpenAI-compatible endpoint.
+
+Keys are kept in Windows Credential Manager in the app, or encrypted in your browser on the web.
+They go only to the service they belong to.
+
+**Her voice and hearing** run on your own computer by default. The first time, a consent screen
+shows exactly what will be downloaded, how big it is, its licence and where it comes from, and
+nothing downloads until you agree. You can instead point her voice or hearing at a server of your
+own (any OpenAI-compatible speech endpoint).
+
+**A graphics card helps.** Speaking with her uses your GPU for the voice models and the 3D
+character. A recent integrated GPU works, and a dedicated one is smoother.
+
+<!-- Screenshot: the setup wizard's model step. Suggested file: docs/images/setup.png -->
+
+## What she can do
+
+- **Talk, in voice or text.** She waits for you to finish your thought, can be interrupted, and
+  answers with expression, gestures and lip sync. She reads the mood in your words and voice, and
+  your face too if you turn on face reading. The camera is off unless you turn it on, and no frame
+  ever leaves your computer.
+- **Remember you.** She remembers facts, past conversations and her own notes across visits.
+  Memory lives in your browser or app, or in a MariaDB database you run (a database address in
+  setup is all it takes). The Memory panel shows what she remembers about you, and lets you
+  correct or forget any of it.
+- **Keep a schedule.** Ask "remind me Thursday at 9 to call the vet" and she reads the time back,
+  then tells you when it comes due: as a Windows notification if you are away, or out loud if you
+  are there.
+- **Plan with you, and speak up.** She tracks plans and follow-ups, and when you come back after a
+  while she may start the conversation. How often she checks in is a setting, and it can be off.
+- **Use tools, with your permission.** Home Assistant (lights, sensors, scenes), folders of notes
+  she may read, documents she can search and cite, a read-only database, web search, and any MCP
+  server you add. Each tool asks before it acts until you tell it otherwise.
+- **Two characters, or your own.** Alice and Theo each have their own memories and voice. Either
+  can wear a `.vrm` model you provide, swapped live in the Body panel.
+- **Stay in the tray.** In the Windows app, closing the window keeps her running by the clock, so
+  reminders still arrive. "Small window, always on top" keeps her in a corner of your screen.
+
+<!-- Screenshot: Settings → On this computer, or the Schedules panel. Suggested file: docs/images/settings.png -->
+
+## Your data
+
+- **No telemetry, no accounts, no server of ours** in the conversation. Requests go only where you
+  pointed them: your model, your speech server, your tools.
+- **Everything she remembers is yours**: in your browser, your app's storage, or your own database.
+  Forget anything from the Memory panel.
+- **Nothing is downloaded without asking.** Every model download shows its size, licence and source
+  first.
+- **Updates are checked only when you ask**, unless you turn on "Check for updates when the app
+  starts". A check asks GitHub, where the releases live, and nothing else.
+
+## The companion
+
+The Windows app includes a small local service, the *companion*, that adds the things a web page
+cannot do by itself:
+
+- memory in your MariaDB database;
+- Home Assistant and your folders of notes;
+- document search;
+- web search and read-only databases;
+- reminders that fire even with the window closed.
+
+In the app you set all of these up under **Settings → On this computer**. Nothing needs editing by
+hand.
+
+In the browser, the companion is optional and comes from source (`pnpm companion`, see below). The
+first time the website reaches it, your browser asks whether
+`app.latentpresence.com` may reach apps on your device: choose **Allow**. Then enter the companion's
+pairing code, printed when it starts, under Settings → Companion.
+
+## Troubleshooting
+
+- **"Windows protected your PC"** when installing: the installer is unsigned. Choose **More info →
+  Run anyway**.
+- **Ollama works in the app but not on the website:** Ollama only answers web pages it was told
+  about. Set `OLLAMA_ORIGINS=https://app.latentpresence.com` and restart Ollama. Settings →
+  Language model → Test shows the steps for your system.
+- **LM Studio from the website:** turn on "Enable CORS" in LM Studio's server settings.
+- **The website says your browser is blocking it:** in Chrome or Edge, click the icon at the left
+  of the address bar → Site settings → **Apps on device** → Allow. In Firefox, clear the block on
+  **Device apps and services**. Then reload.
+- **No voice in the browser:** use Chrome or Edge, which have WebGPU.
+
+## Characters
+
+Alice and Theo wear a placeholder model until you give them your own: any VRM 1.0 file, added in
+the Body panel. Tools for making characters (a Character Creator / Daz 3D to VRM converter) are on
+their way, and will be linked here.
+
+<!-- TODO: link the character tools repository when it exists. -->
+
+## Building from source
+
+Requires Node 22+, pnpm 12+ and a stable Rust toolchain with `rustfmt` and `clippy`.
 
 ```bash
 pnpm install
-pnpm gate
+pnpm dev          # the web app at http://localhost:5173
+pnpm companion    # the companion, for the browser
+pnpm desktop:build  # the Windows app and its installer
+pnpm gate         # every check CI runs: types, lint, tests, build, Rust
 ```
 
-`pnpm gate` is the whole check, in the order CI runs it: `tsc -b`, oxlint, vitest, `vite build`,
-`cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`. `pnpm gate:app` and `pnpm gate:rust`
-run half each. `pnpm dev` starts the web app on Vite's dev server.
-
-With `pnpm dev` running: `/settings` picks a language model (Ollama, LM Studio, cloud keys) and tests the connection; `/chat` talks to it. NVIDIA's API does not answer web pages, so it goes through the companion — start it with `pnpm companion` (ADR-29).
-
-```
-packages/protocol/   shared types and the companion API schema
-packages/core/       conversation engine, affect engine, memory kernel, scheduler
-packages/providers/  llm, stt, tts, embedding and omni adapters
-packages/avatar/     three.js / VRM renderer, animation, lip sync, set
-packages/ml-web/     worker wrappers for transformers.js and onnxruntime-web models
-companion/           Rust workspace: the optional local service
-docs/                research, decisions, plans, briefs, spikes
-```
-
-Copy `.env.example` to `.env` for the companion's `DATABASE_URL`. `.env` is never committed.
-
-Deployment is a `git pull` on the server followed by `pnpm install --frozen-lockfile && pnpm build`;
-
-## Principles
-
-- **We ship no models.** Bring your own: LM Studio, vLLM, llama.cpp, Ollama, OpenRouter, NVIDIA, Anthropic, OpenAI, or in-browser models you download yourself after a consent screen that shows size and licence.
-- **Browser-first.** The whole thing runs as a static web page in Chrome or Edge. A Windows desktop app and an optional local companion add power features.
-- **Your data stays yours.** Memory lives in your MariaDB, or SQLite, or the browser. No telemetry.
-- **Open.** Apache-2.0 code, permissive dependencies, CC0 assets.
-
-## How it will work
-
-```
-mic / text ──▶ VAD + turn detection ──▶ STT ──▶ LLM (+ tools, memory, schedules) ──▶ TTS ──▶ speaker
-                      │                                   │                          │
-                      ▼                                   ▼                          ▼
-               user affect (voice, text, face)      affect engine            lip sync + gestures
-                                                          │
-                                                          ▼
-                                             full-body VRM character in a 3D set
-```
-
-- Conversation core, affect engine, memory kernel and scheduler: TypeScript, runs in the browser.
-- Companion (optional): Rust service for MariaDB vector memory, document indexing, MCP tools.
-- Avatar: three.js + VRM 1.0, procedural micro-motion, CC0 animation clips, optional NVIDIA Audio2Face.
-
-## Documents
-
-| Doc | What |
-|---|---|
-| `docs/RESEARCH.md` | Landscape, options, recommendations |
-| `docs/DECISIONS.md` | Architecture decisions |
-| `docs/PLAN.md` | Phased plan for humans |
-| `docs/LLM-PLAN.md` | Task-level plan for agents |
-| `docs/WORKFLOW.md` | Build loop, session ritual, agent hand-offs |
+The companion keeps its memory in MariaDB 11.8 or newer: copy `.env.example` to `.env` and set
+`DATABASE_URL`, or enter the address in the app. How the project is built and decided is in
+[`docs/`](docs): [`DECISIONS.md`](docs/DECISIONS.md) for the architecture,
+[`PLAN.md`](docs/PLAN.md) for the roadmap, [`release.md`](docs/release.md) for releases.
+Contributions are welcome: open an issue first for anything large.
 
 ## Licence
 
-Apache-2.0, see `LICENSE` and `NOTICE`. Assets carry their own licences, recorded alongside them.
+latentPresence is [Apache-2.0](LICENSE) (see also [NOTICE](NOTICE)). The models you download and
+the character files carry their own licences, which are shown before anything is downloaded. The
+placeholder character is pixiv's [three-vrm](https://github.com/pixiv/three-vrm) sample model,
+under the VRM Public License 1.0.

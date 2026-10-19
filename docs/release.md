@@ -44,7 +44,7 @@ they are lost, installed copies can never update again and everyone has to reins
    git push origin v0.2.0
    ```
 
-4. Actions → **release** builds (the gate runs first, about 15 minutes). Then GitHub → Releases:
+4. Actions → **release** builds (the gate runs first; v0.2.0 took 27 minutes). Then GitHub → Releases:
    the draft `latentPresence v0.2.0` should have `latentPresence_0.2.0_x64-setup.exe`, its `.sig`
    and `latest.json`. Write the notes (they are shown in the app before Install), then
    **Publish release**.

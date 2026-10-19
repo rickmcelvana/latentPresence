@@ -68,7 +68,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
 | ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | accepted 2026-10-19 (Rick, after R-61 passed) | 2026-10-19 |
-| ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | proposed 2026-10-19 (P8-T04), recommended option taken | 2026-10-19 |
+| ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
 
 ---
 
@@ -2698,14 +2698,14 @@ used memory in the browser, where the page runs the reminder itself and asks the
 tick now asks the same `away()`. Memory in the tray with her on stage: about 295 MB in Task
 Manager (WebView2 288 MB, the shell 7.1 MB), the MCP programs apart.
 
-## ADR-66 Updates and releases (proposed 2026-10-19, P8-T04)
+## ADR-66 Updates and releases (accepted 2026-10-19, P8-T04)
 
 **Context.** P8-T04: "Tauri updater, unsigned artifacts (owner decision as in latentCreate),
 release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E
 passed. Done when: an update installs from a test channel." latentCreate has the release workflow
 and no updater.
 
-**Decision (recommended option, taken).**
+**Decision (accepted by Rick 2026-10-19).**
 1. **tauri-plugin-updater 2.13.1** (the newest older than two weeks), without its `zip` feature —
    our updates are the NSIS installer itself — reading `latest.json` from the repository's
    latest release. **A draft is never "latest"**, so nothing reaches anyone until Rick publishes.
@@ -2736,4 +2736,8 @@ copy.
 with `/S` found 0.1.1 at a local `latest.json`, showed its notes, downloaded and verified it,
 exited, ran the installer and reopened as 0.1.1. A forged 0.1.2 (another file's genuine
 signature) was refused — "The signature verification failed" — and the app kept running.
+
+**First release, 2026-10-19:** v0.2.0 from the workflow (27 minutes: the gate, then the build),
+published by Rick and installed by hand on his PC — the installer, its `.sig` and `latest.json`
+on the release as designed.
 

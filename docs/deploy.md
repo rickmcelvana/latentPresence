@@ -5,7 +5,8 @@ Written 2026-10-16 from the first deploy. Each fact below was found by a failure
 are recorded under "Why" so nobody has to find them again.
 
 The product site, `latentpresence.com`, is not in this repository any more (2026-10-17); this
-page is about the app alone.
+page is about the app alone. The Windows app is released from GitHub Actions instead:
+[`release.md`](release.md).
 
 The app is static files: `apps/web/dist` after a build. There is no server-side code. Models,
 the character and the person's data never touch this server: the page downloads models from
