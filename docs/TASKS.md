@@ -198,6 +198,21 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
+### R-62 · The release key, then the first release · ~20 minutes
+**Why:** P8-T04 — updates need a key only you hold; then one real release proves the workflow.
+1. **The key:** `docs/release.md` → "Once: the release key", steps 1–3 (generate, back up, two
+   repository secrets). Then paste the **public** key (the one line in
+   `%USERPROFILE%\.tauri\latentpresence-release.key.pub`) here, and the architect puts it in
+   `tauri.conf.json`.
+2. **The first release** (after that commit): `docs/release.md` → "Each release" with `0.2.0`.
+   Check the draft has the installer, `.sig` and `latest.json`, then publish it.
+3. Install `0.2.0` from the release on this PC (once by hand: 0.1.0 has no updater).
+4. **The update itself:** cut `0.2.1` the same way (a version bump is enough), publish, then in the
+   installed app Settings → This app → Check for updates → Install and restart. It should close,
+   show the installer's progress, and open as 0.2.1 with your conversations and settings intact.
+
+**Pass:** step 4. **Paste back:** anything the release page or the app said that was unclear.
+
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane

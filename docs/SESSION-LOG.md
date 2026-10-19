@@ -920,3 +920,9 @@ Did: R-60 passed but for the reminder (D-62): with memory in the companion the c
 Left: R-61; ADR-65 to accept; the laptop session; C-7; README (Rick).
 Next: P8-T04.
 Decisions: none new.
+
+## 2026-10-19 claude — R-61 passed, ADR-65 accepted; P8-T04 updates and releases
+Did: R-61 passed (D-63), ADR-65 accepted. P8-T04 (ADR-66 proposed): tauri-plugin-updater 2.13.1 without `zip`; `updates.rs` (`app_version`, `update_check`, `update_install` — the companion stopped before the installer, since the plugin exits the process); Settings → This app: version, Check for updates, the release's notes, Install and restart with progress, and a check at start, off by default; `.github/workflows/release.yml` (Windows, gate first, tauri-action action-v1.0.0, signed draft with latest.json); `docs/release.md`. Test channel on this PC (a separately named test build, a throwaway key, a local latest.json): 0.1.0 updated itself to 0.1.1 and reopened; a forged 0.1.2 was refused. Test app, data and key removed.
+Left: R-62 (Rick's release key, then 0.2.0 → 0.2.1); the public key into tauri.conf.json; ADR-66 to accept; the laptop session; C-7; README (Rick).
+Next: after R-62, Phase 8 is done — Phase 9, or the laptop session.
+Decisions: ADR-66 proposed, recommended option taken (update checks off by default).

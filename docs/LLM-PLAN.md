@@ -491,7 +491,7 @@ Done when: a new person connects Home Assistant and a notes folder from the app,
 `app.latentpresence.com` reaching the companion, Ollama and LM Studio on `localhost`: pairing code, CORS allowlist, Chrome Local Network Access preflight (`Access-Control-Allow-Private-Network: true`) and its permission prompt, onboarding copy per backend, Firefox behaviour verified. Facts recorded in `docs/SURFACE.md`.
 Done when: the deployed app talks to a local companion and a local Ollama from Chrome and Firefox after the prompts; a fresh user can follow the on-screen copy.
 
-### P8-T04 Auto-update and CI releases — owner: main
+### P8-T04 Auto-update and CI releases — owner: main (**built 2026-10-19**, ADR-66; the test channel passed; R-62: the release key and a real release)
 Tauri updater, unsigned artifacts (owner decision as in latentCreate; SmartScreen will warn), release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E passed.
 Done when: an update installs from a test channel.
 

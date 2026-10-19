@@ -2733,3 +2733,27 @@ on `11434` (with `OLLAMA_ORIGINS=https://app.latentpresence.com`).
 - **A second launch** (single-instance) shows the hidden window; with the switch off, `WM_CLOSE`
   quits: port 8787 freed and the MCP servers' processes gone.
 
+## The Tauri updater and the release action — 2026-10-19 (P8-T04, ADR-66)
+
+- **tauri-plugin-updater** on crates.io: 2.14.0 (2026-10-14), 2.13.3 (10-10), 2.13.2 (10-07),
+  **2.13.1 (09-29, pinned)**; 3.0 in alpha. Needs `tauri ^2.12`, `minisign-verify ^0.2`,
+  `reqwest ^0.13`. Default features `rustls-tls`, `system-proxy`, `zip`; `zip` (zip 4.6.1, tar,
+  flate2) is for archive updates, dropped — NSIS updates are the installer itself.
+- **Config** (`plugins.updater`): `pubkey` required (a plugin config without it does not
+  deserialize), `endpoints` must be `https` unless `dangerousInsecureTransportProtocol`,
+  `windows.installMode` `passive` (default; NSIS `/P`), `quiet` (`/S`) or `basicUi`. With plugin
+  config present, `generate_context!` needs `serde_json` as a direct dependency of the app crate.
+- **On Windows `Update::install`** runs `on_before_exit` (the app's `cleanup_before_exit`), starts
+  the installer with `/P /UPDATE` through `ShellExecuteW`, then `std::process::exit(0)` — no
+  `RunEvent::Exit`. `download` verifies the signature before returning the bytes.
+- **Measured** in a test channel: the passive installer replaced the 0.1.0 exe and **reopened the
+  app** as 0.1.1 (a new process about 15 s after Install, launched by the installer); `latest.json`
+  keyed `platforms."windows-x86_64"` was found; a forged entry (version 0.1.2 with the 0.1.0
+  installer's genuine `.sig`) failed with "The signature verification failed", nothing installed.
+  `tauri build` with `createUpdaterArtifacts: true` writes `<installer>.exe.sig` beside the
+  installer when `TAURI_SIGNING_PRIVATE_KEY` is set.
+- **tauri-action**: `action-v1.0.0` (2026-06-29) is the newest; inputs used: `projectPath`,
+  `tauriScript`, `args`, `tagName` (`v__VERSION__`), `releaseName`, `releaseBody`, `releaseDraft`,
+  `prerelease`, `uploadUpdaterJson`, `updaterJsonPreferNsis`. Env: `GITHUB_TOKEN`,
+  `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+

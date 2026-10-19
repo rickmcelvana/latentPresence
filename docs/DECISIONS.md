@@ -68,6 +68,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
 | ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | accepted 2026-10-19 (Rick, after R-61 passed) | 2026-10-19 |
+| ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | proposed 2026-10-19 (P8-T04), recommended option taken | 2026-10-19 |
 
 ---
 
@@ -2696,4 +2697,43 @@ never changes, so she said it in the hidden chat instead of a notification; the 
 used memory in the browser, where the page runs the reminder itself and asks the window. The
 tick now asks the same `away()`. Memory in the tray with her on stage: about 295 MB in Task
 Manager (WebView2 288 MB, the shell 7.1 MB), the MCP programs apart.
+
+## ADR-66 Updates and releases (proposed 2026-10-19, P8-T04)
+
+**Context.** P8-T04: "Tauri updater, unsigned artifacts (owner decision as in latentCreate),
+release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E
+passed. Done when: an update installs from a test channel." latentCreate has the release workflow
+and no updater.
+
+**Decision (recommended option, taken).**
+1. **tauri-plugin-updater 2.13.1** (the newest older than two weeks), without its `zip` feature —
+   our updates are the NSIS installer itself — reading `latest.json` from the repository's
+   latest release. **A draft is never "latest"**, so nothing reaches anyone until Rick publishes.
+2. **Signed for the updater, unsigned for Windows.** Every installer is signed with the release
+   key; the app checks it against the public key in `tauri.conf.json` before running it. The
+   private key and its password are Rick's, kept as repository secrets and backed up — lost, no
+   installed copy could ever update again.
+3. **The person decides when the network is used**: Settings → This app → Check for updates, and
+   a switch "Check for updates when the app starts", **off by default** — a check is a request to
+   GitHub they did not point anywhere ("nothing leaves the machine unless they pointed it
+   somewhere"). A newer version found at start is a notification, never an install.
+4. **Install only on a press**, NSIS passive (a progress window, no questions); the companion is
+   stopped first, because on Windows the plugin starts the installer and exits the process
+   without the app's own shutdown. The installer opens the new version.
+5. **The workflow**: Windows only (Linux ships as the companion and Chrome, Spike E — no AppImage),
+   the gate first, `tauri-apps/tauri-action@action-v1.0.0`, updater artifacts only in release
+   builds (`tauri.release.conf.json`), so local builds need no key.
+6. **A test channel is a build, not a switch**: another name, address and key given at build time
+   (`docs/release.md`). The shipped app has no way to be pointed elsewhere.
+
+**Rejected.** *Checking at every start by default* — the usual choice, and a request the person
+never asked for. *A runtime override of the update address* — a way to point installed copies at
+anything; the signature would still hold, but there is no reason to offer it. *Signing the key
+into the repository or generating it here* — it is the one secret that controls every installed
+copy.
+
+**Measured.** In a test channel on this PC, 2026-10-19 (SURFACE): a 0.1.0 test build installed
+with `/S` found 0.1.1 at a local `latest.json`, showed its notes, downloaded and verified it,
+exited, ran the installer and reopened as 0.1.1. A forged 0.1.2 (another file's genuine
+signature) was refused — "The signature verification failed" — and the app kept running.
 
