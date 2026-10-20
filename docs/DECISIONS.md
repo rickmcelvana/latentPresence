@@ -2741,3 +2741,7 @@ signature) was refused — "The signature verification failed" — and the app k
 published by Rick and installed by hand on his PC — the installer, its `.sig` and `latest.json`
 on the release as designed.
 
+**The first update, 2026-10-19 (R-62, D-64):** v0.2.1 released the same way (34 minutes); the
+installed v0.2.0 found it under Settings → This app, installed it and reopened as 0.2.1 — Rick:
+"no problems". The real channel works end to end.
+

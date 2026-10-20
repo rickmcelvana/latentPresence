@@ -480,7 +480,7 @@ Brief: `docs/briefs/P8-T02.md` (2026-10-17). Main landed first: the shell grants
 Provider choice, MariaDB or SQLite choice, browser model consent, mic and camera permissions, character choice.
 Done when: no step requires the docs.
 
-### P8-T06 The companion's own settings, in the app — owner: main + sub (added and **built 2026-10-17**, ad20630; R-58 open)
+### P8-T06 The companion's own settings, in the app — owner: main + sub (added 2026-10-17, **done**, ad20630; R-58 passed)
 Home Assistant, the Files folders, web search, databases and documents from Settings and the wizard
 instead of hand-edited `mcp.json` / `documents.json`; secrets to Credential Manager; a folder only
 from the system dialog; programs stay file-only; Tools → Test says why it failed. ADR-63, brief
@@ -491,7 +491,7 @@ Done when: a new person connects Home Assistant and a notes folder from the app,
 `app.latentpresence.com` reaching the companion, Ollama and LM Studio on `localhost`: pairing code, CORS allowlist, Chrome Local Network Access preflight (`Access-Control-Allow-Private-Network: true`) and its permission prompt, onboarding copy per backend, Firefox behaviour verified. Facts recorded in `docs/SURFACE.md`.
 Done when: the deployed app talks to a local companion and a local Ollama from Chrome and Firefox after the prompts; a fresh user can follow the on-screen copy.
 
-### P8-T04 Auto-update and CI releases — owner: main (**built 2026-10-19**, ADR-66 accepted; the test channel passed; v0.2.0 released; R-62 step 4: an update to 0.2.1)
+### P8-T04 Auto-update and CI releases — owner: main (**done 2026-10-19**, ADR-66 accepted; the test channel passed; R-62 passed: D-64, v0.2.0 updated itself to v0.2.1)
 Tauri updater, unsigned artifacts (owner decision as in latentCreate; SmartScreen will warn), release workflow on `v*` tags producing a draft GitHub release; Linux AppImage only if Spike E passed.
 Done when: an update installs from a test channel.
 

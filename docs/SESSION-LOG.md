@@ -938,3 +938,9 @@ Did: Rick released v0.2.0 through the workflow (27 minutes; release and gate gre
 Left: R-62 step 4 (0.2.1 through the updater); README screenshots and additions (Rick); the character-tools repository; the laptop session; C-7.
 Next: Phase 9, or the laptop session.
 Decisions: none new.
+
+## 2026-10-20 claude — R-62 passed; Phase 8 done
+Did: Rick released v0.2.1 (release run green, 34 minutes) and updated the installed v0.2.0 to it from Settings → This app with no problems: R-62 passed (D-64), P8-T04 done, Phase 8 done. Docs: TASKS (R-62 → D-64), LLM-PLAN (P8-T04 done; P8-T06's stale "R-58 open"), ADR-66's first-update note, PROJECT.
+Left: README screenshots and additions (Rick); the character-tools repository; the laptop session (R-13, R-1, R-9); C-7.
+Next: Phase 9 (P9-T01, accessibility and reduced motion), or the laptop session.
+Decisions: none new.

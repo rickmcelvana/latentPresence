@@ -198,25 +198,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-62 · The release key, then the first release · ~20 minutes
-**Why:** P8-T04 — updates need a key only you hold; then one real release proves the workflow.
-**Step 1 done 2026-10-19:** the key made, both secrets set (`gh secret list`), the public key
-(minisign key ID AB76E78B7E5AB1A9) in `tauri.conf.json`.
-**Steps 2–3 done 2026-10-19:** v0.2.0 built by the workflow (27 minutes), published and installed
-by hand. Step 4, the update to 0.2.1, is next.
-1. **The key:** `docs/release.md` → "Once: the release key", steps 1–3 (generate, back up, two
-   repository secrets). Then paste the **public** key (the one line in
-   `%USERPROFILE%\.tauri\latentpresence-release.key.pub`) here, and the architect puts it in
-   `tauri.conf.json`.
-2. **The first release** (after that commit): `docs/release.md` → "Each release" with `0.2.0`.
-   Check the draft has the installer, `.sig` and `latest.json`, then publish it.
-3. Install `0.2.0` from the release on this PC (once by hand: 0.1.0 has no updater).
-4. **The update itself:** cut `0.2.1` the same way (a version bump is enough), publish, then in the
-   installed app Settings → This app → Check for updates → Install and restart. It should close,
-   show the installer's progress, and open as 0.2.1 with your conversations and settings intact.
-
-**Pass:** step 4. **Paste back:** anything the release page or the app said that was unclear.
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -235,6 +216,11 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-64 · R-62: the release key, the first release, an update** — Rick 2026-10-19: made the
+  release key (minisign AB76E78B7E5AB1A9; both repository secrets), released **v0.2.0** from the
+  workflow (27 minutes) and installed it by hand, then released **v0.2.1** (a version bump; the
+  workflow took 34 minutes) and **updated to it from Settings → This app** "with no problems".
+  **Passed.** P8-T04 done, and with it Phase 8.
 - **D-63 · R-61: a reminder from the tray, memory in the companion** — Rick 2026-10-19:
   **passed**, "notification landed perfectly" with the window closed to the tray. P8-T05 done;
   ADR-65 accepted.
