@@ -133,10 +133,16 @@ pairing code, printed when it starts, under Settings → Companion.
 ## Characters
 
 Alice and Theo wear a placeholder model until you give them your own: any VRM 1.0 file, added in
-the Body panel. Tools for making characters (a Character Creator / Daz 3D to VRM converter) are on
-their way, and will be linked here.
+the Body panel.
 
-<!-- TODO: link the character tools repository when it exists. -->
+**Made your character in Daz 3D or Character Creator?**
+[ccdz2vrm](https://github.com/rickmcelvana/ccdz2vrm) turns a Daz 3D (Genesis 3, 8 or 8.1) or
+Character Creator 3+ export into a VRM 1.0 avatar that blinks, talks, makes expressions, with eyes that
+follow. Use it in your browser at
+**[ccdz2vrm.latentpresence.com](https://ccdz2vrm.latentpresence.com)**, or get the Windows app from
+its [latest release](https://github.com/rickmcelvana/ccdz2vrm/releases/latest). It runs on your
+own machine, and your character never leaves it. Its **Web** quality (3–8 MB) is the one to pick
+for latentPresence.
 
 ## Building from source
 
