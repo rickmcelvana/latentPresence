@@ -10,7 +10,8 @@ You choose the AI model that does the thinking. It can run on your own computer 
 service you already use. latentPresence ships no models, sends nothing to us, and collects no
 telemetry.
 
-<!-- Screenshot: the call view, a character on stage mid-conversation. Suggested file: docs/images/call.png -->
+<img width="2395" height="1331" alt="Screenshot 2026-10-24 121004" src="https://github.com/user-attachments/assets/4f9509a3-555c-4dc6-8fc3-9585f595da5e" />
+
 
 > **Early release (0.2).** latentPresence works and is used daily, but it is young: expect rough
 > edges, and please [open an issue](https://github.com/rickmcelvana/latentPresence/issues) when you
