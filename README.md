@@ -10,7 +10,7 @@ You choose the AI model that does the thinking. It can run on your own computer 
 service you already use. latentPresence ships no models, sends nothing to us, and collects no
 telemetry.
 
-<img width="2395" height="1331" alt="Screenshot 2026-10-24 121004" src="https://github.com/user-attachments/assets/4f9509a3-555c-4dc6-8fc3-9585f595da5e" />
+<img width="2395" height="1331" alt="A call with latentPresence: the character on stage, the conversation beside her" src="https://github.com/user-attachments/assets/4f9509a3-555c-4dc6-8fc3-9585f595da5e" />
 
 
 > **Early release (0.2).** latentPresence works and is used daily, but it is young: expect rough
@@ -61,7 +61,7 @@ own (any OpenAI-compatible speech endpoint).
 **A graphics card helps.** Speaking with her uses your GPU for the voice models and the 3D
 character. A recent integrated GPU works, and a dedicated one is smoother.
 
-<!-- Screenshot: the setup wizard's model step. Suggested file: docs/images/setup.png -->
+<img src="docs/images/setup.png" width="560" alt="Setup, choosing who to talk to: Alice or Theo, and the character's download shown with its size, licence and source before anything is fetched">
 
 ## What she can do
 
@@ -86,7 +86,7 @@ character. A recent integrated GPU works, and a dedicated one is smoother.
 - **Stay in the tray.** In the Windows app, closing the window keeps her running by the clock, so
   reminders still arrive. "Small window, always on top" keeps her in a corner of your screen.
 
-<!-- Screenshot: Settings → On this computer, or the Schedules panel. Suggested file: docs/images/settings.png -->
+<img src="docs/images/settings.png" width="560" alt="Settings: where she remembers, and how often she speaks first">
 
 ## Your data
 
