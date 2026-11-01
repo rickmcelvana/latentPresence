@@ -17,6 +17,10 @@
   --panel-hover: #1f242c;
   --border: #2a3441;
   --border-bright: #3a4a5c;
+  /* The edge of a control a person presses or types in: 3:1 on the panel and the page
+     (WCAG 1.4.11, contrast.test.ts). --border stays for panels and dividers, which mark
+     no control. P9-T01, ADR-67. */
+  --border-control: #546b84;
 
   /* Text */
   --text: #d6deeb;
@@ -206,7 +210,7 @@ kbd {
   gap: var(--gap-sm);
   padding: var(--gap-sm) var(--gap-md);
   background: var(--panel-hover);
-  border: 1px solid var(--border-bright);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius);
   color: var(--text);
   font: inherit;
@@ -249,13 +253,13 @@ kbd {
 
 .btn-ghost {
   background: transparent;
-  border-color: var(--border);
+  border-color: var(--border-control);
   color: var(--text-muted);
 }
 
 .btn-ghost:hover:not(:disabled) {
   background: var(--panel);
-  border-color: var(--border-bright);
+  border-color: var(--text-muted);
   color: var(--text);
 }
 
@@ -339,7 +343,7 @@ kbd {
   min-width: 0;
   padding: var(--gap-sm) var(--gap-md);
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius);
   color: var(--text);
   font: inherit;
@@ -351,7 +355,7 @@ kbd {
 .input:hover:not(:disabled),
 .textarea:hover:not(:disabled),
 .select:hover:not(:disabled) {
-  border-color: var(--border-bright);
+  border-color: var(--text-muted);
 }
 
 .input:focus-visible,

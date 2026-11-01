@@ -10,10 +10,10 @@ import { describe, expect, it } from 'vitest';
  * where contrast is checked: the tokens are read from `:root`, the pairs below are the
  * ones the stylesheet puts together, and each is held to the threshold its use needs --
  * 4.5 for text, 3 for focus indicators and for the border that is the only thing marking
- * a control's edge (1.4.11). Nothing here changes a token. A pair that falls short is
- * marked `reported` with the ratio it measured and is expected to fail (`it.fails`), so the gate
- * stays green and the failure is a decision for a person (it fails the other way the day
- * a token is fixed, which says to drop the mark).
+ * a control's edge (1.4.11). A pair that falls short and waits on a person's decision can be
+ * marked `reported` with the ratio it measured: it is then expected to fail (`it.fails`), and
+ * fails the other way the day the token is fixed. None is now: the control borders have their
+ * own token, `--border-control` (P9-T01, ADR-67).
  *
  * theme.css has one theme, dark: there is no light block or `prefers-color-scheme` rule to
  * read. A translucent surface (`--bg-elev`) is blended over the ground it sits on.
@@ -149,9 +149,9 @@ const PAIRS: readonly Pair[] = [
   { fg: 'accent', bg: 'bar', min: NON_TEXT, where: ':focus-visible ring on the call bar' },
 
   // Control borders: where the border is what shows the edge of a control, 1.4.11 asks 3:1.
-  { fg: 'border', bg: 'bg', min: NON_TEXT, where: '.input, .textarea, .select border on the page ground; .btn-ghost border', reported: true }, // P9-T01: fails at 1.53, reported
-  { fg: 'border', bg: 'panel', min: NON_TEXT, where: '.input, .textarea, .select border where the panel is the surface around it', reported: true }, // P9-T01: fails at 1.37, reported
-  { fg: 'border-bright', bg: 'panel', min: NON_TEXT, where: '.btn border against the panel it sits in', reported: true }, // P9-T01: fails at 1.91, reported
+  { fg: 'border-control', bg: 'bg', min: NON_TEXT, where: '.input, .textarea, .select, .btn, .btn-ghost border on the page ground' },
+  { fg: 'border-control', bg: 'panel', min: NON_TEXT, where: '.input, .textarea, .select, .btn, .btn-ghost border inside a panel or the drawer' },
+  { fg: 'text-muted', bg: 'panel', min: NON_TEXT, where: '.input:hover, .btn-ghost:hover border' },
   { fg: 'danger', bg: 'bg', min: NON_TEXT, where: ".btn-danger border, .input[aria-invalid='true'] border" },
 ];
 

@@ -2776,4 +2776,4 @@ already exists and every browser honours it — revisit if testers ask); calming
 under reduced motion (it is small, in-place movement, not the vestibular kind WCAG 2.3.3 is about
 — revisit on feedback).
 
-**Open, Rick's call (contrast.test.ts, 2026-11-01):** the control borders fall short of WCAG 1.4.11's 3:1 — `--border` on `--bg` 1.53, on `--panel` 1.37; `--border-bright` on `--panel` 1.91. Lightening the two tokens fixes it and makes every field and button edge brighter; the tests are marked `reported` until then.
+**Control borders (contrast.test.ts, Rick 2026-11-01: "brighten them").** They fell short of WCAG 1.4.11's 3:1 — `--border` on `--bg` 1.53, on `--panel` 1.37; `--border-bright` on `--panel` 1.91. A new token, `--border-control: #546b84` (3.50 on the page, 3.14 on a panel), edges fields, `.btn` and `.btn-ghost`; their hover goes to `--text-muted`. `--border` keeps its quiet value for panels and dividers, which mark no control.
