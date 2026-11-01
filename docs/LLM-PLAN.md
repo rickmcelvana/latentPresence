@@ -503,9 +503,9 @@ Done when: a schedule fires with the main window closed and the notification app
 
 ## Phase 9 — Polish and 1.0
 
-### P9-T01 Accessibility and reduced motion — owner: sub (**built 2026-11-01**, ADR-67 proposed; R-63 open)
+### P9-T01 Accessibility and reduced motion — owner: sub (**built 2026-11-01**, ADR-67 accepted; R-63 open)
 Brief: `docs/briefs/P9-T01.md`. Captions, call keys, one reduced-motion rule; axe in the component tests; a token-contrast test; control borders raised to 3:1 (`--border-control`).
-### P9-T02 Performance budgets in CI — owner: main (**built 2026-11-01**, ADR-68 proposed)
+### P9-T02 Performance budgets in CI — owner: main (**done 2026-11-01**, ADR-68 accepted)
 Bytes before each page draws (the build), one frame of the call at 1080p and the heap (`e2e/perf.spec.ts`), the pipeline's own share with instant fakes (`e2e/voice.spec.ts`); all in `apps/web/src/perf/budgets.ts`. The first measurement moved the AI SDK out of /welcome and /settings (−127 kB gzipped each).
 ### P9-T03 Security review — owner: main
 ### P9-T04 User docs on latentpresence.com (user guide, provider setup, privacy) — owner: sub

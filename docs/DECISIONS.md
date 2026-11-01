@@ -69,8 +69,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
 | ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | accepted 2026-10-19 (Rick, after R-61 passed) | 2026-10-19 |
 | ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
-| ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | proposed | 2026-11-01 |
-| ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | proposed | 2026-11-01 |
+| ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
+| ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
 
 ---
 
@@ -2747,7 +2747,7 @@ on the release as designed.
 installed v0.2.0 found it under Settings → This app, installed it and reopened as 0.2.1 — Rick:
 "no problems". The real channel works end to end.
 
-## ADR-67 Captions, call keys and reduced motion (proposed 2026-11-01, P9-T01)
+## ADR-67 Captions, call keys and reduced motion (accepted 2026-11-01, P9-T01)
 
 **Context.** Phase 9 names "captions, keyboard control, reduced motion". The call is a person
 talking: a deaf or hard-of-hearing person needs her words on the screen as she says them, a
@@ -2780,7 +2780,7 @@ under reduced motion (it is small, in-place movement, not the vestibular kind WC
 
 **Control borders (contrast.test.ts, Rick 2026-11-01: "brighten them").** They fell short of WCAG 1.4.11's 3:1 — `--border` on `--bg` 1.53, on `--panel` 1.37; `--border-bright` on `--panel` 1.91. A new token, `--border-control: #546b84` (3.50 on the page, 3.14 on a panel), edges fields, `.btn` and `.btn-ghost`; their hover goes to `--text-muted`. `--border` keeps its quiet value for panels and dividers, which mark no control.
 
-## ADR-68 Performance budgets: CI holds the inputs, real hardware the outputs (proposed 2026-11-01, P9-T02)
+## ADR-68 Performance budgets: CI holds the inputs, real hardware the outputs (accepted 2026-11-01, P9-T02)
 
 **Context.** PLAN.md's budgets are about a person's machine: 60 fps at 1080p on a mid-range GPU,
 under 400 MB of browser memory without models, and the voice pipeline under 500 ms excluding the
