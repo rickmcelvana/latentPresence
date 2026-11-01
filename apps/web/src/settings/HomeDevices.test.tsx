@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { HomeDevice } from '@latentpresence/core';
 import { HomeDevices } from './HomeDevices';
 import type { ToolsSettings } from './settings';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -54,6 +55,11 @@ describe('HomeDevices', () => {
     expect(rows[3]).toContain('Kitchen Lights / Cooker light');
     expect(rows[4]).toContain('Desk Lamp');
     expect(screen.queryByText(/Outside Temperature/)).toBeNull();
+  });
+
+  it('has no accessibility violations with devices listed (P9-T01)', async () => {
+    mount(DEVICES);
+    await expectAccessible(document.body);
   });
 
   it('offers Not set and the listed areas, sorted, and writes the one chosen', () => {

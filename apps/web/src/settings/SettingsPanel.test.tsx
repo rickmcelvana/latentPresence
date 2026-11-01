@@ -7,6 +7,7 @@ import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/deskt
 import type { SettingsDeps } from './deps';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { SettingsPanel } from './SettingsPanel';
+import { expectAccessible } from '../test/axe';
 
 afterEach(() => {
   cleanup();
@@ -89,6 +90,11 @@ const ollamaFetchWithOneEmbeddingModel: HttpFetch = async (input) => {
 };
 
 describe('SettingsPanel — Language model', () => {
+  it('has no accessibility violations (P9-T01)', async () => {
+    const { container } = render(<SettingsPanel deps={testDeps()} />);
+    await expectAccessible(container);
+  });
+
   it('picking LM Studio fills its default base URL', () => {
     render(<SettingsPanel deps={testDeps()} />);
     selectEndpoint('LM Studio');

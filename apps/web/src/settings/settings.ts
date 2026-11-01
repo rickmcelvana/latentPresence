@@ -199,6 +199,8 @@ export const SettingsSchema = z.object({
    * default — a request to a server they did not point anywhere; Check now is always there.
    */
   checkUpdates: z.boolean().default(false),
+  /** P9-T01 (ADR-67): captions on the call's stage, from the call bar. Defaulted, so an earlier document loads. */
+  captions: z.boolean().default(false),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -219,6 +221,7 @@ export const DEFAULT_SETTINGS: Settings = {
   welcomed: false,
   closeToTray: true,
   checkUpdates: false,
+  captions: false,
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets

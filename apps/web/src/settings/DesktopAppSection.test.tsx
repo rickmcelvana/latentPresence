@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkAtStart, updatesApi, type UpdateInfo, type UpdateProgress, type UpdatesApi } from '../desktop/updates';
 import { DesktopAppSection } from './DesktopAppSection';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -49,6 +50,13 @@ describe('Settings → This app: updates (P8-T04, ADR-66)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
     expect(await screen.findByText('You have the newest version.')).toBeTruthy();
     expect(api.checks).toHaveLength(1);
+  });
+
+  it('has no accessibility violations, with an update ready to install (P9-T01)', async () => {
+    mount(fakeUpdates(NEXT));
+    fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }));
+    await screen.findByText('Version 0.1.1 is ready.');
+    await expectAccessible(document.body);
   });
 
   it('a newer version shows its notes and installs only on a press, with the download progress', async () => {

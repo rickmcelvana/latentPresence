@@ -13,6 +13,7 @@ import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { VoicePanel, type ActiveCall, type VoicePanelProps } from './VoicePanel';
 import { browserModelsFor } from './models';
 import type { SpeechProviders } from './providers';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -141,6 +142,15 @@ describe('VoicePanel — consent before download', () => {
     // The screen says where the bytes come from, which is the licence-and-source half of
     // CLAUDE.md's rule.
     expect(screen.getByText(/Hugging Face/u)).toBeTruthy();
+  });
+
+  it('has no accessibility violations idle and on the consent screen (P9-T01)', async () => {
+    const { props } = harness();
+    const { container } = render(<VoicePanel {...props} />);
+    await expectAccessible(container);
+    fireEvent.click(screen.getByRole('button', { name: 'Start voice' }));
+    await screen.findByRole('button', { name: 'Agree' });
+    await expectAccessible(container);
   });
 
   it('records consent for exactly those models when Agree is pressed, then starts', async () => {

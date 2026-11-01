@@ -15,6 +15,7 @@ export * from './backchannel';
 export * from './chat';
 export * from './voice';
 export * from './transcript';
+export * from './captions';
 export * from './history';
 export * from './persona';
 export * from './affect';

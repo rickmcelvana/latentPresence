@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ModelDescriptor } from '@latentpresence/protocol';
 import { ConsentScreen } from './ConsentScreen';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -32,6 +33,11 @@ describe('ConsentScreen', () => {
     const links = screen.getAllByRole('link', { name: 'source' });
     expect(links.map((link) => link.getAttribute('href'))).toEqual([SILERO.sourceUrl, KOKORO.sourceUrl]);
     for (const link of links) expect(link.getAttribute('rel')).toBe('noreferrer');
+  });
+
+  it('has no accessibility violations (P9-T01)', async () => {
+    const { container } = render(<ConsentScreen descriptors={[SILERO, KOKORO]} onAgree={() => {}} onCancel={() => {}} />);
+    await expectAccessible(container);
   });
 
   it('shows the total of every model listed', () => {

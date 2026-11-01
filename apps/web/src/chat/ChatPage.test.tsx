@@ -13,7 +13,7 @@ import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import type { MinimalCacheStorage } from '../consent/deps';
 import type { SettingsDeps } from '../settings/deps';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
-import { SETTINGS_STORAGE_KEY } from '../settings/settings';
+import { SETTINGS_STORAGE_KEY, loadSettings } from '../settings/settings';
 import { defaultPersona } from '../persona/default-persona';
 import { CHAT_CHARACTER_NAME, ChatPage, type ChatPageProps, type FaceReadingLoader, type SpeakerLoader } from './ChatPage';
 import type { FaceReadingOptions } from '../call/face-reading';
@@ -971,6 +971,68 @@ describe('ChatPage — the call layout (P2-T06)', () => {
     render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
 
     expect((screen.getByRole('button', { name: 'Mute' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe('ChatPage — captions and the call keys (P9-T01, ADR-67)', () => {
+  const ORIGINAL_INNER_WIDTH = window.innerWidth;
+
+  afterEach(() => {
+    setViewportWidth(ORIGINAL_INNER_WIDTH);
+  });
+
+  it('Captions is off at first, and remembered on this device once pressed', () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const first = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const button = screen.getByRole('button', { name: 'Captions' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.getAttribute('aria-keyshortcuts')).toBe('C');
+
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(loadSettings(storage).captions).toBe(true);
+    first.unmount();
+
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    expect(screen.getByRole('button', { name: 'Captions' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('C toggles captions and T the text box from the page, and neither is a shortcut inside the text box', () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const captions = screen.getByRole('button', { name: 'Captions' });
+
+    fireEvent.keyDown(document.body, { key: 'c' });
+    expect(captions.getAttribute('aria-pressed')).toBe('true');
+    // With a modifier it is the browser's, not ours.
+    fireEvent.keyDown(document.body, { key: 'c', ctrlKey: true });
+    expect(captions.getAttribute('aria-pressed')).toBe('true');
+
+    // Typed into the box, a C is a letter.
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'c' });
+    expect(captions.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }));
+    expect(screen.queryByRole('textbox')).toBeNull();
+    fireEvent.keyDown(document.body, { key: 't' });
+    const box = screen.getByRole('textbox');
+    expect(document.activeElement).toBe(box);
+  });
+
+  it('Escape closes the drawer; M does nothing with no call running', () => {
+    setViewportWidth(1440);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    const { container } = render(<ChatPage createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(false);
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(container.querySelector('.call-drawer')?.hasAttribute('hidden')).toBe(true);
+
+    fireEvent.keyDown(document.body, { key: 'm' });
+    expect(screen.getByRole('button', { name: 'Mute' }).getAttribute('aria-pressed')).toBe('false');
   });
 });
 

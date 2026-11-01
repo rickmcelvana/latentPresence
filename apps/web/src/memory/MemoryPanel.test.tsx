@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { attachMemory, FakeMemoryStore, MemoryKernel, MemoryStoreError, type AttachedMemory } from '@latentpresence/core';
 import type { ConversationEvent, MemoryEpisode, SemanticFact } from '@latentpresence/protocol';
 import { MemoryPanel } from './MemoryPanel';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -65,6 +66,18 @@ describe('MemoryPanel (P4-T05)', () => {
     await waitFor(() => expect(screen.getAllByText(/^user likes/)).toHaveLength(2));
     const lines = screen.getAllByText(/^user likes/).map((el) => el.textContent);
     expect(lines).toEqual(['user likes coffee', 'user likes tea (not sure)']);
+  });
+
+  it('has no accessibility violations, listed and while editing a fact (P9-T01)', async () => {
+    const store = new FakeMemoryStore();
+    await store.upsertFact(fact('f1', 'tea'));
+    await store.appendEpisode(episode('e1', 'old-session', '2026-09-01T00:00:00.000Z', 'I like tea'));
+    const { memory } = makeMemory(store);
+    const { container } = render(<MemoryPanel characterName="Alice" memory={memory} where="this browser" />);
+    await waitFor(() => screen.getByText('user likes tea'));
+    await expectAccessible(container);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await expectAccessible(container);
   });
 
   it('edits a fact: Save writes the new object through the kernel', async () => {

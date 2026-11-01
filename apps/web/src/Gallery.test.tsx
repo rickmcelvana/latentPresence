@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { App, GALLERY_PATH } from './App';
 import { Gallery } from './Gallery';
 import { DEFAULT_SETTINGS } from './settings/settings';
+import { expectAccessible } from './test/axe';
 
 afterEach(cleanup);
 
@@ -46,6 +47,11 @@ describe('Gallery', () => {
     for (const selector of EVERY_PRIMITIVE_STATE) {
       expect(container.querySelector(selector), selector).not.toBeNull();
     }
+  });
+
+  it('has no accessibility violations (P9-T01)', async () => {
+    const { container } = render(<Gallery />);
+    await expectAccessible(container);
   });
 
   it('shows a swatch for each token so a palette change is visible', () => {

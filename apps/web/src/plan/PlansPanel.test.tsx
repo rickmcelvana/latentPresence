@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FakeMemoryStore, MemoryKernel, Plans, planToMarkdown } from '@latentpresence/core';
 import type { PlanDocument } from '@latentpresence/protocol';
 import { PlansPanel } from './PlansPanel';
+import { expectAccessible } from '../test/axe';
 
 afterEach(() => {
   cleanup();
@@ -70,6 +71,15 @@ describe('PlansPanel (P4-T07)', () => {
     const { plans } = await setup();
     render(<PlansPanel characterName="Alice" plans={plans} />);
     expect(screen.getByText(/No plans yet\. Say/)).toBeTruthy();
+  });
+
+  it('has no accessibility violations, in the list and with a plan open (P9-T01)', async () => {
+    const { plans } = await setup();
+    await made(plans, GARDEN);
+    const { container } = render(<PlansPanel characterName="Alice" plans={plans} />);
+    await expectAccessible(container);
+    open('Vegetable garden');
+    await expectAccessible(container);
   });
 
   it('lists plans newest first with progress (dropped tasks not counted) and marks the one in focus; archived wait behind a toggle', async () => {

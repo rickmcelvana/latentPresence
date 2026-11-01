@@ -4,6 +4,7 @@ import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
 import { loadPairingCode, savePairingCode } from './companion-pairing';
 import { CompanionSection, companionCheckMessage, pageNeedsPairing } from './CompanionSection';
 import { COMPANION_NEEDS_PAIRING } from './connection';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -51,6 +52,12 @@ describe('Settings → Companion in a browser (P8-T03, ADR-64)', () => {
     const { section, onChange } = mount(HOSTED, []);
     fireEvent.change(section.getByLabelText('Address'), { target: { value: 'http://127.0.0.1:9000' } });
     expect(onChange).toHaveBeenCalledWith('http://127.0.0.1:9000');
+  });
+
+  it('has no accessibility violations on a hosted page, with the pairing code field (P9-T01)', async () => {
+    mount(HOSTED, []);
+    expect(screen.getByLabelText('Pairing code')).toBeTruthy();
+    await expectAccessible(document.body);
   });
 
   it('Save keeps the code, shows it only as saved, and checks at once', async () => {

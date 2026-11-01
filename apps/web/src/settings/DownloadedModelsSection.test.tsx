@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { MODEL_CACHE_NAME, ModelConsent } from '@latentpresence/ml-web/consent';
 import type { MinimalCache, MinimalCacheStorage } from '../consent/deps';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -65,6 +66,13 @@ describe('DownloadedModelsSection', () => {
     await waitFor(() => expect(screen.getByText('transformers-cache')).toBeTruthy());
     expect(screen.getByText(/2\.5 MB total/)).toBeTruthy();
     expect(screen.getByText(/2 files/)).toBeTruthy();
+  });
+
+  it('has no accessibility violations with models listed (P9-T01)', async () => {
+    const caches = fakeCaches({ 'transformers-cache': [{ url: 'https://huggingface.co/x/model.onnx', bytes: 2_000_000 }] });
+    const { container } = render(<DownloadedModelsSection caches={caches} consent={new ModelConsent(memoryStorage())} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete all' })).toBeTruthy());
+    await expectAccessible(container);
   });
 
   it('Delete removes just that cache, leaving the other and consent alone', async () => {

@@ -111,6 +111,23 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-63 · Captions, call keys and reduced motion (P9-T01) · ~10 minutes
+**Why:** the tests prove the rules; only a real call shows whether captions keep pace with her
+voice and are readable over the room. On this PC, `pnpm dev`, then `/chat`:
+1. Press **Captions** (or **C**), then **Start voice** and talk for a minute. Her words should
+   appear **as she says each sentence** (not ahead of her), labelled with her name, above the voice
+   card; yours appear as "You" once she has heard you. Talk over her: her caption should vanish
+   at once. Readable? Too small, too big, in her way?
+2. Click on the stage (so nothing is focused), then **M** mutes and unmutes, **Escape** closes the
+   drawer, **C** turns captions off. End the call, press **T**: the text box opens with the cursor
+   in it, and typing an M there is just an M.
+3. Windows **Settings → Accessibility → Visual effects → Animation effects: Off**, reload: while
+   she answers in text, the transcript's cursor does not blink, and buttons change colour at once
+   on hover instead of fading. She still moves.
+   Turn animation effects back on after.
+
+Report what you saw; then ADR-67 can be accepted.
+
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.

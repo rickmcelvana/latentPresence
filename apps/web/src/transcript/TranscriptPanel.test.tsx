@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TranscriptLine } from '@latentpresence/core';
 import { TranscriptPanel, type CitationSource } from './TranscriptPanel';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -39,6 +40,11 @@ describe('TranscriptPanel — lines', () => {
     expect(screen.getByText('Alice')).toBeTruthy();
     expect(screen.getByText('what time is it')).toBeTruthy();
     expect(screen.getByText('It is nearly three.')).toBeTruthy();
+  });
+
+  it('has no accessibility violations with every kind of line (P9-T01)', async () => {
+    const { container } = render(<TranscriptPanel characterName="Alice" lines={[USER_LINE, ASSISTANT_LINE, INTERRUPTED_LINE, NOTICE_LINE]} onClear={() => {}} />);
+    await expectAccessible(container);
   });
 
   it('shows an interrupted line as heard text, an assistive-only "(not said)" marker, and the pill', () => {

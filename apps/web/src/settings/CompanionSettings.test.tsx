@@ -12,6 +12,7 @@ import type { SettingsDeps } from './deps';
 import { SettingsPanel } from './SettingsPanel';
 import { loadSettings } from './settings';
 import { InMemoryMasterKeyPort, Vault } from './vault';
+import { expectAccessible } from '../test/axe';
 
 afterEach(() => {
   cleanup();
@@ -113,6 +114,11 @@ describe('Settings → On this computer (P8-T06)', () => {
     expect(screen.getByRole('heading', { name: 'On this computer' })).toBeTruthy();
     expect(screen.getByText(/Changes restart the companion; her tools from it are back in a few seconds/)).toBeTruthy();
     expect(api.reads).toBe(1);
+  });
+
+  it('has no accessibility violations once the sections have loaded (P9-T01)', async () => {
+    await loaded(new FakeCompanionConfig());
+    await expectAccessible(document.body);
   });
 
   it('a read that fails shows its sentence and Retry reads again', async () => {

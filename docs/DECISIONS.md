@@ -2738,10 +2738,40 @@ exited, ran the installer and reopened as 0.1.1. A forged 0.1.2 (another file's 
 signature) was refused — "The signature verification failed" — and the app kept running.
 
 **First release, 2026-10-19:** v0.2.0 from the workflow (27 minutes: the gate, then the build),
-published by Rick and installed by hand on his PC — the installer, its `.sig` and `latest.json`
+published by Rick and installed by hand on their PC — the installer, its `.sig` and `latest.json`
 on the release as designed.
 
 **The first update, 2026-10-19 (R-62, D-64):** v0.2.1 released the same way (34 minutes); the
 installed v0.2.0 found it under Settings → This app, installed it and reopened as 0.2.1 — Rick:
 "no problems". The real channel works end to end.
 
+## ADR-67 Captions, call keys and reduced motion (proposed 2026-11-01, P9-T01)
+
+**Context.** Phase 9 names "captions, keyboard control, reduced motion". The call is a person
+talking: a deaf or hard-of-hearing person needs her words on the screen as she says them, a
+keyboard user needs the call's main controls without hunting through fourteen buttons, and a
+person whose system asks for less motion should get it — without deciding that her body, the
+point of the product, is decoration.
+
+**Decision (recommended option taken; Rick to accept).**
+1. **Captions are what is heard, not what is written.** `reduceCaptions` (core) shows a sentence
+   on its `assistant.audio.started`, holds it 3 s after its audio ends, clears it on barge-in, and
+   shows the person's own recognised words as "You". A typed reply with no voice out has no
+   caption — there is no sound; the transcript has the words. Backchannels are not captioned
+   (ADR-28). Off by default, a **Captions** button in the call bar, remembered on the device.
+2. **Captions are not a live region.** The transcript's `log` is the screen reader's channel;
+   announcing the caption too would read each sentence twice, over her voice.
+3. **Call keys**, never from a text field or with a modifier: **M** mute, **C** captions, **T**
+   the text box (and the cursor into it), **Escape** closes the drawer. Named on their buttons
+   (`aria-keyshortcuts`, the tooltip).
+4. **Reduced motion is one rule for the whole page**: under `prefers-reduced-motion: reduce` no
+   CSS animation or transition runs (replacing three per-component blocks, so a new animation
+   cannot be missed). **Her own movement stays**: she is the content, as a person on a video
+   call is. The call's camera never moves (one preset, set once with no transition), so there
+   is no pan or zoom to remove. Following the system setting, with no switch of our own.
+
+**Alternatives.** Captions from `assistant.sentence` (ahead of the voice by a sentence or more —
+rejected); a live caption region (double reading); an in-app motion switch (the OS setting
+already exists and every browser honours it — revisit if testers ask); calming her idle life
+under reduced motion (it is small, in-place movement, not the vestibular kind WCAG 2.3.3 is about
+— revisit on feedback).

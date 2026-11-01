@@ -10,6 +10,7 @@ import type { CompanionToolServer } from '@latentpresence/providers/web';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { mcpKeyRef, type ToolsSettings } from './settings';
 import { ToolsSection } from './ToolsSection';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -91,6 +92,13 @@ function fillForm(label: string, url: string): void {
 }
 
 describe('ToolsSection — adding a server', () => {
+  it('has no accessibility violations, with the form and a server listed (P9-T01)', async () => {
+    mount(EMPTY);
+    fillForm('DeepWiki', 'https://mcp.deepwiki.com/mcp');
+    fireEvent.click(screen.getByRole('button', { name: 'Add server' }));
+    await expectAccessible(document.body);
+  });
+
   it('adds one, on, with its own id, and clears the form', () => {
     const { latest } = mount(EMPTY);
     fillForm('  DeepWiki ', ' https://mcp.deepwiki.com/mcp ');

@@ -12,6 +12,7 @@ import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { browserModelsFor } from '../voice/models';
 import type { WizardDevices } from './devices';
 import { Wizard } from './Wizard';
+import { expectAccessible } from '../test/axe';
 
 afterEach(() => {
   cleanup();
@@ -156,6 +157,14 @@ describe('Wizard — the steps', () => {
     expect(heading()).toBe('Choose a language model');
     press('Back');
     expect(heading()).toBe('Welcome to latentPresence');
+  });
+
+  it('has no accessibility violations on any step (P9-T01)', async () => {
+    for (const step of [0, 1, 2, 3, 4, 5]) {
+      const { container } = render(<Wizard deps={testDeps({ fetch: OLLAMA_WITH_LLAMA })} initialStep={step} navigate={() => {}} />);
+      await expectAccessible(container);
+      cleanup();
+    }
   });
 
   it('moves focus to the step heading when the step changes', () => {

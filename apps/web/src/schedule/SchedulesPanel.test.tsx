@@ -4,6 +4,7 @@ import { FakeMemoryStore, Schedules } from '@latentpresence/core';
 import type { Schedule } from '@latentpresence/protocol';
 import type { NotificationPermissionState, PageNotifications } from '../chat/notifications';
 import { SchedulesPanel } from './SchedulesPanel';
+import { expectAccessible } from '../test/axe';
 
 afterEach(() => {
   cleanup();
@@ -85,6 +86,15 @@ describe('SchedulesPanel (P6-T08, ADR-58)', () => {
     expect(within(row('tea')).getByText('today at 10:20 (in 20 minutes)')).toBeTruthy();
     expect(within(row('rent')).getByText('0 9 1 * *')).toBeTruthy();
     expect(within(row('long one')).getByText('paused')).toBeTruthy();
+  });
+
+  it('has no accessibility violations with upcoming and paused reminders (P9-T01)', async () => {
+    const { schedules, view } = await setup();
+    await made(schedules, { description: 'call the vet', at: '2026-10-15T09:00' });
+    await made(schedules, { description: 'long one', inMinutes: 5 });
+    await schedules.pause('long one');
+    const { container } = view();
+    await expectAccessible(container);
   });
 
   it('says where a reminder runs when it is the companion, and shows the last run with its outcome, summary and time', async () => {

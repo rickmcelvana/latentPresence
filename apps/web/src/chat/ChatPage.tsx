@@ -66,6 +66,7 @@ import type { CallStageAffect, CallStageRenderer } from '../call/CallStage';
 import { latestCitedSources, pickPlan, planToWhiteboard, sourcesToScreen } from '../call/displays';
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
 import { AffectOverlay } from '../call/AffectOverlay';
+import { Captions } from '../call/Captions';
 import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
@@ -95,6 +96,12 @@ function newSessionId(): string {
 /** Below this viewport width the transcript drawer starts closed (decision 9, P2-T06);
  * at or above it, open. A 1024 px column has no room for a 26vw drawer beside the stage. */
 const DRAWER_OPEN_AT_PX = 1440;
+
+/** Where a typed letter is text, not a call shortcut (P9-T01). */
+function isTextField(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+}
 
 /**
  * The voice panel (P1-T15), `lazy()` for a heavier reason than `/settings` gets: it imports
@@ -749,6 +756,8 @@ function ConfiguredChatPage({
   const [call, setCall] = useState<ActiveCall | null>(null);
   const [muted, setMuted] = useState(false);
   const [textOpen, setTextOpen] = useState(true);
+  /** Set when T opens the text box, so the cursor goes into it once it is there (P9-T01). */
+  const focusTextRef = useRef(false);
   // Read once: only the *starting* width decides the drawer's default (decision 9). A
   // window resized mid-session keeps whatever the person set with the Transcript button.
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
@@ -770,6 +779,16 @@ function ConfiguredChatPage({
   );
   // P6-T05 (ADR-54): her lines are only asked of the model while the Thoughts view is showing.
   const thoughtsShowing = drawerOpen && drawerView === 'thoughts';
+
+  // P9-T01 (ADR-67): captions on the stage, remembered on this device.
+  const [captions, setCaptions] = useState(settings.captions);
+  const toggleCaptions = useCallback(() => {
+    setCaptions((previous) => {
+      const next = !previous;
+      saveSettings({ ...loadSettings(deps.storage), captions: next }, deps.storage);
+      return next;
+    });
+  }, [deps.storage]);
 
   // P7-T02 (ADR-59): her body, the person's choice per character, worn live — a choice saves the
   // setting and hands the stage a new body; nothing else in the room is rebuilt.
@@ -1138,6 +1157,55 @@ function ConfiguredChatPage({
   const showAffectOverlay = new URLSearchParams(window.location.search).has('affect');
   // The presence window (P8-T05): her, the call and a way back; the drawer and the rest wait.
   const pageClass = tray.presence ? 'call-page call-page-presence' : drawerOpen ? 'call-page call-page-drawer-open' : 'call-page';
+
+  // P9-T01 (ADR-67): the call's keys — M mute, C captions, T the text box, Escape closes the
+  // drawer. Never from a field (M is a letter in a message) or with a modifier held (the
+  // browser's own shortcuts). Read through a ref so the listener is added once.
+  const shortcut = useRef<(key: string) => boolean>(() => false);
+  const keyAction = (key: string): boolean => {
+    switch (key.toLowerCase()) {
+      case 'm':
+        if (!callActive) return false;
+        toggleMute();
+        return true;
+      case 'c':
+        toggleCaptions();
+        return true;
+      case 't':
+        if (tray.presence || voiceOpen) return false;
+        if (showTextBox) inputRef.current?.focus();
+        else {
+          focusTextRef.current = true;
+          setTextOpen(true);
+        }
+        return true;
+      case 'escape':
+        if (!drawerOpen || tray.presence) return false;
+        setDrawerOpen(false);
+        return true;
+      default:
+        return false;
+    }
+  };
+  useEffect(() => {
+    shortcut.current = keyAction;
+  });
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent): void => {
+      if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isTextField(event.target)) return;
+      if (shortcut.current(event.key)) event.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  // T opened the box: the cursor goes into it, so they can type at once.
+  useEffect(() => {
+    if (!showTextBox || !focusTextRef.current) return;
+    focusTextRef.current = false;
+    inputRef.current?.focus();
+  }, [showTextBox]);
+
   return (
     <main className={pageClass}>
       <Suspense fallback={<div className="call-stage call-stage-loading" />}>
@@ -1295,7 +1363,8 @@ function ConfiguredChatPage({
         </div>
       )}
 
-      {/* After the docks it may sit above: the stylesheet lifts it clear of whichever is open. */}
+      {/* After the docks they may sit above: the stylesheet lifts each clear of whichever is open. */}
+      {captions && <Captions characterName={pack.persona.name} subscribe={subscribe} />}
       <PermissionPrompt characterName={pack.persona.name} prompts={permissionPrompts} />
 
       <div className="call-controls-bar">
@@ -1304,8 +1373,11 @@ function ConfiguredChatPage({
             Start voice
           </button>
         )}
-        <button aria-pressed={muted} className="btn call-control-btn" disabled={!callActive} onClick={toggleMute} type="button">
+        <button aria-keyshortcuts="M" aria-pressed={muted} className="btn call-control-btn" disabled={!callActive} onClick={toggleMute} title="Mute your microphone (M)" type="button">
           {muted ? 'Unmute' : 'Mute'}
+        </button>
+        <button aria-keyshortcuts="C" aria-pressed={captions} className="btn call-control-btn" onClick={toggleCaptions} title="Show what is said aloud on the screen (C)" type="button">
+          Captions
         </button>
         {tray.presence && (
           <button className="btn call-control-btn" onClick={() => setPresence(false)} title="Back to the full window" type="button">
@@ -1327,7 +1399,7 @@ function ConfiguredChatPage({
         >
           Read my face
         </button>
-        <button aria-pressed={showTextBox} className="btn call-control-btn" disabled={voiceOpen} onClick={() => setTextOpen((open) => !open)} type="button">
+        <button aria-keyshortcuts="T" aria-pressed={showTextBox} className="btn call-control-btn" disabled={voiceOpen} onClick={() => setTextOpen((open) => !open)} title="Type to her (T)" type="button">
           Text
         </button>
         <button

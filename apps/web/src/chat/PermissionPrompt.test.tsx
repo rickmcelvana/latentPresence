@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PermissionPrompts, type PermissionOutcome } from '@latentpresence/core';
 import type { JsonObject } from '@latentpresence/protocol';
 import { PermissionPrompt } from './PermissionPrompt';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -33,6 +34,14 @@ describe('PermissionPrompt', () => {
     expect(dialog.getAttribute('aria-describedby')).not.toBeNull();
     expect(screen.queryByText(/more waiting/)).toBeNull();
     expect(screen.queryByText(/has changed since you allowed it/)).toBeNull();
+  });
+
+  it('has no accessibility violations while a call waits (P9-T01)', async () => {
+    const gate = prompts();
+    const { container } = render(<PermissionPrompt characterName="Alice" prompts={gate} />);
+    act(() => void ask(gate, 'search', { q: 'vitest', limit: 3 }, true));
+    await screen.findByRole('alertdialog');
+    await expectAccessible(container);
   });
 
   it('shows a query as it was written — the preview before it runs (P5-T05)', async () => {

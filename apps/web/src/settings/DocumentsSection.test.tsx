@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IngestJob, IngestStatus } from '@latentpresence/protocol';
 import type { CompanionIngest } from '@latentpresence/providers/web';
 import { DocumentsSection } from './DocumentsSection';
+import { expectAccessible } from '../test/axe';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -114,6 +115,16 @@ describe('DocumentsSection (P5-T03, ADR-44)', () => {
     expect(screen.getByText('12 seen · 10 indexed · 1 removed · 340 chunks')).toBeTruthy();
     expect(screen.getByText('1 file could not be read')).toBeTruthy();
     expect(screen.getByText('C:/docs/broken.pdf — not a PDF')).toBeTruthy();
+  });
+
+  it('has no accessibility violations once Check has shown the folders (P9-T01)', async () => {
+    const { ingest } = fakeIngest();
+    const { container } = render(<DocumentsSection companionUrl="http://localhost:8731" onSearchChange={() => {}} search={false} ingest={ingest} />);
+    await press('Check');
+    expect(screen.getByText('C:/docs/manuals')).toBeTruthy();
+    // axe schedules its own work on timers, which the fake ones here would never fire.
+    vi.useRealTimers();
+    await expectAccessible(container);
   });
 
   it('says keyword search only when there is no embedding model, and not watching', async () => {

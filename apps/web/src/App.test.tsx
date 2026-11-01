@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PROTOCOL_VERSION } from '@latentpresence/protocol';
 import { App, CHAT_PATH, SETTINGS_PATH, WELCOME_PATH } from './App';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from './settings/settings';
+import { expectAccessible } from './test/axe';
 
 afterEach(cleanup);
 
@@ -28,6 +29,16 @@ describe('App', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('latentPresence');
     expect(container.textContent).toContain(`protocol v${PROTOCOL_VERSION}`);
     expect(container.textContent).toContain('@latentpresence/core');
+  });
+
+  it('has no accessibility violations on the boot screen and the lazy routes (P9-T01)', async () => {
+    const boot = render(<App storage={stored(true)} />);
+    await expectAccessible(boot.container);
+    cleanup();
+    const settings = render(<App path={SETTINGS_PATH} />);
+    await screen.findByRole('heading', { level: 1 }, LAZY);
+    await expectAccessible(settings.container);
+    await act(async () => {});
   });
 
   it('links to /settings from the boot screen', () => {

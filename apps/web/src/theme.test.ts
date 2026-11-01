@@ -142,6 +142,21 @@ describe('theme.css covers every className', () => {
   });
 });
 
+describe('reduced motion (P9-T01, ADR-67)', () => {
+  const blocks = themeCss.split('@media (prefers-reduced-motion: reduce)').slice(1);
+
+  it('is one rule for the whole app, so a new animation cannot miss it', () => {
+    expect(blocks).toHaveLength(1);
+  });
+
+  it('turns off every animation and transition, on every element and pseudo-element', () => {
+    const block = blocks[0] ?? '';
+    const universal = /\*,\s*\*::before,\s*\*::after\s*\{([^}]*)\}/.exec(block)?.[1] ?? '';
+    expect(universal).toMatch(/animation:\s*none\s*!important/);
+    expect(universal).toMatch(/transition:\s*none\s*!important/);
+  });
+});
+
 describe('colours live only in :root', () => {
   /**
    * ADR-15 again: a literal outside the token block is a colour that cannot be

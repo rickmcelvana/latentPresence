@@ -178,6 +178,25 @@ kbd {
   outline-offset: 2px;
 }
 
+/* --- Reduced motion (P9-T01, ADR-67) ---------------------------------------
+   One rule for the whole app, not one per component: with the system asking for
+   less motion, nothing in the page animates or transitions, and a pressed button
+   does not move. Her own movement on the stage is the call itself and stays. */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 /* --- Primitive: button ---------------------------------------------------- */
 
 .btn {
@@ -466,17 +485,6 @@ kbd {
 @keyframes slide-in {
   from {
     transform: translateX(100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .drawer,
-  .drawer-scrim {
-    animation: none;
-  }
-
-  .btn:active:not(:disabled) {
-    transform: none;
   }
 }
 
@@ -1563,12 +1571,6 @@ kbd {
   color: var(--warning);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .transcript-cursor {
-    animation: none;
-  }
-}
-
 /* --- Memory browser (P4-T05, ADR-39) ---------------------------------------
    A `.panel` like the transcript it sits beside in the drawer, with its own
    scrolling body (`memory-log`) so the header and the "kept in" line stay put
@@ -2550,6 +2552,47 @@ kbd {
   bottom: calc(var(--call-bar-height) + var(--gap-md) + 240px);
 }
 
+/* Captions (P9-T01, ADR-67): what is said aloud, low on the stage like a broadcast's, on a
+   scrim so they read over any room. After the docks in the page, so an open one lifts them
+   clear. Never in the way of a press: the stage under them stays hers. */
+.call-captions {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--call-bar-height) + var(--gap-md));
+  transform: translateX(-50%);
+  z-index: 3;
+  width: max-content;
+  max-width: min(760px, calc(100vw - 2 * var(--gap-lg)));
+  margin: 0;
+  padding: var(--gap-sm) var(--gap-md);
+  border-radius: var(--radius);
+  background: var(--scrim);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
+
+.call-captions-speaker {
+  margin-right: var(--gap-sm);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Measured at 1600×900 (P9-T01): the text dock is 141px tall, the voice card up to 232px. */
+.call-text-dock ~ .call-captions {
+  bottom: calc(var(--call-bar-height) + var(--gap-md) + 141px + var(--gap-sm));
+}
+
+.call-voice-card ~ .call-captions {
+  bottom: calc(var(--call-bar-height) + var(--gap-md) + 232px + var(--gap-sm));
+}
+
+.call-page-drawer-open .call-captions {
+  max-width: calc(100% - 2 * var(--call-drawer-width) - 2 * var(--gap-md));
+}
+
 .permission-title {
   margin: 0;
   color: var(--text);
@@ -2661,6 +2704,7 @@ kbd {
 .call-permission-card,
 .call-controls-bar,
 .call-stage-overlay,
+.call-captions,
 .call-pip {
   zoom: var(--call-ui-zoom);
 }
@@ -3102,10 +3146,4 @@ kbd {
 .welcome-summary-row > span:not(.field-label) {
   flex: 1 1 200px;
   min-width: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .welcome-meter-fill {
-    transition: none;
-  }
 }

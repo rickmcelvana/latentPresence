@@ -71,6 +71,7 @@ describe('loadSettings', () => {
       welcomed: true,
       closeToTray: false,
       checkUpdates: true,
+      captions: true,
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);

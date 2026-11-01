@@ -7,6 +7,7 @@ import { ModelConsent } from '@latentpresence/ml-web/consent';
 import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from './character-asset';
 import { CallStage, type CallStageRenderer } from './CallStage';
 import type { StageBody } from '../characters/bodies';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -118,6 +119,24 @@ describe('CallStage — consent gates the fetch', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show the character' }));
     await waitFor(() => expect(fetchModel).toHaveBeenCalledWith('https://example.test/theo.vrm', otherDescriptor));
     expect(consent.has([otherDescriptor])).toBe(true);
+  });
+
+  it('has no accessibility violations on the consent step and on the stage (P9-T01)', async () => {
+    const consent = new ModelConsent(memoryStorage());
+    const first = render(
+      <CallStage voice={null} consent={consent} createRenderer={() => new FakeAvatarRenderer()} fetchModel={async () => new Uint8Array([1, 2, 3])} machine={machine()} />,
+    );
+    await settle();
+    expect(screen.getByText('This will download the character')).toBeTruthy();
+    await expectAccessible(first.container);
+    cleanup();
+
+    consent.grant([AVATAR_DESCRIPTOR]);
+    const second = render(
+      <CallStage voice={null} consent={consent} createRenderer={() => new FakeAvatarRenderer()} fetchModel={async () => new Uint8Array([1, 2, 3])} machine={machine()} />,
+    );
+    await settle();
+    await expectAccessible(second.container);
   });
 
   it('"Not now" leaves the stage empty with a button, and fetches nothing', async () => {

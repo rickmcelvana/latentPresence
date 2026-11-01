@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { HttpFetch } from '@latentpresence/providers/web';
 import type { DatabaseInfo, DesktopDatabase } from '../desktop/database';
 import { CompanionDatabase } from './CompanionDatabase';
+import { expectAccessible } from '../test/axe';
 
 afterEach(cleanup);
 
@@ -53,6 +54,17 @@ describe('CompanionDatabase (ADR-62)', () => {
     expect(stored()).toBe(SECRET);
     expect(screen.getByText(SHOWN)).toBeTruthy();
     expect(container.innerHTML).not.toContain('s3cret-pw');
+  });
+
+  it('has no accessibility violations, empty and with a saved address (P9-T01)', async () => {
+    const empty = render(<CompanionDatabase companionUrl="http://127.0.0.1:8790" database={fakeDatabase().database} fetch={restarting(0, { kind: 'none', connected: false })} pollMs={1} />);
+    await screen.findByLabelText('Database address');
+    await expectAccessible(empty.container);
+    cleanup();
+
+    const saved = render(<CompanionDatabase companionUrl="http://127.0.0.1:8790" database={fakeDatabase(SECRET).database} fetch={restarting(0, { kind: 'mariadb', connected: true })} pollMs={1} />);
+    await screen.findByText(SHOWN);
+    await expectAccessible(saved.container);
   });
 
   it('Enter saves too', async () => {

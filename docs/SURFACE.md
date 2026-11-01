@@ -2757,3 +2757,22 @@ on `11434` (with `OLLAMA_ORIGINS=https://app.latentpresence.com`).
   `prerelease`, `uploadUpdaterJson`, `updaterJsonPreferNsis`. Env: `GITHUB_TOKEN`,
   `TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 
+
+## axe-core 4.14.0 under jsdom — 2026-11-01 (P9-T01)
+
+Read from the installed package (`apps/web/node_modules/axe-core`: `package.json`, `axe.d.ts`) and
+checked by running it against rendered components in vitest, not recalled. Dev dependency of
+`apps/web` only, pinned exactly (`4.14.0`, published 2026-10-05); it ships to no one.
+
+| Fact | Result |
+|---|---|
+| Licence | **MPL-2.0** (`package.json` `license`; file-level copyleft, fine as an unmodified dev dependency) |
+| Import | `import axe from 'axe-core'`; the typings are `axe.d.ts` in the package, no `@types` needed |
+| Run | `axe.run(context?, options?)` returns `Promise<AxeResults>`; `results.violations[]` has `id`, `help`, `nodes[].target`, `nodes[].html` |
+| Context | An `Element` works as the context (`axe.run(container, options)`) |
+| Disable a rule | `{ rules: { 'color-contrast': { enabled: false } } }` |
+| **`color-contrast` cannot run under jsdom** | jsdom has no layout and no canvas, so axe cannot resolve colours or geometry; the rule never passes there. It is turned off, and `apps/web/src/contrast.test.ts` checks the `:root` tokens instead |
+| `region` is a page rule | On a component rendered alone it flags the whole container ("content not in a landmark"), so `test/axe.ts` turns it off too; page-level landmarks are asserted where pages are tested |
+| jsdom prints | `Not implemented: HTMLCanvasElement's getContext()` from axe's colour code on some runs; harmless |
+| Fake timers | axe schedules its own work on timers: a test using `vi.useFakeTimers()` must switch to real timers before `expectAccessible` |
+| Helper | `apps/web/src/test/axe.ts`, `expectAccessible(container)`; fails with each violation's id, help text and target |
