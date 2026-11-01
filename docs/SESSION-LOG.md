@@ -950,3 +950,9 @@ Did: Phase 9 started. PROJECT.md caught up (Rick's README screenshots and the cc
 Left: R-63 (Rick: captions in a live call, the keys, Windows animation effects off); ADR-67 to accept; the border tokens (Rick's call); laptop session; C-7.
 Next: P9-T02 (performance budgets in CI), with R-63 and tester feedback whenever they arrive.
 Decisions: ADR-67 proposed, recommended option taken (captions follow the audio, not a live region; her motion stays under reduced motion).
+
+## 2026-11-01 claude (2) — P9-T02 built: performance budgets
+Did: control borders to 3:1 (`--border-control`, Rick's call; 5d67040, CI green). P9-T02: budgets in `apps/web/src/perf/budgets.ts`, ADR-68 proposed — a build plugin holds the gzip each page downloads before it draws and a raw ceiling per later file; `e2e/perf.spec.ts` on `/dev/perf` (/chat with its renderer kept) holds a 1080p frame (51 calls, 139k triangles, 13 programs, 32 textures, 7.5 MB) and the heap (31.5 MB); `voice.spec.ts` holds turn-end → first audio with instant fakes (9.4 ms). The first measurement moved the AI SDK out of /welcome and /settings (−127 kB gzipped each, chat −127). Gate and the three e2e specs green; b9580da.
+Left: R-63 (Rick, in progress); ADR-67 and ADR-68 to accept; the CI run of b9580da (the e2e job now downloads the 10.8 MB body from GitHub); laptop session; C-7.
+Next: P9-T03 (security review), or tester feedback.
+Decisions: ADR-68 proposed, recommended option taken (CI budgets the inputs at today's numbers plus headroom; frame rate and model latency stay with real hardware).
