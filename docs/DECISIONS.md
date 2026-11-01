@@ -69,6 +69,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
 | ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | accepted 2026-10-19 (Rick, after R-61 passed) | 2026-10-19 |
 | ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
+| ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | proposed | 2026-11-01 |
+| ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | proposed | 2026-11-01 |
 
 ---
 
@@ -2777,3 +2779,47 @@ under reduced motion (it is small, in-place movement, not the vestibular kind WC
 — revisit on feedback).
 
 **Control borders (contrast.test.ts, Rick 2026-11-01: "brighten them").** They fell short of WCAG 1.4.11's 3:1 — `--border` on `--bg` 1.53, on `--panel` 1.37; `--border-bright` on `--panel` 1.91. A new token, `--border-control: #546b84` (3.50 on the page, 3.14 on a panel), edges fields, `.btn` and `.btn-ghost`; their hover goes to `--text-muted`. `--border` keeps its quiet value for panels and dividers, which mark no control.
+
+## ADR-68 Performance budgets: CI holds the inputs, real hardware the outputs (proposed 2026-11-01, P9-T02)
+
+**Context.** PLAN.md's budgets are about a person's machine: 60 fps at 1080p on a mid-range GPU,
+under 400 MB of browser memory without models, and the voice pipeline under 500 ms excluding the
+model (ADR-20, ADR-21). A CI runner has no GPU, and the e2e job runs the models as fakes, so none
+of those figures can be measured there honestly — a frame time under SwiftShader is a CPU
+benchmark, and a pipeline time with fake models is not the pipeline.
+
+**Decision.** CI enforces what those figures depend on and this code decides, at what they
+measure now plus headroom, all in `apps/web/src/perf/budgets.ts`:
+
+1. **Bytes before each page draws** (`pnpm build`, so the gate on both systems). A build plugin
+   reads the chunk graph: the entry and its static imports, each route's lazy chunks (`/chat`:
+   `ChatPage` and the `CallStage` it suspends on) and their CSS, gzipped. Boot 175 kB, welcome
+   200, settings 207, chat 425 (budgets 195/220/230/470). Files loaded later (the AI SDK, the
+   workers, ONNX Runtime's and MediaPipe's wasm) each have a raw-byte ceiling, and any JS or wasm
+   over 100 kB without one fails the build, so a heavy new dependency is a decision.
+2. **One frame of the call** (`e2e/perf.spec.ts`, the e2e job): `/dev/perf` is `/chat` with its
+   renderer kept; at 1920×1080 with the default body, `VrmAvatarRenderer.frameStats()` gives draw
+   calls (51), triangles (138,904), programs (13), textures (32) and their estimated memory
+   (7.46 MB), and CDP gives the JS heap after a collection (31.5 MB). Budgets 60 / 160k / 16 / 40
+   / 9 MB / 48 MB. Identical on every run but for the heap (±0.1%).
+3. **The pipeline's own share** (`e2e/voice.spec.ts`): turn end to first audio with the model,
+   recognition and voice as instant fakes — the reply, the sentence split, the queue and the
+   worklet. 9.3–10.0 ms on four runs; budget 50 ms.
+
+A test (`budgets.test.ts`) keeps the CI numbers inside the plan's: heap plus textures under a
+quarter of 400 MB, the pipeline's share under a tenth of 500 ms. Raising a CI number is allowed
+and is said in the commit; raising one past the plan's needs an ADR. The outputs — frame rate,
+model latency, the whole browser's memory — stay with the live checks on real hardware (R-13,
+R-9, ADR-21's measurements).
+
+**What the first measurement changed.** `/welcome` and `/settings` downloaded the AI SDK's three
+providers (133 kB gzipped) before drawing because `llm-endpoint.ts` held `buildLlmProvider` next
+to the labels they import. It moved to `llm-provider.ts`, imported where a provider is first
+built (every caller was already async); `/chat` starts that import when its provider is made, so
+the first message does not wait. Welcome 327 → 200 kB, settings 334 → 207, chat 552 → 425.
+
+**Rejected.** *A frame-rate budget under SwiftShader* — it measures the runner's CPU, and would
+fail or pass on the runner's luck. *Lighthouse in CI* — a score of a page load, where the costs
+that matter here (the stage, the voice) come after it; and another 100+ MB download. *Budgets on
+the plan's figures directly* (400 MB, 500 ms) — the code is far inside them, so they would catch
+nothing until it was too late; budgets near today's numbers catch the commit that moved them.

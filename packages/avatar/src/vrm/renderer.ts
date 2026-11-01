@@ -29,6 +29,7 @@ import type { CreateCanvas } from './display-board';
 import { DEFAULT_STAGE_OPTIONS, type StageBoards, type StageOptions, buildStage, stageBoards } from './stage';
 import { type BodyReport, checkBody } from './body-check';
 import { readVrm } from './inspect';
+import { type FrameStats, type RendererInfo, frameStats } from './frame-stats';
 
 /**
  * What drawing needs from a WebGL renderer; `THREE.WebGLRenderer` is the real one.
@@ -42,6 +43,9 @@ export interface DrawingSurface {
   shadowMap?: { enabled: boolean; type: number };
   /** For the boards' texture anisotropy; `THREE.WebGLRenderer` has it, a fake surface need not. */
   capabilities?: { getMaxAnisotropy(): number };
+  /** For `frameStats` (P9-T02); `THREE.WebGLRenderer` has both. */
+  info?: RendererInfo;
+  getDrawingBufferSize?(target: THREE.Vector2): THREE.Vector2;
 }
 
 export interface VrmRendererDeps {
@@ -402,6 +406,14 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
 
   clipIds(): readonly string[] {
     return [...this.animations.keys()];
+  }
+
+  /** What the last frame cost to draw (P9-T02, ADR-68); null before a surface, or on one that does not count. */
+  frameStats(): FrameStats | null {
+    const info = this.surface?.info;
+    if (info === undefined) return null;
+    const buffer = this.surface?.getDrawingBufferSize?.(new THREE.Vector2());
+    return frameStats(info, buffer === undefined ? 0 : buffer.x * buffer.y, this.scene);
   }
 
   // --- internals ---

@@ -1,7 +1,6 @@
 import type { CancellationSignal, LLMProvider, LlmModel, LlmRequest, LlmStreamChunk } from '@latentpresence/protocol';
 import type { SettingsDeps } from '../settings/deps';
 import { resolveTransport } from '../settings/connection';
-import { buildLlmProvider } from '../settings/llm-endpoint';
 import { llmKeyRef } from '../settings/settings';
 
 /**
@@ -24,6 +23,9 @@ export interface ChatLlmOptions {
 }
 
 export function chatLlmProvider({ endpointId, baseUrl, companionUrl, deps }: ChatLlmOptions): LLMProvider {
+  // The AI SDK is not in the page's first download (P9-T02, ADR-68); it starts loading here,
+  // after the call has drawn, so the first message does not wait for it.
+  const sdk = import('../settings/llm-provider');
   return {
     id: endpointId,
     async listModels(): Promise<LlmModel[]> {
@@ -38,6 +40,7 @@ export function chatLlmProvider({ endpointId, baseUrl, companionUrl, deps }: Cha
         const start = transport.result.help?.steps[0];
         throw new Error(start === undefined ? transport.result.text : `${transport.result.text} ${start}.`);
       }
+      const { buildLlmProvider } = await sdk;
       const provider = buildLlmProvider(endpointId, baseUrl, apiKey, transport.fetch);
       yield* provider.stream(request, options);
     },

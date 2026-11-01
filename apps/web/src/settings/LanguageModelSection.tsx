@@ -14,7 +14,6 @@ import {
 import type { SettingsDeps } from './deps';
 import {
   LLM_ENDPOINT_OPTIONS,
-  buildLlmProvider,
   chattableModels,
   defaultBaseUrlFor,
   endpointLabel,
@@ -97,6 +96,7 @@ export function LanguageModelSection({ llm, companionUrl, onChangeLlm, onChangeC
         setTestResult(message);
         return;
       }
+      const { buildLlmProvider } = await import('./llm-provider');
       const provider = buildLlmProvider(endpointId, llm.baseUrl, apiKey, transport.fetch);
       const listed = await provider.listModels();
       setModels(listed);
@@ -124,6 +124,7 @@ export function LanguageModelSection({ llm, companionUrl, onChangeLlm, onChangeC
         setMessageResult({ outcome: 'error', text: '', seconds: 0, message: transport.result.text });
         return;
       }
+      const { buildLlmProvider } = await import('./llm-provider');
       const provider = buildLlmProvider(endpointId, llm.baseUrl, apiKey, transport.fetch);
       const controller = new AbortController();
       abortRef.current = controller;

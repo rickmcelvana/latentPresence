@@ -1,6 +1,9 @@
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
+import { checkBundle, formatRoutes, type BuiltBundle } from './src/perf/bundle-budget.ts';
+import { BUNDLE_BUDGETS } from './src/perf/budgets.ts';
 
 /**
  * Fails the build if a dev-only route reaches production — the avatar spike (P0-T05) and
@@ -45,6 +48,8 @@ function assertSpikeExcludedFromBuild(): Plugin {
     'serBench',
     // `/dev/face` (P3-T06): the same.
     'faceBench',
+    // `/dev/perf` (P9-T02): the same.
+    'perfHandle',
     // `/spike/avatar` (Spike B) and `/dev/avatar` (P2-T01), per the comment above.
     '@react-three/fiber',
     'avatar-debug-canvas',
@@ -69,8 +74,54 @@ function assertSpikeExcludedFromBuild(): Plugin {
   };
 }
 
+/**
+ * P9-T02 (ADR-68): fails the build when a page downloads more than its budget before it
+ * draws, or a file loaded later outgrows its ceiling (`src/perf/budgets.ts`). The rules are
+ * `checkBundle`'s, tested without a build; this only describes the real bundle to it.
+ */
+function enforceBundleBudgets(): Plugin {
+  return {
+    name: 'enforce-bundle-budgets',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const built: BuiltBundle = {
+        chunks: Object.values(bundle).flatMap((output) =>
+          output.type === 'chunk'
+            ? [
+                {
+                  fileName: output.fileName,
+                  name: output.name,
+                  isEntry: output.isEntry,
+                  bytes: byteLength(output.code),
+                  gzipBytes: gzip(output.code),
+                  imports: output.imports,
+                  css: [...(output.viteMetadata?.importedCss ?? [])],
+                },
+              ]
+            : [],
+        ),
+        assets: Object.values(bundle).flatMap((output) =>
+          output.type === 'asset' ? [{ fileName: output.fileName, bytes: byteLength(output.source), gzipBytes: gzip(output.source) }] : [],
+        ),
+      };
+      const report = checkBundle(built, BUNDLE_BUDGETS);
+      this.info(`bundle budgets (gzip before each page draws):\n${formatRoutes(report)}`);
+      if (report.failures.length > 0) this.error(`over budget (ADR-68):\n  ${report.failures.join('\n  ')}`);
+    },
+  };
+}
+
+function gzip(source: string | Uint8Array): number {
+  return gzipSync(source).byteLength;
+}
+
+function byteLength(source: string | Uint8Array): number {
+  return typeof source === 'string' ? Buffer.byteLength(source) : source.byteLength;
+}
+
 export default defineConfig({
-  plugins: [react(), assertSpikeExcludedFromBuild()],
+  plugins: [react(), assertSpikeExcludedFromBuild(), enforceBundleBudgets()],
   // **Every dependency only a worker imports, pre-bundled when the server starts.** Vite's
   // scan starts from `index.html` and does not follow `new Worker(new URL(...))`, so these
   // were discovered the first time a worker loaded, and each discovery re-bundles them

@@ -26,6 +26,9 @@ export const DEV_E2E_PATH = '/dev/e2e';
  * target and clip, on the placeholder character. */
 export const DEV_AVATAR_PATH = '/dev/avatar';
 
+/** `/chat` with its renderer kept for Playwright to measure (P9-T02, ADR-68). */
+export const DEV_PERF_PATH = '/dev/perf';
+
 /** The dev-only voice-emotion timing page (P3-T05): a model in its real worker, timed per segment. */
 export const DEV_SER_PATH = '/dev/ser';
 
@@ -65,6 +68,13 @@ const VoiceHarness = lazy(async () => {
   if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
   const module = await import('./dev/VoiceHarness');
   return { default: module.VoiceHarness };
+});
+
+/** P9-T02's page, behind the same guard. */
+const PerfPage = lazy(async () => {
+  if (!import.meta.env.DEV) return { default: (): ReactElement => <></> };
+  const module = await import('./dev/PerfPage');
+  return { default: module.PerfPage };
 });
 
 /** P1-T14's page, behind the same dead-branch guard as the harness above. */
@@ -169,6 +179,14 @@ export function App({
     );
   }
 
+  if (import.meta.env.DEV && path === DEV_PERF_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading chat…</p>}>
+        <PerfPage />
+      </Suspense>
+    );
+  }
+
   if (import.meta.env.DEV && path === DEV_AVATAR_PATH) {
     return (
       <Suspense fallback={<p className="boot-status">Loading the avatar panel…</p>}>
@@ -246,6 +264,7 @@ export function App({
             [GALLERY_PATH, 'Design-system gallery'],
             [DEV_VOICE_PATH, 'Voice harness — queue and barge-in (P1-T08)'],
             [DEV_AVATAR_PATH, 'Avatar — VRM renderer debug panel (P2-T01)'],
+            [DEV_PERF_PATH, 'Performance — /chat with its renderer measured (P9-T02)'],
             [DEV_SER_PATH, 'Voice emotion — worker timing (P3-T05)'],
             [DEV_FACE_PATH, 'Face reading — worker and heuristic (P3-T06)'],
             [SPIKE_AVATAR_PATH, 'Spike B — avatar frame rate and lip sync'],

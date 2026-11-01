@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { PIPELINE_BUDGET } from '../apps/web/src/perf/budgets';
 
 /**
  * The Phase 1 end-to-end test (P1-T14).
@@ -64,6 +65,18 @@ test('a spoken turn, an answer, and a barge-in — with no weights fetched befor
   expect(answering.events.map((event) => event.type)).toEqual(
     expect.arrayContaining(['user.speech.started', 'user.speech.ended', 'user.turn.ended', 'user.transcript', 'assistant.sentence']),
   );
+
+  // **P9-T02's pipeline budget (ADR-68).** The model, recognition and the voice are instant
+  // fakes here, so from the turn's end to the first audio is the time this code adds on its
+  // own: the reply, the sentence split, the queue and the playback worklet starting. The
+  // models' share is measured on real hardware (ADR-21), not in CI.
+  const audio = await until(page, (handle) => handle.events.some((event) => event.type === 'assistant.audio.started'));
+  const turnEnded = audio.events.find((event) => event.type === 'user.turn.ended');
+  const firstAudio = audio.events.find((event) => event.type === 'assistant.audio.started');
+  const ownShareMs = (firstAudio?.atMs ?? Number.NaN) - (turnEnded?.atMs ?? Number.NaN);
+  console.log(`turn end to first audio, models faked: ${ownShareMs.toFixed(1)} ms`);
+  test.info().annotations.push({ type: 'pipeline', description: `${ownShareMs.toFixed(1)} ms` });
+  expect(ownShareMs, 'the pipeline, models excluded').toBeLessThanOrEqual(PIPELINE_BUDGET.ownShareMs);
 
   // Silero, and only Silero: the gate let through exactly what was agreed to.
   expect(weightRequests.length, 'a model other than Silero was fetched').toBeGreaterThan(0);

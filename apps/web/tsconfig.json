@@ -7,6 +7,9 @@
     "paths": {
       "onnxruntime-web": ["./node_modules/onnxruntime-web/types.d.ts"]
     },
+    // P9-T02: `vite.config.ts` imports the budgets by their real file names, which Vite's
+    // native config loader will require (it warns on every build and test run without them).
+    "allowImportingTsExtensions": true,
     "outDir": ".tsbuild",
     "tsBuildInfoFile": ".tsbuild/tsconfig.tsbuildinfo"
   },

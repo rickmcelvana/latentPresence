@@ -53,7 +53,8 @@ const HEARD = 'what time is it';
 /** What the Playwright spec reads. Nothing else uses it. */
 export interface E2EHandle {
   readonly states: string[];
-  readonly events: { type: string; text?: string; spokenPrefix?: string }[];
+  /** `atMs` is `performance.now()` when the page heard it, for P9-T02's pipeline budget. */
+  readonly events: { type: string; atMs: number; text?: string; spokenPrefix?: string }[];
   status: string;
   error: string | null;
   /** True once the session is listening to the fake microphone. */
@@ -124,6 +125,7 @@ export function E2EPage(): ReactElement {
         if (event.type === 'state.changed') handle.states.push(event.to);
         handle.events.push({
           type: event.type,
+          atMs: performance.now(),
           ...(event.type === 'user.transcript' ? { text: event.text } : {}),
           ...(event.type === 'assistant.interrupted' ? { spokenPrefix: event.spokenPrefix } : {}),
         });

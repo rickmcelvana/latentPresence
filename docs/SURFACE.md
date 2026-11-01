@@ -2776,3 +2776,31 @@ checked by running it against rendered components in vitest, not recalled. Dev d
 | jsdom prints | `Not implemented: HTMLCanvasElement's getContext()` from axe's colour code on some runs; harmless |
 | Fake timers | axe schedules its own work on timers: a test using `vi.useFakeTimers()` must switch to real timers before `expectAccessible` |
 | Helper | `apps/web/src/test/axe.ts`, `expectAccessible(container)`; fails with each violation's id, help text and target |
+
+## Measuring the stage in headless Chromium — 2026-11-01 (P9-T02)
+
+Measured with Playwright's Chromium (`e2e/perf.spec.ts`) and read from three 0.185.1's
+`WebGLRenderer`, not recalled.
+
+| Fact | Result |
+|---|---|
+| WebGL in headless Chromium | Works (SwiftShader, software); `THREE.WebGLRenderer` draws the call at 1920×1080 with shadows |
+| `renderer.info.render.calls` / `.triangles` | Reset at the start of each `render()` (`info.autoReset`, default true) and counted through it, the shadow pass included |
+| `renderer.info.memory.geometries` / `.textures`, `renderer.info.programs` | Live counts on the GPU; `programs` is an array (null before the first compile) |
+| `renderer.getDrawingBufferSize(target)` | Device pixels: 1920×1080 at `deviceScaleFactor: 1` |
+| CDP `Performance.getMetrics` | After `Performance.enable`; `JSHeapUsedSize` is the page's used JS heap in bytes. `HeapProfiler.collectGarbage` first steadies it (±0.1% across runs) |
+| Stability | Draw calls, triangles, programs and textures identical on every run |
+| A hidden browser pane | Runs no frames (`requestAnimationFrame` paused): the canvas stays 300×150 and every count is 0 — measure in Playwright, not the pane |
+
+## Rolldown's chunk graph in `generateBundle` — 2026-11-01 (P9-T02)
+
+Read from a real `vite build` (Vite 8.2.2, rolldown 1.2.7) by the budget plugin in `apps/web/vite.config.ts`.
+
+| Fact | Result |
+|---|---|
+| Chunk `name` | The lazy module's file name (`ChatPage`, `CallStage`, `SettingsPage`, `WelcomePage`); several shared chunks are all named `src` |
+| `chunk.imports` | Static imports by file name; dynamic ones are in `dynamicImports`, not counted |
+| `chunk.viteMetadata.importedCss` | A `Set` of the CSS file names the chunk brings |
+| Workers and wasm | In the main bundle as `type: 'asset'` (`kokoro.worker-<hash>.js`, `ort-wasm-simd-threaded.jsep-<hash>.wasm`); with `enforce: 'post'` they are all there by `generateBundle` |
+| Hashes | Eight characters from `[A-Za-z0-9_-]`, so a hash can contain `-` (`src-B1--mU11.js`) |
+| `this.info` | Prints in the build log as `[plugin <name>] …` |

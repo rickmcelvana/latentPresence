@@ -1,12 +1,5 @@
-import type { LLMProvider, LlmModel } from '@latentpresence/protocol';
-import {
-  AnthropicLLMProvider,
-  GoogleLLMProvider,
-  OpenAICompatibleLLMProvider,
-  llmPresets,
-  presetById,
-  type HttpFetch,
-} from '@latentpresence/providers/web';
+import type { LlmModel } from '@latentpresence/protocol';
+import { llmPresets, presetById } from '@latentpresence/providers/web';
 import {
   anthropicListing,
   googleListing,
@@ -70,20 +63,6 @@ export function listingFor(endpointId: string, baseUrl: string, apiKey: string |
   if (endpointId === 'anthropic') return anthropicListing(apiKey);
   if (endpointId === 'google') return googleListing(apiKey);
   return openAiCompatibleListing(baseUrl, apiKey);
-}
-
-/** Build the `LLMProvider` for a probed endpoint, wired to the transport `resolveTransport`
- * resolved (plain, or relayed through the companion). */
-export function buildLlmProvider(endpointId: string, baseUrl: string, apiKey: string | null, fetchFn: HttpFetch): LLMProvider {
-  if (endpointId === 'anthropic') {
-    return new AnthropicLLMProvider(apiKey === null ? { id: endpointId, fetch: fetchFn } : { id: endpointId, apiKey, fetch: fetchFn });
-  }
-  if (endpointId === 'google') {
-    return new GoogleLLMProvider(apiKey === null ? { id: endpointId, fetch: fetchFn } : { id: endpointId, apiKey, fetch: fetchFn });
-  }
-  return new OpenAICompatibleLLMProvider(
-    apiKey === null ? { id: endpointId, baseUrl, fetch: fetchFn } : { id: endpointId, baseUrl, apiKey, fetch: fetchFn },
-  );
 }
 
 export function probeContextFor(endpointId: string, url: string, origin: string, hasKey: boolean): ProbeContext {
