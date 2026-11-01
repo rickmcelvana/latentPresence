@@ -956,3 +956,9 @@ Did: control borders to 3:1 (`--border-control`, Rick's call; 5d67040, CI green)
 Left: R-63 (Rick, in progress); ADR-67 and ADR-68 to accept; the CI run of b9580da (the e2e job now downloads the 10.8 MB body from GitHub); laptop session; C-7.
 Next: P9-T03 (security review), or tester feedback.
 Decisions: ADR-68 proposed, recommended option taken (CI budgets the inputs at today's numbers plus headroom; frame rate and model latency stay with real hardware).
+
+## 2026-11-01 claude (3) — ADR-67 and ADR-68 accepted; P9-T03 built: the security review
+Did: CI of the P9-T02 push green (the runner measured the same frame, 7.8 ms). ADR-67 and ADR-68 accepted (Rick); P9-T02 done. P9-T03: threat model and nine findings in `docs/security.md`, ADR-69 proposed. Fixed: DNS rebinding could read her memory from the standalone companion (`host.rs`, live-checked: 421 for a rebound name); `COMPANION_HOST` off loopback opened every route to the LAN (the code from every request now); no CSP anywhere (a `<meta>` policy in every build, `e2e/csp.spec.ts` loads the built pages and the body under it; zod's eval probe turned off before zod loads); zod 4.6.7, the Rust TLS crates, undici; a weekly `audit` workflow. Checked sound: read_page's SSRF guard, Files containment, ingest limits, the vault, the shell's commands. Gate (2194 TS, 175 Rust) and six e2e specs green; b31832b.
+Left: R-64 (Rick: three Caddy headers on the server); C-8 (the desktop app under the CSP, needs the installed app closed — it was running for R-63); R-63; ADR-69 to accept; the CI run of this push; laptop session; C-7.
+Next: P9-T04 (user docs, owner sub) or P9-T05 (model registry, now with pinning and hashes); tester feedback first when it comes.
+Decisions: ADR-69 proposed, recommended options taken (a `Host` must be an IP or `localhost`; one CSP as a `<meta>` for hosted and desktop; advisories weekly, not in the gate).

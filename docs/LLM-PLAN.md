@@ -507,9 +507,11 @@ Done when: a schedule fires with the main window closed and the notification app
 Brief: `docs/briefs/P9-T01.md`. Captions, call keys, one reduced-motion rule; axe in the component tests; a token-contrast test; control borders raised to 3:1 (`--border-control`).
 ### P9-T02 Performance budgets in CI — owner: main (**done 2026-11-01**, ADR-68 accepted)
 Bytes before each page draws (the build), one frame of the call at 1080p and the heap (`e2e/perf.spec.ts`), the pipeline's own share with instant fakes (`e2e/voice.spec.ts`); all in `apps/web/src/perf/budgets.ts`. The first measurement moved the AI SDK out of /welcome and /settings (−127 kB gzipped each).
-### P9-T03 Security review — owner: main
+### P9-T03 Security review — owner: main (**built 2026-11-01**, ADR-69 proposed; R-64, C-8 open)
+Threat model and findings in `docs/security.md`. The companion answers only requests naming it by IP or localhost (DNS rebinding) and asks every request for the code when bound off loopback; a Content Security Policy in every build (`e2e/csp.spec.ts`); advisories fixed and a weekly `audit` workflow. Pinning downloads to a revision and a SHA-256 moves to P9-T05.
 ### P9-T04 User docs on latentpresence.com (user guide, provider setup, privacy) — owner: sub
 The site left this repository on 2026-10-17 (was `site/docs/`); the docs go wherever Rick keeps it.
 ### P9-T05 Model registry and privacy page — owner: main
+From P9-T03 (finding 8): pin every download (Kokoro, Moonshine, the placeholder body's `dev` branch) to a revision and check its SHA-256, not only its size.
 ### P9-T06 Release 1.0 — owner: main + human
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.
