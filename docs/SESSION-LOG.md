@@ -944,3 +944,9 @@ Did: Rick released v0.2.1 (release run green, 34 minutes) and updated the instal
 Left: README screenshots and additions (Rick); the character-tools repository; the laptop session (R-13, R-1, R-9); C-7.
 Next: Phase 9 (P9-T01, accessibility and reduced motion), or the laptop session.
 Decisions: none new.
+
+## 2026-11-01 claude — P9-T01 built: captions, call keys, reduced motion, axe
+Did: Phase 9 started. PROJECT.md caught up (Rick's README screenshots and the ccdz2vrm link had landed). P9-T01 scoped in `docs/briefs/P9-T01.md`, ADR-67 proposed. Captions (core `reduceCaptions`, shown on each sentence's audio start, cleared on barge-in, "You" for recognised speech; a remembered Captions button), call keys M/C/T/Escape, one reduced-motion rule for the page; measured the caption lift against the text dock (141 px) and voice card (232 px) in the browser. Sonnet subagent: axe-core 4.14.0 in 22 component tests (no violations), `contrast.test.ts` (three control-border pairs below 3:1, marked reported). Gate green; 51c7e7e.
+Left: R-63 (Rick: captions in a live call, the keys, Windows animation effects off); ADR-67 to accept; the border tokens (Rick's call); laptop session; C-7.
+Next: P9-T02 (performance budgets in CI), with R-63 and tester feedback whenever they arrive.
+Decisions: ADR-67 proposed, recommended option taken (captions follow the audio, not a live region; her motion stays under reduced motion).
