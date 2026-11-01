@@ -7,7 +7,7 @@
 
 use std::future::Future;
 
-use crate::{bench, ingest, mcp, memory_api, pairing, relay, routes, schedules, with_cors};
+use crate::{bench, host, ingest, mcp, memory_api, pairing, relay, routes, schedules, with_cors};
 
 /// What the caller decides about this companion.
 pub struct ServeOptions {
@@ -132,8 +132,17 @@ pub async fn serve(
         host.clone(),
         ingester,
     );
+    // P9-T03 (ADR-69): bound where other machines reach it, "no `Origin`" no longer means "a
+    // program on this machine", so the code is asked of every request.
+    let reachable = !address.ip().is_loopback();
     let app = with_cors(match (options.token, options.pairing_code) {
         (Some(token), _) => pairing::require(app, token),
+        (None, Some(code)) if reachable => {
+            println!(
+                "companion: {address} is reachable from other machines, so every request needs this pairing code (Settings → Companion): {code}"
+            );
+            pairing::require_from_all(app, &code)
+        }
         (None, Some(code)) => {
             println!(
                 "companion: to use it from https://app.latentpresence.com, enter this pairing code under Settings → Companion: {code}"
@@ -142,6 +151,8 @@ pub async fn serve(
         }
         (None, None) => app,
     });
+    // Outermost: a rebound name is refused before CORS or a route sees it (P9-T03, ADR-69).
+    let app = host::require_address_or_localhost(app);
     axum::serve(options.listener, app)
         .with_graceful_shutdown(shutdown)
         .await?;

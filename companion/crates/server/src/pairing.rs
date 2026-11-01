@@ -131,15 +131,27 @@ pub fn load_or_create_code(path: &std::path::Path) -> Result<String, (String, St
 /// `router` with requests from a page that is not on this machine required to carry `code`.
 /// Pages on this machine, requests with no `Origin` and preflights pass as before.
 pub fn require_from_elsewhere(router: Router, code: &str) -> Router {
+    require_code(router, code, false)
+}
+
+/// `router` with every request but a preflight required to carry `code` (P9-T03, ADR-69): the
+/// binary bound to an address other machines reach (`COMPANION_HOST`), where a request with no
+/// `Origin` may come from anyone on the network rather than a program on this machine.
+pub fn require_from_all(router: Router, code: &str) -> Router {
+    require_code(router, code, true)
+}
+
+fn require_code(router: Router, code: &str, everyone: bool) -> Router {
     let expected = std::sync::Arc::new(normalise(code));
     router.layer(middleware::from_fn(move |request: Request, next: Next| {
         let expected = expected.clone();
         async move {
-            let from_elsewhere = request
-                .headers()
-                .get(axum::http::header::ORIGIN)
-                .and_then(|value| value.to_str().ok())
-                .is_some_and(|origin| !crate::relay::page_origin_on_this_machine(origin));
+            let from_elsewhere = everyone
+                || request
+                    .headers()
+                    .get(axum::http::header::ORIGIN)
+                    .and_then(|value| value.to_str().ok())
+                    .is_some_and(|origin| !crate::relay::page_origin_on_this_machine(origin));
             if request.method() == Method::OPTIONS || !from_elsewhere {
                 return next.run(request).await;
             }
@@ -305,6 +317,42 @@ mod tests {
             .0,
             StatusCode::FORBIDDEN
         );
+    }
+
+    #[tokio::test]
+    async fn bound_where_the_network_reaches_it_every_request_needs_the_code() {
+        let app = || {
+            crate::with_cors(require_from_all(
+                Router::new().route("/health", get(|| async { "ok" })),
+                "ABCD-EFGH-2345-6723-QRST-WXYZ",
+            ))
+        };
+        for origin in [
+            None,
+            Some("http://localhost:5173"),
+            Some("https://app.latentpresence.com"),
+        ] {
+            let mut request = Request::get("/health");
+            if let Some(origin) = origin {
+                request = request.header("origin", origin);
+            }
+            let refused = app()
+                .oneshot(request.body(Body::empty()).expect("a request"))
+                .await
+                .expect("the router answers");
+            assert_eq!(refused.status(), StatusCode::UNAUTHORIZED, "{origin:?}");
+
+            let mut request =
+                Request::get("/health").header(TOKEN_HEADER, "abcdefgh23456723qrstwxyz");
+            if let Some(origin) = origin {
+                request = request.header("origin", origin);
+            }
+            let answered = app()
+                .oneshot(request.body(Body::empty()).expect("a request"))
+                .await
+                .expect("the router answers");
+            assert_eq!(answered.status(), StatusCode::OK, "{origin:?}");
+        }
     }
 
     #[test]

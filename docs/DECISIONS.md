@@ -71,6 +71,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
 | ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
+| ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | proposed | 2026-11-01 |
 
 ---
 
@@ -2823,3 +2824,34 @@ fail or pass on the runner's luck. *Lighthouse in CI* — a score of a page load
 that matter here (the stage, the voice) come after it; and another 100+ MB download. *Budgets on
 the plan's figures directly* (400 MB, 500 ms) — the code is far inside them, so they would catch
 nothing until it was too late; budgets near today's numbers catch the commit that moved them.
+
+## ADR-69 The security review: Host names, the LAN, a page policy, advisories (proposed 2026-11-01, P9-T03)
+
+**Context.** Phase 9's security review. The threat model and every finding are in
+`docs/security.md`; this records the decisions it made.
+
+**Decision.**
+
+1. **The companion answers only requests that name it by IP address or `localhost`** (`host.rs`,
+   outermost, desktop and standalone alike). DNS rebinding gives a web site same-origin `GET`s to
+   the companion under the site's own name, which carry no `Origin` — so CORS and the pairing
+   check, both of which read `Origin`, let them through, and the site reads the answer. The `Host`
+   is the one thing the attack cannot change. 421 otherwise, and for a request naming nothing.
+2. **Bound to a non-loopback address, the standalone companion asks every request for its pairing
+   code.** "No `Origin`" means "a program on this machine" only on loopback.
+3. **A Content Security Policy in every build**, as a `<meta>` written by the build
+   (`security/csp.ts`), so the hosted app and the desktop webview carry the same one: scripts and
+   workers only from the build, `'wasm-unsafe-eval'` for WebAssembly, no `blob:` worker, no
+   `object`, no `base`. `connect-src` stays open to every http(s) and websocket address, because the
+   person's own model servers can be anywhere. Not in development (Vite's hot reload is inline
+   script). The hosted app adds `frame-ancestors 'none'`, `nosniff` and `no-referrer` as headers.
+   zod's eval probe, which runs while its schemas are built and only ever reports a violation under
+   this policy, is turned off before zod loads by `public/zod-config.js`.
+4. **Advisories are a weekly workflow, not the gate** (`audit.yml`): an advisory published tonight
+   is not a defect in tomorrow's commit. Ignores live in `pnpm-workspace.yaml`, each with its reason.
+
+**Rejected.** *Setting the policy in `tauri.conf.json`* — a second policy to keep equal to the
+first, when the webview reads the page's own. *The policy as a Caddy header only* — the desktop app
+would have none. *`cargo audit` and `pnpm audit` in the gate* — red for reasons no commit can fix.
+*Requiring the pairing code from pages on `localhost`* — any program on the machine can already read
+the companion's database password from `.env`; the code would stop nothing it cannot do anyway.

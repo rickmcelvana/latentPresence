@@ -126,7 +126,19 @@ voice and are readable over the room. On this PC, `pnpm dev`, then `/chat`:
    on hover instead of fading. She still moves.
    Turn animation effects back on after.
 
-Report what you saw; then ADR-67 can be accepted.
+Report what you saw. (ADR-67 was accepted 2026-11-01, Rick; what this finds reopens it.)
+
+### R-64 · The hosted app's new headers (P9-T03, ADR-69) · ~5 minutes
+**Why:** the page now carries a Content Security Policy in its own HTML, but who may frame it can
+only be said by the server. On the server, after `git pull` and the build:
+1. Open the Caddyfile and add the three lines under `header {` that `docs/deploy.md` §3 now shows
+   (`Content-Security-Policy "frame-ancestors 'none'"`, `X-Content-Type-Options nosniff`,
+   `Referrer-Policy no-referrer`).
+2. `sudo systemctl reload caddy`.
+3. From any machine: `curl -sI https://app.latentpresence.com/ | grep -i -E "frame-ancestors|nosniff|referrer"`
+   shows all three.
+4. Open https://app.latentpresence.com/chat, talk to her once by text: it works as before.
+
 
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
@@ -227,6 +239,13 @@ not that the OpenAI-compatible adapter cancels the HTTP request, so a local mode
 generating on the GPU that synthesis and Smart Turn need. **No script yet** — say go with
 Ollama up and I will write it: start a long answer, abort after the first tokens, and read
 Ollama's own log for the request ending rather than trusting the client going quiet.
+
+### C-8 · The desktop app under the Content Security Policy (P9-T03, ADR-69) · **needs** the desktop app closed
+**Why:** `e2e/csp.spec.ts` proves the built pages in Chromium; the desktop webview also runs
+Tauri's own scripts and IPC under the same `<meta>` policy, and a single instance means a test
+build cannot run beside the installed one. Before the next release: `pnpm desktop:build`, run the
+built exe, and check Settings → This app (shell commands), Settings → Companion (the companion's
+config), a reminder notification, and a typed reply — with no CSP violation in the devtools console.
 
 ## Done
 

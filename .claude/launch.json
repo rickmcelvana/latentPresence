@@ -13,12 +13,39 @@
       "port": 5173
     },
     {
+      "name": "web-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@latentpresence/web",
+        "exec",
+        "vite",
+        "preview",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
+    },
+    {
       "name": "companion",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
         "companion"
       ],
       "port": 8787
+    },
+    {
+      "name": "companion-check",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "companion"
+      ],
+      "env": {
+        "COMPANION_PORT": "8799"
+      },
+      "port": 8799,
+      "autoPort": false
     }
   ]
 }

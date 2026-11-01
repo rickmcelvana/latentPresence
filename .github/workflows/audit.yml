@@ -1,0 +1,43 @@
+name: audit
+
+# P9-T03 (ADR-69): known advisories in what we depend on, weekly and on demand.
+#
+# **Not part of the gate, on purpose.** An advisory published tonight is not a defect in
+# tomorrow's commit; tying it to every push would turn the gate red for a reason no change can
+# fix. A failure here is a task: update, override (`pnpm-workspace.yaml`), or ignore with a
+# reason below.
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # `--prod`: what installs with the app, not the test tools. The advisories it skips, and
+      # why, are `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`.
+      - name: npm advisories
+        run: pnpm audit --prod
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      # Fails on a vulnerability; an "unmaintained" or "unsound" warning is printed, not failed.
+      - name: RustSec advisories (companion)
+        run: cargo audit -f companion/Cargo.lock
+
+      - name: RustSec advisories (desktop shell)
+        run: cargo audit -f apps/desktop/src-tauri/Cargo.lock

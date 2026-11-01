@@ -54,10 +54,20 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'pnpm --filter @latentpresence/web exec vite --port 5173 --strictPort',
-    url: 'http://localhost:5173/',
-    reuseExistingServer: process.env.CI === undefined,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'pnpm --filter @latentpresence/web exec vite --port 5173 --strictPort',
+      url: 'http://localhost:5173/',
+      reuseExistingServer: process.env.CI === undefined,
+      timeout: 120_000,
+    },
+    // P9-T03: the built app, for `e2e/csp.spec.ts` — its Content Security Policy is written into the
+    // build only. Built here, every run, so the spec never meets a stale `dist`.
+    {
+      command: 'pnpm --filter @latentpresence/web run build && pnpm --filter @latentpresence/web exec vite preview --port 4173 --strictPort',
+      url: 'http://localhost:4173/',
+      reuseExistingServer: false,
+      timeout: 180_000,
+    },
+  ],
 });

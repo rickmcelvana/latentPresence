@@ -46,6 +46,12 @@ app.latentpresence.com {
     header {
         Cross-Origin-Opener-Policy same-origin
         Cross-Origin-Embedder-Policy credentialless
+        # P9-T03 (ADR-69). The page carries its own Content Security Policy in a <meta>; the one
+        # thing a <meta> cannot say is who may frame it, so that comes from here: no one, so no
+        # site can lay the app under its own buttons and borrow a click on "Allow".
+        Content-Security-Policy "frame-ancestors 'none'"
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
     }
     # Built files carry a content hash in their names, so they can be cached for good.
     @hashed path /assets/*

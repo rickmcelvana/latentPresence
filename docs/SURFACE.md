@@ -2804,3 +2804,19 @@ Read from a real `vite build` (Vite 8.2.2, rolldown 1.2.7) by the budget plugin 
 | Workers and wasm | In the main bundle as `type: 'asset'` (`kokoro.worker-<hash>.js`, `ort-wasm-simd-threaded.jsep-<hash>.wasm`); with `enforce: 'post'` they are all there by `generateBundle` |
 | Hashes | Eight characters from `[A-Za-z0-9_-]`, so a hash can contain `-` (`src-B1--mU11.js`) |
 | `this.info` | Prints in the build log as `[plugin <name>] …` |
+
+## Content Security Policy, zod and pnpm audit — 2026-11-01 (P9-T03)
+
+Measured in Playwright's Chromium against `vite preview` (`e2e/csp.spec.ts`) and in the browser pane; zod read from the installed 4.6.7.
+
+| Fact | Result |
+|---|---|
+| `<meta http-equiv="Content-Security-Policy">` | Enforced for what follows it: Vite's `transformIndexHtml` with `injectTo: 'head-prepend'` puts it before the module scripts |
+| Module workers and audio worklets | Same-origin files pass `worker-src 'self'` / `script-src 'self'`; a `blob:` worker is refused (the constructor does not throw; the load is blocked and reported) |
+| Inside a dedicated worker | Its own policy comes from its response headers (none here), not from the page's `<meta>` |
+| `securitypolicyviolation` | `violatedDirective` is `script-src` for eval, `script-src-elem` for an inline element; `blockedURI` is `eval` / `inline` |
+| Playwright `page.evaluate` | Runs through DevTools and **is not governed by the page's policy** (`eval` succeeds there); probe with an injected `<script>` element instead |
+| zod 4.6.7's eval probe | `allowsEval` runs `Function("")` once, when the first object schema is **built** (`$ZodObjectJIT`), i.e. at module load — not at first parse; caught, but reported as a violation |
+| zod's config | `globalThis.__zod_globalConfig ??= {}` (`v4/core/core.js`): a `{ jitless: true }` set there before zod loads is kept, and `allowsEval` then skips the probe |
+| `pnpm audit --ignore <GHSA>` (pnpm 12.3.4) | **Writes** the id into `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` rather than filtering one run; a plain `pnpm audit` then reports "(N ignored)" and exits 0 |
+| `cargo audit` 0.22 | `-f <Cargo.lock>`; exits non-zero on a vulnerability, prints "unmaintained" / "unsound" as warnings |

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 import { checkBundle, formatRoutes, type BuiltBundle } from './src/perf/bundle-budget.ts';
 import { BUNDLE_BUDGETS } from './src/perf/budgets.ts';
+import { cspValue } from './src/security/csp.ts';
 
 /**
  * Fails the build if a dev-only route reaches production — the avatar spike (P0-T05) and
@@ -116,12 +117,23 @@ function gzip(source: string | Uint8Array): number {
   return gzipSync(source).byteLength;
 }
 
+/** P9-T03 (ADR-69): the Content Security Policy, as the first thing in `<head>`, in builds only. */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml: () => [
+      { tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: cspValue() }, injectTo: 'head-prepend' },
+    ],
+  };
+}
+
 function byteLength(source: string | Uint8Array): number {
   return typeof source === 'string' ? Buffer.byteLength(source) : source.byteLength;
 }
 
 export default defineConfig({
-  plugins: [react(), assertSpikeExcludedFromBuild(), enforceBundleBudgets()],
+  plugins: [react(), assertSpikeExcludedFromBuild(), enforceBundleBudgets(), contentSecurityPolicy()],
   // **Every dependency only a worker imports, pre-bundled when the server starts.** Vite's
   // scan starts from `index.html` and does not follow `new Worker(new URL(...))`, so these
   // were discovered the first time a worker loaded, and each discovery re-bundles them

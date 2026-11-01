@@ -15,6 +15,7 @@ use axum::{Router, middleware, routing::get};
 
 pub mod bench;
 pub mod config_edit;
+pub mod host;
 pub mod ingest;
 pub mod mcp;
 pub mod memory_api;

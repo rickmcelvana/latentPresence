@@ -15,3 +15,20 @@ allowBuilds:
   onnxruntime-node: false
   protobufjs: false
   sharp: false
+
+# P9-T03 (ADR-69): `pnpm audit --prod` (the weekly `audit` workflow) skips these, each for one
+# reason. sharp is transformers.js's Node image path: the browser bundle never imports it, its
+# install script is denied above, and nothing we ship or run decodes an image with it.
+# (`pnpm audit --ignore <GHSA>` writes here, measured with pnpm 12.3.4.)
+auditConfig:
+  ignoreGhsas:
+    - GHSA-f88m-g3jw-g9cj
+    - GHSA-rgj7-g3m4-5g8c
+    - GHSA-wq5f-xc86-pv6w
+
+# P9-T03: the AI SDK's provider-utils pins undici 7.29.1, which has eight advisories fixed in
+# 7.30.1 (released 2026-10-15). undici is its Node path only — the browser bundle uses fetch —
+# but the live scripts run it, and a patch release inside 7.x is the cheap fix. Drop this when
+# provider-utils moves past it.
+overrides:
+  undici: ^7.30.1

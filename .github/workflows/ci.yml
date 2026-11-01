@@ -178,7 +178,9 @@ jobs:
   # It downloads Silero's 2.2 MB from Hugging Face and, since P9-T02, the placeholder body's
   # 10.8 MB from GitHub (the stage budget, `e2e/perf.spec.ts`, ADR-68): the language model, the
   # voice and recognition are fakes, so there is no WebGPU requirement and no 325 MB Kokoro.
-  # The run is ~50 s against the plan's two-minute budget.
+  # Since P9-T03 it also builds the app and serves it with `vite preview`, for `e2e/csp.spec.ts`
+  # (the Content Security Policy is written into the build only). The run is ~60 s against the
+  # plan's two-minute budget.
   e2e:
     name: end-to-end (chromium)
     runs-on: ubuntu-latest
