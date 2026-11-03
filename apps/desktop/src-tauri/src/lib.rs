@@ -502,9 +502,13 @@ pub fn run() {
                 .find(|window| window.label == "main")
                 .cloned()
                 .ok_or("tauri.conf.json has no main window")?;
-            tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
+            let window = tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?
                 .on_permission_request(|_, kind| permission_for(kind))
                 .build()?;
+            let normal = tauri::LogicalSize::new(config.width, config.height);
+            if let Err(error) = tray::recover_normal_size(&window, normal) {
+                log::warn!("window: the remembered size could not be checked: {error}");
+            }
             tray::build(app.handle())?;
             Ok(())
         })

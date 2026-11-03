@@ -97,6 +97,31 @@ fn corner(
     )
 }
 
+/// True for a size the normal window cannot have: its minimum holds whenever a person drags it, so
+/// this is the presence window's size, remembered. A pixel's grace, for the rounding at a scale
+/// that does not divide evenly.
+fn below_normal_minimum(size: LogicalSize<f64>) -> bool {
+    size.width < NORMAL_MIN.0 - 1.0 || size.height < NORMAL_MIN.1 - 1.0
+}
+
+/// At launch, puts a window restored at the presence window's size back to `normal`, in the middle
+/// of the screen. The window-state plugin saves whatever size the window has on the way out, so
+/// leaving from the presence window by anything but the tray's Quit (the close button with tray
+/// mode off, a Windows shutdown) remembered 360×560: the next launch opened there with the full
+/// control bar cut off, and Small then Full window came back to the same size. Checked here rather
+/// than at every way out, so a file already saved heals too.
+pub fn recover_normal_size(window: &WebviewWindow, normal: LogicalSize<f64>) -> tauri::Result<()> {
+    let size = window
+        .inner_size()?
+        .to_logical::<f64>(window.scale_factor()?);
+    if below_normal_minimum(size) {
+        log::info!("window: remembered at {size:?}, the presence size; back to normal");
+        window.set_size(normal)?;
+        window.center()?;
+    }
+    Ok(())
+}
+
 fn set_presence(app: &AppHandle, on: bool) -> Result<(), String> {
     let window = main_window(app).ok_or("the window is gone")?;
     let tray = app.state::<Tray>();
@@ -254,6 +279,18 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_a_size_below_the_normal_minimum_counts_as_left_from_the_presence_window() {
+        let below = |width, height| below_normal_minimum(LogicalSize::new(width, height));
+        assert!(below(PRESENCE_SIZE.0, PRESENCE_SIZE.1));
+        assert!(below(958.0, 820.0));
+        assert!(below(1280.0, 598.0));
+        // The minimum itself, its rounding at 150 %, and anything larger are a person's choice.
+        assert!(!below(NORMAL_MIN.0, NORMAL_MIN.1));
+        assert!(!below(959.6, 599.4));
+        assert!(!below(1280.0, 820.0));
+    }
 
     #[test]
     fn the_presence_window_sits_in_the_bottom_right_of_the_work_area_clear_of_the_edge() {
