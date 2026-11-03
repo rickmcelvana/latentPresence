@@ -2820,3 +2820,16 @@ Measured in Playwright's Chromium against `vite preview` (`e2e/csp.spec.ts`) and
 | zod's config | `globalThis.__zod_globalConfig ??= {}` (`v4/core/core.js`): a `{ jitless: true }` set there before zod loads is kept, and `allowsEval` then skips the probe |
 | `pnpm audit --ignore <GHSA>` (pnpm 12.3.4) | **Writes** the id into `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` rather than filtering one run; a plain `pnpm audit` then reports "(N ignored)" and exits 0 |
 | `cargo audit` 0.22 | `-f <Cargo.lock>`; exits non-zero on a vulnerability, prints "unmaintained" / "unsound" as warnings |
+
+## Driving the desktop webview — 2026-11-03 (C-8)
+
+Measured on the built exe (WebView2, Edge 156), with Playwright's `connectOverCDP`.
+
+| Fact | Result |
+|---|---|
+| `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` | Reaches a Tauri app's webview: `--remote-debugging-port=9333` opens DevTools; the fake-microphone flags and `--mute-audio` pass the same way |
+| `WEBVIEW2_USER_DATA_FOLDER` | Overrides Tauri's profile folder, so a test leaves the person's own profile alone |
+| `browser.close()` over CDP | Only disconnects; the app keeps running and a later script can reconnect |
+| `context.addInitScript` over CDP | Lasts as long as that connection; listeners already in a page survive reconnecting |
+| The page's `fetch` in the desktop app | Patched to add the token, so a "no token" probe from inside the page still sends it: test from outside (401) |
+| `.window-state.json` (`%APPDATA%\com.latentpresence.desktop`) | Not rewritten by a forced kill; restores a size below the configured `minWidth` (360×560 against 960) |

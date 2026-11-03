@@ -962,3 +962,9 @@ Did: CI of the P9-T02 push green (the runner measured the same frame, 7.8 ms). A
 Left: R-64 (Rick: three Caddy headers on the server); C-8 (the desktop app under the CSP, needs the installed app closed — it was running for R-63); R-63; ADR-69 to accept; the CI run of this push; laptop session; C-7.
 Next: P9-T04 (user docs, owner sub) or P9-T05 (model registry, now with pinning and hashes); tester feedback first when it comes.
 Decisions: ADR-69 proposed, recommended options taken (a `Host` must be an IP or `localhost`; one CSP as a `<meta>` for hosted and desktop; advisories weekly, not in the gate).
+
+## 2026-11-03 claude — C-8: the desktop app under its CSP; a fresh machine
+Did: this PC was wiped and the repo moved to `Z:\dev\latent\latentPresence`; gate green on Node 26.13 and rustc 1.99.1 with no file changes (2194 TS, 175 Rust); CI and the first weekly audit green on 15092a8. R-63 passed (D-65); R-64 deployed and confirmed by curl (D-66). C-8 (D-67): built from HEAD and drove the real webview over DevTools: no violation on Settings or `/chat`, shell commands, updates, her body, a typed reply through the relay, six workers and two worklets, 401 and 421 from outside.
+Left: R-65 (a spoken call under the policy: the permission check refused my agreeing to the model download for Rick, rightly); ADR-69 to accept after it; the Small window bug below; laptop session; C-7. `gh` is not installed here and `.cargo\bin` is not on this app's PATH.
+Next: fix the window bug if Rick says so; P9-T05 (model registry, pinned revisions and SHA-256) or P9-T04 (user docs, sub); tester feedback first.
+Decisions: none new. Found: only the tray's Quit restores the normal size, so any other exit in Small window (shutdown, end task, the updater) leaves 360×560 remembered; the next launch opens there with the control bar cut off, and pressing Small then Full window returns to 360×560.

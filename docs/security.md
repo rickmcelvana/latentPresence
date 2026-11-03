@@ -35,7 +35,7 @@ page, so a local program calling `/mcp/call` is not asked — it could read the 
 |---|---|---|---|
 | 1 | Standalone companion: a rebound name's same-origin `GET`s carried no `Origin` and passed CORS and pairing — her memory, schedules and tool list readable by a web site | High | **Fixed**: `host.rs` (421 for any other name; live-checked with `curl -H 'Host: evil.example'`) |
 | 2 | `COMPANION_HOST=0.0.0.0` opened every route to the LAN with no code, `/mcp/call` included | High | **Fixed**: the code from every request when not bound to loopback |
-| 3 | No Content Security Policy, hosted or desktop | Medium | **Fixed**: a `<meta>` policy in every build; `e2e/csp.spec.ts` loads the built pages under it, the body included; `frame-ancestors`, `nosniff` and `Referrer-Policy` as Caddy headers (`docs/deploy.md`, applied on the server by Rick) |
+| 3 | No Content Security Policy, hosted or desktop | Medium | **Fixed**: a `<meta>` policy in every build; `e2e/csp.spec.ts` loads the built pages under it, the body included; `frame-ancestors`, `nosniff` and `Referrer-Policy` as Caddy headers (`docs/deploy.md`, on the server since 2026-11-03); the desktop webview checked over DevTools (D-67); a spoken call under the policy is R-65 |
 | 4 | zod 4.5.4 (shipped): memory exhaustion on oversized constrained collections | Medium | **Fixed**: 4.6.7 |
 | 5 | rustls, rustls-webpki, quinn-proto, ctutils, webpki-root-certs, tokio advisories in both Rust lockfiles | Medium | **Fixed**: patch updates; `cargo audit` clean but for four "unmaintained" warnings (font parsing, D-Bus) |
 | 6 | undici 7.29.1 (eight advisories), via the AI SDK's Node path | Low (not in the bundle) | **Fixed**: override to 7.30.1 |

@@ -111,34 +111,17 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-63 · Captions, call keys and reduced motion (P9-T01) · ~10 minutes
-**Why:** the tests prove the rules; only a real call shows whether captions keep pace with her
-voice and are readable over the room. On this PC, `pnpm dev`, then `/chat`:
-1. Press **Captions** (or **C**), then **Start voice** and talk for a minute. Her words should
-   appear **as she says each sentence** (not ahead of her), labelled with her name, above the voice
-   card; yours appear as "You" once she has heard you. Talk over her: her caption should vanish
-   at once. Readable? Too small, too big, in her way?
-2. Click on the stage (so nothing is focused), then **M** mutes and unmutes, **Escape** closes the
-   drawer, **C** turns captions off. End the call, press **T**: the text box opens with the cursor
-   in it, and typing an M there is just an M.
-3. Windows **Settings → Accessibility → Visual effects → Animation effects: Off**, reload: while
-   she answers in text, the transcript's cursor does not blink, and buttons change colour at once
-   on hover instead of fading. She still moves.
-   Turn animation effects back on after.
+### R-65 · A spoken call under the Content Security Policy (P9-T03, ADR-69) · ~10 minutes
+**Why:** the policy is proved on everything but a real voice call. R-63 ran on the dev server, which
+carries no policy; C-8 started every worker and worklet in the desktop app but loaded no model,
+because agreeing to that download is yours. The hosted app serves the policy since R-64, so the
+quickest place to check is there.
+1. In Chrome, open https://app.latentpresence.com/chat with a model chosen, press **Start voice**,
+   read the consent card, agree if you are happy with the download, and talk for a minute.
+2. Press **F12 → Console**. Pass: she hears you and answers aloud, and no red line mentions
+   "Content Security Policy". Then **Read my face** the same way.
 
-Report what you saw. (ADR-67 was accepted 2026-11-01, Rick; what this finds reopens it.)
-
-### R-64 · The hosted app's new headers (P9-T03, ADR-69) · ~5 minutes
-**Why:** the page now carries a Content Security Policy in its own HTML, but who may frame it can
-only be said by the server. On the server, after `git pull` and the build:
-1. Open the Caddyfile and add the three lines under `header {` that `docs/deploy.md` §3 now shows
-   (`Content-Security-Policy "frame-ancestors 'none'"`, `X-Content-Type-Options nosniff`,
-   `Referrer-Policy no-referrer`).
-2. `sudo systemctl reload caddy`.
-3. From any machine: `curl -sI https://app.latentpresence.com/ | grep -i -E "frame-ancestors|nosniff|referrer"`
-   shows all three.
-4. Open https://app.latentpresence.com/chat, talk to her once by text: it works as before.
-
+Report what you saw; then ADR-69 can be accepted.
 
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
@@ -240,18 +223,25 @@ generating on the GPU that synthesis and Smart Turn need. **No script yet** — 
 Ollama up and I will write it: start a long answer, abort after the first tokens, and read
 Ollama's own log for the request ending rather than trusting the client going quiet.
 
-### C-8 · The desktop app under the Content Security Policy (P9-T03, ADR-69) · **needs** the desktop app closed
-**Why:** `e2e/csp.spec.ts` proves the built pages in Chromium; the desktop webview also runs
-Tauri's own scripts and IPC under the same `<meta>` policy, and a single instance means a test
-build cannot run beside the installed one. Before the next release: `pnpm desktop:build`, run the
-built exe, and check Settings → This app (shell commands), Settings → Companion (the companion's
-config), a reminder notification, and a typed reply — with no CSP violation in the devtools console.
-
 ## Done
 
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-67 · C-8: the desktop app under its Content Security Policy** — claude 2026-11-03: the exe
+  built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone).
+  **Passed for everything but a model-loaded call (R-65):** the policy is live in WebView2 (Edge
+  156), with no violation or page error on Settings or `/chat`. The shell's commands answer
+  (`companion_info`, `companion_config`, `database_info`, a `secret_*` round trip; Check for updates
+  says "You have the newest version"). Her body downloads and draws. A typed reply comes through
+  the relay from local Ollama. Six workers and two worklets start, and WebGPU finds the adapter. From
+  outside the page the companion gives 401 with no token and 421 for a rebound name. `Notification`
+  is accepted, but an exe in a build folder draws no toast (`os_notifications` is false by design),
+  so the toast itself was not seen. The test profile had the placeholder body's consent seeded, as
+  the e2e specs do.
+- **D-66 · R-64: the hosted app's headers** — Rick 2026-11-03: deployed. Confirmed by `curl`:
+  `frame-ancestors 'none'`, `nosniff` and `no-referrer` are served, and the page carries the policy.
+- **D-65 · R-63: captions, call keys, reduced motion** — Rick 2026-11-03: **passed**. P9-T01 done.
 - **D-64 · R-62: the release key, the first release, an update** — Rick 2026-10-19: made the
   release key (minisign AB76E78B7E5AB1A9; both repository secrets), released **v0.2.0** from the
   workflow (27 minutes) and installed it by hand, then released **v0.2.1** (a version bump; the
