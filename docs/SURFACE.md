@@ -2832,4 +2832,9 @@ Measured on the built exe (WebView2, Edge 156), with Playwright's `connectOverCD
 | `browser.close()` over CDP | Only disconnects; the app keeps running and a later script can reconnect |
 | `context.addInitScript` over CDP | Lasts as long as that connection; listeners already in a page survive reconnecting |
 | The page's `fetch` in the desktop app | Patched to add the token, so a "no token" probe from inside the page still sends it: test from outside (401) |
-| `.window-state.json` (`%APPDATA%\com.latentpresence.desktop`) | Not rewritten by a forced kill; restores a size below the configured `minWidth` (360×560 against 960) |
+| `.window-state.json` (`%APPDATA%\com.latentpresence.desktop`, tauri-plugin-window-state 2.5.0) | Written on `RunEvent::Exit` with the size the window has then; not by a forced kill. Restores below the configured `minWidth` (360×560 against 960). The restore has finished by the time `WebviewWindowBuilder::build()` returns, so `inner_size()` right after reads the restored size |
+| `taskkill` without `/F` | Sends the window a close request, the same path as the close button: a way to test an exit from outside |
+
+## A GitHub run's status can lag its job — 2026-11-03
+
+`gh run list` showed the Windows gate job "in progress" at 2h 5m, while the job's own log (`gh api --allow-escape-sequences repos/<owner>/<repo>/actions/jobs/<id>/logs`, available before the run reports complete) showed it had finished at 8 minutes, and the run reported `completed success` soon after. Read the job log before calling a run hung.

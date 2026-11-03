@@ -968,3 +968,9 @@ Did: this PC was wiped and the repo moved to `Z:\dev\latent\latentPresence`; gat
 Left: R-65 (a spoken call under the policy: the permission check refused my agreeing to the model download for Rick, rightly); ADR-69 to accept after it; the Small window bug below; laptop session; C-7. `gh` is not installed here and `.cargo\bin` is not on this app's PATH.
 Next: fix the window bug if Rick says so; P9-T05 (model registry, pinned revisions and SHA-256) or P9-T04 (user docs, sub); tester feedback first.
 Decisions: none new. Found: only the tray's Quit restores the normal size, so any other exit in Small window (shutdown, end task, the updater) leaves 360×560 remembered; the next launch opens there with the control bar cut off, and pressing Small then Full window returns to 360×560.
+
+## 2026-11-03 claude (2) — the Small window size bug
+Did: at launch, a window below the normal minimum goes back to the configured size, centred (`tray::recover_normal_size`; ADR-65 amended). Verified on the rebuilt exe from Rick's own 360×560 state file: it opened at 1280×820; Small then Full window returned to 1280×820; an exit from Small window with tray mode off saved 360×560 again (the failure, reproduced); the next launch recovered, and a normal exit saved 1280×820. Gate green (2194 TS, 176 Rust).
+Left: R-65; ADR-69 to accept after it; the laptop session; C-7. Not reproduced: the page entering Small window by itself during C-8; a typed message does not cause it, and nothing in the code but its button and the tray menu can, so likely a click on the visible window. Say if it happens again.
+Next: P9-T05 (model registry, pinned revisions and SHA-256) or P9-T04 (user docs, sub); tester feedback first.
+Decisions: none new; ADR-65 amended. CI of d587109 looked hung at 2h 5m and was not: the job log showed it finished at 8 minutes (SURFACE).

@@ -2701,6 +2701,8 @@ used memory in the browser, where the page runs the reminder itself and asks the
 tick now asks the same `away()`. Memory in the tray with her on stage: about 295 MB in Task
 Manager (WebView2 288 MB, the shell 7.1 MB), the MCP programs apart.
 
+**Amended 2026-11-03: the presence size is not a size to come back to.** The window-state plugin saves whatever size the window has when the app exits, so leaving from the presence window by anything but the tray's Quit saved 360×560, and the next launch opened there with the full control bar cut off. At launch, a window below the normal minimum goes back to the configured size, centred (`tray::recover_normal_size`). Checked at launch rather than at each way out, because a Windows shutdown or a kill cannot be relied on to run anything, and a file already saved heals too. The cost: after such an exit the window comes back at the default size, not the person's own.
+
 ## ADR-66 Updates and releases (accepted 2026-10-19, P8-T04)
 
 **Context.** P8-T04: "Tauri updater, unsigned artifacts (owner decision as in latentCreate),
