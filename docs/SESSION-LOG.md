@@ -993,3 +993,10 @@ Did: Rick's Debian build failed its budgets with vite 8.3.4 and rolldown 1.2.14;
 Left: Rick updates the server's pnpm and rebuilds; R-66, C-9; ADR-70 to accept; laptop session; C-7.
 Next: C-9, then P9-T04 or P9-T06; tester feedback first.
 Decisions: none new. Found: `pins.ts` reaches the boot page through `character-asset.ts`, 6.3 kB gzip of hashes on a page that downloads nothing; not the cause, but it used the headroom.
+
+## 2026-11-03 claude (6) — R-66 and C-9 passed, ADR-70 accepted, P9-T05 done
+Did: Rick deployed, read `/privacy` and passed R-66 (D-69). C-9 (D-70): the built exe from an empty profile reached listening in 34.7 s with 0 jsDelivr and nothing on a moving ref; the webview serves the `.mjs` as `text/javascript`; a real spoken turn through recognition, local Ollama over the relay and Kokoro; from the cache 7.3 s with nothing leaving. Also measured: pnpm 9 drops the workspace overrides, and `docs/deploy.md` no longer calls the install-script denials measured.
+Left: the laptop session; C-7; two small things in Known, unowned (the AbortError, the pin table on the boot page).
+Next: P9-T04 (user docs, sub) or P9-T06 (1.0); tester feedback first.
+Decisions: ADR-70 accepted. Found: a barge-in during thinking logs an uncaught `AbortError` from the LLM stream, in Chrome and the webview alike, with no visible effect; the source is not traced. The desktop webview has no ONNX threads: known, unchanged, and C-9's wording had assumed otherwise.
+Lessons: Read the fixture before calling a result a bug: two bubbles and a never-ending "thinking" looked like faults and were `speech.wav` saying its sentence twice, on a loop. My first padded copy read the byte rate as the sample rate and doubled its silence, which produced a 33-second delay that looked like a real lag until Chrome showed the same number.

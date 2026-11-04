@@ -111,19 +111,6 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-66 · The privacy page, and voice with its runtime from the build (P9-T05, ADR-70) · ~10 minutes
-**Why:** the page makes promises in your name, and three voice workers now load ONNX Runtime from the
-app instead of jsDelivr. The browser half is proved here; the server's copy is not deployed.
-1. Deploy to the server as usual (`docs/deploy.md`).
-2. Open https://app.latentpresence.com/privacy and read it. Pass: every line is something you are happy
-   to promise. The hosted-server line says it sees a visitor's address and nothing else; say if your
-   Caddy keeps logs longer than you would want said plainly.
-3. On https://app.latentpresence.com/chat press **F12 → Network**, type `jsdelivr` in the filter, press
-   **Start voice**, and talk for a minute. Pass: she hears and answers, and the filter shows nothing.
-   Your body re-downloads once (10.8 MB): its address now names a commit.
-
-Report what you saw; then ADR-70 can be accepted.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -217,11 +204,6 @@ P1-T08 answered two of the three browser questions in the Claude desktop app's B
 (D-15, D-16). The third — how often a person triggers ADR-25's retraction — needs a person, and
 was part of R-2: **no retraction in four microphone turns** (D-17), too few to call a rate.
 
-### C-9 · Voice in the desktop app with its runtime from the build (ADR-70) · **needs** the installed app closed
-The webview serving a new file type, `.mjs`, and starting threads from it. Tauri's source says the type
-is right (SURFACE); nothing has seen it run. C-8's method: build from HEAD, drive the exe over DevTools
-with its own profile, press Start voice, and watch for a jsDelivr request or a worker error.
-
 ### C-7 · An aborted answer stops the model, not just the stream · **needs** a local Ollama running
 **Why:** barge-in aborts `LLMProvider.stream()`. P1-T08 proved the signal reaches the fake;
 not that the OpenAI-compatible adapter cancels the HTTP request, so a local model could keep
@@ -234,6 +216,16 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-70 · C-9: voice in the desktop app with its runtime from the build** — claude 2026-11-03: the exe
+  built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone, muted).
+  **Passed.** From an empty profile: listening in 34.7 s, 0 jsDelivr, nothing on a moving ref, five
+  workers, no worker or policy error. The webview serves the `.mjs` as `text/javascript` and the wasm
+  as `application/wasm`. A real turn: recognition heard the fixture, local Ollama answered through the
+  relay, Kokoro spoke (first audio 8.2 s, 7.3 s of it the model). From the cache: 7.3 s, nothing leaving
+  the machine. The webview is not cross-origin isolated (known since ADR-60), so voice there runs without
+  threads, as it did before this change. The saved window size was not touched (the app was killed, not closed).
+- **D-69 · R-66: the privacy page, and voice with its runtime from the build** — Rick 2026-11-03: **passed**,
+  on the deployed server; "Privacy page is perfect." P9-T05 done; ADR-70 accepted.
 - **D-68 · R-65: a spoken call under the Content Security Policy** — Rick 2026-11-03: **passed**. P9-T03 done; ADR-69 accepted.
 - **D-67 · C-8: the desktop app under its Content Security Policy** — claude 2026-11-03: the exe
   built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone).

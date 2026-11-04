@@ -2862,7 +2862,9 @@ preview` sends neither and `crossOriginIsolated` was false under it. Read from t
 | Checking fp32 Kokoro, 325 MB, on this PC | Read 251 ms + SHA-256 214 ms in the page |
 | Wrong bytes | A build served with one wrong pin: the cached copy removed with a console warning, the download refused with the sentence on the page ("these are not the bytes this app pinned"), nothing stored; the next start recovers by itself. A poisoned `config.json` and a poisoned body: removed and fetched again |
 | Playwright's `context.route` and a worker's `fetch` | **Not intercepted** (0 hits; `request` events do fire). To test a worker's wrong bytes, serve it a wrong expectation instead |
-| `.mjs` from Tauri | `tauri-utils` 2.10.2 `mime_type.rs`: `text/javascript`; read from the source, not yet seen in the webview (C-9) |
+| `.mjs` from Tauri | `text/javascript`, status 200, in the built app's WebView2 (Edge 156); the wasm `application/wasm`, 21.6 MB (C-9). Agrees with `tauri-utils` 2.10.2 `mime_type.rs` |
+| The desktop webview, same build | `crossOriginIsolated` false, so no threads; from an empty profile listening in 34.7 s, from the cache 7.3 s; a worker's requests show in Playwright's `request` events over `connectOverCDP` |
+| `e2e/fixtures/speech.wav` as a test of a turn | **Two utterances of one sentence**, 16 kHz, 10.75 s, looped by the fake device. Two user lines and a cancelled answer are the app being right, and on a loop the answer never comes: every utterance interrupts it. For one answer, pad the file with silence |
 
 ## pnpm and this lockfile, by version — measured 2026-11-03
 
@@ -2877,6 +2879,7 @@ Ubuntu with the lockfile, was green on the same commit.
 | 9.15.9 | `WARN Ignoring broken lockfile`, **exit 0**, resolves everything afresh (rolldown 1.2.16, vite 8.3.5 that day) and rewrites `pnpm-lock.yaml` |
 | 8.15.9 | The same, and writes lockfile version 6.0 |
 | 9.15.9 with `--frozen-lockfile` | `ERR_PNPM_BROKEN_LOCKFILE`, exit 1 |
+| 9.15.9, the overrides | The lockfile it writes has no `overrides:` section, so `pnpm-workspace.yaml`'s are not applied. Its `allowBuilds` denials: not measured |
 | 9.15.9 with `engines.pnpm` `>=12.3.4` | `ERR_PNPM_UNSUPPORTED_ENGINE`, exit 1; on an install only, not on `pnpm build` |
 
 The same source gave 14.6 kB more gzip before `boot` draws under the newer tools (197.5 against 182.9).

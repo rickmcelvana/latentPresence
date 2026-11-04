@@ -72,7 +72,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
-| ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | proposed | 2026-11-03 |
+| ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 
 ---
 
@@ -2859,7 +2859,7 @@ would have none. *`cargo audit` and `pnpm audit` in the gate* — red for reason
 *Requiring the pairing code from pages on `localhost`* — any program on the machine can already read
 the companion's database password from `.env`; the code would stop nothing it cannot do anyway.
 
-## ADR-70 Pinned downloads, ONNX Runtime from the build, the registry and privacy page (proposed 2026-11-03, P9-T05)
+## ADR-70 Pinned downloads, ONNX Runtime from the build, the registry and privacy page (accepted 2026-11-03, P9-T05)
 
 **Context.** The security review's finding 8: Kokoro and the recognition models resolved a moving
 `main`, the placeholder body a moving `dev`, and only some downloads had their size checked. Reading
@@ -2911,3 +2911,8 @@ bytes only once, with a marker*: more code to save half a second on a load that 
 and the old entry stays until Settings deletes it. A host deleting a pinned repository breaks a new
 person's download until the pin moves, which is what the weekly check is for. Each worker carries the
 whole table (16 kB raw; the face worker's budget rose from 150 to 165 kB).
+
+**Accepted 2026-11-03.** Rick deployed it, read the page and made a call with `jsdelivr` in the Network
+filter (R-66, D-69). The built desktop app did the same from an empty profile, a spoken turn included
+(C-9, D-70). In the webview ONNX Runtime has no threads, because the page is not cross-origin isolated;
+that predates this decision and is unchanged by it.

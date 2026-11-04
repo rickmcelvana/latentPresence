@@ -18,7 +18,8 @@ Ollama, LM Studio or companion on their own machine.
 - **Node.js 22 or later** (`package.json` `engines`) and **pnpm 12.3.4**: `npm install -g pnpm@12.3.4`.
   An older one is not a smaller problem. pnpm 9 calls this lockfile broken, ignores it and resolves
   every dependency afresh, so the server builds versions nothing has tested, without the overrides
-  or the install-script denials in `pnpm-workspace.yaml` (measured 2026-11-03, SURFACE). Since then
+  in `pnpm-workspace.yaml` (measured 2026-11-03, SURFACE) and, presumably, without its install-script
+  denials (not measured). Since then
   `engines` refuses it.
 - **Git LFS.** The body's base clips (`assets/clips/idle.vrma`, `talk.vrma`) live in LFS. Without
   it the clone holds ~130-byte pointer files, the build bundles those, and nothing fails visibly:
