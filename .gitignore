@@ -27,8 +27,10 @@ models/
 # non-redistributable assets (keep local)
 assets/mixamo/
 assets/private/
-# experimental bodies from image-to-vrm (P7-T02's generated Alice, out 2026-10-16): local only
-assets/bodies/
+# experimental bodies from image-to-vrm (P7-T02's generated Alice, out 2026-10-16): local only.
+# Theo's default is the one body here that ships (ADR-59 amended 2026-11-03).
+assets/bodies/*
+!assets/bodies/theo.vrm
 
 # aider
 .aider*
