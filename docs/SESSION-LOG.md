@@ -998,5 +998,12 @@ Decisions: none new. Found: `pins.ts` reaches the boot page through `character-a
 Did: Rick deployed, read `/privacy` and passed R-66 (D-69). C-9 (D-70): the built exe from an empty profile reached listening in 34.7 s with 0 jsDelivr and nothing on a moving ref; the webview serves the `.mjs` as `text/javascript`; a real spoken turn through recognition, local Ollama over the relay and Kokoro; from the cache 7.3 s with nothing leaving. Also measured: pnpm 9 drops the workspace overrides, and `docs/deploy.md` no longer calls the install-script denials measured.
 Left: the laptop session; C-7; two small things in Known, unowned (the AbortError, the pin table on the boot page).
 Next: P9-T04 (user docs, sub) or P9-T06 (1.0); tester feedback first.
-Decisions: ADR-70 accepted. Found: a barge-in during thinking logs an uncaught `AbortError` from the LLM stream, in Chrome and the webview alike, with no visible effect; the source is not traced. The desktop webview has no ONNX threads: known, unchanged, and C-9's wording had assumed otherwise.
+Decisions: ADR-70 accepted. Found: a barge-in during thinking logs an uncaught `AbortError` from the LLM stream, in Chrome and the webview alike, with no visible effect (fixed in session 7). The desktop webview has no ONNX threads: known, unchanged, and C-9's wording had assumed otherwise.
 Lessons: Read the fixture before calling a result a bug: two bubbles and a never-ending "thinking" looked like faults and were `speech.wav` saying its sentence twice, on a loop. My first padded copy read the byte rate as the sample rate and doubled its silence, which produced a 33-second delay that looked like a real lag until Chrome showed the same number.
+
+## 2026-11-03 claude (7) — the AbortError on barge-in traced and fixed
+Did: the uncaught `AbortError` from C-9 was AI SDK 7.0.97's tracing hook: a `.then` on the usage promise that only Node catches. All three LLM providers now pass `telemetry: { isEnabled: false }`. `abort-in-browser.test.ts` pretends not to be Node, failed for all three before the fix and passes now. Built desktop app, one spoken turn: 2 requests aborted, 0 page errors, she answered. Gate green (2240 TS).
+Left: the laptop session; C-7; the pin table on the boot page (Known, unowned). Not pushed.
+Next: P9-T04 (user docs, sub) or P9-T06 (1.0); tester feedback first.
+Decisions: none new. Not checked: whether a newer `ai` (7.0.162 today) fixes the hook; the setting is right either way.
+Lessons: A browser-only fault can hide from a Node test because the library branches on the runtime; the first two reproductions were clean for that reason. Read the branch, then make the test take it. And `$TEMP` differs between this shell's calls, so a log belongs in the scratchpad.

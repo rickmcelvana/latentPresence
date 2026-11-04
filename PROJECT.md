@@ -15,11 +15,11 @@
 - **The desktop app (ADR-60):** the companion runs in the Tauri process on 8787 or a free port, paired by a per-launch token the page adds to every companion request; local Ollama and LM Studio go through its relay (Ollama 403s `http://tauri.localhost`); API keys in Windows Credential Manager; single instance, remembered window; closing hides to the tray (ADR-65). `pnpm desktop:build` → `apps/desktop/src-tauri/target/release/bundle/nsis/`. Icons from `apps/desktop/icon.svg` (`apps/desktop/README.md`).
 - **The hosted app (`docs/deploy.md`):** Caddy with `try_files` and COOP `same-origin` + COEP **`credentialless`** (`require-corp` hid the OLLAMA_ORIGINS help — measured); the server needs Git LFS or the body's clips are pointer files. Visitors running Ollama set `OLLAMA_ORIGINS=https://app.latentpresence.com`; the browser asks before the site reaches their computer, and their companion wants its pairing code (ADR-64).
 - **CI:** gate on ubuntu and windows (Windows also checks the desktop shell), `vector` (MariaDB), e2e; `audit` weekly (npm and both Rust lockfiles, ADR-69), `release` on a `v*` tag. **After every push, read the run** (`gh run list --limit 1`): a green local gate is not a green CI.
-- **Test counts (2026-11-03):** about **2237** TypeScript passing (20 skipped: need a running companion or a model), **176** Rust; `pnpm gate` green.
+- **Test counts (2026-11-03):** about **2240** TypeScript passing (20 skipped: need a running companion or a model), **176** Rust; `pnpm gate` green.
 - **Dev database:** MariaDB 11.8.8 at `192.168.40.101` (LAN), `DATABASE_URL` in `.env`. Over a tunnel a statement costs ~40 ms, so retrieval stays one statement (ADR-17). **Shipping requirement:** `mhnsw_max_cache_size` defaults to 16 MB, a 5× slowdown at 100k vectors, and is `GLOBAL`-only — whoever runs MariaDB must raise it (Spike C).
 - **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22 (CI; 26.13 on this PC), pnpm 12.3.4; three 0.185.1, three-vrm 3.5.5; kokoro-js 1.2.1; axum 0.8, sqlx 0.9, zip 9.0.3; tauri 2.12.4; rustc 1.99.1 (Windows), 1.98 (Linux). The repo is at `Z:\dev\latent\latentPresence` since 2026-11-03; `gh` and `.cargo\bin` were added to PATH that day, so a session started before it needs them prefixed. Verified facts in `docs/SURFACE.md`.
 - **Lanes:** `main` (the architect), `sub` (a subagent run in-session, for work the brief and the repo alone get right) or `human`. The Aider lane is retired (2026-09-13). `docs/WORKFLOW.md`.
-- **Known, unowned:** a barge-in during thinking logs an uncaught `AbortError` from the LLM stream (Chrome and webview, no visible effect, source not traced); `pins.ts` puts 6.3 kB gzip of hashes on the boot page, which downloads nothing (boot 183.0 of 195 kB); Smart Turn scores some complete questions under 0.7 (five instances; the hangover catches them); Spike D's int8 CPU Smart Turn is not wired, so a browser without WebGPU has no spoken conversation (refused in a sentence); time-bound facts do not expire (`docs/memory.md`). rustc 1.97.1 hit internal compiler errors twice in release builds (gone on retry).
+- **Known, unowned:** `pins.ts` puts 6.3 kB gzip of hashes on the boot page, which downloads nothing (boot 183.0 of 195 kB); Smart Turn scores some complete questions under 0.7 (five instances; the hangover catches them); Spike D's int8 CPU Smart Turn is not wired, so a browser without WebGPU has no spoken conversation (refused in a sentence); time-bound facts do not expire (`docs/memory.md`). rustc 1.97.1 hit internal compiler errors twice in release builds (gone on retry).
 - **~500 MB of models sit in `node_modules/.pnpm/@huggingface+transformers@3.8.1/.../.cache`** from the live checks; `pnpm install --force` costs that download again.
 
 ## Tasks needing a human or a live endpoint
@@ -46,11 +46,11 @@ In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** the *
 
 ## Last three sessions
 
-- 2026-11-03 claude (4) — **Watch the network before writing the promise.** Pinning the models was the plan; logging every request on a real load found three workers running ONNX Runtime from jsDelivr, which the code review had missed and the page's policy cannot reach. Watching caught the third worker too, after reading the code had found only two.
-
 - 2026-11-03 claude (5) — **A green CI and a red server on one commit means different inputs.** The server's versions were not the lockfile's: an old pnpm calls this lockfile broken, exits 0 and resolves everything afresh. The budgets caught it, so they stayed; `engines.pnpm` and `--frozen-lockfile` now stop it.
 
 - 2026-11-03 claude (6) — **Read the fixture before calling a result a bug.** R-66 and C-9 passed and ADR-70 is accepted. What looked like a duplicate bubble and a stuck reply was `speech.wav` saying its sentence twice, on a loop; running the same turn in Chrome separated the fixture from the webview.
+
+- 2026-11-03 claude (7) — **A library that branches on the runtime can hide a fault from Node.** The `AbortError` on barge-in came from the AI SDK's tracing hook, caught only on Node, so two clean reproductions proved nothing until the test pretended to be a browser. The SDK's telemetry is now off in all three providers.
 
 ## Dev-only routes
 
