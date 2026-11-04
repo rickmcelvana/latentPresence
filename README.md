@@ -137,8 +137,8 @@ pairing code, printed when it starts, under Settings → Companion.
 
 ## Characters
 
-Alice and Theo wear a placeholder model until you give them your own: any VRM 1.0 file, added in
-the Body panel.
+Alice wears a placeholder model and Theo a VRoid Studio model until you give them your own: any
+VRM 1.0 file, added in the Body panel.
 
 **Made your character in Daz 3D or Character Creator?**
 [ccdz2vrm](https://github.com/rickmcelvana/ccdz2vrm) turns a Daz 3D (Genesis 3, 8 or 8.1) or
@@ -171,5 +171,6 @@ Contributions are welcome: open an issue first for anything large.
 
 latentPresence is [Apache-2.0](LICENSE) (see also [NOTICE](NOTICE)). The models you download and
 the character files carry their own licences, which are shown before anything is downloaded. The
-placeholder character is pixiv's [three-vrm](https://github.com/pixiv/three-vrm) sample model,
-under the VRM Public License 1.0.
+placeholder character is pixiv's [three-vrm](https://github.com/pixiv/three-vrm) sample model and
+Theo's is a [VRoid Studio](https://vroid.com/en/studio) model by pixiv's VRoid Project, both under the
+VRM Public License 1.0.

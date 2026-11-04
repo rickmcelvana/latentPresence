@@ -453,6 +453,7 @@ Re-scoped 2026-10-14: Alice's body was built in P7-T01 (`image-to-vrm` `out/alic
 Done when: in `/chat`, swapping between the placeholder, the generated Alice and a local `.vrm` happens mid-conversation with the transcript and memory untouched; each body's expressions work in `/dev/avatar`; a file without the humanoid bones is refused with the reason.
 **Built 2026-10-14 (main):** a Body view in the call's drawer; `characters[id].body` beside the voice; own `.vrm` files in IndexedDB; `CallStage` swaps on the same renderer; `checkBody` refuses without the 15 VRM bones and lists missing presets; `/dev/avatar` loads a local file. The generated Alice is `assets/bodies/alice.vrm` (LFS), fetched pinned to 8e94db0 (VRM Public License 1.0, same terms as the placeholder; ADR-59's build notes). Tauri icons from `site/img/mark.svg`. The done-when is a `ChatPage` test, and was seen live with Alice as an own file; Rick's check, with her download once pushed: R-55.
 **Amended 2026-10-16:** R-55 passed for the swap and for imported files (D-57); the generated Alice is taken out (not good enough to ship; ADR-59 amended). The library is the placeholder plus the person's own `.vrm` files. A VRoid male preset for Theo is open, Rick's call.
+**Amended 2026-11-03:** Theo has his own default body, a VRoid Studio model (`assets/bodies/theo.vrm`, ADR-59 amended). Alice stays on the placeholder.
 
 ### P7-T03 Set v2 — owner: human + sub
 Baked lighting, time-of-day variants, props with hooks for idle behaviours.

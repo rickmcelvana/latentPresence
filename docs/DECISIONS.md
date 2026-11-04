@@ -2418,6 +2418,17 @@ for Theo in the placeholder's style — pixiv's VRoid Studio presets (VRoidPrese
 and redistributed free of charge by anyone, commercially, without credit (read 2026-10-16,
 `docs/SURFACE.md`); one would be exported from VRoid Studio by Rick and added as a built-in body.
 
+**Amended 2026-11-03 (Rick).** Theo has his own default: a model Rick exported from VRoid Studio 2.14.0,
+`assets/bodies/theo.vrm`, 15,405,404 bytes, unmodified. Its `meta`: authors pixiv VRoid Project, VRM
+Public License 1.0, anyone, corporate use, redistribution and modification allowed, credit not required.
+It is hosted as the generated Alice was: LFS, fetched from `media.githubusercontent.com`, pinned to the
+commit that added it (5b08aee) and checked against its SHA-256 (ADR-70). Consent is per body, so setup asks
+about the default of whoever is chosen, and a person who agreed to Alice's is asked again for Theo's. Alice
+stays on the placeholder (ADR-18 amended). **The cost:** each download counts against the repository
+owner's Git LFS bandwidth, and the quota is still unchecked. If it ran out, Theo's first load would fail
+with a message and Alice's would not. Without LFS, raw.githubusercontent.com would serve the file with no
+such quota; that is the move if it ever matters, as a new file and a new consent id.
+
 ## ADR-60 The desktop app (accepted 2026-10-17, P8-T01)
 
 **Context.** P8-T01: "bundle the companion as a sidecar; local pairing token; window management;

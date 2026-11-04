@@ -1014,3 +1014,10 @@ Left: R-67 (push, pull on the server, read the pages); the laptop session; C-7; 
 Next: R-67, then P9-T06 (1.0); tester feedback first.
 Decisions: none new; P9-T04's owner moved from sub to main, because the provider steps are measured facts. The landing page was also corrected at Rick's word: it said "Nothing here is finished yet", had no download link, named OpenAI (only reachable through Custom, its browser access unmeasured) and "your SQLite" (no SQLite memory store exists).
 Lessons: A style test that passes says nothing about phone width: the site's overflow had been there unnoticed. And running a tool with `--root` in another repository leaves its cache there, so look at `git status` in both.
+
+## 2026-11-03 claude (9) — Theo's own default body; where the room stands
+Did: Rick exported a VRoid Studio model for Theo. `assets/bodies/theo.vrm` (LFS, 5b08aee), pinned to that commit with its SHA-256, a built-in body and his pack's default (ADR-59 amended). Setup's consent now follows who is chosen, the Body panel says "the default" rather than "her default", and `/privacy` lists both bodies. In Chrome, with the pinned address answered from the local file because the commit is not on GitHub yet: consent names him, 15.4 MB, he draws, nothing is asked or fetched on reload, no errors. Gate green (2241 TS).
+Left: **push**, then `pnpm pins:check` and one real download prove the address; until then the check fails and Theo cannot load for anyone on this build. R-67's reading; the laptop session; C-7.
+Next: P9-T06 (1.0), unless Rick takes P7-T03 first.
+Decisions: ADR-59 amended. Rick asked whether "remodelling the room" was a missed phase: it is **P7-T03 Set v2**, in the plan and not started, on Phase 7's parallel track, and nothing in P9 or the release depends on it. So it is Rick's call on when, not a miss.
+Lessons: A test's seeded settings must be complete: a partial object is thrown away for the defaults, and the page then says "choose a model", which looks like the app's fault.
