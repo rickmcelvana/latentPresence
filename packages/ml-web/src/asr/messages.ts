@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
+import { asrFiles, pinnedBytes, type AsrDtypeKey } from '../registry';
 
 /**
  * The contract between the recognition worker and whatever drives it (P1-T06).
@@ -67,30 +68,25 @@ interface AsrModelSpec {
 }
 
 /**
- * The non-graph bytes, per model. The fetched set is exactly `config.json`,
- * `generation_config.json`, `preprocessor_config.json`, `tokenizer.json` and
- * `tokenizer_config.json` — established by downloading two of these models into an empty
- * cache and listing what landed. Summing those five from the blob listing reproduces both
- * measured totals to the byte, which is what makes the other two derived rather than
- * guessed. Note `special_tokens_map.json` is present in the repos and is *not* fetched.
+ * Bytes per precision at the pinned commit (`registry/pins.ts`): the two graphs and the five files
+ * beside them, `config.json`, `generation_config.json`, `preprocessor_config.json`, `tokenizer.json`
+ * and `tokenizer_config.json`. That set was established by downloading two of these models into an
+ * empty cache and listing what landed. `special_tokens_map.json` is in the repos and is *not* fetched.
  */
-const MOONSHINE_TINY_CONFIG_BYTES = 3_898_685; // measured
-const MOONSHINE_BASE_CONFIG_BYTES = 3_898_686;
-const WHISPER_BASE_CONFIG_BYTES = 2_769_562; // measured
-const WHISPER_TINY_EN_CONFIG_BYTES = 2_692_523;
+function bytesPerDtype(repo: string, dtypes: readonly AsrDtypeKey[]): Partial<Record<AsrDtype, number>> {
+  return Object.fromEntries(dtypes.map((dtype) => [dtype, pinnedBytes(repo, asrFiles(dtype))]));
+}
+
+const ALL_DTYPES: readonly AsrDtypeKey[] = ['fp32', 'fp16', 'q8', 'q4', 'q4f16'];
+// The Whisper repos have no `_q4f16` pair, so it is absent rather than guessed.
+const WHISPER_DTYPES: readonly AsrDtypeKey[] = ['fp32', 'fp16', 'q8', 'q4'];
 
 export const ASR_MODELS: Readonly<Record<AsrModelKey, AsrModelSpec>> = {
   'moonshine-tiny': {
     modelId: 'onnx-community/moonshine-tiny-ONNX',
     label: 'Moonshine tiny (speech to text)',
     licence: 'MIT',
-    bytes: {
-      fp32: 30_882_331 + 78_227_550 + MOONSHINE_TINY_CONFIG_BYTES,
-      fp16: 15_520_007 + 76_250_574 + MOONSHINE_TINY_CONFIG_BYTES,
-      q8: 7_937_661 + 20_243_286 + MOONSHINE_TINY_CONFIG_BYTES, // 32_079_632, measured
-      q4: 10_732_274 + 44_650_684 + MOONSHINE_TINY_CONFIG_BYTES,
-      q4f16: 6_940_638 + 49_083_577 + MOONSHINE_TINY_CONFIG_BYTES,
-    },
+    bytes: bytesPerDtype('onnx-community/moonshine-tiny-ONNX', ALL_DTYPES),
     // Moonshine is English-only and `_call_moonshine` never reports a language.
     languages: ['en'],
     wordTimestamps: false,
@@ -99,13 +95,7 @@ export const ASR_MODELS: Readonly<Record<AsrModelKey, AsrModelSpec>> = {
     modelId: 'onnx-community/moonshine-base-ONNX',
     label: 'Moonshine base (speech to text)',
     licence: 'MIT',
-    bytes: {
-      fp32: 80_818_781 + 166_211_345 + MOONSHINE_BASE_CONFIG_BYTES,
-      fp16: 40_512_679 + 160_691_155 + MOONSHINE_BASE_CONFIG_BYTES,
-      q8: 20_513_063 + 42_498_870 + MOONSHINE_BASE_CONFIG_BYTES,
-      q4: 24_755_792 + 72_781_828 + MOONSHINE_BASE_CONFIG_BYTES,
-      q4f16: 16_638_074 + 85_089_526 + MOONSHINE_BASE_CONFIG_BYTES,
-    },
+    bytes: bytesPerDtype('onnx-community/moonshine-base-ONNX', ALL_DTYPES),
     languages: ['en'],
     wordTimestamps: false,
   },
@@ -115,13 +105,7 @@ export const ASR_MODELS: Readonly<Record<AsrModelKey, AsrModelSpec>> = {
     modelId: 'onnx-community/whisper-base_timestamped',
     label: 'Whisper base (speech to text, multilingual)',
     licence: 'Apache-2.0',
-    bytes: {
-      fp32: 82_451_730 + 208_686_733 + WHISPER_BASE_CONFIG_BYTES,
-      fp16: 41_270_731 + 104_701_989 + WHISPER_BASE_CONFIG_BYTES,
-      q8: 23_159_167 + 53_712_708 + WHISPER_BASE_CONFIG_BYTES,
-      q4: 18_771_046 + 123_738_327 + WHISPER_BASE_CONFIG_BYTES,
-      // The repo has no `_q4f16` pair for this model, so it is absent rather than guessed.
-    },
+    bytes: bytesPerDtype('onnx-community/whisper-base_timestamped', WHISPER_DTYPES),
     // Whisper's multilingual checkpoints detect the language themselves; the full tag
     // list is the model's ninety-nine and is not enumerated here. Empty means "did not
     // say", per `SttCapabilities.languages`, and detection is reported separately.
@@ -132,12 +116,7 @@ export const ASR_MODELS: Readonly<Record<AsrModelKey, AsrModelSpec>> = {
     modelId: 'onnx-community/whisper-tiny.en_timestamped',
     label: 'Whisper tiny (speech to text, English)',
     licence: 'Apache-2.0',
-    bytes: {
-      fp32: 32_894_434 + 118_662_672 + WHISPER_TINY_EN_CONFIG_BYTES,
-      fp16: 16_477_869 + 59_573_666 + WHISPER_TINY_EN_CONFIG_BYTES,
-      q8: 10_097_112 + 30_729_881 + WHISPER_TINY_EN_CONFIG_BYTES,
-      q4: 9_019_892 + 86_803_045 + WHISPER_TINY_EN_CONFIG_BYTES,
-    },
+    bytes: bytesPerDtype('onnx-community/whisper-tiny.en_timestamped', WHISPER_DTYPES),
     languages: ['en'],
     wordTimestamps: true,
   },

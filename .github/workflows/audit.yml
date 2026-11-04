@@ -41,3 +41,10 @@ jobs:
 
       - name: RustSec advisories (desktop shell)
         run: cargo audit -f apps/desktop/src-tauri/Cargo.lock
+
+      - run: pnpm install --frozen-lockfile
+
+      # P9-T05 (ADR-70): every pinned download is still served, byte for byte. A failure means a
+      # repository moved or vanished upstream, and a new person's download will refuse.
+      - name: model pins
+        run: pnpm pins:check

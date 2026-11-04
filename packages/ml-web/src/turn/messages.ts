@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
+import { pinnedFile, pinnedRevision } from '../registry';
 
 /**
  * The contracts between the turn-detection workers and whatever drives them (P1-T07).
@@ -43,6 +44,12 @@ interface TurnModelSpec {
   readonly licence: string;
   /** Exact bytes of `file` at `revision`, from the Hugging Face tree API. */
   readonly bytes: number;
+  readonly sha256: string;
+}
+
+function pinned(repo: string, file: string, label: string, licence: string): TurnModelSpec {
+  const { bytes, sha256 } = pinnedFile(repo, file);
+  return { repo, revision: pinnedRevision(repo), file, label, licence, bytes, sha256 };
 }
 
 /**
@@ -51,32 +58,11 @@ interface TurnModelSpec {
  * Each model is a single file with no config beside it, so the listing *is* the download —
  * unlike the recognition models, where it overstated.
  */
-export const SILERO_VAD: TurnModelSpec = {
-  repo: 'onnx-community/silero-vad',
-  revision: 'e71cae966052b992a7eca6b17738916ce0eca4ec',
-  file: 'onnx/model.onnx',
-  label: 'Silero VAD (voice activity)',
-  licence: 'MIT',
-  bytes: 2_243_022,
-};
+export const SILERO_VAD: TurnModelSpec = pinned('onnx-community/silero-vad', 'onnx/model.onnx', 'Silero VAD (voice activity)', 'MIT');
 
 export const SMART_TURN: Readonly<Record<SmartTurnBuild, TurnModelSpec>> = {
-  gpu: {
-    repo: 'pipecat-ai/smart-turn-v3',
-    revision: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
-    file: 'smart-turn-v3.2-gpu.onnx',
-    label: 'Smart Turn v3.2 (turn detection), fp32',
-    licence: 'BSD-2-Clause',
-    bytes: 32_411_198,
-  },
-  cpu: {
-    repo: 'pipecat-ai/smart-turn-v3',
-    revision: 'f766f81d3cfdf7737ac64aad813d91bbfd56bf93',
-    file: 'smart-turn-v3.2-cpu.onnx',
-    label: 'Smart Turn v3.2 (turn detection), int8',
-    licence: 'BSD-2-Clause',
-    bytes: 8_679_182,
-  },
+  gpu: pinned('pipecat-ai/smart-turn-v3', 'smart-turn-v3.2-gpu.onnx', 'Smart Turn v3.2 (turn detection), fp32', 'BSD-2-Clause'),
+  cpu: pinned('pipecat-ai/smart-turn-v3', 'smart-turn-v3.2-cpu.onnx', 'Smart Turn v3.2 (turn detection), int8', 'BSD-2-Clause'),
 };
 
 export function modelUrl(spec: TurnModelSpec): string {

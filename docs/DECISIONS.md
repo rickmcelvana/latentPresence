@@ -72,6 +72,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
+| ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | proposed | 2026-11-03 |
 
 ---
 
@@ -2857,3 +2858,56 @@ first, when the webview reads the page's own. *The policy as a Caddy header only
 would have none. *`cargo audit` and `pnpm audit` in the gate* — red for reasons no commit can fix.
 *Requiring the pairing code from pages on `localhost`* — any program on the machine can already read
 the companion's database password from `.env`; the code would stop nothing it cannot do anyway.
+
+## ADR-70 Pinned downloads, ONNX Runtime from the build, the registry and privacy page (proposed 2026-11-03, P9-T05)
+
+**Context.** The security review's finding 8: Kokoro and the recognition models resolved a moving
+`main`, the placeholder body a moving `dev`, and only some downloads had their size checked. Reading
+what actually loads turned up two things the finding did not know. **kokoro-js cannot be given a
+revision**: `from_pretrained` drops it, and it builds each voice's `resolve/main` address itself, from
+a different repository than its model. And **transformers.js aims ONNX Runtime at jsDelivr as a side
+effect of being imported**: three shipped workers ran a `.mjs` from a third-party CDN and fetched a
+21.6 MB wasm from it, on no consent screen, with no hash, and unaffected by the page's Content Security
+Policy, which a worker does not inherit. The "scripts only from the build" of ADR-69 was not true of
+them. The privacy page could not honestly have been written over that.
+
+**Decision.**
+
+1. **One generated table.** `packages/ml-web/src/registry/pins.ts`, written by `pnpm pins:write` from
+   commits listed in `tools/pin-models.ts`: 99 files in 12 sources, each with its size and SHA-256. The
+   catalogs and consent screens derive their numbers from it, so a screen, a worker and the registry
+   page cannot disagree. Moving a pin is an edit to that tool and a visible diff; if the bytes change,
+   the model gets a new consent id (ADR-09). `pnpm pins:check` runs in the weekly `audit` workflow.
+2. **Downloads we fetch ourselves** pass `cachedModelFetch`, which now takes the hash. Only checked
+   bytes are stored, and a cached entry that fails is dropped and fetched again; it used to fail every
+   load from then on.
+3. **Downloads a library fetches** go through `installPinnedFetch`, on the worker's global `fetch`,
+   which the libraries read at call time (`face.worker.ts` already guarded it this way). Any ref is
+   moved to the pinned commit; the body is checked as it streams, so progress reporting survives and a
+   wrong body rejects before the library's `cache.put`; a file not in the table is a local 404; any
+   other host is refused. Cache keys stay `resolve/main/...`, so an installed copy downloads nothing
+   again, and `verifyCachedFiles` checks those entries at each load: 0.47 s for the largest (fp32
+   Kokoro, measured), which those people had taken on trust.
+4. **ONNX Runtime from the build** in the three workers that import transformers.js
+   (`registry/ort-paths.ts`). The build fails if a chunk holds the CDN's address without the app's own
+   runtime (`security/cdn-guard.ts`): no CI job loads a real model, and Smart Turn got past reading the
+   code; it took watching the network.
+5. **Without a secure context, the size alone.** `crypto.subtle` is absent on plain `http://`, and there
+   a hash protects nothing: whoever can swap a model can swap the code that checks it.
+6. **`/privacy` ships in the app**, with the registry on it: what stays here, what goes where you point
+   it, who else sees your address, and every model with its licence, source, pin and hashes. In the app
+   rather than on the site, because the desktop app has to carry its own promise and the numbers come
+   from the same table. It also made two things true that were not: Settings' Delete all now removes
+   `kokoro-voices`, and the face consent card says the mood word reaches the chat model.
+
+**Rejected.** *transformers.js's `revision` option*: it does not reach kokoro-js or its voices, checks no
+hash, and changes every cache key, so each tester downloads 500 MB again. *`fetch` wrapped on the page*:
+none of these requests happen there. *A hash in `ModelDescriptor`*: one descriptor can be many files, and
+the protocol need not change for this. *A pure-JS streaming SHA-256*: it would save holding one copy of
+the file during a first download, at several times the hashing cost on every load. *Checking cached
+bytes only once, with a marker*: more code to save half a second on a load that takes seconds.
+
+**Costs.** The placeholder body's address changed, so an installed copy downloads its 10.8 MB once more
+and the old entry stays until Settings deletes it. A host deleting a pinned repository breaks a new
+person's download until the pin moves, which is what the weekly check is for. Each worker carries the
+whole table (16 kB raw; the face worker's budget rose from 150 to 165 kB).

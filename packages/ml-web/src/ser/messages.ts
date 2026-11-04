@@ -1,4 +1,5 @@
 import type { ModelDescriptor, UserEmotion } from '@latentpresence/protocol';
+import { pinnedFile, pinnedRevision } from '../registry';
 
 /**
  * Speech emotion recognition in a worker (P3-T05): the contracts, the catalog and the pure
@@ -37,6 +38,7 @@ interface SerFile {
   readonly file: string;
   /** Exact bytes at `revision`, from the tree API. */
   readonly bytes: number;
+  readonly sha256: string;
 }
 
 interface SerModelSpec {
@@ -50,23 +52,27 @@ interface SerModelSpec {
 
 const LICENCE = 'FunASR Model Open Source License 1.1 (attribution required)';
 
+const BASE_REPO = 'pankotaro/emotion2vec-plus-base-onnx';
+const DISTILL_REPO = 'thomashallock/emotion2vec-web-distill';
+
+function serFile(repo: string, file: string): SerFile {
+  return { file, ...pinnedFile(repo, file) };
+}
+
 export const SER_MODELS: Readonly<Record<SerModelKey, SerModelSpec>> = {
   base: {
-    repo: 'pankotaro/emotion2vec-plus-base-onnx',
-    revision: '334d4376993c381f059cc36d2c6ed05cbfec5ca1',
+    repo: BASE_REPO,
+    revision: pinnedRevision(BASE_REPO),
     label: 'emotion2vec+ base (voice emotion), fp32',
     licence: LICENCE,
-    files: [
-      { file: 'emotion2vec_plus_base.onnx', bytes: 373_159_295 },
-      { file: 'emotion2vec_head.json', bytes: 128_472 },
-    ],
+    files: [serFile(BASE_REPO, 'emotion2vec_plus_base.onnx'), serFile(BASE_REPO, 'emotion2vec_head.json')],
   },
   distill: {
-    repo: 'thomashallock/emotion2vec-web-distill',
-    revision: '566a831be26e64f7e641241c26154793b7dd1428',
+    repo: DISTILL_REPO,
+    revision: pinnedRevision(DISTILL_REPO),
     label: 'emotion2vec web distill v4 (voice emotion, light)',
     licence: LICENCE,
-    files: [{ file: 'distill-student-v4.fused.onnx', bytes: 9_695_687 }],
+    files: [serFile(DISTILL_REPO, 'distill-student-v4.fused.onnx')],
   },
 };
 

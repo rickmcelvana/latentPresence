@@ -1,5 +1,8 @@
 /// <reference lib="webworker" />
-import { KokoroTTS } from 'kokoro-js';
+import { KokoroTTS, env } from 'kokoro-js';
+import { KOKORO_CONFIG_FILES, KOKORO_GRAPHS, KOKORO_MODEL_REPO, KOKORO_VOICES_REPO, KOKORO_VOICE_FILES } from '../registry';
+import { ORT_WASM_PATHS } from '../registry/ort-paths';
+import { installPinnedFetch, verifyCachedFiles } from '../registry/pinned-fetch';
 import { KOKORO_MODEL_ID, kokoroCombinationBlocker, type KokoroDevice, type KokoroDtype, type KokoroRequest, type KokoroResponse } from './messages';
 import { speakTimed } from './timed-stream';
 
@@ -27,6 +30,10 @@ import { speakTimed } from './timed-stream';
  * can be tested without those is the port contract, and `KokoroBrowserTTSProvider` is
  * where that lives.
  */
+
+// Before anything can load (ADR-70): ONNX Runtime from the build, every download from its pin.
+(env as unknown as { wasmPaths: unknown }).wasmPaths = ORT_WASM_PATHS;
+installPinnedFetch(self, [KOKORO_MODEL_REPO, KOKORO_VOICES_REPO]);
 
 /** Loaded model, or null before the first `load`. */
 let tts: KokoroTTS | null = null;
@@ -56,6 +63,9 @@ async function load(device: KokoroDevice, dtype: KokoroDtype): Promise<void> {
   const blocker = kokoroCombinationBlocker(device, dtype);
   if (blocker !== null) throw new Error(blocker);
   const started = performance.now();
+  const graph = (KOKORO_GRAPHS as Partial<Record<KokoroDtype, string>>)[dtype];
+  await verifyCachedFiles('transformers-cache', KOKORO_MODEL_REPO, [...(graph === undefined ? [] : [graph]), ...KOKORO_CONFIG_FILES]);
+  await verifyCachedFiles('kokoro-voices', KOKORO_VOICES_REPO, KOKORO_VOICE_FILES);
   tts = await KokoroTTS.from_pretrained(KOKORO_MODEL_ID, {
     dtype,
     device,

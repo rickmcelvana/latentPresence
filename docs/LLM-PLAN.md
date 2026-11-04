@@ -511,7 +511,7 @@ Bytes before each page draws (the build), one frame of the call at 1080p and the
 Threat model and findings in `docs/security.md`. The companion answers only requests naming it by IP or localhost (DNS rebinding) and asks every request for the code when bound off loopback; a Content Security Policy in every build (`e2e/csp.spec.ts`); advisories fixed and a weekly `audit` workflow. Pinning downloads to a revision and a SHA-256 moves to P9-T05.
 ### P9-T04 User docs on latentpresence.com (user guide, provider setup, privacy) — owner: sub
 The site left this repository on 2026-10-17 (was `site/docs/`); the docs go wherever Rick keeps it.
-### P9-T05 Model registry and privacy page — owner: main
-From P9-T03 (finding 8): pin every download (Kokoro, Moonshine, the placeholder body's `dev` branch) to a revision and check its SHA-256, not only its size.
+### P9-T05 Model registry and privacy page — owner: main (**built 2026-11-03**, ADR-70 proposed; C-9, R-66 open)
+`/privacy` with the registry; every download pinned to a commit and checked against a SHA-256 on the wire and in the cache (`registry/pins.ts`, `pnpm pins:check`); ONNX Runtime from the build instead of jsDelivr, enforced by the build. Proved in a real browser, wrong bytes included.
 ### P9-T06 Release 1.0 — owner: main + human
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.

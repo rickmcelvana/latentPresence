@@ -1,3 +1,4 @@
+import { BODY_FILE, BODY_SOURCE, pinnedFile, pinnedUrl } from '@latentpresence/ml-web/registry';
 import type { ModelDescriptor } from '@latentpresence/protocol';
 
 /**
@@ -18,21 +19,22 @@ export interface AssetDownload {
   /** Exact bytes, not an estimate. */
   readonly bytes: number;
   readonly sourceUrl: string;
+  /** Names a commit, so it cannot move (ADR-70). */
   readonly downloadUrl: string;
+  readonly sha256: string;
   /** Who to credit, even when the licence says credit is unnecessary. */
   readonly author: string;
   /** What the licence actually permits, in one line, for the person deciding. */
   readonly terms: string;
 }
 
-const RAW = 'https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages';
-
 export const AVATAR: AssetDownload = {
   label: 'VRM1_Constraint_Twist_Sample (placeholder character)',
   licence: 'VRM Public License 1.0 — not Creative Commons',
-  bytes: 10_776_032,
+  bytes: pinnedFile(BODY_SOURCE, BODY_FILE).bytes,
   sourceUrl: 'https://github.com/pixiv/three-vrm',
-  downloadUrl: `${RAW}/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm`,
+  downloadUrl: pinnedUrl(BODY_SOURCE, BODY_FILE),
+  sha256: pinnedFile(BODY_SOURCE, BODY_FILE).sha256,
   author: 'pixiv Inc. — (c) 2022',
   terms: 'Use by anyone, redistribution and modification allowed, credit not required.',
 };

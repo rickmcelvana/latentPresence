@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 import { checkBundle, formatRoutes, type BuiltBundle } from './src/perf/bundle-budget.ts';
 import { BUNDLE_BUDGETS } from './src/perf/budgets.ts';
+import { cdnRuntimeProblems } from './src/security/cdn-guard.ts';
 import { cspValue } from './src/security/csp.ts';
 
 /**
@@ -80,6 +81,23 @@ function assertSpikeExcludedFromBuild(): Plugin {
  * draws, or a file loaded later outgrows its ceiling (`src/perf/budgets.ts`). The rules are
  * `checkBundle`'s, tested without a build; this only describes the real bundle to it.
  */
+/** Worker chunks reach the main bundle as assets, so both kinds are read (ADR-70, `cdn-guard.ts`). */
+function assertNoCdnRuntime(): Plugin {
+  return {
+    name: 'assert-no-cdn-runtime',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_options, bundle) {
+      const files = Object.values(bundle).map((output) => ({
+        fileName: output.fileName,
+        code: output.type === 'chunk' ? output.code : typeof output.source === 'string' ? output.source : output.fileName.endsWith('.js') ? Buffer.from(output.source).toString('utf8') : '',
+      }));
+      const problems = cdnRuntimeProblems(files);
+      if (problems.length > 0) this.error(problems.join('\n'));
+    },
+  };
+}
+
 function enforceBundleBudgets(): Plugin {
   return {
     name: 'enforce-bundle-budgets',
@@ -133,7 +151,7 @@ function byteLength(source: string | Uint8Array): number {
 }
 
 export default defineConfig({
-  plugins: [react(), assertSpikeExcludedFromBuild(), enforceBundleBudgets(), contentSecurityPolicy()],
+  plugins: [react(), assertSpikeExcludedFromBuild(), assertNoCdnRuntime(), enforceBundleBudgets(), contentSecurityPolicy()],
   // **Every dependency only a worker imports, pre-bundled when the server starts.** Vite's
   // scan starts from `index.html` and does not follow `new Worker(new URL(...))`, so these
   // were discovered the first time a worker loaded, and each discovery re-bundles them

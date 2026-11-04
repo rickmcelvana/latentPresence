@@ -95,7 +95,7 @@ export function VoicePanel({
   buildSpeech = buildSpeechProviders,
 }: VoicePanelProps): ReactElement {
   const [phase, setPhase] = useState<Phase>('idle');
-  const [status, setStatus] = useState('Nothing has been downloaded yet.');
+  const [status, setStatus] = useState('Not started.');
   const [state, setState] = useState(machine.getState());
   const call = useRef<ActiveCall | null>(null);
   /**

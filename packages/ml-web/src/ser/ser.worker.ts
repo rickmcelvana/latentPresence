@@ -28,7 +28,7 @@ async function load(key: SerModelKey, backend: SerBackend): Promise<void> {
   if (backend === 'webgpu' && !('gpu' in navigator)) throw new Error('WebGPU is not available in this worker; use the light model on wasm');
   const started = performance.now();
   const spec = SER_MODELS[key];
-  const bytes = await Promise.all(spec.files.map((file) => cachedModelFetch(serFileUrl(key, file), serFileModel(key, file))));
+  const bytes = await Promise.all(spec.files.map((file) => cachedModelFetch(serFileUrl(key, file), serFileModel(key, file), file.sha256)));
   const [graph, head] = bytes;
   if (graph === undefined) throw new Error(`${key}: no graph`);
   const session = await createSerSession(graph, backend);

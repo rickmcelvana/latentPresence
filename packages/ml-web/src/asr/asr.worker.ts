@@ -1,5 +1,8 @@
 /// <reference lib="webworker" />
 import { InterruptableStoppingCriteria, env, pipeline } from '@huggingface/transformers';
+import { asrFiles } from '../registry';
+import { ORT_WASM_PATHS } from '../registry/ort-paths';
+import { installPinnedFetch, verifyCachedFiles } from '../registry/pinned-fetch';
 import {
   ASR_MODELS,
   ASR_SAMPLE_RATE,
@@ -72,6 +75,13 @@ let loaded: { model: AsrModelKey; device: AsrDevice; dtype: AsrDtype } | null = 
 
 /** Requests cancelled before or during generation. An id lands here at most once. */
 const cancelled = new Set<number>();
+// Before anything can load (ADR-70): ONNX Runtime from the build, every download from its pin.
+(env.backends.onnx as unknown as { wasm: { wasmPaths: unknown } }).wasm.wasmPaths = ORT_WASM_PATHS;
+installPinnedFetch(
+  self,
+  Object.values(ASR_MODELS).map((spec) => spec.modelId),
+);
+
 /** The stopping criterion for the request currently generating, so cancel can interrupt it. */
 let inFlight: { requestId: number; stop: InterruptableStoppingCriteria } | null = null;
 
@@ -97,6 +107,7 @@ async function load(model: AsrModelKey, device: AsrDevice, dtype: AsrDtype): Pro
   ) => Promise<Recogniser>;
 
   const started = performance.now();
+  await verifyCachedFiles('transformers-cache', ASR_MODELS[model].modelId, asrFiles(dtype));
   recogniser = await build('automatic-speech-recognition', ASR_MODELS[model].modelId, {
     device,
     dtype,

@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
+import { env } from '@huggingface/transformers';
 import { cachedModelFetch } from '../consent/model-cache';
+import { ORT_WASM_PATHS } from '../registry/ort-paths';
 import {
   SMART_TURN,
   modelUrl,
@@ -25,6 +27,11 @@ import { SmartTurnModel, createSmartTurnSession } from './smart-turn';
  * see the request. `cachedModelFetch` fetches the bytes ourselves, in a cache of our own,
  * and checks their length against the catalog before ort ever sees them.
  */
+
+// `smart-turn.ts` imports transformers.js for its feature extractor, and importing it is enough to
+// aim ONNX Runtime at jsDelivr (`registry/ort-paths.ts`, ADR-70). Nothing here fetches through the
+// library, so the fetch guard the other two have would have nothing to do.
+(env.backends.onnx as unknown as { wasm: { wasmPaths: unknown } }).wasm.wasmPaths = ORT_WASM_PATHS;
 
 function post(message: SmartTurnResponse): void {
   // The empty transfer list is the worker overload; a target origin belongs to windows.
@@ -61,7 +68,7 @@ async function load(build: SmartTurnBuild, backend: SmartTurnBackend): Promise<v
   }
 
   const started = performance.now();
-  const bytes = await cachedModelFetch(modelUrl(SMART_TURN[build]), smartTurnModel(build));
+  const bytes = await cachedModelFetch(modelUrl(SMART_TURN[build]), smartTurnModel(build), SMART_TURN[build].sha256);
   const loaded = new SmartTurnModel(await createSmartTurnSession(bytes, backend));
   // One throwaway judgement before saying ready. On WebGPU the first inference compiles its
   // shaders: P1-T08 measured it at 392–479 ms in the browser against 8–57 ms for every one

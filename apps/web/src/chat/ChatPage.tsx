@@ -216,7 +216,7 @@ export interface ChatPageProps {
   /** Test seam: reading a file as a VRM body, refusing what the call cannot drive (P7-T02). Production never passes it. */
   readonly checkBodyFile?: (bytes: Uint8Array) => Promise<BodyReport>;
   /** Test seam, forwarded to `CallStage`: in place of `cachedModelFetch` for a built-in body. Production never passes it. */
-  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>) | undefined;
+  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor, sha256: string) => Promise<Uint8Array>) | undefined;
 }
 
 /**
@@ -337,7 +337,7 @@ interface ConfiguredChatPageProps {
   readonly notifications: PageNotifications;
   readonly bodyShelf: BodyShelf;
   readonly checkBodyFile: (bytes: Uint8Array) => Promise<BodyReport>;
-  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>) | undefined;
+  readonly fetchModel?: ((url: string, descriptor: ModelDescriptor, sha256: string) => Promise<Uint8Array>) | undefined;
 }
 
 function ConfiguredChatPage({
@@ -1322,7 +1322,7 @@ function ConfiguredChatPage({
             cancelLabel="Not now"
             descriptors={faceConsent.models}
             heading="Read your expression from the camera?"
-            intro={`${pack.persona.name} can watch your expression through your camera to tell how you seem. A model running in this browser reads each frame and drops it at once: no frame is saved or sent anywhere, and only a mood estimate is kept. It is off until you turn it on, and a light on your picture shows while it runs. Agreeing turns on the camera and downloads this model:`}
+            intro={`${pack.persona.name} can watch your expression through your camera to tell how you seem. A model running in this browser reads each frame and drops it at once: no frame is saved or sent anywhere. Only a mood estimate is kept, and that word is what your chat model gets. It is off until you turn it on, and a light on your picture shows while it runs. Agreeing turns on the camera and downloads this model:`}
             onAgree={() => {
               deps.consent.grant(faceConsent.models);
               beginFace(faceConsent.loader);

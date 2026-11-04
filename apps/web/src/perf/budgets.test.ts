@@ -15,7 +15,7 @@ describe('the budgets stay inside PLAN.md', () => {
   });
 
   it('budget every page the app routes to, and /chat with the stage it suspends on', () => {
-    expect(Object.keys(BUNDLE_BUDGETS.routes).toSorted()).toEqual(['boot', 'chat', 'settings', 'welcome']);
+    expect(Object.keys(BUNDLE_BUDGETS.routes).toSorted()).toEqual(['boot', 'chat', 'privacy', 'settings', 'welcome']);
     expect(BUNDLE_BUDGETS.routes['chat']?.chunks).toEqual(['ChatPage', 'CallStage']);
   });
 });

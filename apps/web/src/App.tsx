@@ -52,6 +52,9 @@ export const CHAT_PATH = '/chat';
  */
 export const WELCOME_PATH = '/welcome';
 
+/** The privacy page and the model registry (P9-T05). Ships in production. */
+export const PRIVACY_PATH = '/privacy';
+
 /**
  * The harness pulls in transformers.js, ONNX Runtime and kokoro-js — around 21 MB of wasm
  * on its own. A `lazy(() => import(...))` alone is not enough: Rollup emits the chunk
@@ -147,6 +150,15 @@ const WelcomePage = lazy(async () => {
 });
 
 /**
+ * The privacy page and the model registry (P9-T05). `lazy()` so the table of pins' hashes is
+ * read by the people who open it; it has no provider and downloads nothing.
+ */
+const PrivacyPage = lazy(async () => {
+  const module = await import('./privacy/PrivacyPage');
+  return { default: module.PrivacyPage };
+});
+
+/**
  * Boot screen. It exists so the scaffold proves the toolchain end to end: React 19
  * renders, the workspace packages resolve from the app, and theme.css is applied.
  * The stage and the call framing arrive in Phase 2.
@@ -232,6 +244,14 @@ export function App({
     return (
       <Suspense fallback={<p className="boot-status">Loading settings…</p>}>
         <SettingsPage />
+      </Suspense>
+    );
+  }
+
+  if (path === PRIVACY_PATH) {
+    return (
+      <Suspense fallback={<p className="boot-status">Loading…</p>}>
+        <PrivacyPage />
       </Suspense>
     );
   }

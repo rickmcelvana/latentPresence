@@ -3,7 +3,7 @@ import { FaceLandmarker } from '@mediapipe/tasks-vision';
 import wasmBinaryUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.wasm?url';
 import wasmLoaderUrl from '@mediapipe/tasks-vision/vision_wasm_module_internal.js?url';
 import { cachedModelFetch } from '../consent/model-cache';
-import { FACE_MODEL, FACE_MODEL_URL, allowedRequest, readFrame, type FaceDelegate, type FaceRequest, type FaceResponse } from './messages';
+import { FACE_MODEL, FACE_MODEL_SHA256, FACE_MODEL_URL, allowedRequest, readFrame, type FaceDelegate, type FaceRequest, type FaceResponse } from './messages';
 
 /**
  * The user's face in a worker (P3-T06). The frame rule is `readFrame` in `messages.ts`;
@@ -37,7 +37,7 @@ let landmarker: FaceLandmarker | null = null;
 
 async function load(delegate: FaceDelegate): Promise<void> {
   const started = performance.now();
-  const model = await cachedModelFetch(FACE_MODEL_URL, FACE_MODEL);
+  const model = await cachedModelFetch(FACE_MODEL_URL, FACE_MODEL, FACE_MODEL_SHA256);
   landmarker = await FaceLandmarker.createFromOptions(
     { wasmLoaderPath: wasmLoaderUrl, wasmBinaryPath: wasmBinaryUrl },
     {

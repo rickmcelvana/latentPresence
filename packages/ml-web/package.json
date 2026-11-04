@@ -7,7 +7,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./voices": "./src/kokoro/voices.ts",
-    "./consent": "./src/consent/index.ts"
+    "./consent": "./src/consent/index.ts",
+    "./registry": "./src/registry/index.ts",
+    "./registry/catalog": "./src/registry/catalog.ts"
   },
   "types": "./src/index.ts",
   "dependencies": {

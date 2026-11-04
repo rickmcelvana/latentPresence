@@ -2838,3 +2838,28 @@ Measured on the built exe (WebView2, Edge 156), with Playwright's `connectOverCD
 ## A GitHub run's status can lag its job — 2026-11-03
 
 `gh run list` showed the Windows gate job "in progress" at 2h 5m, while the job's own log (`gh api --allow-escape-sequences repos/<owner>/<repo>/actions/jobs/<id>/logs`, available before the run reports complete) showed it had finished at 8 minutes, and the run reported `completed success` soon after. Read the job log before calling a run hung.
+
+## What the voice workers load — measured 2026-11-03 (P9-T05, ADR-70)
+
+Chrome on this PC against the built app, every request logged, in a throwaway profile, with the headers
+the hosted app sends (COOP `same-origin`, COEP `credentialless`) from a small static server, because `vite
+preview` sends neither and `crossOriginIsolated` was false under it. Read from the installed sources too.
+
+| Fact | Result |
+|---|---|
+| transformers.js 3.8.1, on import (`src/backends/onnx.js`) | Sets `env.wasm.wasmPaths` to `cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/` unless already set, in any worker that imports it |
+| Given a path, ONNX Runtime | `import()`s `ort-wasm-simd-threaded.jsep.mjs` and fetches its wasm from there. **Seen on the wire from the shipped build**; a bundle-embedded copy is used only when no path is set |
+| A page's `<meta>` CSP and a dedicated worker | Not inherited: that import ran under `script-src 'self'` |
+| `wasmPaths = { mjs, wasm }` with the build's own files (`?url`) | Works, threads included: under isolation six `em-pthread` workers start from the app's `.mjs`, no jsDelivr request. The package's `exports` does not list the files, so the import is a relative path |
+| kokoro-js 1.2.1 `from_pretrained` | Passes only `dtype`, `device`, `progress_callback`: no revision. Voices: hard-coded `onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/voices/<id>.bin` through global `fetch`, its own `kokoro-voices` cache, `ok` unchecked, whichever model was loaded |
+| transformers.js `getFile` in a browser | Global `fetch(url)`, looked up at call time, so a worker can replace it. Cache key in Cache Storage is the remote URL with its revision, so `revision` would have changed every key |
+| Files a load fetches | Kokoro: `config.json`, `tokenizer.json`, `tokenizer_config.json`, one graph, one voice per voice used. Moonshine: the two graphs and the five in `ASR_CONFIG_FILES`. It also asks for optional files, and a local 404 satisfies it |
+| Hugging Face's tree API | An LFS file's `lfs.oid` is its SHA-256 and `lfs.size` its bytes; other files have only a git oid, so `pin-models.ts` downloads and hashes those |
+| Whisper licences | `onnx-community/whisper-*_timestamped` declare none; their `base_model`, `openai/whisper-base` and `whisper-tiny.en`, say `apache-2.0` |
+| `pixiv/three-vrm` | `dev` was `3caf7a21` on 2026-11-03; the body at that commit and at `dev` hash the same |
+| All recorded sizes | Every byte count recorded since September still matched its file: no pin changes what anyone downloads |
+| First load, 482.9 MB, this connection | Listening in 35 s. From the cache 7.2 s, and nothing leaves the machine |
+| Checking fp32 Kokoro, 325 MB, on this PC | Read 251 ms + SHA-256 214 ms in the page |
+| Wrong bytes | A build served with one wrong pin: the cached copy removed with a console warning, the download refused with the sentence on the page ("these are not the bytes this app pinned"), nothing stored; the next start recovers by itself. A poisoned `config.json` and a poisoned body: removed and fetched again |
+| Playwright's `context.route` and a worker's `fetch` | **Not intercepted** (0 hits; `request` events do fire). To test a worker's wrong bytes, serve it a wrong expectation instead |
+| `.mjs` from Tauri | `tauri-utils` 2.10.2 `mime_type.rs`: `text/javascript`; read from the source, not yet seen in the webview (C-9) |

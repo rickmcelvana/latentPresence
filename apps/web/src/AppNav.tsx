@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/chat', label: 'Chat' },
   { href: '/settings', label: 'Settings' },
   { href: '/welcome', label: 'Setup' },
+  { href: '/privacy', label: 'Privacy' },
 ] as const;
 
 export interface AppNavProps {

@@ -1,4 +1,5 @@
 import type { ModelDescriptor, WordTiming } from '@latentpresence/protocol';
+import { KOKORO_CONFIG_FILES, KOKORO_GRAPHS, KOKORO_MODEL_REPO, pinnedBytes } from '../registry';
 
 /**
  * The contract between the Kokoro worker and whatever drives it (P1-T05).
@@ -28,7 +29,7 @@ export type KokoroDevice = 'webgpu' | 'wasm';
  * 2026-09-23), so nothing measured on the plain one needs measuring again. A new id is a
  * new consent: the files are different files.
  */
-export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX-timestamped';
+export const KOKORO_MODEL_ID = KOKORO_MODEL_REPO;
 
 /**
  * Kokoro's output rate, in Hz. kokoro-js 1.2.1 hard-codes it — `new RawAudio(data, 24e3)`
@@ -39,8 +40,8 @@ export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX-timestamped'
 export const KOKORO_SAMPLE_RATE = 24_000;
 
 /**
- * Exact `.onnx` sizes from the Hugging Face blob listing — 2026-09-12 for the plain export,
- * re-read 2026-09-23 for the timestamped one, 61–1,964 bytes smaller (`docs/SURFACE.md`).
+ * Exact sizes at the pinned commit, the graph and its three small config files (`registry/pins.ts`).
+ * The timestamped export is 61–1,964 bytes smaller than the plain one (`docs/SURFACE.md`).
  *
  * The filename is the trap, so it is written down: transformers.js maps a dtype to a
  * filename *suffix*, and `q8` maps to `_quantized`, not to anything containing "q8". The
@@ -48,14 +49,12 @@ export const KOKORO_SAMPLE_RATE = 24_000;
  * reading of this table quoted — a file `dtype: 'q8'` never downloads. Understating a
  * consent screen by 6 MB is exactly the misrepresentation ADR-09 exists to prevent.
  */
-const KOKORO_BYTES = {
-  q8: 92_361_055, // onnx/model_quantized.onnx
-  fp16: 163_232_776, // onnx/model_fp16.onnx
-  fp32: 325_532_171, // onnx/model.onnx
-} as const satisfies Partial<Record<KokoroDtype, number>>;
+function kokoroBytes(dtype: keyof typeof KOKORO_GRAPHS): number {
+  return pinnedBytes(KOKORO_MODEL_REPO, [KOKORO_GRAPHS[dtype], ...KOKORO_CONFIG_FILES]);
+}
 
 /** The precisions whose download size is a recorded fact. */
-export type KokoroSizedDtype = keyof typeof KOKORO_BYTES;
+export type KokoroSizedDtype = keyof typeof KOKORO_GRAPHS;
 
 /** True for a dtype we can quote a download size for, and therefore can consent to. */
 export function hasRecordedSize(dtype: KokoroDtype): dtype is KokoroSizedDtype {
@@ -70,8 +69,8 @@ export function hasRecordedSize(dtype: KokoroDtype): dtype is KokoroSizedDtype {
 export function kokoroModel(dtype: KokoroSizedDtype): ModelDescriptor {
   return {
     id: `${KOKORO_MODEL_ID}:${dtype}`,
-    label: `Kokoro 82M (text to speech, ${dtype})`,
-    sizeBytes: KOKORO_BYTES[dtype],
+    label: `Kokoro 82M (text to speech, ${dtype}), and about 0.5 MB for each voice used`,
+    sizeBytes: kokoroBytes(dtype),
     licence: 'Apache-2.0',
     sourceUrl: `https://huggingface.co/${KOKORO_MODEL_ID}`,
   };

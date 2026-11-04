@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
+import { FACE_FILE, FACE_SOURCE, pinnedFile, pinnedUrl } from '../registry';
 
 /**
  * The user's face in a worker (P3-T06): the catalog, the worker protocol and the one rule
@@ -21,12 +22,14 @@ import type { ModelDescriptor } from '@latentpresence/protocol';
  * ETag, same 3,758,596 bytes (read 2026-09-25) — and is pinned so `latest` moving never
  * changes what a user agreed to. All three model cards say Apache-2.0.
  */
-export const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+export const FACE_MODEL_URL = pinnedUrl(FACE_SOURCE, FACE_FILE);
+
+export const FACE_MODEL_SHA256 = pinnedFile(FACE_SOURCE, FACE_FILE).sha256;
 
 export const FACE_MODEL: ModelDescriptor = {
   id: 'mediapipe/face_landmarker@float16-1',
   label: 'MediaPipe Face Landmarker (reads your expression from the camera)',
-  sizeBytes: 3_758_596,
+  sizeBytes: pinnedFile(FACE_SOURCE, FACE_FILE).bytes,
   licence: 'Apache-2.0',
   sourceUrl: 'https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker',
 };

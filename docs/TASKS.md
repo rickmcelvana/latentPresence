@@ -111,6 +111,19 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-66 · The privacy page, and voice with its runtime from the build (P9-T05, ADR-70) · ~10 minutes
+**Why:** the page makes promises in your name, and three voice workers now load ONNX Runtime from the
+app instead of jsDelivr. The browser half is proved here; the server's copy is not deployed.
+1. Deploy to the server as usual (`docs/deploy.md`).
+2. Open https://app.latentpresence.com/privacy and read it. Pass: every line is something you are happy
+   to promise. The hosted-server line says it sees a visitor's address and nothing else; say if your
+   Caddy keeps logs longer than you would want said plainly.
+3. On https://app.latentpresence.com/chat press **F12 → Network**, type `jsdelivr` in the filter, press
+   **Start voice**, and talk for a minute. Pass: she hears and answers, and the filter shows nothing.
+   Your body re-downloads once (10.8 MB): its address now names a commit.
+
+Report what you saw; then ADR-70 can be accepted.
+
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -203,6 +216,11 @@ passes with 2× margin.**
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
 (D-15, D-16). The third — how often a person triggers ADR-25's retraction — needs a person, and
 was part of R-2: **no retraction in four microphone turns** (D-17), too few to call a rate.
+
+### C-9 · Voice in the desktop app with its runtime from the build (ADR-70) · **needs** the installed app closed
+The webview serving a new file type, `.mjs`, and starting threads from it. Tauri's source says the type
+is right (SURFACE); nothing has seen it run. C-8's method: build from HEAD, drive the exe over DevTools
+with its own profile, press Start voice, and watch for a jsDelivr request or a worker error.
 
 ### C-7 · An aborted answer stops the model, not just the stream · **needs** a local Ollama running
 **Why:** barge-in aborts `LLMProvider.stream()`. P1-T08 proved the signal reaches the fake;

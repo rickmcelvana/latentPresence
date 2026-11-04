@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
+import { integrityProblem } from '../registry/integrity';
 
 /**
  * Cached fetch for the weights `onnxruntime-web` used to pull straight from a URL (P1-T13).
@@ -21,6 +22,7 @@ export const MODEL_CACHE_NAME = 'latentpresence-models';
 export interface CacheLike {
   match(request: string): Promise<Response | undefined>;
   put(request: string, response: Response): Promise<void>;
+  delete(request: string): Promise<boolean>;
 }
 
 /** The slice of `CacheStorage` this needs. */
@@ -50,30 +52,17 @@ function realDeps(): CachedFetchDeps {
 }
 
 /**
- * Fetch `url`'s bytes through `latentpresence-models`, and check the result against
- * `descriptor.sizeBytes` before handing it back — `live/turn.ts` checks the same thing
- * against the catalog after a download, and a weight file that changed size on the far end
- * is not one we should hand to ort.
- */
-export async function cachedModelFetch(
-  url: string,
-  descriptor: ModelDescriptor,
-  deps: CachedFetchDeps = realDeps(),
-): Promise<Uint8Array> {
-  const bytes = await load(url, deps);
-  if (bytes.length !== descriptor.sizeBytes) {
-    throw new Error(`${descriptor.label}: downloaded ${bytes.length} bytes, catalog says ${descriptor.sizeBytes}`);
-  }
-  return bytes;
-}
-
-/**
+ * `url`'s bytes through `latentpresence-models`, checked against the size and SHA-256 this build
+ * pins (ADR-70), whichever way they came. **Only checked bytes are stored**, and a cached entry
+ * that fails is dropped and fetched again rather than failing every load from then on.
+ *
  * Every Cache Storage call is wrapped and falls back to a plain fetch on any failure —
- * transformers.js does the same for a real reason (private windows, iframes that block
- * storage access), and a hard failure here would mean no voice at all in incognito rather
- * than a slower one every time.
+ * transformers.js does the same for a real reason (private windows, iframes that block storage
+ * access), and a hard failure here would mean no voice at all in incognito rather than a slower
+ * one every time.
  */
-async function load(url: string, deps: CachedFetchDeps): Promise<Uint8Array> {
+export async function cachedModelFetch(url: string, descriptor: ModelDescriptor, sha256: string, deps: CachedFetchDeps = realDeps()): Promise<Uint8Array> {
+  const file = { bytes: descriptor.sizeBytes, sha256 };
   let cache: CacheLike | null = null;
   try {
     cache = await deps.caches.open(MODEL_CACHE_NAME);
@@ -84,7 +73,11 @@ async function load(url: string, deps: CachedFetchDeps): Promise<Uint8Array> {
   if (cache !== null) {
     try {
       const cached = await cache.match(url);
-      if (cached !== undefined) return new Uint8Array(await cached.arrayBuffer());
+      if (cached !== undefined) {
+        const bytes = new Uint8Array(await cached.arrayBuffer());
+        if ((await integrityProblem(bytes, file, descriptor.label)) === null) return bytes;
+        await cache.delete(url);
+      }
     } catch {
       // Falls through to a plain fetch below.
     }
@@ -92,13 +85,17 @@ async function load(url: string, deps: CachedFetchDeps): Promise<Uint8Array> {
 
   const response = await deps.fetch(url);
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  const copy = response.clone();
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const problem = await integrityProblem(bytes, file, descriptor.label);
+  if (problem !== null) throw new Error(problem);
   if (cache !== null) {
     try {
-      await cache.put(url, response.clone());
+      await cache.put(url, copy);
     } catch {
-      // The bytes are already in hand below; a cache that cannot be written just means
-      // the next call fetches again, which is the private-window case working as intended.
+      // The bytes are in hand; a cache that cannot be written just means the next call fetches
+      // again, which is the private-window case working as intended.
     }
   }
-  return new Uint8Array(await response.arrayBuffer());
+  return bytes;
 }

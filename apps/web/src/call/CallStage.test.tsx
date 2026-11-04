@@ -101,7 +101,7 @@ describe('CallStage — consent gates the fetch', () => {
     const consent = new ModelConsent(memoryStorage());
     // The placeholder is agreed to already; a different body is a different agreement.
     consent.grant([AVATAR_DESCRIPTOR]);
-    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor) => new Uint8Array([1, 2, 3]));
+    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor, _sha256: string) => new Uint8Array([1, 2, 3]));
     render(
       <CallStage
         body={{ kind: 'download', id: 'theo', name: 'Theo', asset: other, descriptor: otherDescriptor }}
@@ -117,7 +117,7 @@ describe('CallStage — consent gates the fetch', () => {
     expect(screen.getByText('Theo')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show the character' }));
-    await waitFor(() => expect(fetchModel).toHaveBeenCalledWith('https://example.test/theo.vrm', otherDescriptor));
+    await waitFor(() => expect(fetchModel).toHaveBeenCalledWith('https://example.test/theo.vrm', otherDescriptor, AVATAR.sha256));
     expect(consent.has([otherDescriptor])).toBe(true);
   });
 
@@ -260,7 +260,7 @@ describe('CallStage — another body, mid-call (P7-T02, ADR-59)', () => {
     const consent = new ModelConsent(memoryStorage());
     consent.grant([AVATAR_DESCRIPTOR]);
     const renderer = new FakeAvatarRenderer();
-    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor) => new Uint8Array([1]));
+    const fetchModel = vi.fn(async (_url: string, _descriptor: ModelDescriptor, _sha256: string) => new Uint8Array([1]));
     const props = { voice: null, consent, createRenderer: () => renderer, fetchModel, machine: machine() };
     const view = render(<CallStage {...props} />);
     await waitFor(() => expect(renderer.character?.id).toBe('placeholder'));
@@ -275,7 +275,7 @@ describe('CallStage — another body, mid-call (P7-T02, ADR-59)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Wear this body' }));
     await waitFor(() => expect(renderer.character?.id).toBe('another'));
-    expect(fetchModel).toHaveBeenLastCalledWith('https://example.test/another.vrm', descriptor);
+    expect(fetchModel).toHaveBeenLastCalledWith('https://example.test/another.vrm', descriptor, AVATAR.sha256);
   });
 
   it('keeps the body on stage when the new one is refused, and says why', async () => {

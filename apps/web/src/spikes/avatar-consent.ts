@@ -16,19 +16,19 @@
  * unchanged so this page and `/spike/avatar` need no edits.
  */
 
+import { BODY_SOURCE, IDLE_CLIP_FILE, pinnedFile, pinnedUrl } from '@latentpresence/ml-web/registry';
 import { AVATAR, type AssetDownload } from '../call/character-asset';
 
 export { AVATAR };
 export type { AssetDownload };
 
-const RAW = 'https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages';
-
 export const IDLE_CLIP: AssetDownload = {
   label: 'test.vrma (animation loader check, not an idle)',
   licence: 'MIT, with the repository',
-  bytes: 11_548,
+  bytes: pinnedFile(BODY_SOURCE, IDLE_CLIP_FILE).bytes,
   sourceUrl: 'https://github.com/pixiv/three-vrm',
-  downloadUrl: `${RAW}/three-vrm-animation/examples/models/test.vrma`,
+  downloadUrl: pinnedUrl(BODY_SOURCE, IDLE_CLIP_FILE),
+  sha256: pinnedFile(BODY_SOURCE, IDLE_CLIP_FILE).sha256,
   author: 'pixiv Inc.',
   terms: 'Three animation channels. It proves the VRMA path and nothing about how an idle looks.',
 };

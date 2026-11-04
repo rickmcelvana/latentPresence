@@ -17,7 +17,8 @@ export const CONTENT_SECURITY_POLICY: Readonly<Record<string, readonly string[]>
   'default-src': ["'self'"],
   // Only the build's own files. `'wasm-unsafe-eval'` compiles WebAssembly, and nothing else.
   'script-src': ["'self'", "'wasm-unsafe-eval'"],
-  // The model workers and the audio worklets are the build's own files.
+  // The model workers and the audio worklets are the build's own files. This limits which workers
+  // start, not what they load: a worker does not inherit a `<meta>` policy (ADR-70, `cdn-guard.ts`).
   'worker-src': ["'self'"],
   // `ipc:` and `http://ipc.localhost` are the desktop shell's commands (Tauri 2).
   'connect-src': ["'self'", 'https:', 'http:', 'wss:', 'ws:', 'data:', 'blob:', 'ipc:'],

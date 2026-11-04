@@ -18,6 +18,7 @@ export const BUNDLE_BUDGETS: BundleBudgets = {
     welcome: { chunks: ['WelcomePage'], maxGzipBytes: 220_000 },
     settings: { chunks: ['SettingsPage'], maxGzipBytes: 230_000 },
     chat: { chunks: ['ChatPage', 'CallStage'], maxGzipBytes: 470_000 },
+    privacy: { chunks: ['PrivacyPage'], maxGzipBytes: 220_000 },
   },
   // What loads after a page has drawn, in raw bytes: the AI SDK on the first message, and the
   // voice and the face reading on Start, after their consent. ONNX Runtime's and MediaPipe's
@@ -29,7 +30,8 @@ export const BUNDLE_BUDGETS: BundleBudgets = {
     { stem: 'asr.worker.js', maxBytes: 980_000 },
     { stem: 'kokoro.worker.js', maxBytes: 2_450_000 },
     { stem: 'ser.worker.js', maxBytes: 440_000 },
-    { stem: 'face.worker.js', maxBytes: 150_000 },
+    // 150 kB until P9-T05: each worker now carries the table of pinned hashes (16 kB raw, ADR-70).
+    { stem: 'face.worker.js', maxBytes: 165_000 },
     { stem: 'vision_wasm_module_internal.js', maxBytes: 355_000 },
     { stem: 'vision_wasm_module_internal.wasm', maxBytes: 12_300_000 },
     { stem: 'ort-wasm-simd-threaded.jsep.wasm', maxBytes: 23_800_000 },

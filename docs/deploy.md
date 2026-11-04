@@ -106,3 +106,5 @@ Expect `200`, `Cross-Origin-Opener-Policy: same-origin` and
 - **The companion needs its pairing code here.** `pnpm companion` prints a pairing code when it
   starts (kept in `pairing-code.txt` beside `mcp.json`; delete the file for a new one). The visitor
   enters it once under Settings → Companion. Pages on their own computer (`pnpm dev`) need none.
+
+**`/privacy`** says the server sees a visitor's address when it sends the page's files and nothing more. A change to what this server keeps or sends changes that page.

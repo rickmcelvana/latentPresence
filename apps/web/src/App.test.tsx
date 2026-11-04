@@ -62,6 +62,7 @@ describe('App', () => {
       ['Chat', CHAT_PATH, null],
       ['Settings', SETTINGS_PATH, 'page'],
       ['Setup', WELCOME_PATH, null],
+      ['Privacy', '/privacy', null],
     ]);
     await act(async () => {});
   });

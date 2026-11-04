@@ -13,7 +13,7 @@ const PREVIEW = 'http://localhost:4173';
 
 test.use({ baseURL: PREVIEW });
 
-for (const path of ['/welcome', '/settings', '/chat']) {
+for (const path of ['/welcome', '/settings', '/chat', '/privacy']) {
   test(`${path} runs under its policy with nothing refused`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(String(error)));

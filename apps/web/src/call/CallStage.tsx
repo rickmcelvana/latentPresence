@@ -123,7 +123,7 @@ export interface CallStageProps {
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
   /** Test seam: in place of `cachedModelFetch`, so a fetch spy can prove nothing moves
    * before consent without a real Cache Storage or network. */
-  readonly fetchModel?: (url: string, descriptor: ModelDescriptor) => Promise<Uint8Array>;
+  readonly fetchModel?: (url: string, descriptor: ModelDescriptor, sha256: string) => Promise<Uint8Array>;
 }
 
 /** Plays the base clip for `state` if it differs from the one playing (`BaseClipGraph`). */
@@ -387,7 +387,7 @@ export function CallStage({
       const avatar = rendererRef.current;
       if (avatar === null) return;
       try {
-        const bytes = wanted.kind === 'download' ? await fetchModel(wanted.asset.downloadUrl, wanted.descriptor) : await wanted.read();
+        const bytes = wanted.kind === 'download' ? await fetchModel(wanted.asset.downloadUrl, wanted.descriptor, wanted.asset.sha256) : await wanted.read();
         if (cancelled) return;
         const blobUrl = URL.createObjectURL(new Blob([bytes as BlobPart]));
         try {

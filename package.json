@@ -27,6 +27,8 @@
     "e2e": "playwright test",
     "e2e:fixture": "pnpm --filter @latentpresence/ml-web exec vite-node live/e2e-fixture.ts",
     "openapi": "vite-node packages/protocol/scripts/write-openapi.ts",
+    "pins:write": "pnpm --filter @latentpresence/ml-web exec vite-node tools/pin-models.ts --write",
+    "pins:check": "pnpm --filter @latentpresence/ml-web exec vite-node tools/pin-models.ts",
     "clips:build": "vite-node packages/avatar/tools/build-clips.ts",
     "idle:log": "vite-node packages/core/scripts/idle-log.ts",
     "initiative:log": "vite-node packages/core/scripts/initiative-log.ts",

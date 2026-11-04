@@ -92,6 +92,7 @@ character. A recent integrated GPU works, and a dedicated one is smoother.
 
 - **No telemetry, no accounts, no server of ours** in the conversation. Requests go only where you
   pointed them: your model, your speech server, your tools.
+  [`/privacy`](https://app.latentpresence.com/privacy) says what goes where, and lists every model it can download with its licence.
 - **Everything she remembers is yours**: in your browser, your app's storage, or your own database.
   Forget anything from the Memory panel.
 - **Nothing is downloaded without asking.** Every model download shows its size, licence and source

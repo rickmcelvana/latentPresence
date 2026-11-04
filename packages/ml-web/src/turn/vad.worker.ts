@@ -36,7 +36,7 @@ let vad: SileroVad | null = null;
 
 async function load(): Promise<void> {
   const started = performance.now();
-  const bytes = await cachedModelFetch(modelUrl(SILERO_VAD), sileroVadModel());
+  const bytes = await cachedModelFetch(modelUrl(SILERO_VAD), sileroVadModel(), SILERO_VAD.sha256);
   vad = new SileroVad(await createSileroSession(bytes));
   post({ type: 'ready', loadMs: performance.now() - started });
 }

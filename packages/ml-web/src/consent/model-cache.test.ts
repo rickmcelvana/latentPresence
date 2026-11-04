@@ -1,8 +1,13 @@
+import { createHash } from 'node:crypto';
 import type { ModelDescriptor } from '@latentpresence/protocol';
 import { describe, expect, it, vi } from 'vitest';
 import { cachedModelFetch, MODEL_CACHE_NAME, type CacheLike, type CacheStorageLike } from './model-cache';
 
 const SILERO_URL = 'https://huggingface.co/onnx-community/silero-vad/resolve/main/onnx/model.onnx';
+
+function sha(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
 
 function descriptor(sizeBytes: number): ModelDescriptor {
   return {
@@ -26,6 +31,9 @@ function memoryCache(): CacheLike & { readonly stored: Map<string, Uint8Array<Ar
     async put(request: string, response: Response) {
       stored.set(request, new Uint8Array(await response.arrayBuffer()));
     },
+    async delete(request: string) {
+      return stored.delete(request);
+    },
   };
 }
 
@@ -48,7 +56,7 @@ describe('cachedModelFetch', () => {
     const cache = memoryCache();
     const { fetch: fetchFn, calls } = fetchReturning(bytes);
 
-    const result = await cachedModelFetch(SILERO_URL, descriptor(4), { caches: memoryCacheStorage(cache), fetch: fetchFn });
+    const result = await cachedModelFetch(SILERO_URL, descriptor(4), sha(bytes), { caches: memoryCacheStorage(cache), fetch: fetchFn });
 
     expect(result).toEqual(bytes);
     expect(calls.count).toBe(1);
@@ -61,7 +69,7 @@ describe('cachedModelFetch', () => {
     cache.stored.set(SILERO_URL, bytes);
     const fetchSpy = vi.fn();
 
-    const result = await cachedModelFetch(SILERO_URL, descriptor(3), {
+    const result = await cachedModelFetch(SILERO_URL, descriptor(3), sha(bytes), {
       caches: memoryCacheStorage(cache),
       fetch: fetchSpy as unknown as typeof fetch,
     });
@@ -77,7 +85,7 @@ describe('cachedModelFetch', () => {
       open: () => Promise.reject(new Error('SecurityError: storage disabled')),
     };
 
-    const result = await cachedModelFetch(SILERO_URL, descriptor(2), { caches: throwingCaches, fetch: fetchFn });
+    const result = await cachedModelFetch(SILERO_URL, descriptor(2), sha(bytes), { caches: throwingCaches, fetch: fetchFn });
 
     expect(result).toEqual(bytes);
     expect(calls.count).toBe(1);
@@ -89,9 +97,10 @@ describe('cachedModelFetch', () => {
     const cache: CacheLike = {
       match: () => Promise.reject(new Error('blocked')),
       put: async () => {},
+      delete: async () => false,
     };
 
-    const result = await cachedModelFetch(SILERO_URL, descriptor(1), { caches: memoryCacheStorage(cache), fetch: fetchFn });
+    const result = await cachedModelFetch(SILERO_URL, descriptor(1), sha(bytes), { caches: memoryCacheStorage(cache), fetch: fetchFn });
 
     expect(result).toEqual(bytes);
     expect(calls.count).toBe(1);
@@ -103,9 +112,10 @@ describe('cachedModelFetch', () => {
     const cache: CacheLike = {
       match: async () => undefined,
       put: () => Promise.reject(new Error('quota exceeded')),
+      delete: async () => false,
     };
 
-    const result = await cachedModelFetch(SILERO_URL, descriptor(3), { caches: memoryCacheStorage(cache), fetch: fetchFn });
+    const result = await cachedModelFetch(SILERO_URL, descriptor(3), sha(bytes), { caches: memoryCacheStorage(cache), fetch: fetchFn });
     expect(result).toEqual(bytes);
   });
 
@@ -114,7 +124,7 @@ describe('cachedModelFetch', () => {
     const cache = memoryCache();
 
     await expect(
-      cachedModelFetch(SILERO_URL, descriptor(4), { caches: memoryCacheStorage(cache), fetch: fetchFn }),
+      cachedModelFetch(SILERO_URL, descriptor(4), 'unused', { caches: memoryCacheStorage(cache), fetch: fetchFn }),
     ).rejects.toThrow(/downloaded 3 bytes, catalog says 4/u);
   });
 
@@ -131,7 +141,7 @@ describe('cachedModelFetch', () => {
     delete host.caches;
     vi.stubGlobal('fetch', fetchFn);
     try {
-      await expect(cachedModelFetch(SILERO_URL, descriptor(4))).resolves.toEqual(new Uint8Array([1, 2, 3, 4]));
+      await expect(cachedModelFetch(SILERO_URL, descriptor(4), sha(new Uint8Array([1, 2, 3, 4])))).resolves.toEqual(new Uint8Array([1, 2, 3, 4]));
       expect(calls.count).toBe(1);
     } finally {
       vi.unstubAllGlobals();
@@ -144,8 +154,25 @@ describe('cachedModelFetch', () => {
     const fetchFn = (async () => new Response('not found', { status: 404 })) as typeof fetch;
 
     await expect(
-      cachedModelFetch(SILERO_URL, descriptor(4), { caches: memoryCacheStorage(cache), fetch: fetchFn }),
+      cachedModelFetch(SILERO_URL, descriptor(4), 'unused', { caches: memoryCacheStorage(cache), fetch: fetchFn }),
     ).rejects.toThrow(/HTTP 404/u);
     expect(cache.stored.size).toBe(0);
+  });
+
+  it('throws on bytes of the right size and the wrong content, and stores nothing', async () => {
+    const cache = memoryCache();
+    const { fetch: fetchFn } = fetchReturning(new Uint8Array([4, 3, 2, 1]));
+    await expect(cachedModelFetch(SILERO_URL, descriptor(4), sha(new Uint8Array([1, 2, 3, 4])), { caches: memoryCacheStorage(cache), fetch: fetchFn })).rejects.toThrow(/not the bytes this app pinned/u);
+    expect(cache.stored.size).toBe(0);
+  });
+
+  it('drops a cached entry that fails its check and fetches the right one', async () => {
+    const good = new Uint8Array([1, 2, 3, 4]);
+    const cache = memoryCache();
+    cache.stored.set(SILERO_URL, new Uint8Array([4, 3, 2, 1]));
+    const { fetch: fetchFn, calls } = fetchReturning(good);
+    expect(await cachedModelFetch(SILERO_URL, descriptor(4), sha(good), { caches: memoryCacheStorage(cache), fetch: fetchFn })).toEqual(good);
+    expect(calls.count).toBe(1);
+    expect(cache.stored.get(SILERO_URL)).toEqual(good);
   });
 });

@@ -888,6 +888,7 @@ kbd {
   top: 0;
   z-index: 10;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--gap-md);
@@ -905,6 +906,7 @@ kbd {
 
 .app-nav-links {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--gap-xs);
   margin: 0;
   padding: 0;
@@ -965,6 +967,130 @@ kbd {
 .settings-vault-note {
   border-left: 2px solid var(--border-bright);
   padding-left: var(--gap-md);
+}
+
+/* --- Privacy and the model registry (P9-T05) ---------------------------------
+   A page to read, at the settings page's width. The hashes are long and unbroken,
+   so they wrap anywhere rather than pushing the page sideways on a phone. */
+
+.privacy-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--gap-xl) var(--gap-lg);
+}
+
+.privacy-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.privacy-title {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.privacy-lead {
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.privacy-note {
+  color: var(--text-muted);
+}
+
+.privacy-section {
+  align-items: stretch;
+}
+
+.privacy-list,
+.privacy-destinations,
+.registry-list,
+.registry-file-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.privacy-list {
+  gap: var(--gap-sm);
+}
+
+.privacy-destinations,
+.registry-list {
+  gap: var(--gap-md);
+}
+
+.privacy-destination,
+.registry-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding-top: var(--gap-md);
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.privacy-destination-what,
+.registry-entry-name {
+  font-weight: 600;
+}
+
+.privacy-destination-where {
+  color: var(--accent);
+}
+
+.privacy-destination-when,
+.registry-entry-does,
+.registry-entry-meta,
+.registry-entry-size,
+.registry-file-size {
+  color: var(--text-muted);
+}
+
+.registry-entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+}
+
+.registry-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.registry-files summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.registry-file-list {
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+}
+
+.registry-file {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--gap-sm);
+  min-width: 0;
+}
+
+.registry-file-path {
+  overflow-wrap: anywhere;
+}
+
+.registry-file-hash {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
 }
 
 /* A saved-key row: the "Key saved" pill plus Replace/Forget, or the password input

@@ -11,18 +11,21 @@ import type { MinimalCache, MinimalCacheStorage } from '../consent/deps';
  * fetched yet (the user agreed, then closed the tab before the download finished), and a
  * screen answering "what is on this computer" from the wrong source would say so wrongly.
  *
- * Two caches, both named in `docs/SURFACE.md`'s "What actually downloads weights":
+ * Three caches. Two are named in `docs/SURFACE.md`'s "What actually downloads weights":
  * `transformers-cache` (`@huggingface/transformers`'s own name, not exported by the
  * library, so it is written down here) for Kokoro, Moonshine and Whisper, and
  * `latentpresence-models` (`MODEL_CACHE_NAME`, `packages/ml-web/src/consent/model-cache.ts`)
- * for Silero and Smart Turn, which now fetch their own bytes instead of handing ort a URL.
+ * for everything that fetches its own bytes instead of handing ort a URL. The third is
+ * `kokoro-voices`, kokoro-js's own name for the voices it fetches, which "Delete all" left
+ * behind until P9-T05.
  */
 
 const TRANSFORMERS_CACHE_NAME = 'transformers-cache';
 
 const KNOWN_CACHES: readonly { readonly name: string; readonly note: string }[] = [
   { name: TRANSFORMERS_CACHE_NAME, note: 'Kokoro, Moonshine and Whisper' },
-  { name: MODEL_CACHE_NAME, note: 'Silero VAD and Smart Turn' },
+  { name: 'kokoro-voices', note: "Kokoro's voices" },
+  { name: MODEL_CACHE_NAME, note: 'Silero VAD, Smart Turn, voice emotion, face reading and the placeholder body' },
 ];
 
 interface CacheRow {
@@ -129,7 +132,7 @@ export function DownloadedModelsSection({ caches, consent }: DownloadedModelsSec
       </div>
       <p className="field-hint">
         What is actually on this computer, read from its storage rather than from what you agreed to. Deleting one
-        means the next use downloads it again.
+        means the next use downloads it again. <a href="/privacy">Every model this app can download, and its licence</a>.
       </p>
       {!loaded ? (
         <p className="settings-cache-empty">Checking…</p>
