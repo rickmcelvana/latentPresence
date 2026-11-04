@@ -987,3 +987,9 @@ Left: C-9 (voice in the desktop webview, needs the installed app closed); R-66 (
 Next: C-9, then P9-T04 (user docs, sub) or P9-T06 (1.0); tester feedback first.
 Decisions: ADR-70 proposed, recommended options taken. Rick to check: the privacy page's wording is a promise in Rick's name, the server-logs line above all.
 Lessons: `pnpm gate | tail` reports tail's exit code, and it hid a red gate here; redirect to a file and print `$?`. A proof must log what it pressed: the first run sat idle until Rick clicked in its window, and I told Rick it had done that itself, which was wrong.
+
+## 2026-11-03 claude (5) — the server's build over budget: an old pnpm, not the code
+Did: Rick's Debian build failed its budgets with vite 8.3.4 and rolldown 1.2.14; CI was green on the same commit. Reproduced in clean clones: pnpm 9 calls this lockfile broken, exits 0 and resolves everything afresh, while 10 and later switch to the pinned 12.3.4 (SURFACE). Budgets left alone: they caught a server building what nothing tested. `engines.pnpm` and `--frozen-lockfile` in `docs/deploy.md` now stop it, both seen refusing. Which pnpm the server has is inferred from the error format and the versions, not read: Rick's `pnpm --version` settles it.
+Left: Rick updates the server's pnpm and rebuilds; R-66, C-9; ADR-70 to accept; laptop session; C-7.
+Next: C-9, then P9-T04 or P9-T06; tester feedback first.
+Decisions: none new. Found: `pins.ts` reaches the boot page through `character-asset.ts`, 6.3 kB gzip of hashes on a page that downloads nothing; not the cause, but it used the headroom.

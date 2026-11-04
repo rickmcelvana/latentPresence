@@ -2863,3 +2863,20 @@ preview` sends neither and `crossOriginIsolated` was false under it. Read from t
 | Wrong bytes | A build served with one wrong pin: the cached copy removed with a console warning, the download refused with the sentence on the page ("these are not the bytes this app pinned"), nothing stored; the next start recovers by itself. A poisoned `config.json` and a poisoned body: removed and fetched again |
 | Playwright's `context.route` and a worker's `fetch` | **Not intercepted** (0 hits; `request` events do fire). To test a worker's wrong bytes, serve it a wrong expectation instead |
 | `.mjs` from Tauri | `tauri-utils` 2.10.2 `mime_type.rs`: `text/javascript`; read from the source, not yet seen in the webview (C-9) |
+
+## pnpm and this lockfile, by version — measured 2026-11-03
+
+`pnpm install --lockfile-only --ignore-scripts` in a clean clone, `CI` unset, after a Debian server's build
+came out over budget with vite 8.3.4 and rolldown 1.2.14 against the lockfile's 8.2.2 and 1.2.7. CI, on
+Ubuntu with the lockfile, was green on the same commit.
+
+| pnpm | What it does |
+|---|---|
+| 12.3.4 | Keeps the lockfile |
+| 10 | Switches itself to 12.3.4 (`packageManager`), then the same |
+| 9.15.9 | `WARN Ignoring broken lockfile`, **exit 0**, resolves everything afresh (rolldown 1.2.16, vite 8.3.5 that day) and rewrites `pnpm-lock.yaml` |
+| 8.15.9 | The same, and writes lockfile version 6.0 |
+| 9.15.9 with `--frozen-lockfile` | `ERR_PNPM_BROKEN_LOCKFILE`, exit 1 |
+| 9.15.9 with `engines.pnpm` `>=12.3.4` | `ERR_PNPM_UNSUPPORTED_ENGINE`, exit 1; on an install only, not on `pnpm build` |
+
+The same source gave 14.6 kB more gzip before `boot` draws under the newer tools (197.5 against 182.9).

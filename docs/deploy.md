@@ -16,6 +16,10 @@ Ollama, LM Studio or companion on their own machine.
 ## 1. Once, on the server
 
 - **Node.js 22 or later** (`package.json` `engines`) and **pnpm 12.3.4**: `npm install -g pnpm@12.3.4`.
+  An older one is not a smaller problem. pnpm 9 calls this lockfile broken, ignores it and resolves
+  every dependency afresh, so the server builds versions nothing has tested, without the overrides
+  or the install-script denials in `pnpm-workspace.yaml` (measured 2026-11-03, SURFACE). Since then
+  `engines` refuses it.
 - **Git LFS.** The body's base clips (`assets/clips/idle.vrma`, `talk.vrma`) live in LFS. Without
   it the clone holds ~130-byte pointer files, the build bundles those, and nothing fails visibly:
   she just stands in her rest pose instead of idling and talking.
@@ -27,8 +31,11 @@ Ollama, LM Studio or companion on their own machine.
 ## 2. Build, and every update
 
 ```bash
-git pull && git lfs pull && pnpm install && pnpm build
+git pull && git lfs pull && pnpm install --frozen-lockfile && pnpm build
 ```
+
+`--frozen-lockfile` means exactly what the repository tested, or a stop. The budget lines the build
+prints should be within a kB of the last gate's: if they are not, this is not the same build.
 
 Check the clips are real files (idle about 92 KB, talk about 103 KB, not a few hundred bytes):
 
