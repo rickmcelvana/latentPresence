@@ -111,18 +111,6 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-65 · A spoken call under the Content Security Policy (P9-T03, ADR-69) · ~10 minutes
-**Why:** the policy is proved on everything but a real voice call. R-63 ran on the dev server, which
-carries no policy; C-8 started every worker and worklet in the desktop app but loaded no model,
-because agreeing to that download is yours. The hosted app serves the policy since R-64, so the
-quickest place to check is there.
-1. In Chrome, open https://app.latentpresence.com/chat with a model chosen, press **Start voice**,
-   read the consent card, agree if you are happy with the download, and talk for a minute.
-2. Press **F12 → Console**. Pass: she hears you and answers aloud, and no red line mentions
-   "Content Security Policy". Then **Read my face** the same way.
-
-Report what you saw; then ADR-69 can be accepted.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -228,6 +216,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-68 · R-65: a spoken call under the Content Security Policy** — Rick 2026-11-03: **passed**. P9-T03 done; ADR-69 accepted.
 - **D-67 · C-8: the desktop app under its Content Security Policy** — claude 2026-11-03: the exe
   built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone).
   **Passed for everything but a model-loaded call (R-65):** the policy is live in WebView2 (Edge

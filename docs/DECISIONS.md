@@ -71,7 +71,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
 | ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
-| ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | proposed | 2026-11-01 |
+| ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 
 ---
 
@@ -2827,7 +2827,7 @@ that matter here (the stage, the voice) come after it; and another 100+ MB downl
 the plan's figures directly* (400 MB, 500 ms) — the code is far inside them, so they would catch
 nothing until it was too late; budgets near today's numbers catch the commit that moved them.
 
-## ADR-69 The security review: Host names, the LAN, a page policy, advisories (proposed 2026-11-01, P9-T03)
+## ADR-69 The security review: Host names, the LAN, a page policy, advisories (accepted 2026-11-03, P9-T03)
 
 **Context.** Phase 9's security review. The threat model and every finding are in
 `docs/security.md`; this records the decisions it made.
