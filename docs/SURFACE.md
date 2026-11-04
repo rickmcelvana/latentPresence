@@ -2893,3 +2893,7 @@ The same source gave 14.6 kB more gzip before `boot` draws under the newer tools
 | `streamText` with telemetry not turned off | Passes `_totalUsage.promise.then(() => void 0)` to `openTelemetryChannelSpanContext`, which returns early unless `process.release.name` is `node`, before the `.catch` it has for that case. An abort rejects the usage promise, so a browser logs `Uncaught (in promise) AbortError`; Node does not |
 | `telemetry: { isEnabled: false }` | The dispatcher is empty, so the `.then` is never made. Aborted requests still abort (`ERR_ABORTED` at the relay), no page error, and the next answer arrives |
 | Finding a native rejection | CDP's `exceptionThrown` gives the stack that made the *error*, and `setPauseOnExceptions` did not stop here. Tagging promises in an init script (`fetch`, stream methods, `Promise.prototype.then`) and reading the tag in `unhandledrejection` named the line |
+
+## Theo's body from `media.githubusercontent.com` — measured 2026-11-04
+
+The pinned LFS address, once 5b08aee was pushed: 200, `Access-Control-Allow-Origin: *`, 15,405,404 bytes, and the SHA-256 in `pins.ts`. In Chrome through the app, with nothing stubbed, he downloads behind his consent, draws with no error, and a reload neither asks nor fetches. `pnpm pins:check` holds. The LFS bandwidth quota is still unread.

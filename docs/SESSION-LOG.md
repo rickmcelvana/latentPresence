@@ -1021,3 +1021,10 @@ Left: **push**, then `pnpm pins:check` and one real download prove the address; 
 Next: P9-T06 (1.0), unless Rick takes P7-T03 first.
 Decisions: ADR-59 amended. Rick asked whether "remodelling the room" was a missed phase: it is **P7-T03 Set v2**, in the plan and not started, on Phase 7's parallel track, and nothing in P9 or the release depends on it. So it is Rick's call on when, not a miss.
 Lessons: A test's seeded settings must be complete: a partial object is thrown away for the defaults, and the page then says "choose a model", which looks like the app's fault.
+
+## 2026-11-04 claude (10) — the call toolbar reaches every width; R-67 passed; Theo's address proved
+Did: R-67 passed (D-71), P9-T04 done. Theo's pinned download proved on GitHub itself, with `pins:check` holding. The toolbar was a fixed 1439 px row, so at 1366 and below Start voice and Settings were off the screen, and anyone at 1920 with 150% scaling had that. It now wraps between the call's controls and her panels, and `watchControlBar` raises `--call-bar-height`, which everything over the stage already reads. Under 640 px it stays one row and scrolls. Measuring around it found three more: the character's consent buttons under the text box on short windows, the voice consent's heading cut off, and Full window off the small window. All fixed. Gate green (2245 TS), e2e green, Chrome from 375 to 1920, the built exe in both windows.
+Left: the laptop session (R-13, R-1, R-9); C-7. Not pushed.
+Next: P9-T06 (1.0), unless Rick takes P7-T03 first; tester feedback first.
+Decisions: none new. Known: at 600 px tall the voice consent scrolls inside its card, so Agree needs a scroll there.
+Lessons: Every check here ran at this PC's width, so a bar too wide for a laptop stayed invisible through two phases; measure a layout at the widths people have. A `:has()` matches what `display: none` hides: it counted the small window's hidden text box.

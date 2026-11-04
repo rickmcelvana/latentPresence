@@ -111,17 +111,6 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-67 · The user docs on the site (P9-T04) · ~15 minutes
-**Why:** these pages speak in your name, and the site's own deployment is yours.
-1. In `Z:\dev\latent\latentpresence.com`, run `git push`.
-2. On the server, in the folder Caddy serves `latentpresence.com` from, run `git pull`. That is the site's
-   checkout, not the app's: nothing to build.
-3. Read https://latentpresence.com/docs/, /docs/providers/ and /docs/privacy/. Pass: every line is
-   something you are happy to say. Two sentences on the privacy page are about the site, and only you can
-   vouch for them: "no analytics or trackers", and what the feedback form receives.
-
-Report what you saw; then P9-T04 is done.
-
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.
@@ -227,6 +216,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-71 · R-67: the user docs on the site** — Rick 2026-11-04: **passed**, pushed, deployed and read. P9-T04 done.
 - **D-70 · C-9: voice in the desktop app with its runtime from the build** — claude 2026-11-03: the exe
   built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone, muted).
   **Passed.** From an empty profile: listening in 34.7 s, 0 jsDelivr, nothing on a moving ref, five
