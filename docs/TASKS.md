@@ -111,6 +111,17 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-67 · The user docs on the site (P9-T04) · ~15 minutes
+**Why:** these pages speak in your name, and the site's own deployment is yours.
+1. In `Z:\dev\latent\latentpresence.com`, run `git push`.
+2. On the server, in the folder Caddy serves `latentpresence.com` from, run `git pull`. That is the site's
+   checkout, not the app's: nothing to build.
+3. Read https://latentpresence.com/docs/, /docs/providers/ and /docs/privacy/. Pass: every line is
+   something you are happy to say. Two sentences on the privacy page are about the site, and only you can
+   vouch for them: "no analytics or trackers", and what the feedback form receives.
+
+Report what you saw; then P9-T04 is done.
+
 ### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: two quick frame-rate readings first, then the long conversation.

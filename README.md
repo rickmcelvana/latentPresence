@@ -19,6 +19,9 @@ telemetry.
 
 ## Get it
 
+The [user guide](https://latentpresence.com/docs/) covers all of this in more detail, including
+[connecting each model provider](https://latentpresence.com/docs/providers/).
+
 ### Windows app (recommended)
 
 1. Download `latentPresence_x.y.z_x64-setup.exe` from the
