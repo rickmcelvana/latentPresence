@@ -40,6 +40,8 @@ export function asrFiles(dtype: AsrDtypeKey): readonly string[] {
 export const BODY_SOURCE = 'pixiv/three-vrm';
 export const BODY_FILE = 'packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm';
 export const IDLE_CLIP_FILE = 'packages/three-vrm-animation/examples/models/test.vrma';
+export const THEO_BODY_SOURCE = 'rickmcelvana/latentPresence';
+export const THEO_BODY_FILE = 'assets/bodies/theo.vrm';
 
 export const FACE_SOURCE = 'mediapipe/face_landmarker';
 export const FACE_FILE = 'face_landmarker.task';

@@ -25,7 +25,7 @@ const TRANSFORMERS_CACHE_NAME = 'transformers-cache';
 const KNOWN_CACHES: readonly { readonly name: string; readonly note: string }[] = [
   { name: TRANSFORMERS_CACHE_NAME, note: 'Kokoro, Moonshine and Whisper' },
   { name: 'kokoro-voices', note: "Kokoro's voices" },
-  { name: MODEL_CACHE_NAME, note: 'Silero VAD, Smart Turn, voice emotion, face reading and the placeholder body' },
+  { name: MODEL_CACHE_NAME, note: 'Silero VAD, Smart Turn, voice emotion, face reading and the built-in bodies' },
 ];
 
 interface CacheRow {

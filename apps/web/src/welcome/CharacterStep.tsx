@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
+import type { ModelDescriptor } from '@latentpresence/protocol';
 import { PACKS } from '../characters/packs';
-import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import { ConsentScreen } from '../consent/ConsentScreen';
 
 /** What the person has said about downloading the character's body. */
@@ -10,6 +10,8 @@ export interface CharacterStepProps {
   readonly character: string;
   readonly onSelect: (id: string) => void;
   readonly body: BodyChoice;
+  /** The default body of whoever is selected: each has their own, so each has their own consent. */
+  readonly descriptor: ModelDescriptor;
   readonly onBody: (choice: BodyChoice) => void;
 }
 
@@ -23,7 +25,7 @@ function firstSentence(summary: string): string {
  * Step 3 (P8-T02): who she is, and the consent for her body. Agreeing records it in `ModelConsent`
  * (the caller does); nothing is fetched here, and "Not now" is fine: `/chat` asks again.
  */
-export function CharacterStep({ character, onSelect, body, onBody }: CharacterStepProps): ReactElement {
+export function CharacterStep({ character, onSelect, body, descriptor, onBody }: CharacterStepProps): ReactElement {
   return (
     <>
       <fieldset className="welcome-choices">
@@ -47,7 +49,7 @@ export function CharacterStep({ character, onSelect, body, onBody }: CharacterSt
         <ConsentScreen
           agreeLabel="Show the character"
           cancelLabel="Not now"
-          descriptors={[AVATAR_DESCRIPTOR]}
+          descriptors={[descriptor]}
           heading="This will download the character"
           intro="This comes from GitHub to this computer. It stays on this computer; nothing is sent anywhere. It downloads the first time you open Chat, not now."
           onAgree={() => onBody('agreed')}
@@ -61,7 +63,7 @@ export function CharacterStep({ character, onSelect, body, onBody }: CharacterSt
       )}
       {body === 'declined' && (
         <div className="welcome-note">
-          <p className="field-hint">Not now. Chat asks again when you start, and you can still talk without seeing her.</p>
+          <p className="field-hint">Not now. Chat asks again when you start, and you can still talk without seeing the character.</p>
           <button className="btn btn-sm" onClick={() => onBody('unset')} type="button">
             Choose again
           </button>

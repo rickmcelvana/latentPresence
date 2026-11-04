@@ -178,6 +178,13 @@ export const PINS: Readonly<Record<string, PinnedSource>> = {
       'packages/three-vrm-animation/examples/models/test.vrma': { bytes: 11548, sha256: '38d0fd12d61e896f1a970b5e358ebb41a96c8d5ee8e284496ea18f0ba1f04e7b' },
     },
   },
+  'rickmcelvana/latentPresence': {
+    revision: '5b08aeef2ececa036d91b3915a713a29f829a0a0',
+    base: 'https://media.githubusercontent.com/media/rickmcelvana/latentPresence/5b08aeef2ececa036d91b3915a713a29f829a0a0/',
+    files: {
+      'assets/bodies/theo.vrm': { bytes: 15405404, sha256: 'ec450a11c895da12afeeb5c570d2d2c5714681689d51bec0ece75373cc23748b' },
+    },
+  },
   'mediapipe/face_landmarker': {
     revision: 'float16/1',
     base: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/',

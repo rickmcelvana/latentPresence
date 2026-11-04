@@ -1,4 +1,4 @@
-import { BODY_FILE, BODY_SOURCE, pinnedFile, pinnedUrl } from '@latentpresence/ml-web/registry';
+import { BODY_FILE, BODY_SOURCE, THEO_BODY_FILE, THEO_BODY_SOURCE, pinnedFile, pinnedRevision, pinnedUrl } from '@latentpresence/ml-web/registry';
 import type { ModelDescriptor } from '@latentpresence/protocol';
 
 /**
@@ -52,4 +52,28 @@ export const AVATAR_DESCRIPTOR: ModelDescriptor = {
   sizeBytes: AVATAR.bytes,
   licence: AVATAR.licence,
   sourceUrl: AVATAR.sourceUrl,
+};
+
+/**
+ * Theo's default body, a VRoid Studio model (ADR-59 amended 2026-11-03). The licence and terms are
+ * the file's own `meta` and pixiv's terms for these models (`docs/SURFACE.md`). A new version is a
+ * new file, a new commit and a new `id`, so nobody's agreement carries over to different bytes.
+ */
+export const THEO_BODY: AssetDownload = {
+  label: 'Theo (VRoid Studio model)',
+  licence: 'VRM Public License 1.0 — not Creative Commons',
+  bytes: pinnedFile(THEO_BODY_SOURCE, THEO_BODY_FILE).bytes,
+  sourceUrl: `https://github.com/${THEO_BODY_SOURCE}/blob/${pinnedRevision(THEO_BODY_SOURCE)}/${THEO_BODY_FILE}`,
+  downloadUrl: pinnedUrl(THEO_BODY_SOURCE, THEO_BODY_FILE),
+  sha256: pinnedFile(THEO_BODY_SOURCE, THEO_BODY_FILE).sha256,
+  author: 'pixiv VRoid Project',
+  terms: 'Use by anyone, redistribution and modification allowed, credit not required.',
+};
+
+export const THEO_BODY_DESCRIPTOR: ModelDescriptor = {
+  id: 'latentpresence/theo-vroid-1.vrm',
+  label: THEO_BODY.label,
+  sizeBytes: THEO_BODY.bytes,
+  licence: THEO_BODY.licence,
+  sourceUrl: THEO_BODY.sourceUrl,
 };

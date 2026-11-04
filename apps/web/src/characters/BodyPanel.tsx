@@ -90,7 +90,7 @@ export function BodyPanel({ characterName, wearing, defaultBody, own, onWear, on
               <span className="bodies-title">{body.name}</span>
               <span className="bodies-meta">
                 {megabytes(body.asset.bytes)} · {body.asset.licence}
-                {body.id === defaultBody ? ' · her default' : ''}
+                {body.id === defaultBody ? ' · the default' : ''}
               </span>
               <div className="bodies-actions">{wearButton(body.id, body.name)}</div>
             </li>

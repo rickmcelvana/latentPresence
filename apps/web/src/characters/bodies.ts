@@ -1,5 +1,5 @@
 import type { ModelDescriptor } from '@latentpresence/protocol';
-import { AVATAR, AVATAR_DESCRIPTOR, type AssetDownload } from '../call/character-asset';
+import { AVATAR, AVATAR_DESCRIPTOR, THEO_BODY, THEO_BODY_DESCRIPTOR, type AssetDownload } from '../call/character-asset';
 import { isOwnBodyId, type BodyShelf, type OwnBody } from './body-shelf';
 
 /**
@@ -16,9 +16,11 @@ export interface BuiltInBody {
 }
 
 export const PLACEHOLDER_BODY_ID = 'placeholder';
+export const THEO_BODY_ID = 'theo-vroid';
 
 export const BUILT_IN_BODIES: readonly BuiltInBody[] = [
   { id: PLACEHOLDER_BODY_ID, name: 'The placeholder (pixiv sample)', asset: AVATAR, descriptor: AVATAR_DESCRIPTOR },
+  { id: THEO_BODY_ID, name: 'Theo (VRoid Studio model)', asset: THEO_BODY, descriptor: THEO_BODY_DESCRIPTOR },
   // The generated Alice (P7-T02) was taken out on 2026-10-16: not good enough to ship. A saved
   // `alice-generated` choice falls back to the pack's default, as any unknown id does.
 ];
@@ -34,6 +36,11 @@ export function builtInStageBody(body: BuiltInBody): StageBody {
 
 function builtIn(id: string): BuiltInBody | undefined {
   return BUILT_IN_BODIES.find((body) => body.id === id);
+}
+
+/** What a person agrees to when a pack's default body is the one that will download. */
+export function defaultBodyDescriptor(defaultId: string): ModelDescriptor {
+  return (builtIn(defaultId) ?? (BUILT_IN_BODIES[0] as BuiltInBody)).descriptor;
 }
 
 /**

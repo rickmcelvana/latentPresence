@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react';
-import { BODY_FILE, BODY_SOURCE } from '@latentpresence/ml-web/registry';
+import { BODY_FILE, BODY_SOURCE, THEO_BODY_FILE, THEO_BODY_SOURCE } from '@latentpresence/ml-web/registry';
 import { REGISTRY, registryFiles, type RegistryEntry } from '@latentpresence/ml-web/registry/catalog';
 import { AppNav } from '../AppNav';
-import { AVATAR } from '../call/character-asset';
+import { AVATAR, THEO_BODY } from '../call/character-asset';
 import { formatMb } from '../consent/format';
 
 /**
@@ -15,14 +15,24 @@ import { formatMb } from '../consent/format';
 const BODY_ENTRY: RegistryEntry = {
   id: 'body',
   name: AVATAR.label,
-  does: `Her body until you give her your own. By ${AVATAR.author}. ${AVATAR.terms}`,
+  does: `Alice's body until you give her your own. By ${AVATAR.author}. ${AVATAR.terms}`,
   licence: AVATAR.licence,
   sourceUrl: AVATAR.sourceUrl,
   sizes: [AVATAR.bytes],
   sources: [BODY_SOURCE],
 };
 
-const ENTRIES: readonly RegistryEntry[] = [...REGISTRY, BODY_ENTRY];
+const THEO_ENTRY: RegistryEntry = {
+  id: 'theo-body',
+  name: THEO_BODY.label,
+  does: `Theo's body until you give him your own. By ${THEO_BODY.author}. ${THEO_BODY.terms}`,
+  licence: THEO_BODY.licence,
+  sourceUrl: THEO_BODY.sourceUrl,
+  sizes: [THEO_BODY.bytes],
+  sources: [THEO_BODY_SOURCE],
+};
+
+const ENTRIES: readonly RegistryEntry[] = [...REGISTRY, BODY_ENTRY, THEO_ENTRY];
 
 /** Where each thing goes when, and only when, you set it up. */
 const DESTINATIONS: readonly { readonly what: string; readonly where: string; readonly when: string }[] = [
@@ -96,7 +106,7 @@ function RegistryRow({ entry }: { readonly entry: RegistryEntry }): ReactElement
         <ul className="registry-file-list">
           {files.map((file) => (
             <li className="registry-file" key={`${file.source}/${file.path}`}>
-              <span className="registry-file-path">{file.path === BODY_FILE ? file.path.split('/').at(-1) : file.path}</span>
+              <span className="registry-file-path">{file.path === BODY_FILE || file.path === THEO_BODY_FILE ? file.path.split('/').at(-1) : file.path}</span>
               <span className="registry-file-size">{fileSize(file.bytes)}</span>
               <code className="registry-code registry-file-hash">{file.sha256}</code>
             </li>

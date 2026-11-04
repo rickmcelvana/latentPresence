@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
-import { AVATAR_DESCRIPTOR } from '../call/character-asset';
+import { AVATAR_DESCRIPTOR, THEO_BODY_DESCRIPTOR } from '../call/character-asset';
 import type { MinimalCacheStorage } from '../consent/deps';
 import { FakeCompanionConfig, emptyCompanionConfig } from '../desktop/companion-config.fake';
 import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
@@ -256,6 +256,23 @@ describe('Wizard — the character step and the body consent', () => {
     expect(screen.getByText(/Chat asks again/)).toBeTruthy();
     press('Next');
     expect(heading()).toBe('Choose where she remembers');
+  });
+
+  it('asks for Theo\'s own body when he is chosen: agreeing to Alice\'s says nothing about his', () => {
+    const deps = testDeps();
+    render(<Wizard deps={deps} initialStep={2} navigate={() => {}} />);
+    press('Show the character');
+    expect(deps.consent.has([AVATAR_DESCRIPTOR])).toBe(true);
+
+    fireEvent.click(screen.getByRole('radio', { name: /Theo/ }));
+    expect(screen.getByText(THEO_BODY_DESCRIPTOR.label)).toBeTruthy();
+    expect(deps.consent.has([THEO_BODY_DESCRIPTOR])).toBe(false);
+    press('Show the character');
+    expect(deps.consent.has([THEO_BODY_DESCRIPTOR])).toBe(true);
+
+    // Back to Alice, she is still agreed: nothing to ask twice.
+    fireEvent.click(screen.getByRole('radio', { name: /Alice/ }));
+    expect(screen.queryByRole('button', { name: 'Show the character' })).toBeNull();
   });
 
   it('names the source, size and licence on the consent screen, and says GitHub', () => {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import { AVATAR_DESCRIPTOR } from '../call/character-asset';
+import { defaultBodyDescriptor } from '../characters/bodies';
 import { packFor } from '../characters/packs';
 import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
@@ -85,7 +85,8 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
   // Read through a ref so two changes in one event (a preset picked, then its URL) both land.
   const latest = useRef(settings);
   const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), steps.length - 1));
-  const [body, setBody] = useState<BodyChoice>(() => (deps.consent.has([AVATAR_DESCRIPTOR]) ? 'agreed' : 'unset'));
+  const bodyDescriptor = defaultBodyDescriptor(packFor(settings.character).defaultBody);
+  const [body, setBody] = useState<BodyChoice>(() => (deps.consent.has([bodyDescriptor]) ? 'agreed' : 'unset'));
   const voiceModels = browserModelsFor(settings);
   const [voice, setVoice] = useState<VoiceChoice>(() => (deps.consent.has(browserModelsFor(settings)) ? 'agreed' : 'unset'));
 
@@ -126,7 +127,7 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
   }
 
   function agreeBody(choice: BodyChoice): void {
-    if (choice === 'agreed') deps.consent.grant([AVATAR_DESCRIPTOR]);
+    if (choice === 'agreed') deps.consent.grant([bodyDescriptor]);
     setBody(choice);
   }
 
@@ -186,8 +187,13 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
         <CharacterStep
           body={body}
           character={packFor(settings.character).persona.id}
+          descriptor={bodyDescriptor}
           onBody={agreeBody}
-          onSelect={(character) => commit((previous) => ({ ...previous, character }))}
+          onSelect={(character) => {
+            commit((previous) => ({ ...previous, character }));
+            // Each has their own body, so agreeing to one says nothing about the other.
+            setBody(deps.consent.has([defaultBodyDescriptor(packFor(character).defaultBody)]) ? 'agreed' : 'unset');
+          }}
         />
       );
       break;

@@ -102,8 +102,8 @@ describe('the registry', () => {
     }
   });
 
-  it('accounts for every pin but the body, which the app adds with its own licence text', () => {
+  it('accounts for every pin but the bodies, which the app adds with their own licence text', () => {
     const listed = new Set(REGISTRY.flatMap((entry) => entry.sources));
-    expect(Object.keys(PINS).filter((key) => !listed.has(key))).toEqual(['pixiv/three-vrm']);
+    expect(Object.keys(PINS).filter((key) => !listed.has(key))).toEqual(['pixiv/three-vrm', 'rickmcelvana/latentPresence']);
   });
 });

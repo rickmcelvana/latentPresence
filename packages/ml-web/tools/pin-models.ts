@@ -12,6 +12,8 @@ import {
   KOKORO_MODEL_REPO,
   KOKORO_VOICES_REPO,
   KOKORO_VOICE_FILES,
+  THEO_BODY_FILE,
+  THEO_BODY_SOURCE,
   asrFiles,
   type AsrDtypeKey,
 } from '../src/registry/wanted';
@@ -68,6 +70,15 @@ const SOURCES: readonly (HubSource | UrlSource)[] = [
     revision: '3caf7a21ee68f0d5dfa363ab3d577450bbf60136',
     base: 'https://raw.githubusercontent.com/pixiv/three-vrm/3caf7a21ee68f0d5dfa363ab3d577450bbf60136/',
     files: [BODY_FILE, IDLE_CLIP_FILE],
+  },
+  // In this repository through LFS, so `raw.githubusercontent.com` would serve the pointer. The commit
+  // that added it; a new version of him is a new file, a new commit and a new consent id (ADR-59).
+  {
+    kind: 'url',
+    key: THEO_BODY_SOURCE,
+    revision: '5b08aeef2ececa036d91b3915a713a29f829a0a0',
+    base: 'https://media.githubusercontent.com/media/rickmcelvana/latentPresence/5b08aeef2ececa036d91b3915a713a29f829a0a0/',
+    files: [THEO_BODY_FILE],
   },
   // Google's bucket has no commits: the version in the path is what can be named, and the hash holds it.
   {

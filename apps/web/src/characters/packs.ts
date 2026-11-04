@@ -1,7 +1,7 @@
 import { PersonaSchema, type Persona } from '@latentpresence/protocol';
 import alice from '../../../../personas/alice.persona.json' with { type: 'json' };
 import theo from '../../../../personas/theo.persona.json' with { type: 'json' };
-import { PLACEHOLDER_BODY_ID } from './bodies';
+import { PLACEHOLDER_BODY_ID, THEO_BODY_ID } from './bodies';
 
 /**
  * The characters the app ships (P6-T06, ADR-55). A pack is a persona file at the repo root
@@ -21,11 +21,11 @@ export interface CharacterPack {
 
 /** Parsed at module load, as `default-persona.ts` always has: the files are editable by anyone
  * with a text editor and no typechecker, so a typo is a loud failure at startup. */
-export const PACKS: readonly CharacterPack[] = [alice, theo].map((file) => ({
-  persona: PersonaSchema.parse(file),
-  // Both wear the placeholder unless the person chooses otherwise: Rick's call for Alice (ADR-18 amended).
-  defaultBody: PLACEHOLDER_BODY_ID,
-}));
+export const PACKS: readonly CharacterPack[] = [
+  // The placeholder is Rick's call for Alice (ADR-18 amended), Theo's own body also his (ADR-59 amended).
+  { persona: PersonaSchema.parse(alice), defaultBody: PLACEHOLDER_BODY_ID },
+  { persona: PersonaSchema.parse(theo), defaultBody: THEO_BODY_ID },
+];
 
 export const DEFAULT_CHARACTER_ID = 'alice';
 
