@@ -2519,8 +2519,14 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--gap-lg);
+  /* Centred in what the bar leaves, so a wrapped bar cannot cover a button here. */
+  padding: var(--gap-lg) var(--gap-lg) calc(var(--call-bar-height) + var(--gap-lg));
   background: var(--scrim);
+}
+
+/* And in what an open text box leaves: 140px of box and its gap. */
+.call-page:not(.call-page-presence):has(.call-text-dock) .call-stage-overlay {
+  padding-bottom: calc(var(--call-bar-height) + 156px + var(--gap-lg));
 }
 
 .call-stage-overlay .consent-screen {
@@ -2530,14 +2536,13 @@ kbd {
 .call-stage-overlay-minimal {
   align-items: flex-end;
   justify-content: flex-start;
-  padding: var(--gap-lg);
   background: none;
 }
 
 /* A body loading behind the one on stage (P7-T02): a quiet pill, the old body still moving. */
 .call-stage-note {
   position: absolute;
-  bottom: var(--gap-lg);
+  bottom: calc(var(--call-bar-height) + var(--gap-lg));
   left: 50%;
   transform: translateX(-50%);
   margin: 0;
@@ -2640,6 +2645,9 @@ kbd {
   transform: translateX(-50%);
   z-index: 3;
   width: min(480px, calc(100vw - 2 * var(--gap-lg)));
+  /* A short window scrolls the card, so its consent is never cut off at the top. */
+  max-height: calc(100% - var(--call-bar-height) - 2 * var(--gap-md));
+  overflow-y: auto;
 }
 
 .call-voice-card .panel {
@@ -2770,31 +2778,63 @@ kbd {
 }
 
 /* --- Controls bar -----------------------------------------------------------
-   One row, centred, over the bottom of the stage. */
+   Centred over the bottom of the stage: one row when it fits. In a narrower window it wraps,
+   so no button is ever off the screen, and `watchControlBar` lifts what floats above it. On a
+   phone's width that would be half the stage, so there it stays one row and scrolls. */
 
 .call-controls-bar {
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
   bottom: var(--gap-md);
-  transform: translateX(-50%);
   z-index: 4;
   display: flex;
-  /* One row, always. `left: 50%` leaves an absolutely placed box only half the page to
-     shrink into, so without `max-content` it wrapped at 1024 px and pushed Settings off
-     the bottom of the screen. */
-  flex-wrap: nowrap;
-  width: max-content;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--gap-sm));
+  margin-inline: auto;
   white-space: nowrap;
   align-items: center;
   justify-content: center;
   gap: var(--gap-sm);
-  height: calc(var(--call-bar-height) - var(--gap-md));
+  min-height: calc(72px - var(--gap-md));
   padding: var(--gap-sm) var(--gap-md);
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-card);
   backdrop-filter: blur(8px);
+}
+
+.call-controls-bar-wrapped {
+  border-radius: var(--radius-lg);
+}
+
+/* The call on one side, her panels on the other: it wraps between them, not one button at a time. */
+.call-controls-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-sm);
+}
+
+@media (max-width: 640px) {
+  .call-controls-bar {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .call-controls-group {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  .call-controls-group > * {
+    flex: none;
+  }
 }
 
 .call-control-btn[aria-pressed='true'] {
@@ -2856,7 +2896,16 @@ kbd {
 }
 
 /* The presence window (P8-T05): a 360-wide window kept on top — her, the call card and the bar;
-   the drawer, the text box and the camera picture wait for the full window. */
+   the drawer, the text box and the camera picture wait for the full window. Its few buttons wrap
+   rather than scroll: Full window is the way back, and has to be in sight. */
+.call-page-presence .call-controls-bar,
+.call-page-presence .call-controls-group {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: visible;
+}
+
 .call-page-presence .call-drawer,
 .call-page-presence .call-text-dock,
 .call-page-presence .call-pip {

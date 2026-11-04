@@ -67,6 +67,7 @@ import { latestCitedSources, pickPlan, planToWhiteboard, sourcesToScreen } from 
 import { useUserCamera, type UseUserCameraDeps } from '../call/useUserCamera';
 import { AffectOverlay } from '../call/AffectOverlay';
 import { Captions } from '../call/Captions';
+import { watchControlBar } from '../call/control-bar';
 import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
@@ -1367,7 +1368,8 @@ function ConfiguredChatPage({
       {captions && <Captions characterName={pack.persona.name} subscribe={subscribe} />}
       <PermissionPrompt characterName={pack.persona.name} prompts={permissionPrompts} />
 
-      <div className="call-controls-bar">
+      <div className="call-controls-bar" ref={watchControlBar}>
+        <div className="call-controls-group">
         {!voiceOpen && (
           <button className="btn btn-primary" disabled={speak === 'consent' || speak === 'starting'} onClick={openVoice} type="button">
             Start voice
@@ -1426,6 +1428,11 @@ function ConfiguredChatPage({
             </option>
           ))}
         </select>
+          </>
+        )}
+        </div>
+        {!tray.presence && (
+        <div className="call-controls-group">
         <button aria-pressed={drawerOpen && drawerView === 'transcript'} className="btn call-control-btn" onClick={() => toggleDrawerView('transcript')} type="button">
           Transcript
         </button>
@@ -1452,7 +1459,7 @@ function ConfiguredChatPage({
         <a className="btn btn-ghost call-control-btn" href="/settings">
           Settings
         </a>
-          </>
+        </div>
         )}
       </div>
     </main>
