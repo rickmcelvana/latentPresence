@@ -14,8 +14,8 @@
 - **Characters (ADR-55, ADR-59):** Alice (default) and Theo, `personas/*.persona.json`; the persona id is the memory namespace. Both wear the pixiv placeholder by default; a person can wear their own `.vrm` per character, swapped live (`/chat` → Body). Open, Rick's call: a VRoid preset as Theo's default (terms allow it, SURFACE).
 - **The desktop app (ADR-60):** the companion runs in the Tauri process on 8787 or a free port, paired by a per-launch token the page adds to every companion request; local Ollama and LM Studio go through its relay (Ollama 403s `http://tauri.localhost`); API keys in Windows Credential Manager; single instance, remembered window; closing hides to the tray (ADR-65). `pnpm desktop:build` → `apps/desktop/src-tauri/target/release/bundle/nsis/`. Icons from `apps/desktop/icon.svg` (`apps/desktop/README.md`).
 - **The hosted app (`docs/deploy.md`):** Caddy with `try_files` and COOP `same-origin` + COEP **`credentialless`** (`require-corp` hid the OLLAMA_ORIGINS help — measured); the server needs Git LFS or the body's clips are pointer files. Visitors running Ollama set `OLLAMA_ORIGINS=https://app.latentpresence.com`; the browser asks before the site reaches their computer, and their companion wants its pairing code (ADR-64).
-- **CI:** gate on ubuntu and windows (Windows also checks the desktop shell), `vector` (MariaDB), e2e. **After every push, read the run** (`gh run list --limit 1`): a green local gate is not a green CI.
-- **Test counts (2026-11-01):** about **2194** TypeScript passing (20 skipped: need a running companion or a model), **176** Rust; `pnpm gate` green.
+- **CI:** gate on ubuntu and windows (Windows also checks the desktop shell), `vector` (MariaDB), e2e; `audit` weekly (npm and both Rust lockfiles, ADR-69), `release` on a `v*` tag. **After every push, read the run** (`gh run list --limit 1`): a green local gate is not a green CI.
+- **Test counts (2026-11-03):** about **2194** TypeScript passing (20 skipped: need a running companion or a model), **176** Rust; `pnpm gate` green.
 - **Dev database:** MariaDB 11.8.8 at `192.168.40.101` (LAN), `DATABASE_URL` in `.env`. Over a tunnel a statement costs ~40 ms, so retrieval stays one statement (ADR-17). **Shipping requirement:** `mhnsw_max_cache_size` defaults to 16 MB, a 5× slowdown at 100k vectors, and is `GLOBAL`-only — whoever runs MariaDB must raise it (Spike C).
 - **Toolchain:** TypeScript 7.0.2, Vite 8, Vitest 5, oxlint 1.81, React 19.2, Node 22 (CI; 26.13 on this PC), pnpm 12.3.4; three 0.185.1, three-vrm 3.5.5; kokoro-js 1.2.1; axum 0.8, sqlx 0.9, zip 9.0.3; tauri 2.12.4; rustc 1.99.1 (Windows), 1.98 (Linux). The repo is at `Z:\dev\latent\latentPresence` since 2026-11-03; `gh` and `.cargo\bin` were added to PATH that day, so a session started before it needs them prefixed. Verified facts in `docs/SURFACE.md`.
 - **Lanes:** `main` (the architect), `sub` (a subagent run in-session, for work the brief and the repo alone get right) or `human`. The Aider lane is retired (2026-09-13). `docs/WORKFLOW.md`.
@@ -41,20 +41,20 @@ In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** the *
 - [x] **P5 Knowledge and tools** — complete 2026-10-12 (R-31, R-32, R-34).
 - [x] **P6 Presence, life and schedules** — complete 2026-10-14 (R-43).
 - [~] **P7 Character pipeline and realism** — T01 paused (image-to-vrm outside this repo); T02 done (D-57); T03–T05 not started.
-- [~] **P8 Desktop and distribution (Windows first)** — started 2026-10-16; T01 done 2026-10-17 (ADR-60, D-58).
-- [~] **P9 Polish and 1.0** — started 2026-11-01; T01 done (ADR-67 accepted); T02 done (ADR-68 accepted); T03 built (ADR-69 proposed).
+- [x] **P8 Desktop and distribution (Windows first)** — complete 2026-10-19 (D-64): T01 2026-10-17 (ADR-60, D-58), T02 (ADR-61/62), T06 (ADR-63), T03 (ADR-64), T05 (ADR-65), T04 (ADR-66).
+- [~] **P9 Polish and 1.0** — started 2026-11-01; T01 done (ADR-67 accepted); T02 done (ADR-68 accepted); T03 built, waits on R-65 before ADR-69 is accepted; T04–T06 not started.
 
 ## Last three sessions
-
-- 2026-11-01 claude (3) — **The header a rebinding site cannot change is `Host`.** The companion trusted a request with no `Origin` as a program on this machine; a web site whose name rebinds to 127.0.0.1 sends exactly that, same-origin, and reads the answer — her memory. CORS and the pairing code both read `Origin`, so neither saw it. And the page's new CSP met one violation of its own on every load: zod probing for `eval` while it builds schemas, fixed before zod loads.
 
 - 2026-11-03 claude — **A desktop webview can be tested without a person at it.** Two WebView2 environment variables give DevTools and a separate profile, so C-8 drove the real exe instead of handing Rick a checklist. It also shows where automation stops: agreeing to a model download is the person's, so the one thing left, a spoken call under the policy, is R-65.
 
 - 2026-11-03 claude (2) — **Check at the way in when the ways out cannot all be caught.** The presence window's size was saved by any exit but the tray's Quit, and a shutdown or a kill runs no code of ours. Checking at launch covers every path and heals files already saved. Rick's own stuck state file was the test.
 
+- 2026-11-03 claude (3) — **A doc that is only append-only drifts.** Project state lives in three places — the plan's task lines, the checklist and the snapshot — and the checklist kept saying Phase 8 was one task in, two weeks after it finished. Checking each claim against `git log`, `App.tsx`'s route table and the CI workflows found four; an amendment recorded in an ADR's body but not its index row is the fifth kind of the same thing.
+
 ## Dev-only routes
 
-`/dev/avatar` (the renderer's debug panel; loads a local `.vrm`), `/dev/voice` (the voice pipeline with a scripted model — the only instrument for a speaker with no microphone, a timed barge-in and click analysis), `/dev/e2e` (Playwright's), `/spike/avatar` (R-1's frame-rate instrument). Spike E's `/spike/shell` was removed 2026-10-17. All are dropped from production builds by the guard in `vite.config.ts`. Their history is in `docs/HISTORY.md`.
+`/gallery` (the design system — dev-only, and absent from a production build by dead-code elimination, which the guard below does not cover), `/dev/avatar` (the renderer's debug panel; loads a local `.vrm`), `/dev/voice` (the voice pipeline with a scripted model — the only instrument for a speaker with no microphone, a timed barge-in and click analysis), `/dev/e2e` (Playwright's), `/dev/perf` (P9-T02: `/chat` with its renderer, measured by `e2e/perf.spec.ts`), `/dev/ser` (P3-T05's voice-emotion worker timing), `/dev/face` (P3-T06's face reading), `/spike/avatar` (R-1's frame-rate instrument). Spike E's `/spike/shell` was removed 2026-10-17. All but `/gallery` are dropped from production builds by the needle guard in `vite.config.ts`, which fails the build if one reaches a chunk. Their history is in `docs/HISTORY.md`.
 
 ## Quick links
 

@@ -67,7 +67,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-62 | The database address in the desktop app: typed in the wizard or Settings, checked, kept in Credential Manager, handed to the companion, which restarts on the same socket and token; the page never sees the password | accepted 2026-10-17 (asked for by Rick) | 2026-10-17 |
 | ADR-63 | The companion's own settings from the app: Home Assistant, Files folders, web search, databases, documents edited in Settings and the wizard; secrets in Credential Manager (the companion falls back to it); a folder only from the system dialog; programs stay file-only | accepted 2026-10-17 (Rick: "start P8-T06 with all your suggestions") | 2026-10-17 |
 | ADR-64 | The hosted app and this machine: browsers ask before a public site reaches localhost (Chrome and Firefox, measured); the page tells a waiting or refused permission from a server that is down; the standalone companion answers the hosted site only with a pairing code it keeps; no Private Network Access header | accepted 2026-10-19 (Rick, after R-59 passed) | 2026-10-19 |
-| ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top | accepted 2026-10-19 (Rick, after R-61 passed) | 2026-10-19 |
+| ADR-65 | Tray mode: the close button hides the window to a tray icon (on by default, a Settings switch); hiding ends the call, camera and face reading; the page and her schedules carry on; Quit from the tray ends everything; the presence window is the same window made small and kept on top; **amended 2026-11-03: at launch, a window below the normal minimum goes back to the configured size, so an exit from the presence window cannot strand the next launch at 360×560** | accepted (amended 2026-11-03) | 2026-10-19 |
 | ADR-66 | Updates: tauri-plugin-updater from the GitHub release's latest.json; a v* tag builds a signed draft (Windows only); installed copies check only on a press or when the person turned on a check at start (off by default), and install only on a press; the release key is Rick's, a repository secret | accepted 2026-10-19 (Rick, after releasing v0.2.0) | 2026-10-19 |
 | ADR-67 | Captions, call keys and reduced motion: captions from what is heard (audio start), not a live region; M, C, T, Escape on /chat; one global reduced-motion rule, her own movement kept and the call camera static; control borders on their own 3:1 token | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
@@ -2647,7 +2647,7 @@ needs today.
 **Not measured.** The prompt's own look (CDP sets the permission; Rick sees the prompt in R-59);
 Safari; Edge (Chromium, expected to match Chrome).
 
-## ADR-65 Tray mode (accepted 2026-10-19, P8-T05)
+## ADR-65 Tray mode (accepted 2026-10-19, P8-T05; amended 2026-11-03)
 
 **Context.** P8-T05: "close-to-tray keeps the core alive for schedules and check-ins; a compact
 always-on-top presence window option; OS notifications; explicit quit ends everything". Her

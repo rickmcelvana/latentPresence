@@ -2,7 +2,7 @@
 
 Status: first pass 2026-09-07, recommendations accepted by Rick the same day (see `docs/DECISIONS.md`). Update when research changes.
 
-Scope reminder from `docs/brainstorm.md`: conversational AI with a realistic-styled, full-body avatar in a video-chat framing; voice or text in, voice out; emotion sensing; memory in MariaDB; brainstorm and plan storage; document and database grounding; smart home; bring-your-own AI; open-source friendly; **we ship no models**.
+Scope reminder (from the 2026-09-07 brainstorm, since deleted): conversational AI with a realistic-styled, full-body avatar in a video-chat framing; voice or text in, voice out; emotion sensing; memory in MariaDB; brainstorm and plan storage; document and database grounding; smart home; bring-your-own AI; open-source friendly; **we ship no models**.
 
 ---
 

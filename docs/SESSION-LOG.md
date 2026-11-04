@@ -974,3 +974,9 @@ Did: at launch, a window below the normal minimum goes back to the configured si
 Left: R-65; ADR-69 to accept after it; the laptop session; C-7. Not reproduced: the page entering Small window by itself during C-8; a typed message does not cause it, and nothing in the code but its button and the tray menu can, so likely a click on the visible window. Say if it happens again.
 Next: P9-T05 (model registry, pinned revisions and SHA-256) or P9-T04 (user docs, sub); tester feedback first.
 Decisions: none new; ADR-65 amended. CI of d587109 looked hung at 2h 5m and was not: the job log showed it finished at 8 minutes (SURFACE).
+
+## 2026-11-03 claude (3) — docs checked against the commits: four drifts fixed
+Did: read the docs against `git log` and the code, no work in flight. Fixed: `PROJECT.md`'s phase checklist still said **P8 started, T01 only** — Phase 8 has been complete since 2026-10-20 (D-64; all six tasks marked done in the plan); the dev-routes paragraph listed four routes against eight in `App.tsx` and omitted `/gallery`, `/dev/perf`, `/dev/ser` and `/dev/face` (and overstated the guard: `/gallery` is dead-code-eliminated, not needle-checked); the CI line omitted `audit` and `release`; the test-count date was 2026-11-01 against 2026-11-03's run. `DECISIONS.md`: ADR-65's amendment of 2026-11-03 was in the body but neither the index row nor the heading said so, unlike every other amended ADR. `RESEARCH.md`: pointed at `docs/brainstorm.md`, deleted 2026-09-07.
+Left: R-65; ADR-69 to accept after it; the laptop session; C-7. Checked and left alone: R-23's "stays open" under D-35 is superseded by D-36 two entries later, and the session log is 126 entries against the 30-entry prune rule, which has never been applied (no `docs/archive/`).
+Next: P9-T05 (model registry, pinned revisions and SHA-256) or P9-T04 (user docs, sub); tester feedback first.
+Decisions: none new. Docs-only, so no gate (WORKFLOW's rule).
