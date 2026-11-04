@@ -24,6 +24,13 @@ export type AiStreamPart = TextStreamPart<AiToolSet>;
 /** JSON Schema a tool's `parameters` must be; the `jsonSchema()` argument type. */
 export type AiJsonSchema = Parameters<typeof jsonSchema>[0];
 
+/**
+ * For every `streamText`. This app has no telemetry, so the SDK's hooks stay off. It also stops a
+ * real fault: left on, SDK 7.0.97 rejects a promise nobody handles when a stream is aborted in a
+ * browser, one "Uncaught (in promise) AbortError" per barge-in (C-9, `abort-in-browser.test.ts`).
+ */
+export const NO_TELEMETRY = { isEnabled: false } as const;
+
 /** Convert the tools we offer the model into the AI SDK's tool set. */
 export function toAiTools(tools: LlmTool[]): AiToolSet {
   const result: AiToolSet = {};

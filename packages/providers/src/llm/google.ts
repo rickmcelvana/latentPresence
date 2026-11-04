@@ -12,7 +12,7 @@ import type {
   LlmStreamChunk,
 } from '@latentpresence/protocol';
 import type { HttpFetch } from './discovery';
-import { mapStreamPart, toAiPrompt, toAiTools } from './mapping';
+import { NO_TELEMETRY, mapStreamPart, toAiPrompt, toAiTools } from './mapping';
 
 /** How a user configures the native Google Gemini endpoint (P1-T03). */
 export interface GoogleConfig {
@@ -120,6 +120,7 @@ export class GoogleLLMProvider implements LLMProvider {
         ...toAiPrompt(request.messages),
         tools: toAiTools(request.tools),
         abortSignal: controller.signal,
+        telemetry: NO_TELEMETRY,
         ...(request.temperature !== null ? { temperature: request.temperature } : {}),
         ...(request.maxOutputTokens !== null ? { maxOutputTokens: request.maxOutputTokens } : {}),
       });
