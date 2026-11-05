@@ -13,9 +13,8 @@ telemetry.
 <img width="2395" height="1331" alt="A call with latentPresence: the character on stage, the conversation beside her" src="https://github.com/user-attachments/assets/4f9509a3-555c-4dc6-8fc3-9585f595da5e" />
 
 
-> **Early release (0.2).** latentPresence works and is used daily, but it is young: expect rough
-> edges, and please [open an issue](https://github.com/rickmcelvana/latentPresence/issues) when you
-> hit one.
+> **Version 1.0.** latentPresence works and is used daily. It is still young, so please
+> [open an issue](https://github.com/rickmcelvana/latentPresence/issues) when something breaks.
 
 ## Get it
 

@@ -45,6 +45,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The notes are written for each release (docs/release.md): the updater shows them in the app
+      # before Install, from latest.json, which is made here. Editing the release page afterwards
+      # changes the page, not what installed copies read (measured on v0.2.1, docs/SURFACE.md).
+      - name: Release notes
+        id: notes
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          file="docs/releases/v$version.md"
+          if [ ! -f "$file" ]; then
+            echo "::error::$file is missing: every release ships its notes (docs/release.md)"
+            exit 1
+          fi
+          { echo 'body<<NOTES_EOF'; cat "$file"; echo; echo 'NOTES_EOF'; } >> "$GITHUB_OUTPUT"
+
       # The same gate as every commit, so a tag on a red commit releases nothing.
       - run: pnpm gate
 
@@ -60,7 +75,7 @@ jobs:
           args: --config src-tauri/tauri.release.conf.json
           tagName: v__VERSION__
           releaseName: latentPresence v__VERSION__
-          releaseBody: 'Windows installer (unsigned: SmartScreen asks "More info → Run anyway"). Installed copies with "Check for updates" find this version once the release is published.'
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           uploadUpdaterJson: true

@@ -1,6 +1,6 @@
 [package]
 name = "latentpresence-desktop"
-version = "0.1.0"
+version = "1.0.0"
 description = "latentPresence for the desktop: the web app in a window, with the companion inside (P8-T01)"
 edition = "2024"
 license = "Apache-2.0"

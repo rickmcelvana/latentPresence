@@ -36,19 +36,22 @@ they are lost, installed copies can never update again and everyone has to reins
 
 1. Raise `version` in `apps/desktop/src-tauri/tauri.conf.json` (e.g. `0.2.0`). The updater only
    offers a version higher than the installed one.
-2. Commit it, push, and wait for the gate.
-3. Tag and push the tag:
+2. Write `docs/releases/v<version>.md`: what changed, in plain text (lines and `- ` lists, no
+   headings), because installed copies show it as it is before Install. The release workflow
+   refuses a tag without it. **These are the notes people see in the app**: they go into
+   `latest.json` when the release builds, and editing the release page afterwards does not reach it.
+3. Commit both, push, and wait for the gate.
+4. Tag and push the tag:
 
    ```bash
    git tag v0.2.0
    git push origin v0.2.0
    ```
 
-4. Actions → **release** builds (the gate runs first; v0.2.0 took 27 minutes). Then GitHub → Releases:
+5. Actions → **release** builds (the gate runs first; v0.2.0 took 27 minutes). Then GitHub → Releases:
    the draft `latentPresence v0.2.0` should have `latentPresence_0.2.0_x64-setup.exe`, its `.sig`
-   and `latest.json`. Write the notes (they are shown in the app before Install), then
-   **Publish release**.
-5. In an installed copy: Settings → This app → Check for updates → Install and restart.
+   and `latest.json`, with your notes as its text. Then **Publish release**.
+6. In an installed copy: Settings → This app → Check for updates → Install and restart.
 
 A copy installed **before** the updater existed (0.1.0 from a local build) cannot update itself:
 install the first release once by hand, and every later one arrives through Check for updates.
