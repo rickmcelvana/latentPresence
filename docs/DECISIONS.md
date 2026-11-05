@@ -73,6 +73,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
+| ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | proposed | 2026-11-05 |
 
 ---
 
@@ -2927,3 +2928,26 @@ whole table (16 kB raw; the face worker's budget rose from 150 to 165 kB).
 filter (R-66, D-69). The built desktop app did the same from an empty profile, a spoken turn included
 (C-9, D-70). In the webview ONNX Runtime has no threads, because the page is not cross-origin isolated;
 that predates this decision and is unchanged by it.
+
+## ADR-71 1.0 before the laptop session (proposed 2026-11-05, P9-T06)
+
+**Context.** Rick asked to prepare 1.0. Phase 1's exit criterion is R-9, a five-minute voice
+conversation with "under 1 s to first audio on a mid-range laptop", and R-13's integrated-GPU half
+measures the stage on a laptop. Neither has run: Rick's own laptop is the low-end kind, and waiting
+through the long run there was not worth it with a fast PC beside it. A family member's bigger laptop
+is available another day. R-1 did run on the low-end one: the bare avatar holds 60 fps at 540p on an
+Intel UHD Graphics 600 (D-72). R-8 measured 1.8–9.2 s end to end with real models in September, so
+R-9's timing half was expected to fail as written anyway.
+
+**Decision (recommended).** Tag 1.0 now. The release notes say what a person needs to know: voice
+needs a GPU with WebGPU and a first download of about 480 MB. R-9 and R-13 stay open as tasks for the
+next laptop, and a finding there is a 1.0.x, not a blocker.
+
+**Also decided here.** Each release's notes are `docs/releases/v<version>.md`, and the release
+workflow puts them in `latest.json`. Measured on v0.2.1: installed copies were shown the workflow's
+fixed sentence, because `latest.json` is written when the release builds, and the notes typed onto the
+release page afterwards never reached it.
+
+**Rejected.** *Wait for the bigger laptop:* it blocks the release on a borrowed machine for a
+measurement whose timing half is already known to miss. *Lower R-9's target to pass it:* that would
+be the plan bending to a number nobody has read yet.

@@ -111,9 +111,10 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### Laptop session — R-13, R-1 and R-9 in one sitting · ~45 minutes
+### Laptop session — R-13 and R-9 in one sitting · ~40 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
-Do them in this order: two quick frame-rate readings first, then the long conversation.
+Do them in this order: the quick frame-rate reading first, then the long conversation. R-1 was read
+on a low-end laptop on 2026-11-05 (D-72); a bigger one, a family member's, is the next chance.
 
 **Setup, once** (Windows; skip what the laptop already has):
 1. Install **Git**, **Node.js 22 LTS** and **Chrome or Edge** (WebGPU is required — Firefox won't do).
@@ -132,24 +133,10 @@ Do them in this order: two quick frame-rate readings first, then the long conver
    on battery an integrated GPU throttles, and the number would be the power plan's.
 4. Find the GPU name: **Task Manager → Performance → GPU 0** (the name is top right).
 
-Then **R-13**, **R-1** and **R-9** below. Nothing from the desktop carries over: the laptop's
+Then **R-13** and **R-9** below. Nothing from the desktop carries over: the laptop's
 browser asks for the character and the voice models again, and **`/settings` needs the language
 model set up again** — the same way as on the desktop (for `glm-5.2:cloud`, Ollama installed and
 signed in on the laptop), then **Test connection** in `/settings` before starting R-9.
-
-### R-1 · Avatar frame rate on a different class of GPU
-**Why:** every frame-rate number we have is from one RTX 5060 Ti. The interesting machine is
-a worse one — a laptop, or anything with integrated graphics. Not urgent; nothing is blocked.
-
-```bash
-pnpm dev
-```
-Then open `http://localhost:5173/spike/avatar` on the laptop, agree to the download, and let it run
-~30 s with the tab visible. (This is Spike B's bare avatar, so it pairs with R-13's stage reading:
-the difference between the two is what the room costs on that GPU.)
-
-**Expect:** the page prints a frame-rate table (median, 5th percentile, worst frame).
-**Report:** paste the table plus the GPU name. `docs/spikes/B-vrm-lipsync.md` gets the row.
 
 ### R-9 · The five-minute conversation · **ready to run** (P1-T15 landed 2026-09-22)
 **Why:** this is Phase 1's exit criterion, not a nice-to-have — *"five-minute unscripted
@@ -216,6 +203,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-72 · R-1: the bare avatar on a low-end laptop** — Rick 2026-11-05: Intel UHD Graphics 600, canvas 958×538: **59.9 fps median, 51.3 5th percentile**, avatar loaded in 2095 ms. It holds the panel's 60 Hz with about one frame in twenty late. 540p and without the room; R-13 is the stage. `docs/spikes/B-vrm-lipsync.md`.
 - **D-71 · R-67: the user docs on the site** — Rick 2026-11-04: **passed**, pushed, deployed and read. P9-T04 done.
 - **D-70 · C-9: voice in the desktop app with its runtime from the build** — claude 2026-11-03: the exe
   built from HEAD, driven over DevTools (a separate WebView2 profile, a fake microphone, muted).

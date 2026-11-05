@@ -1028,3 +1028,10 @@ Left: the laptop session (R-13, R-1, R-9); C-7. Not pushed.
 Next: P9-T06 (1.0), unless Rick takes P7-T03 first; tester feedback first.
 Decisions: none new. Known: at 600 px tall the voice consent scrolls inside its card, so Agree needs a scroll there.
 Lessons: Every check here ran at this PC's width, so a bar too wide for a laptop stayed invisible through two phases; measure a layout at the widths people have. A `:has()` matches what `display: none` hides: it counted the small window's hidden text box.
+
+## 2026-11-05 claude (11) — R-1 read on a low-end laptop; 1.0 prepared
+Did: R-1 passed (D-72): the bare avatar on an Intel UHD Graphics 600 at 540p, 59.9 fps median, 51.3 5th percentile, written into Spike B. 1.0 prepared: `tauri.conf.json` and the shell's crate at 1.0.0; the notes in `docs/releases/v1.0.0.md`; a draft announcement beside them; README and the site say 1.0 (the site's commit waits for the release). Found: the notes installed copies saw for v0.2.1 were the workflow's fixed sentence, because `latest.json` is written at build time, so the release workflow now takes each version's notes file and refuses a tag without one. The notes step was run locally; the workflow itself runs on the tag.
+Left: Rick tags and publishes (steps in the session's reply), deploys, pushes the site, posts the announcement; then PROJECT.md is reset for post-1.0. R-9 and R-13's laptop half wait for a bigger laptop; C-7.
+Next: the tag.
+Decisions: ADR-71 proposed: 1.0 before the laptop session, with what a person needs to know in the notes.
+Lessons: Check where shown text actually comes from: the release page and the app's update notes looked like one thing, and were two.

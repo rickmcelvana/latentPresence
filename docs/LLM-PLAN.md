@@ -514,5 +514,5 @@ Threat model and findings in `docs/security.md`. The companion answers only requ
 The site left this repository on 2026-10-17 (was `site/docs/`); it is now its own repository, `rickmcelvana/latentpresence.com` (branch `master`), at `Z:devlatentlatentpresence.com` on this PC. Three pages: `docs/`, `docs/providers/`, `docs/privacy/`. Kept with the architect, not a subagent: the provider steps are measured facts. Its style test has no `package.json` of its own: from this repository, `pnpm exec vitest run --root ../latentpresence.com style.test.ts`, then delete the `node_modules/.vite` that leaves in the site.
 ### P9-T05 Model registry and privacy page — owner: main (**done 2026-11-03**, ADR-70 accepted; R-66 and C-9 passed: D-69, D-70)
 `/privacy` with the registry; every download pinned to a commit and checked against a SHA-256 on the wire and in the cache (`registry/pins.ts`, `pnpm pins:check`); ONNX Runtime from the build instead of jsDelivr, enforced by the build. Proved in a real browser, wrong bytes included.
-### P9-T06 Release 1.0 — owner: main + human
+### P9-T06 Release 1.0 — owner: main + human (**prepared 2026-11-05**: 1.0.0, notes in `docs/releases/v1.0.0.md`, ADR-71 proposed; Rick tags)
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.

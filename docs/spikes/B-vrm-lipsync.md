@@ -64,6 +64,30 @@ smoothed with a frame-rate-independent half-life so the same constant behaves th
 30 fps and at 144. Every viseme is driven every frame, not just the winner, because a
 shape left at its last weight is a mouth stuck in the previous sound.
 
+## Results — 2026-11-05, a low-end laptop (R-1)
+
+The same page and the same 1× run on an **Intel UHD Graphics 600**, Gemini Lake, about as little GPU
+as a Windows laptop ships with. WebGL reported
+`ANGLE (Intel, Intel(R) UHD Graphics 600 (0x00003185) Direct3D11 vs_5_0 ps_5_0, D3D11)`, and
+WebGPU gave an adapter, `intel / gen-9`.
+
+| | 1× |
+|---|---|
+| Canvas | **958×538** (0.52 Mpx) |
+| **Median** | **59.9 fps** (16.7 ms) |
+| **5th percentile** | **51.3 fps** (19.5 ms) |
+| Avatar load | 2095 ms |
+
+**The bare avatar holds 60 fps on the weakest class of GPU.** The median is the panel's 60 Hz:
+like the desktop's 120.5, it is the display's period, not the scene's cost. Unlike the desktop it
+has little to spare: the 5th percentile at 19.5 ms says about one frame in twenty misses vsync.
+That is a small hitch, not a slideshow, and it is the floor the plan's "30 fps on an integrated
+GPU" sits well under.
+
+What it does not say: this is 540p, a quarter of 1080p, and without the room. R-13's stage
+reading on a laptop is what the room costs, and that is still open. The worst single frame was not
+reported. The laptop's power settings are not known.
+
 ## Results — 2026-09-09, Rick's machine
 
 Chrome, Windows 11, NVIDIA GeForce RTX 5060 Ti, reported by WebGL as

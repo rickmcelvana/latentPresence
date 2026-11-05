@@ -2897,3 +2897,10 @@ The same source gave 14.6 kB more gzip before `boot` draws under the newer tools
 ## Theo's body from `media.githubusercontent.com` — measured 2026-11-04
 
 The pinned LFS address, once 5b08aee was pushed: 200, `Access-Control-Allow-Origin: *`, 15,405,404 bytes, and the SHA-256 in `pins.ts`. In Chrome through the app, with nothing stubbed, he downloads behind his consent, draws with no error, and a reload neither asks nor fetches. `pnpm pins:check` holds. The LFS bandwidth quota is still unread.
+
+## Where the updater's release notes come from — measured 2026-11-05
+
+`gh release download v0.2.1 -p latest.json`: its `notes` is the workflow's `releaseBody` sentence, word
+for word, while the release page shows different text typed afterwards. tauri-action writes
+`latest.json` at build time and the app shows its `notes` (`updates.rs` reads `update.body`), so the
+page's text never reaches an installed copy. Release notes therefore go in before the tag.
