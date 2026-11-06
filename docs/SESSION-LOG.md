@@ -1056,3 +1056,10 @@ Left: card meanings (P10-T06). The instructions are a first draft. Not pushed.
 Next: P10-T02, primitives and declarative tools.
 Decisions: ADR-72's build notes: `$` references and `{{ }}` templates, the primitives' shapes, strict objects, image assets only, and the node side as its own package.
 Lessons: `tsc -b` before the tests existed proved nothing. Core's ES2023 lib has no TextEncoder, which only showed up once the tests did, so run the typecheck after the last file, not the first.
+
+## 2026-11-06 claude (15) — P10-T02: the primitives run
+Did: CI was green for P10-T01's push. `packages/core/src/plugins/runtime.ts`: the six primitives, and each manifest tool compiled to a `LocalTool` (`<plugin>__<tool>`, choices expanded from the data, policy carried). A wrong argument or key comes back as a sentence. Draws are a Fisher–Yates prefix from `crypto.getRandomValues`, uniform by chi-square in every position of a ten-card spread, and paired with a test proving the check can see a biased shuffle. State is the plugin's `_plugin:<id>` block per character: invisible to her notes and self-editing tools, capped at 16,000 characters. `show` hands the host a display, with reversed cards flipped as Rick asked. `FakePluginHost` added. The tarot tool runs end to end from disk in `plugin-tools`. Three rules mutation-checked. Gate green, 2299 TS tests.
+Left: Nothing draws a display yet (T05), and nothing offers the tools to her yet (T03/T04). Not pushed.
+Next: P10-T03, installing, consent and the Plugins page.
+Decisions: ADR-72's T02 build notes: string coercion of numbers and booleans, the state cap, "forget" as an empty block (no store delete), and the tarot end-to-end test living in plugin-tools.
+Lessons: Size-limit tests need the arithmetic written out. The first one guessed at the JSON's overhead and passed under the limit.
