@@ -1063,3 +1063,10 @@ Left: Nothing draws a display yet (T05), and nothing offers the tools to her yet
 Next: P10-T03, installing, consent and the Plugins page.
 Decisions: ADR-72's T02 build notes: string coercion of numbers and booleans, the state cap, "forget" as an empty block (no store delete), and the tarot end-to-end test living in plugin-tools.
 Lessons: Size-limit tests need the arithmetic written out. The first one guessed at the JSON's overhead and passed under the limit.
+
+## 2026-11-06 claude (16) — P10-T03: installing plugins
+Did: Settings → Plugins (`apps/web/src/plugins`). Installs from a folder, a zip (the browser's own `DecompressionStream`, capped, no library) or a `plugin.json` address; runs `checkPlugin`; shows a consent screen with author, licence, origin, every host, the possible download, picture licences, tools and policies, servers and schedules (listed, not added), and the prompt estimate. Installed plugins live in IndexedDB and are re-checked as they load. Address pictures download on first use into `latentpresence-plugin-assets`, checked against size and SHA-256. Each plugin is on per character (settings `characters[id].plugins`) and has its own settings. Removing takes everything it added, plus its data only when asked. `APP_VERSION` now comes from the build. Seen in the browser: tarot installed from raw GitHub (both hosts, 4.8 MB, 78 public-domain pictures), card 1 fetched from moongoddesscoven.com and hash-checked (250×419), cached, removed clean; fits at 375 px. Rick confirmed reversed means face up, rotated 180°, so the wording was fixed. Gate green, 2319 TS tests.
+Left: Nothing shows a plugin's cards on the wall yet (T05), and she is not offered plugin tools yet (T04). Not pushed.
+Next: P10-T04, the prompt and the context budget.
+Decisions: ADR-72's T03 build notes: IndexedDB in the desktop app too (no data-folder file), our own zip reader, CORS reported with its ambiguity, "turn it on" ticked by default.
+Lessons: The CORS fix and the pinned path only counted once a real card came through the page from Rick's server. Unit tests with a fake fetch could not have shown that.
