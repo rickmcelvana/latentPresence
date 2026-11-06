@@ -1042,3 +1042,10 @@ Left: Rick accepts or amends ADR-72. Before P10-T06, the tarot server needs CORS
 Next: P10-T01 once ADR-72 is accepted.
 Decisions: ADR-72 proposed, which amends ADR-55 decision 3: plugins are per character, MCP servers stay global.
 Lessons: Measure an asset host before planning around it. The deck served fine to curl, but the page policy and the missing CORS header mean the app could not have fetched a single card.
+
+## 2026-11-06 claude (13) — ADR-72 accepted; the tarot deck ready
+Did: Marked ADR-72 accepted (Rick), with Phase 10 marked as accepted too. Checked Rick's Caddy change: `/tarot/` sends `Access-Control-Allow-Origin: *` on both PNG and JPEG. The JPEGs are 4.8 MB for the deck against 21.5 MB, at the same 250 × 419 px, so P10-T06 uses them. Read `Z:\dev\tarot\tarot.py`: the number-to-card map (Waite order, suits Wands, Cups, Swords, Pentacles), reversals half the time, one card or Past/Present/Future, and no meanings. All recorded in `SURFACE.md`, and P10-T06 updated to match.
+Left: P10-T01 not started. The PROJECT.md post-1.0 reset is still open. R-9, R-13 and C-7 as before.
+Next: P10-T01, the plugin manifest.
+Decisions: ADR-72 accepted. P10-T06 ships short card meanings, since the Open WebUI tool left them to the model.
+Lessons: Ask what else a server holds before planning a download. The same deck was there at a quarter of the size.

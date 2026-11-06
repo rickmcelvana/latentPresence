@@ -74,7 +74,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
-| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | proposed | 2026-11-05 |
+| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick) | 2026-11-05 |
 
 ---
 
@@ -2953,7 +2953,7 @@ release page afterwards never reached it.
 measurement whose timing half is already known to miss. *Lower R-9's target to pass it:* that would
 be the plan bending to a number nobody has read yet.
 
-## ADR-72 Plugins: a manifest, no code in the page, per character and loaded when needed (proposed 2026-11-05, Phase 10)
+## ADR-72 Plugins: a manifest, no code in the page, per character and loaded when needed (accepted 2026-11-06, Phase 10)
 
 **Context.** Testers ask for abilities most people would never use (a tarot reading) beside some many
 would (documents, spreadsheets, longer agent-style tasks). Building each into the app grows a
