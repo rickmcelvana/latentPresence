@@ -146,6 +146,19 @@ Deliverables
 - Model registry with licences; privacy page ("nothing leaves your machine unless you point it somewhere").
 - Release: tagged 1.0, GitHub release with installers and web deploy, announcement post.
 
+## Phase 10 — Plugins (planned 2026-11-05, ADR-72)
+
+Goal: abilities a few people want, without everyone paying for them in the app, the prompt or the settings page.
+
+Deliverables
+- A public plugin format (`plugin.json`, JSON Schema, `pnpm plugin:check`) with declarative tools built on primitives in core; no plugin code in the page.
+- Install from a folder, zip or URL behind a consent screen; assets pinned and hash-checked; per-character enablement; lazy loading with a context estimate and warnings.
+- Plugin layouts on the back-wall boards; plugin MCP servers and schedule presets, asked for and removed with the plugin.
+- Two first-party plugins at opposite ends: Tarot (declarative) and Office (MCP and schedules).
+- A static index on latentpresence.com, fetched only when the person asks; an authoring guide and template.
+
+Exit criteria: on a fresh install, Tarot and Office installed from the index, both enabled on one character, both working in one conversation within the context warning; and one plugin written from the guide alone by someone other than the architect.
+
 ---
 
 ## Cross-cutting rules

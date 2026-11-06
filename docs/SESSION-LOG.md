@@ -1035,3 +1035,10 @@ Left: Rick tags and publishes (steps in the session's reply), deploys, pushes th
 Next: the tag.
 Decisions: ADR-71 proposed: 1.0 before the laptop session, with what a person needs to know in the notes.
 Lessons: Check where shown text actually comes from: the release page and the app's update notes looked like one thing, and were two.
+
+## 2026-11-05 claude (12) — Phase 10 planned: plugins (ADR-72 proposed)
+Did: Talked plugins through with Rick, then planned them: ADR-72 (proposed), Phase 10 in `docs/PLAN.md` and nine tasks in `docs/LLM-PLAN.md`. A plugin is a manifest bundling what the app already has (MCP and its gate, schedules, boards, pinned downloads, namespaces and self blocks), with declarative tools on primitives in core and no plugin code in the page. Plugins are per character and loaded only when used. The tarot deck was measured (`SURFACE.md`): 78 PNGs, 21.5 MB, and no CORS header. ADR-71 marked accepted (Rick's edit; its section heading now matches). `v1.0.0` is tagged.
+Left: Rick accepts or amends ADR-72. Before P10-T06, the tarot server needs CORS. If it is Caddy (the ETags look like Caddy's), add to the `moongoddesscoven.com` site block: `@tarot path /tarot/*` and `header @tarot Access-Control-Allow-Origin "*"`, run `caddy reload`, then check with `curl -sI https://moongoddesscoven.com/tarot/1.png | grep -i access-control`. Also wanted: the number-to-card map from the Open WebUI script. PROJECT.md's post-1.0 reset is still open.
+Next: P10-T01 once ADR-72 is accepted.
+Decisions: ADR-72 proposed, which amends ADR-55 decision 3: plugins are per character, MCP servers stay global.
+Lessons: Measure an asset host before planning around it. The deck served fine to curl, but the page policy and the missing CORS header mean the app could not have fetched a single card.

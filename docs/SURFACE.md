@@ -2904,3 +2904,7 @@ The pinned LFS address, once 5b08aee was pushed: 200, `Access-Control-Allow-Orig
 for word, while the release page shows different text typed afterwards. tauri-action writes
 `latest.json` at build time and the app shows its `notes` (`updates.rs` reads `update.body`), so the
 page's text never reaches an installed copy. Release notes therefore go in before the tag.
+
+## Rick's tarot deck at `moongoddesscoven.com/tarot/` — measured 2026-11-05 (ADR-72)
+
+`curl -I` with `Origin: https://app.latentpresence.com`: `1.png` to `78.png` answer 200, `image/png`, together 21,453,244 bytes (1.png 232,417, 78.png 251,710); `79.png` is 404. Caddy-style ETags, `nosniff`, **no `Access-Control-Allow-Origin`**. The app's page policy allows `connect-src https:` but `img-src` only `'self' data: blob:` (`apps/web/src/security/csp.ts`), so a card must be fetched, hash-checked and shown as a blob, and that fetch needs CORS: without the header the page cannot download the deck. The fix is on the server (P10-T06). Which number is which card is in Rick's Open WebUI script, not on the server.

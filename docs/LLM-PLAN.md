@@ -516,3 +516,45 @@ The site left this repository on 2026-10-17 (was `site/docs/`); it is now its ow
 `/privacy` with the registry; every download pinned to a commit and checked against a SHA-256 on the wire and in the cache (`registry/pins.ts`, `pnpm pins:check`); ONNX Runtime from the build instead of jsDelivr, enforced by the build. Proved in a real browser, wrong bytes included.
 ### P9-T06 Release 1.0 — owner: main + human (**prepared 2026-11-05**: 1.0.0, notes in `docs/releases/v1.0.0.md`, ADR-71 proposed; Rick tags)
 Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md` reset for post-1.0 planning.
+
+---
+
+## Phase 10 — Plugins (planned 2026-11-05, ADR-72 proposed)
+
+Order: T01 → T02 → T03, then T04 and T05 in either order, then T06 (Tarot); T07 → T08 (Office); T09 last. Phase exit criterion in `docs/PLAN.md`.
+
+### P10-T01 The plugin manifest — owner: main
+`PluginManifest` in `packages/protocol` (zod, `format: 1`, ADR-72 item 1) and its JSON Schema in `packages/protocol/src/generated`; `pnpm plugin:check <dir>`: manifest, every file it names present, data tables matching the tools that read them, sizes and SHA-256 of local assets, URL assets listed with bytes and hash. Draft `plugins/tarot/plugin.json` as the first real manifest (its data may still be a stub).
+Done when: the tarot draft passes; a fixture set of broken manifests (bad id, missing file, wrong hash, a tool naming a missing table, an unknown primitive, `format: 2`) is each refused with a sentence naming the problem; the schema round-trips in a protocol test.
+
+### P10-T02 Primitives and declarative tools — owner: main
+Depends: P10-T01. `packages/core/src/plugins`: `draw`, `roll`, `lookup`, `template`, `state`, `show` (ADR-72 item 3), randomness injected; a compiler from a manifest tool to a `LocalTool` named `<plugin>__<tool>`; plugin state in `_plugin:<id>` self blocks, not editable by the character (item 5). A `FakePluginHost` for the app's tests.
+Done when: the tarot draft's tool runs end to end in core tests over `FakeMemoryStore`; `draw` is uniform (chi-square over 100k draws), never repeats within a draw, reverses at the declared rate; `state` writes nothing another plugin or character can read (conformance-style test); her self-editing tools cannot see `_plugin:` blocks.
+
+### P10-T03 Installing, consent and the Plugins page — owner: main (the page by sub from a brief)
+Depends: P10-T02. Settings → Plugins: install from a folder or zip (file picker; a folder in the desktop app) or a manifest URL; the consent screen (item 8: author, licence, source, size, hosts, tools and policies, MCP, schedules, context estimate); assets through ADR-70's pinned fetch with the manifest as the pin table, cached, per asset on first use; enable per character (ADR-55 amended); remove, asking about the plugin's data. Installed plugins kept in IndexedDB, and in the app's data folder in the desktop app.
+Done when: installing the tarot draft from a folder shows its true size, hosts and licence; an asset with a wrong hash is refused and nothing is kept; a host without CORS is reported in a sentence; removing leaves no tool, setting or cached byte, and data only if the person kept it; a page test with axe for the consent screen.
+
+### P10-T04 The prompt and the context budget — owner: main
+Depends: P10-T02. One line per enabled plugin and the shared `use_plugin(id)` tool; instructions and tools join the conversation once used; "always loaded"; the token estimate per plugin and the warning (item 4). Measure first: how many tools and how much prompt the small local models in `docs/SURFACE.md` take before they choose worse, and set the thresholds from that.
+Done when: with five fixture plugins enabled the request carries five lines and one extra tool until one is used, then that plugin's tools; a live check picks the right plugin (or none) for ten prompts on a small local model and on glm-5.2:cloud, recorded in `docs/runs/P10-T04-lazy.md`; the warning appears at the measured thresholds.
+
+### P10-T05 Plugin layouts on the boards — owner: sub (brief from main)
+Depends: P10-T02, P5-T08. `cards` and `list` layouts on ADR-49's boards (item 6), images from the plugin's cached blobs; a layout stays until replaced, and the plan and sources return when it is cleared.
+Done when: a three-card spread and a ten-card one project through the real `framing('medium', …)` with captions at 16 px or more and the cards clear of her; seen in the Browser pane at 1080p.
+
+### P10-T06 Tarot, the first plugin — owner: main + human
+Depends: P10-T03, P10-T04, P10-T05. Port Rick's Open WebUI script into `plugins/tarot/`: 78 cards (the number-to-card map from the script; names; upright and reversed meanings written for this plugin or taken from a public-domain text, with the source in the manifest), spreads (one card, three cards, Celtic cross), instructions for how she reads. Assets: `https://moongoddesscoven.com/tarot/<n>.png`, each pinned with bytes and SHA-256. **Human first:** the server sends `Access-Control-Allow-Origin` for `/tarot/` (missing on 2026-11-05, `SURFACE.md`); Rick's steps are in that session's note. A deck of our own from ComfyUI is welcome later as a second asset set.
+Done when: "read my cards" draws a three-card spread that shows on the wall, and she reads those cards (not others) in 10/10 live runs on glm-5.2:cloud and a small local model; a Rick check in `docs/TASKS.md` for how it feels in a call.
+
+### P10-T07 Plugin MCP servers and schedules — owner: main
+Depends: P10-T03. A manifest's HTTP and stdio servers and schedule presets, offered on enable and removed with the plugin (item 7); stdio only where a companion runs, with the full command on the consent screen; tagged in Settings → Tools and the Schedules view.
+Done when: a fixture plugin with an HTTP server, a stdio server and a daily schedule installs, asks once for each, runs a tool and fires the schedule, and on removal leaves `mcp.json`, the tool list and the schedules as they were (Rust and TS tests; live through a companion).
+
+### P10-T08 Office, the second plugin — owner: main
+Depends: P10-T07. `plugins/office/`: MCP servers that create and edit documents and spreadsheets in the Files folders (chosen in this task, licences read, verified and recorded in `SURFACE.md`), instructions, and schedule presets (a weekly digest, a morning plan). Longer multi-step jobs may need more than four tool rounds; if so, a manifest-declared round limit, capped, decided here. Tool-only schedules from her tools (the backlog item from ADR-58) land here if Office needs them with the app closed.
+Done when: "make a spreadsheet of this month's grocery budget" writes a real `.xlsx` in a Files folder that opens in a spreadsheet program, after the ask card; a document is drafted and edited by voice; a schedule preset is offered, created and fires.
+
+### P10-T09 The index and the authoring guide — owner: main + human
+Depends: P10-T06. `plugins/index.json` in the site's repository (item 9) with Tarot and Office; Browse in Settings → Plugins, fetched only on the press; `docs/plugins.md` (a short version on the site) and `plugins/template/`; the JSON Schema published beside the index.
+Done when: Browse lists both, installs one, and refuses an entry whose manifest hash changed; a friend of Rick's writes and installs a plugin from the guide alone, and every question they asked is folded back into the guide (a Rick check).

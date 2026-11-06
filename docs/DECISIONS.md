@@ -73,7 +73,8 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-68 | Performance budgets: CI holds the inputs, real hardware the outputs — bytes before each page draws (the build), one frame of the call at 1080p (draw calls, triangles, programs, textures, heap; e2e), the pipeline's own share with instant fakes (e2e); budgets near today's numbers, kept inside PLAN.md's by a test | accepted 2026-11-01 (Rick) | 2026-11-01 |
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
-| ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | proposed | 2026-11-05 |
+| ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
+| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | proposed | 2026-11-05 |
 
 ---
 
@@ -2929,7 +2930,7 @@ filter (R-66, D-69). The built desktop app did the same from an empty profile, a
 (C-9, D-70). In the webview ONNX Runtime has no threads, because the page is not cross-origin isolated;
 that predates this decision and is unchanged by it.
 
-## ADR-71 1.0 before the laptop session (proposed 2026-11-05, P9-T06)
+## ADR-71 1.0 before the laptop session (accepted 2026-11-05, P9-T06)
 
 **Context.** Rick asked to prepare 1.0. Phase 1's exit criterion is R-9, a five-minute voice
 conversation with "under 1 s to first audio on a mid-range laptop", and R-13's integrated-GPU half
@@ -2951,3 +2952,84 @@ release page afterwards never reached it.
 **Rejected.** *Wait for the bigger laptop:* it blocks the release on a borrowed machine for a
 measurement whose timing half is already known to miss. *Lower R-9's target to pass it:* that would
 be the plan bending to a number nobody has read yet.
+
+## ADR-72 Plugins: a manifest, no code in the page, per character and loaded when needed (proposed 2026-11-05, Phase 10)
+
+**Context.** Testers ask for abilities most people would never use (a tarot reading) beside some many
+would (documents, spreadsheets, longer agent-style tasks). Building each into the app grows a
+prompt and a settings page everyone pays for. Rick asked for a plugin system (2026-11-05) and
+settled four things: friends will write plugins and the repo is open, so the format is public and
+documented; warnings are enough for the context budget, with the handling below; no marketplace,
+no telemetry; latentpresence.com may host a static index. Nearly every part a plugin needs already
+exists on its own: MCP tools with auto/ask/never (ADR-42/43), schedules (ADR-56–58), the back-wall
+boards (ADR-49), pinned and hash-checked downloads behind consent (ADR-70), character namespaces and
+self blocks (ADR-55). A plugin is mostly a bundle of those. The first two plugins are Tarot (Rick
+has a working Open WebUI version and a public-domain deck on his server; measured in `SURFACE.md`)
+and Office.
+
+**Decisions (recommended).**
+
+1. **A plugin is a folder** (or a zip of one) holding `plugin.json` and its files. The manifest is a
+   versioned zod schema in `packages/protocol` (`PluginManifest`, `format: 1`), exported as JSON
+   Schema for authors' editors. It names: `id` (the namespace, `[a-z0-9-]`), `name`, `version`
+   (semver), `author`, `licence`, `homepage`, `summary` (the one line the model sees), `minApp`;
+   `instructions` (a Markdown file: when and how she uses it); `data` (JSON tables shipped in the
+   folder); `assets` (each with path or URL, bytes, SHA-256, licence and source); `tools`
+   (declarative, item 3); `boards` (layouts, item 6); `mcp` (servers it wants, item 7); `schedules`
+   (presets, item 7); `settings` (typed fields the person fills: text, number, switch, choice).
+2. **No plugin code runs in the page.** The page holds the conversation, memory and keys, and the page
+   policy (ADR-69) allows scripts from the build only. Code a plugin needs runs in an MCP server:
+   one the companion starts, or an HTTP one the person points at, behind the same per-tool gate as
+   every other outside tool. The two tiers are **declarative** (manifest, data, assets; anyone can
+   write one, nothing to trust but the bytes) and **capable** (it also asks for MCP servers; the
+   consent screen says so and shows the full command or address).
+3. **Declarative tools are built from primitives in core**, a small versioned set: `draw` (from a
+   table without replacement, optionally reversed at a stated rate), `roll` (dice notation),
+   `lookup` (rows by key), `template` (fills a result string from rows and arguments), `state`
+   (read or write the plugin's own data, item 5) and `show` (put a layout on a board). Randomness
+   comes from `crypto.getRandomValues`, injected for tests, and the drawn result is on the
+   transcript line: the model never picks the "random" card itself. A manifest tool is compiled
+   to the `LocalTool` she already runs, named `<plugin>__<tool>` as MCP tools are, with a default
+   policy of `auto` (the primitives touch nothing outside the plugin) that the person can change.
+4. **Per character, loaded when needed.** Plugins are enabled per character, an amendment to ADR-55
+   decision 3: a plugin changes what the character does, and a person may want Theo to read cards
+   and Alice not to. MCP servers stay global. While enabled, a plugin costs **one line** in the
+   prompt (`summary`) plus one shared tool, `use_plugin(id)`. Calling it brings the plugin's
+   instructions and tools into the rest of the conversation. A person can mark a plugin "always
+   loaded". Settings shows each plugin's estimated cost in tokens (characters / 4, stated as an
+   estimate) and warns when the always-loaded total passes a share of the model's context, or a
+   tool count small models handle badly. The thresholds are measured in P10-T04.
+5. **A plugin's own data is self blocks**: `_plugin:<id>` per character, `editableByCharacter:
+   false`, so it works in IndexedDB and MariaDB with no change to any store, and her self-editing
+   tools never touch it. Removing a plugin asks whether to forget its data too.
+6. **Boards.** A plugin's tool can put one of two layouts on ADR-49's boards: `cards` (a title and
+   up to ten images, each with a caption) and `list` (a title and lines). They are held to ADR-49's
+   16 px rule at `medium`. Images come only from the plugin's pinned assets, shown as blobs, so the
+   `img-src` policy is unchanged.
+7. **MCP servers and schedules are asked for, never done silently.** Enabling a plugin offers its
+   HTTP servers (added to the page's list, tagged with the plugin), its stdio servers (written to
+   the companion's `mcp.json` through ADR-63's route, with the full command on screen, and only
+   where a companion runs) and its schedule presets (created through ADR-58's store, tagged).
+   Removing the plugin removes everything it added.
+8. **Installing.** From a folder or zip (file picker; a folder in the desktop app) or a URL to a
+   `plugin.json`. The consent screen shows name, author, licence, source, download size, every
+   host it will contact, the tools it adds and their policies, MCP servers, schedules and the
+   context estimate. Assets are fetched through ADR-70's pinned path, the manifest serving as
+   their pin table: a wrong hash is refused, and an asset host must send CORS. Large decks download
+   per asset as first used, inside the size the consent stated. **Updates are never automatic.**
+9. **The index** is `latentpresence.com/plugins/index.json`, a static file in the site's repository,
+   curated by pull request: id, name, summary, author, version, licence, tags, the manifest's URL
+   and its SHA-256 (a manifest changed after listing is refused until the index is updated). The app
+   fetches it only when the person presses Browse, which says so. A plugin from any other URL
+   installs too, with a line saying it is not in the index.
+10. **Authoring.** `docs/plugins.md` and a template folder; `pnpm plugin:check <dir>` validates the
+    manifest, the data against the tools, sizes and hashes. First-party plugins live in `plugins/`
+    in this repo.
+
+**Rejected.** *JavaScript plugins in the page:* they would see everything, and the CSP exists to
+stop that. *A sandboxed iframe for plugin UI:* possible later as its own capability; layouts and
+boards cover the first two plugins. *WebAssembly plugins:* a runtime to maintain for what MCP
+already gives. *A marketplace with accounts or download counts:* telemetry. *Automatic plugin
+updates:* code and bytes change under a person without their consent. *Every enabled plugin's
+tools in every request:* small local models get worse as the tool list grows, and the person pays
+in context for abilities they are not using. *Plugins global like MCP servers:* see item 4.
