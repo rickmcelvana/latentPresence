@@ -527,7 +527,7 @@ Order: T01 → T02 → T03, then T04 and T05 in either order, then T06 (Tarot); 
 `PluginManifest` in `packages/protocol` (zod, `format: 1`, ADR-72 item 1) and its JSON Schema in `packages/protocol/src/generated`; `pnpm plugin:check <dir>`: manifest, every file it names present, data tables matching the tools that read them, sizes and SHA-256 of local assets, URL assets listed with bytes and hash. Draft `plugins/tarot/plugin.json` as the first real manifest (its data may still be a stub).
 Done when: the tarot draft passes; a fixture set of broken manifests (bad id, missing file, wrong hash, a tool naming a missing table, an unknown primitive, `format: 2`) is each refused with a sentence naming the problem; the schema round-trips in a protocol test.
 
-### P10-T02 Primitives and declarative tools — owner: main
+### P10-T02 Primitives and declarative tools — owner: main (**done 2026-11-06**)
 Depends: P10-T01. `packages/core/src/plugins`: `draw`, `roll`, `lookup`, `template`, `state`, `show` (ADR-72 item 3), randomness injected; a compiler from a manifest tool to a `LocalTool` named `<plugin>__<tool>`; plugin state in `_plugin:<id>` self blocks, not editable by the character (item 5). A `FakePluginHost` for the app's tests.
 Done when: the tarot draft's tool runs end to end in core tests over `FakeMemoryStore`; `draw` is uniform (chi-square over 100k draws), never repeats within a draw, reverses at the declared rate; `state` writes nothing another plugin or character can read (conformance-style test); her self-editing tools cannot see `_plugin:` blocks.
 

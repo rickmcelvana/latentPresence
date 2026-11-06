@@ -3050,3 +3050,20 @@ in context for abilities they are not using. *Plugins global like MCP servers:* 
   `--pin`, and the gate's check of every folder in `plugins/`). The core stays browser-pure:
   `checkPlugin` takes the folder and the hash function as arguments, so the installer (P10-T03)
   runs the same check.
+
+**In the build (P10-T02, 2026-11-06).**
+- **A tool's run.** Steps run in order over `args`, `settings` and the earlier steps; the tool
+  returns `{ <name>: value }` for each name in `returns`. A wrong argument, or a key that is not in
+  a table, comes back as an `error` sentence, never a throw. A number or boolean sent as a string
+  (`"3"`, `"true"`) is accepted, since small models do that.
+- **Randomness** is `crypto.getRandomValues`. A draw is the first `count` places of a Fisher–Yates
+  shuffle, held uniform by chi-square over 100,000 draws for every position of a ten-card spread.
+  `floor(r × n)` from 32 bits is biased by about n / 2³², under 2 × 10⁻⁸ for a 78-card deck.
+- **State** is one JSON object per plugin per character in the `_plugin:<id>` system block,
+  capped at 16,000 characters (the companion's system-block limit); a write past it is refused and
+  nothing is saved. `clear` removes a key. `MemoryStore` cannot delete a block, so "forget its
+  data" in P10-T03 writes the block empty.
+- **`show`** hands the host a `PluginDisplay` (title, and per item a caption, an asset id and
+  `flip`). A reversed card is drawn upside down (Rick, 2026-11-06).
+- **The tarot tool runs end to end in `packages/plugin-tools`**, from disk through `checkPlugin`,
+  because the core reads no files.
