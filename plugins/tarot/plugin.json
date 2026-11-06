@@ -1,0 +1,778 @@
+{
+  "$schema": "../../packages/protocol/src/generated/plugin.schema.json",
+  "format": 1,
+  "id": "tarot",
+  "name": "Tarot",
+  "version": "0.1.0",
+  "author": "Rick McElvana",
+  "licence": "Apache-2.0",
+  "homepage": "https://github.com/rickmcelvana/latentPresence/tree/main/plugins/tarot",
+  "summary": "Draws tarot cards from a full 78-card deck and lays them out on the wall; use it when someone asks for a reading.",
+  "minApp": "1.0.0",
+  "instructions": "instructions.md",
+  "data": {
+    "cards": "data/cards.json",
+    "spreads": "data/spreads.json"
+  },
+  "tools": [
+    {
+      "name": "draw_spread",
+      "description": "Shuffles the deck, draws the cards for a spread, and lays them out on the wall. Returns the spread and each card with its position and whether it came up reversed.",
+      "parameters": {
+        "spread": {
+          "type": "string",
+          "description": "Which spread to lay out: one card, three cards (past, present, future) or the Celtic cross.",
+          "enumFrom": {
+            "table": "spreads",
+            "column": "id"
+          },
+          "required": true
+        }
+      },
+      "steps": [
+        {
+          "use": "lookup",
+          "as": "spread",
+          "table": "spreads",
+          "key": "$args.spread"
+        },
+        {
+          "use": "draw",
+          "as": "cards",
+          "table": "cards",
+          "slots": "$spread.positions",
+          "reversed": "$settings.reversals"
+        },
+        {
+          "use": "show",
+          "board": "spread",
+          "items": "$cards",
+          "title": "$spread.name"
+        }
+      ],
+      "returns": [
+        "spread",
+        "cards"
+      ]
+    }
+  ],
+  "boards": {
+    "spread": {
+      "layout": "cards",
+      "image": "image",
+      "flip": "reversed",
+      "caption": "{{slot}}: {{name}}"
+    }
+  },
+  "settings": {
+    "reversals": {
+      "type": "switch",
+      "label": "Cards can come up reversed",
+      "default": true
+    }
+  },
+  "assets": [
+    {
+      "id": "card-1",
+      "url": "https://moongoddesscoven.com/tarot/1.jpg",
+      "type": "image/jpeg",
+      "bytes": 53536,
+      "sha256": "a8ef224bbac1414e79f8a7678fc665d4737e6a47d71440cf8fd51c694f44cde0",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-2",
+      "url": "https://moongoddesscoven.com/tarot/2.jpg",
+      "type": "image/jpeg",
+      "bytes": 55603,
+      "sha256": "86c7d5cc4747a3096998cba0801280c9b887a8c8a262452c32ec1a877b0b1f38",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-3",
+      "url": "https://moongoddesscoven.com/tarot/3.jpg",
+      "type": "image/jpeg",
+      "bytes": 58919,
+      "sha256": "d3425791a28c1081c5a359d70fcb8931be3876dedf733cd62de6452e43b52dec",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-4",
+      "url": "https://moongoddesscoven.com/tarot/4.jpg",
+      "type": "image/jpeg",
+      "bytes": 64151,
+      "sha256": "8aeeadc5b655b45ffdc6b52ec13c3a245b933f23a93aca220eaffb80492ddb82",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-5",
+      "url": "https://moongoddesscoven.com/tarot/5.jpg",
+      "type": "image/jpeg",
+      "bytes": 60101,
+      "sha256": "32a97f448c508dd6f90d67aa2a5a2ee42166f9c44d75bbb692332b216a21e09d",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-6",
+      "url": "https://moongoddesscoven.com/tarot/6.jpg",
+      "type": "image/jpeg",
+      "bytes": 62266,
+      "sha256": "74eb9c6281c26e64eb8cd16ea96c19400eec3d2c2ee116b22d104ccd023486ca",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-7",
+      "url": "https://moongoddesscoven.com/tarot/7.jpg",
+      "type": "image/jpeg",
+      "bytes": 610581,
+      "sha256": "1cb7f660afc6c2eb0fd0f4fe7ad087532329ea6ad98e57eaa76cea1d5ca33338",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-8",
+      "url": "https://moongoddesscoven.com/tarot/8.jpg",
+      "type": "image/jpeg",
+      "bytes": 60802,
+      "sha256": "4b3d8460b0eca63353f2dcb9ce4504160279465fd71f269e1d7fa812327f5fab",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-9",
+      "url": "https://moongoddesscoven.com/tarot/9.jpg",
+      "type": "image/jpeg",
+      "bytes": 51365,
+      "sha256": "8857599a3e518ac84eea6eb2a7822127b32c286050846336a308fc2fcbd59e78",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-10",
+      "url": "https://moongoddesscoven.com/tarot/10.jpg",
+      "type": "image/jpeg",
+      "bytes": 44680,
+      "sha256": "3841e0f21e7b9a1e0985de6a9cd9abbe0c783a44f59e166dc71ee1d53a00c1b3",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-11",
+      "url": "https://moongoddesscoven.com/tarot/11.jpg",
+      "type": "image/jpeg",
+      "bytes": 61134,
+      "sha256": "e91c698fb925c95b74df6414d821d5936b224aa9ca05715355774a4a840dc812",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-12",
+      "url": "https://moongoddesscoven.com/tarot/12.jpg",
+      "type": "image/jpeg",
+      "bytes": 60591,
+      "sha256": "120027917a42a8b26b14d4c2b22af23a74ad7b4f125d7df0cb061d049eee6c5c",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-13",
+      "url": "https://moongoddesscoven.com/tarot/13.jpg",
+      "type": "image/jpeg",
+      "bytes": 49820,
+      "sha256": "3d3a68a5ed34d1d230f5a2f34800b6eec316911d8936effc7924809c3c646015",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-14",
+      "url": "https://moongoddesscoven.com/tarot/14.jpg",
+      "type": "image/jpeg",
+      "bytes": 60837,
+      "sha256": "d15f026e873deab01c656aecf2253bece0b458699915084d2b2bf50e3c31f685",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-15",
+      "url": "https://moongoddesscoven.com/tarot/15.jpg",
+      "type": "image/jpeg",
+      "bytes": 61971,
+      "sha256": "1b18f7a6e8769639140884860016fb064b7a10510da8d4b94beeb0181b7bc272",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-16",
+      "url": "https://moongoddesscoven.com/tarot/16.jpg",
+      "type": "image/jpeg",
+      "bytes": 55151,
+      "sha256": "5dc6bc3cf50dcc30c17cab33f72b1bac95e3f694ad6148c4d15d2f784657a713",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-17",
+      "url": "https://moongoddesscoven.com/tarot/17.jpg",
+      "type": "image/jpeg",
+      "bytes": 54895,
+      "sha256": "d6e963baf7cff7902238c519f16c0498752e24a7c47b19cae49244d987bc6e49",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-18",
+      "url": "https://moongoddesscoven.com/tarot/18.jpg",
+      "type": "image/jpeg",
+      "bytes": 56997,
+      "sha256": "ddae53b0159deabe29670ebb35b78b6faf7295770bd266d17e1c6ea91782a136",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-19",
+      "url": "https://moongoddesscoven.com/tarot/19.jpg",
+      "type": "image/jpeg",
+      "bytes": 57600,
+      "sha256": "81ff0e11fd13fdba534ee08c2d5dc289b94ebc627ae5e18e77b2f378f250e24f",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-20",
+      "url": "https://moongoddesscoven.com/tarot/20.jpg",
+      "type": "image/jpeg",
+      "bytes": 64213,
+      "sha256": "920445b1815c266bc590494e81405fd7dd02db08d00fe84d9eff26c76f5fe7be",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-21",
+      "url": "https://moongoddesscoven.com/tarot/21.jpg",
+      "type": "image/jpeg",
+      "bytes": 62025,
+      "sha256": "74c92d1ac7614052ea5afbe4d60bcdc50106cb9e309b11b3340665078d3a6c4e",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-22",
+      "url": "https://moongoddesscoven.com/tarot/22.jpg",
+      "type": "image/jpeg",
+      "bytes": 61586,
+      "sha256": "8c7609132ecd92625cb993a53afeac2c1f1587e38319a166f0ae8c60266a9e2a",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-23",
+      "url": "https://moongoddesscoven.com/tarot/23.jpg",
+      "type": "image/jpeg",
+      "bytes": 48058,
+      "sha256": "66a5dda9975c35ddb5ff29d262dec0ea08451bb0da11fda4fbc957b9d859ad31",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-24",
+      "url": "https://moongoddesscoven.com/tarot/24.jpg",
+      "type": "image/jpeg",
+      "bytes": 48197,
+      "sha256": "60d554738038b6e93337040268a6ea4bd00ea760cc08b44f7254d200007f2a6f",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-25",
+      "url": "https://moongoddesscoven.com/tarot/25.jpg",
+      "type": "image/jpeg",
+      "bytes": 51965,
+      "sha256": "fcd507385882f74c8ef4e0c0920a432d876ea6ea0e913b83c67b0192a8c260ee",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-26",
+      "url": "https://moongoddesscoven.com/tarot/26.jpg",
+      "type": "image/jpeg",
+      "bytes": 52952,
+      "sha256": "596cc6b07dcddfeb04fb84b7328e72351062d0641ae02649417f6b1e0dae71dc",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-27",
+      "url": "https://moongoddesscoven.com/tarot/27.jpg",
+      "type": "image/jpeg",
+      "bytes": 54121,
+      "sha256": "3b95b8a41176c4270c9c26bd81dd045cf986ebad44f947bec9f8853a64279543",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-28",
+      "url": "https://moongoddesscoven.com/tarot/28.jpg",
+      "type": "image/jpeg",
+      "bytes": 54982,
+      "sha256": "e6238eba57f4938c2f55bd5ad301094d111e79859cf75cd06659b799a68a45cc",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-29",
+      "url": "https://moongoddesscoven.com/tarot/29.jpg",
+      "type": "image/jpeg",
+      "bytes": 48463,
+      "sha256": "d88d6a76741c58db056c01453b7f8374fd165536e1000862f2a2ce9329fae2bb",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-30",
+      "url": "https://moongoddesscoven.com/tarot/30.jpg",
+      "type": "image/jpeg",
+      "bytes": 50568,
+      "sha256": "7df10eb85ed6f08add617fdcf11bc22f2f4c124ea147ef43e93a5b79707d2d4b",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-31",
+      "url": "https://moongoddesscoven.com/tarot/31.jpg",
+      "type": "image/jpeg",
+      "bytes": 55293,
+      "sha256": "91daa2d2f0afcce1848ffbce4f0dac39731bcbf26b9e5d36cc18283333d02f16",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-32",
+      "url": "https://moongoddesscoven.com/tarot/32.jpg",
+      "type": "image/jpeg",
+      "bytes": 51412,
+      "sha256": "361e3bee1206072549e8ba90d94dc6334867feeb23239a7788ca125cc3536a9e",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-33",
+      "url": "https://moongoddesscoven.com/tarot/33.jpg",
+      "type": "image/jpeg",
+      "bytes": 51807,
+      "sha256": "1c45f03d79c400e25ec95f3917c461d3cc2f1fa20b1b32140aaeab0dc8241ed5",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-34",
+      "url": "https://moongoddesscoven.com/tarot/34.jpg",
+      "type": "image/jpeg",
+      "bytes": 56243,
+      "sha256": "ac4b049fef28a80d397053a364a2a5ec759aa7ea0cffa43cafe4fdbc7fe0dfb9",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-35",
+      "url": "https://moongoddesscoven.com/tarot/35.jpg",
+      "type": "image/jpeg",
+      "bytes": 59813,
+      "sha256": "53cc505bc474a055528720d3f7b2269308f5df15b95291b01093ea4746b9129c",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-36",
+      "url": "https://moongoddesscoven.com/tarot/36.jpg",
+      "type": "image/jpeg",
+      "bytes": 60367,
+      "sha256": "9b32f58c641670874d5aca9eaa96ed2e6815efdc4025fdc249c2381c5e158670",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-37",
+      "url": "https://moongoddesscoven.com/tarot/37.jpg",
+      "type": "image/jpeg",
+      "bytes": 52189,
+      "sha256": "a8919bd420dd4e6ce4462484e1bb605c5d46a72dbd42a33f393dee60162c0023",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-38",
+      "url": "https://moongoddesscoven.com/tarot/38.jpg",
+      "type": "image/jpeg",
+      "bytes": 52354,
+      "sha256": "ccca2690e37b2e84459a381514039a66a0d95e05568bd87e07d6abf53d37052d",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-39",
+      "url": "https://moongoddesscoven.com/tarot/39.jpg",
+      "type": "image/jpeg",
+      "bytes": 57567,
+      "sha256": "45b5f96f8df85f6c5c9cdab708a227c63142186fb5c64a07cd79fdc066281230",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-40",
+      "url": "https://moongoddesscoven.com/tarot/40.jpg",
+      "type": "image/jpeg",
+      "bytes": 52055,
+      "sha256": "09b564ddc6747d2468d2de83ca835e99654de753cb83d6ae0b38a80b680ba7ff",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-41",
+      "url": "https://moongoddesscoven.com/tarot/41.jpg",
+      "type": "image/jpeg",
+      "bytes": 40449,
+      "sha256": "8926c7d635d7ad3dc54b125e7ca773612e41747c11dce112a1241c266c361c20",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-42",
+      "url": "https://moongoddesscoven.com/tarot/42.jpg",
+      "type": "image/jpeg",
+      "bytes": 60376,
+      "sha256": "7ade34d5de8b01a8da1f4e533c662614c841df81b2d793db8ed2c96e026bdae1",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-43",
+      "url": "https://moongoddesscoven.com/tarot/43.jpg",
+      "type": "image/jpeg",
+      "bytes": 55666,
+      "sha256": "523b23a5a00ac01c960cb55df1ca2f6f287bd5162d5910d590b296bfccc54621",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-44",
+      "url": "https://moongoddesscoven.com/tarot/44.jpg",
+      "type": "image/jpeg",
+      "bytes": 47071,
+      "sha256": "e30d7dbf6e52b6a0b4c1ced9837bffdfa68dd3145382494d98cd4b2e2a64da6d",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-45",
+      "url": "https://moongoddesscoven.com/tarot/45.jpg",
+      "type": "image/jpeg",
+      "bytes": 56935,
+      "sha256": "ed19eb78b5fd981ffa6f6f981cb5fd8ceca0c5b80fa529ca852976d6536c03f1",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-46",
+      "url": "https://moongoddesscoven.com/tarot/46.jpg",
+      "type": "image/jpeg",
+      "bytes": 51233,
+      "sha256": "e0048437d8d8db446e2b7d0d2c8b2edc276617c548a8be4401798af32ec43de1",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-47",
+      "url": "https://moongoddesscoven.com/tarot/47.jpg",
+      "type": "image/jpeg",
+      "bytes": 48802,
+      "sha256": "ab0a64be864dccd436441b4a3a94bdc70f4618b4de5841ac1c77c3a3cb7b6f8b",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-48",
+      "url": "https://moongoddesscoven.com/tarot/48.jpg",
+      "type": "image/jpeg",
+      "bytes": 52147,
+      "sha256": "43d7d9b7ae2fcf08dc8283a36e1c98146bff6e46b282672a157a2057818444b7",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-49",
+      "url": "https://moongoddesscoven.com/tarot/49.jpg",
+      "type": "image/jpeg",
+      "bytes": 56951,
+      "sha256": "60de1304e4eea9f18406a1615dc074ed956c492b816aa468fd8eb4dbbf2f2ac6",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-50",
+      "url": "https://moongoddesscoven.com/tarot/50.jpg",
+      "type": "image/jpeg",
+      "bytes": 54178,
+      "sha256": "c8f26eefdad50babfa27ff66bbc27cb8d6cf9d289e662385a5d63c272853cb16",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-51",
+      "url": "https://moongoddesscoven.com/tarot/51.jpg",
+      "type": "image/jpeg",
+      "bytes": 47639,
+      "sha256": "5d272f47399d3d3c67b927911a933b094d661444dd02a0d7cd1b0cf21faa8e6e",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-52",
+      "url": "https://moongoddesscoven.com/tarot/52.jpg",
+      "type": "image/jpeg",
+      "bytes": 44975,
+      "sha256": "8d92d0181d1978749b42c6044ce36d80ffa025b094911bad9e70f4e5fb415c1b",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-53",
+      "url": "https://moongoddesscoven.com/tarot/53.jpg",
+      "type": "image/jpeg",
+      "bytes": 43373,
+      "sha256": "9c99fc833a2170dc3ad1b4a488abd6a8ab70c52c5d4e0db00176cd12e135c69e",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-54",
+      "url": "https://moongoddesscoven.com/tarot/54.jpg",
+      "type": "image/jpeg",
+      "bytes": 50831,
+      "sha256": "987854e7bed583495a9fc6d45b6935f96bef4682fceec5f25e496f9bb55a659f",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-55",
+      "url": "https://moongoddesscoven.com/tarot/55.jpg",
+      "type": "image/jpeg",
+      "bytes": 55116,
+      "sha256": "cd23decee32d1005abf927a42f57ad526bc31140332840483f9e43158f361ae0",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-56",
+      "url": "https://moongoddesscoven.com/tarot/56.jpg",
+      "type": "image/jpeg",
+      "bytes": 50333,
+      "sha256": "bfb73b10b309a903265242e967d4c1c10fe059b5d4e77de1bb5d5ceb66e295af",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-57",
+      "url": "https://moongoddesscoven.com/tarot/57.jpg",
+      "type": "image/jpeg",
+      "bytes": 49870,
+      "sha256": "4b4655158efa5a08dcb0aac3514eaecd4ba3e490051623af9a39f9076f5b5210",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-58",
+      "url": "https://moongoddesscoven.com/tarot/58.jpg",
+      "type": "image/jpeg",
+      "bytes": 52066,
+      "sha256": "bd4a9c86704c29dacc414820442e50b5e559160ab0acdd4f5ab49ead8ae5010a",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-59",
+      "url": "https://moongoddesscoven.com/tarot/59.jpg",
+      "type": "image/jpeg",
+      "bytes": 51891,
+      "sha256": "eb8e1d72d89bb7a64eb9d3b6c06cd0c92793f9b58084e93eb1708986fae56d1a",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-60",
+      "url": "https://moongoddesscoven.com/tarot/60.jpg",
+      "type": "image/jpeg",
+      "bytes": 50129,
+      "sha256": "c11245a8f061acaffeb2659731bd8b03a049eac66eb31e92d65cd7cdb755a808",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-61",
+      "url": "https://moongoddesscoven.com/tarot/61.jpg",
+      "type": "image/jpeg",
+      "bytes": 54428,
+      "sha256": "3f7c69b349df11814b8b4b4dc0769a8a2ff773de07512fb011726e7ea30b6fe4",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-62",
+      "url": "https://moongoddesscoven.com/tarot/62.jpg",
+      "type": "image/jpeg",
+      "bytes": 57357,
+      "sha256": "afdc07740dfeca201e88a2bbb32588098fd111e330e8a596d83d7e93bfd55ef7",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-63",
+      "url": "https://moongoddesscoven.com/tarot/63.jpg",
+      "type": "image/jpeg",
+      "bytes": 52426,
+      "sha256": "4f3d6de8dc6dc1dea3bd75e5180b12bbedae476619d279bad861a758d88d46b1",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-64",
+      "url": "https://moongoddesscoven.com/tarot/64.jpg",
+      "type": "image/jpeg",
+      "bytes": 54622,
+      "sha256": "5301a74e212c97799e0ce3ac214b2d811ec67719db7bef4ff6136cc67dc8d9a7",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-65",
+      "url": "https://moongoddesscoven.com/tarot/65.jpg",
+      "type": "image/jpeg",
+      "bytes": 49917,
+      "sha256": "4834c6e63a89c6333e95e5c7ecfc880e856313d1da9ad14b9dbec8cc4d7637c8",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-66",
+      "url": "https://moongoddesscoven.com/tarot/66.jpg",
+      "type": "image/jpeg",
+      "bytes": 47996,
+      "sha256": "adeccfe8a170560595ce5a013bfec161d2f1338e6863e12433cde9ed93cc4f5d",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-67",
+      "url": "https://moongoddesscoven.com/tarot/67.jpg",
+      "type": "image/jpeg",
+      "bytes": 58735,
+      "sha256": "c9fd6a1b9a0b7eb75b2951d5a6bb4cf3679a63661a92a3d6706b714e505c4fcd",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-68",
+      "url": "https://moongoddesscoven.com/tarot/68.jpg",
+      "type": "image/jpeg",
+      "bytes": 42100,
+      "sha256": "9e4c74e988a5c9e4fa4257fc07e95d760ada1a317f88f74ba34b1c7fce61ee93",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-69",
+      "url": "https://moongoddesscoven.com/tarot/69.jpg",
+      "type": "image/jpeg",
+      "bytes": 64884,
+      "sha256": "b8baf5a2ce1736f2eca4f32a924e7b0f0474ea5fa64967a2bbdb612f061495fa",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-70",
+      "url": "https://moongoddesscoven.com/tarot/70.jpg",
+      "type": "image/jpeg",
+      "bytes": 51028,
+      "sha256": "c5bb03745ec8bfce924dc92f7153447af11e960ed8519799822b46e28dec8df9",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-71",
+      "url": "https://moongoddesscoven.com/tarot/71.jpg",
+      "type": "image/jpeg",
+      "bytes": 96451,
+      "sha256": "daaafa86991156036b20ba2ab3c5acd554733518635590a77b3e87ed5d952df4",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-72",
+      "url": "https://moongoddesscoven.com/tarot/72.jpg",
+      "type": "image/jpeg",
+      "bytes": 48722,
+      "sha256": "1aa2a73f8571e3efca6f4c01231d69dcab819d5a69b798035b477d7af6697c90",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-73",
+      "url": "https://moongoddesscoven.com/tarot/73.jpg",
+      "type": "image/jpeg",
+      "bytes": 59285,
+      "sha256": "e26033e48c433109d7efe4a40761efa2239eaaa60b2399aef574cb918f55e0e5",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-74",
+      "url": "https://moongoddesscoven.com/tarot/74.jpg",
+      "type": "image/jpeg",
+      "bytes": 65104,
+      "sha256": "e29cfb9fc317ee95b3a94850f33657c6fbff4ab582efdc173798570763e32acd",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-75",
+      "url": "https://moongoddesscoven.com/tarot/75.jpg",
+      "type": "image/jpeg",
+      "bytes": 49641,
+      "sha256": "490c1aa99c14bbc9edd98743bc9357f21c86eb888a7b4157d3da1ef85f51c964",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-76",
+      "url": "https://moongoddesscoven.com/tarot/76.jpg",
+      "type": "image/jpeg",
+      "bytes": 48405,
+      "sha256": "05e9e1c3befd938a44f53d57098a87d109af1ca75ddc04a92605c38949ef37b7",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-77",
+      "url": "https://moongoddesscoven.com/tarot/77.jpg",
+      "type": "image/jpeg",
+      "bytes": 68031,
+      "sha256": "0f54c81055868d77a2177f28aa51622bbfd1c78dfd7865ca94c62348aac7f20e",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    },
+    {
+      "id": "card-78",
+      "url": "https://moongoddesscoven.com/tarot/78.jpg",
+      "type": "image/jpeg",
+      "bytes": 60613,
+      "sha256": "db305ae13d01bff7a93ee2dfeeb5c5abc923d9032d9325e0dc812597cddfa5ab",
+      "licence": "Public domain",
+      "source": "The Rider–Waite–Smith deck (1909), drawn by Pamela Colman Smith; scans hosted by Moongoddess Coven"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "single",
+    "name": "One card",
+    "positions": [
+      "The card"
+    ]
+  },
+  {
+    "id": "three",
+    "name": "Past, present and future",
+    "positions": [
+      "Past",
+      "Present",
+      "Future"
+    ]
+  },
+  {
+    "id": "celtic_cross",
+    "name": "The Celtic cross",
+    "positions": [
+      "The present",
+      "What crosses it",
+      "What crowns it",
+      "What lies beneath",
+      "What is behind",
+      "What lies ahead",
+      "Yourself",
+      "Your surroundings",
+      "Hopes and fears",
+      "The outcome"
+    ]
+  }
+]

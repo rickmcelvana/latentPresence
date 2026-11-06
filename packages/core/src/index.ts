@@ -30,4 +30,5 @@ export * from './initiative';
 export * from './rest';
 export * from './inner';
 export * from './scheduler';
+export * from './plugins';
 export { Cancellation } from './cancellation';

@@ -3033,3 +3033,20 @@ already gives. *A marketplace with accounts or download counts:* telemetry. *Aut
 updates:* code and bytes change under a person without their consent. *Every enabled plugin's
 tools in every request:* small local models get worse as the tool list grows, and the person pays
 in context for abilities they are not using. *Plugins global like MCP servers:* see item 4.
+
+**In the build (P10-T01, 2026-11-06).** Decisions the ADR left open:
+- **References and templates.** Any step value that is a string starting with `$` is a reference
+  (`$args.x`, `$settings.x`, `$<step>.path`). Templates use the same paths inside `{{ }}`. A
+  reference to a step that runs later is refused by name.
+- **The primitives' shapes** are fixed in `plugin.ts`. `draw` adds `reversed` and `slot` to each
+  row it draws; its `reversed` takes a chance or a boolean, where `true` means half (a shuffled deck
+  with cards either way up, as in Rick's tool). `show` takes an earlier `draw` or `lookup` only, so
+  a board's fields can be checked against the table they come from.
+- **Strict objects:** an unknown key is refused, because in a hand-written file it is a typo.
+  `$schema` is allowed for editors.
+- **Assets are images** (PNG, JPEG, WebP) for now, sniffed from their bytes. Limits: 500 assets of
+  20 MB each, tables of 5,000 rows, instructions of 16,000 characters (a note past 4,000).
+- **The node side is its own package**, `packages/plugin-tools` (`pnpm plugin:check`, `--fetch`,
+  `--pin`, and the gate's check of every folder in `plugins/`). The core stays browser-pure:
+  `checkPlugin` takes the folder and the hash function as arguments, so the installer (P10-T03)
+  runs the same check.

@@ -6,6 +6,7 @@
     { "path": "./packages/providers" },
     { "path": "./packages/avatar" },
     { "path": "./packages/ml-web" },
+    { "path": "./packages/plugin-tools" },
     { "path": "./apps/web" }
   ]
 }

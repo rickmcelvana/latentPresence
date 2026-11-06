@@ -523,7 +523,7 @@ Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md
 
 Order: T01 → T02 → T03, then T04 and T05 in either order, then T06 (Tarot); T07 → T08 (Office); T09 last. Phase exit criterion in `docs/PLAN.md`.
 
-### P10-T01 The plugin manifest — owner: main
+### P10-T01 The plugin manifest — owner: main (**done 2026-11-06**)
 `PluginManifest` in `packages/protocol` (zod, `format: 1`, ADR-72 item 1) and its JSON Schema in `packages/protocol/src/generated`; `pnpm plugin:check <dir>`: manifest, every file it names present, data tables matching the tools that read them, sizes and SHA-256 of local assets, URL assets listed with bytes and hash. Draft `plugins/tarot/plugin.json` as the first real manifest (its data may still be a stub).
 Done when: the tarot draft passes; a fixture set of broken manifests (bad id, missing file, wrong hash, a tool naming a missing table, an unknown primitive, `format: 2`) is each refused with a sentence naming the problem; the schema round-trips in a protocol test.
 

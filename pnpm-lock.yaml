@@ -272,6 +272,19 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/plugin-tools:
+    dependencies:
+      '@latentpresence/core':
+        specifier: workspace:*
+        version: link:../core
+      '@latentpresence/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^26.5.0
+        version: 26.5.0
+
   packages/protocol:
     dependencies:
       zod:

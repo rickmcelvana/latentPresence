@@ -37,6 +37,7 @@ Naming: a schema is `ThingSchema`, its inferred type is `Thing`.
 | `memory.ts` | Episodes, bi-temporal `SemanticFact`, self-model blocks, plans, document hits, and the `MemoryStore` port (ADR-05) |
 | `avatar.ts` | `Viseme`, `CharacterSource`, `ClipOptions` and the `AvatarRenderer` port (ADR-03) |
 | `companion.ts` | The companion route table, its error envelope and its WS event union |
+| `plugin.ts` | `PluginManifest` (`plugin.json`, format 1): tools as steps over six primitives, data, pinned assets, board layouts, MCP servers, schedule presets, settings (ADR-72). Its JSON Schema is `generated/plugin.schema.json` (`pnpm plugin:schema`); cross-references are `checkPlugin` in core |
 | `providers/` | `LLMProvider`, `STTProvider`, `TTSProvider`, `EmbeddingProvider`, `OmniProvider` with their request and result schemas |
 
 Implementations live elsewhere: adapters in `packages/providers`, the renderer in `packages/avatar`,

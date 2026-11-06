@@ -1,0 +1,19 @@
+{
+  "name": "@latentpresence/plugin-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Node-side plugin tooling (ADR-72): `pnpm plugin:check`, and the gate's check of every plugin in `plugins/`.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@latentpresence/core": "workspace:*",
+    "@latentpresence/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0"
+  }
+}
