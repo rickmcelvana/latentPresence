@@ -137,6 +137,18 @@ export const PromptContextSchema = z.object({
     .nullable()
     .default(null),
   /**
+   * Her plugins this visit (P10-T04, ADR-72 item 4): each enabled one in a line until she uses it
+   * (`use_plugin`), and the instructions of those in use. Null (none enabled) leaves the prompt
+   * exactly as it was.
+   */
+  plugins: z
+    .object({
+      available: z.array(z.object({ id: z.string().min(1).max(24), name: z.string().min(1).max(60), summary: z.string().min(1).max(200) })).max(20),
+      inUse: z.array(z.object({ id: z.string().min(1).max(24), name: z.string().min(1).max(60), instructions: z.string().max(16_000) })).max(20),
+    })
+    .nullable()
+    .default(null),
+  /**
    * Her plans with them (P4-T07, ADR-41): rendered by core as the planning section — how to
    * brainstorm, the plans in a line each, the one in focus in full, and the follow-ups she
    * offered. Null (no plan tools on this page) leaves the prompt exactly as it was.

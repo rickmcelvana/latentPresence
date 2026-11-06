@@ -64,7 +64,9 @@ async function runCall(tools: readonly LocalTool[], call: ToolCall, signal: Canc
 /**
  * `llm` with `tools()` offered on every request and run when called. `tools` is read per
  * request, so a page can wrap its provider before the tools exist (the store is chosen after
- * the page mounts) and an empty list is exactly the unwrapped provider.
+ * the page mounts) and an empty list is exactly the unwrapped provider. It is read again before
+ * each further round, so a tool can bring others with it: `use_plugin` (P10-T04, ADR-72) makes a
+ * plugin's own tools callable in the next round of the same answer.
  */
 export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool[], options: LocalToolsOptions = {}): LLMProvider {
   const maxRounds = options.maxRounds ?? DEFAULT_TOOL_ROUNDS;
@@ -72,7 +74,7 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
     id: llm.id,
     listModels: () => llm.listModels(),
     async *stream(request: LlmRequest, callOptions?: ProviderCallOptions): AsyncIterable<LlmStreamChunk> {
-      const local = tools();
+      let local = tools();
       if (local.length === 0) {
         yield* llm.stream(request, callOptions);
         return;
@@ -83,6 +85,7 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
       // "together.So I've…" (seen live, P4-T07). A space goes between them when neither has one.
       let spoken = '';
       for (let round = 0; ; round += 1) {
+        if (round > 0) local = tools();
         // The last round offers no local tools, so an answer always ends in words.
         const offered = round < maxRounds ? local : [];
         const calls: ToolCall[] = [];

@@ -12,3 +12,4 @@ export {
   type PluginLocalTool,
 } from './runtime';
 export { FakePluginHost } from './fake';
+export { PLUGIN_BUDGET, PluginSession, USE_PLUGIN_TOOL, askFirst, pluginBudget, renderPlugins, type PluginBudget, type PluginCost, type EnabledPlugin, type PluginPromptContext } from './session';

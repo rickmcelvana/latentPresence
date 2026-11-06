@@ -21,6 +21,7 @@ import type { ChatLlmOptions } from './chat-llm';
 import { connectDocuments } from './chat-documents';
 import type { NotificationPermissionState, PageNotifications } from './notifications';
 import { InMemoryBodyShelf } from '../characters/body-shelf';
+import { InMemoryPluginShelf } from '../plugins/shelf';
 import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { BodyReport } from '@latentpresence/avatar/vrm';
@@ -674,6 +675,47 @@ describe('ChatPage — schedules (P6-T08, ADR-58)', () => {
     const names = chats[0]?.tools.map((tool) => tool.name) ?? [];
     expect(names).toContain('plan_create');
     expect(names.some((name) => name.startsWith('schedule_'))).toBe(false);
+  });
+
+  it.each([
+    ['loads a plugin turned on for her directly: its instructions and tools (P10-T04)', [] as string[]],
+    ['offers one set to load when needed as a line and use_plugin, not its tools (P10-T04)', ['sky']],
+  ])('%s', async (_name, lazyPlugins) => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}'), characters: { alice: { voice: null, body: null, plugins: ['sky'] } }, lazyPlugins }));
+    const shelf = new InMemoryPluginShelf();
+    const manifest = {
+      format: 1, id: 'sky', name: 'Sky cards', version: '0.1.0', author: 'Test', licence: 'Apache-2.0', summary: 'Draws sky cards; use it when someone asks for one.', minApp: '1.0.0',
+      instructions: 'instructions.md', data: { cards: 'data/cards.json' },
+      tools: [{ name: 'draw', description: 'Draws a card.', steps: [{ use: 'draw', as: 'card', table: 'cards' }], returns: ['card'] }],
+    };
+    await shelf.put(
+      { id: 'sky', name: 'Sky cards', version: '0.1.0', summary: manifest.summary, origin: { kind: 'folder', name: 'sky' }, installedAt: '2026-11-06T12:00:00Z' },
+      { manifestText: JSON.stringify(manifest), files: new Map([['instructions.md', new TextEncoder().encode('Draw when asked.')], ['data/cards.json', new TextEncoder().encode('[{"id":"sun","name":"The Sun"}]')]]) },
+    );
+    const store = new FakeMemoryStore();
+    const { chats, build } = schedulingModel();
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} pluginShelf={shelf} />);
+    await waitFor(() => expect(store.calls).toContain('currentFacts'));
+    await act(() => settle());
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello' } });
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+    await waitFor(() => expect(chats.length).toBeGreaterThan(0));
+    const names = chats[0]?.tools.map((tool) => tool.name) ?? [];
+    expect(systemOf(chats[0])).toContain('YOUR PLUGINS');
+    if (lazyPlugins.length === 0) {
+      expect(names).toContain('sky__draw');
+      expect(names).not.toContain('use_plugin');
+      expect(systemOf(chats[0])).toContain('PLUGIN IN USE: SKY CARDS\nDraw when asked.');
+    } else {
+      expect(names).toContain('use_plugin');
+      expect(names).not.toContain('sky__draw');
+      expect(systemOf(chats[0])).toContain('- sky: Draws sky cards; use it when someone asks for one.');
+      expect(systemOf(chats[0])).not.toContain('Draw when asked.');
+    }
   });
 });
 

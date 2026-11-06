@@ -9,6 +9,9 @@ import {
   MemoryKernel,
   Plans,
   PermissionPrompts,
+  FakeMemoryStore,
+  type PluginDisplay,
+  type PluginSession,
   Schedules,
   SelfNotes,
   agentExecutor,
@@ -72,6 +75,8 @@ import type { ActiveCall } from '../voice/VoicePanel';
 import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '../call/face-reading';
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
+import { loadChatPlugins } from '../plugins/chat-plugins';
+import { defaultPluginShelf, type PluginShelf } from '../plugins/shelf';
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { setPresence, useDesktopTray } from '../desktop/tray';
@@ -214,6 +219,8 @@ export interface ChatPageProps {
   readonly notifications?: PageNotifications;
   /** Test seam: where the person's own bodies are kept (P7-T02). Production never passes it. */
   readonly bodyShelf?: BodyShelf;
+  /** P10-T04: the installed plugins; this browser's by default. */
+  readonly pluginShelf?: PluginShelf;
   /** Test seam: reading a file as a VRM body, refusing what the call cannot drive (P7-T02). Production never passes it. */
   readonly checkBodyFile?: (bytes: Uint8Array) => Promise<BodyReport>;
   /** Test seam, forwarded to `CallStage`: in place of `cachedModelFetch` for a built-in body. Production never passes it. */
@@ -256,11 +263,13 @@ export function ChatPage({
   connectDocs = connectDocuments,
   notifications = pageNotifications(),
   bodyShelf,
+  pluginShelf,
   checkBodyFile = checkBodyFileDefault,
   fetchModel,
 }: ChatPageProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const shelf = useMemo(() => bodyShelf ?? defaultBodyShelf(), [bodyShelf]);
+  const plugins = useMemo(() => pluginShelf ?? defaultPluginShelf(), [pluginShelf]);
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
   // P6-T06 (ADR-55): who she is this visit. Read once; a switch saves it and remounts the room below.
   const [characterId, setCharacterId] = useState(() => settings.character);
@@ -302,6 +311,7 @@ export function ChatPage({
       connectDocs={connectDocs}
       notifications={notifications}
       bodyShelf={shelf}
+      pluginShelf={plugins}
       checkBodyFile={checkBodyFile}
       fetchModel={fetchModel}
       loadFaceReading={loadFaceReading}
@@ -337,6 +347,7 @@ interface ConfiguredChatPageProps {
   readonly connectDocs: (options: ConnectDocumentsOptions) => Promise<ConnectedDocuments>;
   readonly notifications: PageNotifications;
   readonly bodyShelf: BodyShelf;
+  readonly pluginShelf: PluginShelf;
   readonly checkBodyFile: (bytes: Uint8Array) => Promise<BodyReport>;
   readonly fetchModel?: ((url: string, descriptor: ModelDescriptor, sha256: string) => Promise<Uint8Array>) | undefined;
 }
@@ -361,6 +372,7 @@ function ConfiguredChatPage({
   connectDocs,
   notifications,
   bodyShelf,
+  pluginShelf,
   checkBodyFile,
   fetchModel,
 }: ConfiguredChatPageProps): ReactElement {
@@ -369,7 +381,7 @@ function ConfiguredChatPage({
   // that must happen exactly once, and a ref's value used later is what oxlint's
   // `react(refs)` rule exists to catch — state is the React-blessed way to hold something
   // built once.
-  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, chatTools, toolsHolder, docsHolder, timeHolder, inner, webSources, permissionPrompts }] = useState(() => {
+  const [{ sessionId, machine, chat, history, llm, rawLlm, affect, userAffect, stageAffect, listening, memoryHolder, selfHolder, chatTools, toolsHolder, docsHolder, timeHolder, pluginHolder, inner, webSources, permissionPrompts }] = useState(() => {
     const builtSessionId = newSessionId();
     // P4-T04b: filled in once the store is chosen (the effect below); read by every request.
     const builtMemoryHolder: { current: AttachedMemory | null } = { current: null };
@@ -385,6 +397,10 @@ function ConfiguredChatPage({
     const builtDocsHolder: { connected: ConnectedDocuments | null } = { connected: null };
     // P6-T02 (ADR-51): when they last talked, read from the store once it is chosen.
     const builtTimeHolder: { since: LastConversation | null } = { since: null };
+    // P10-T04 (ADR-72): the character's plugins for this visit, once loaded (the memory effect
+    // below): a line each in the prompt until she uses one, then its instructions and tools.
+    // `display` is the newest layout a plugin showed, for the boards (P10-T05).
+    const builtPluginHolder: { session: PluginSession | null; display: PluginDisplay | null } = { session: null, display: null };
     // P5-T06 (ADR-47): what the web gave her to cite, beside her documents' hits.
     const builtWebSources = new Map<string, CitationSource>();
     const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
@@ -426,6 +442,7 @@ function ConfiguredChatPage({
           // P5-T07 (ADR-48): the room is read per request, so a change in Settings applies at once.
           home: homePrompt(builtToolsHolder.servers, loadSettings(deps.storage).tools.homeArea),
           documents: builtDocsHolder.connected?.tool != null,
+          plugins: builtPluginHolder.session?.promptContext() ?? null,
           since: builtTimeHolder.since,
           opening: turn.opening,
         }),
@@ -453,7 +470,12 @@ function ConfiguredChatPage({
     const outside = (name: string): boolean => !builtSelfHolder.tools.some((tool) => tool.definition.name === name);
     const docsTool = (): LocalTool[] => (builtDocsHolder.connected?.tool == null ? [] : [builtDocsHolder.connected.tool]);
     // The tools her chat has now: also what a scheduled task may name (P6-T08), through the same gate.
-    const builtChatTools = (): LocalTool[] => [...builtSelfHolder.tools, ...docsTool(), ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts })];
+    const builtChatTools = (): LocalTool[] => [
+      ...builtSelfHolder.tools,
+      ...docsTool(),
+      ...mcpTools(builtToolsHolder.servers, { grants, prompts: builtPrompts }),
+      ...(builtPluginHolder.session?.tools() ?? []),
+    ];
     const builtChatLlm = withLocalTools(thinkingProvider, builtChatTools, {
       onCallStart: (call) => {
         if (outside(call.name)) builtMachine.dispatch({ type: 'tool.call', sessionId: builtSessionId, at: new Date().toISOString(), call });
@@ -484,6 +506,7 @@ function ConfiguredChatPage({
       toolsHolder: builtToolsHolder,
       docsHolder: builtDocsHolder,
       timeHolder: builtTimeHolder,
+      pluginHolder: builtPluginHolder,
       inner: builtInner,
       webSources: builtWebSources,
       permissionPrompts: builtPrompts,
@@ -538,6 +561,20 @@ function ConfiguredChatPage({
       fetch: deps.fetch,
       indexedDB: typeof indexedDB === 'undefined' ? undefined : indexedDB,
     }).then((choice) => {
+      // P10-T04 (ADR-72): her plugins keep their data in the same store; with memory off, for the visit only.
+      void loadChatPlugins({
+        shelf: pluginShelf,
+        settings,
+        characterId: pack.persona.id,
+        store: choice?.store ?? new FakeMemoryStore(),
+        prompts: permissionPrompts,
+        show: (display) => {
+          pluginHolder.display = display;
+        },
+        onProblem: (id, problems) => console.warn(`plugin ${id} is off: ${problems.join(' ')}`),
+      }).then((session) => {
+        if (live) pluginHolder.session = session;
+      });
       if (!live || choice === null) return;
       const warn = (error: Error, stage: string): void => console.warn(`memory (${stage}, ${choice.kind}): ${error.message}`);
       const kernel = new MemoryKernel({ store: choice.store, characterId: pack.persona.id, extractor: { llm: rawLlm, modelId }, onError: warn });
@@ -681,7 +718,7 @@ function ConfiguredChatPage({
       selfHolder.tools = [];
       timeHolder.since = null;
     };
-  }, [affect, chat, chatTools, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, notifications, pack.persona.id, pack.persona.name, pack.persona.summary, permissionPrompts, rawLlm, selfHolder, sessionId, settings.memory, timeHolder, timeZone, userAffect]);
+  }, [affect, chat, chatTools, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, notifications, pack.persona.id, pack.persona.name, pack.persona.summary, permissionPrompts, pluginHolder, pluginShelf, rawLlm, selfHolder, sessionId, settings, timeHolder, timeZone, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.

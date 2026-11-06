@@ -74,7 +74,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
-| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick) | 2026-11-05 |
+| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amendment proposed 2026-11-06 (load directly by default, measured) | 2026-11-05 |
 
 ---
 
@@ -3089,3 +3089,22 @@ in context for abilities they are not using. *Plugins global like MCP servers:* 
 - **Removing** takes the plugin, its downloaded pictures, its per-character switches and its
   settings. Its data goes only if the person ticks "Also forget", which writes each character's
   block empty.
+
+**Amendment to item 4 (proposed 2026-11-06, P10-T04's measurement).** Item 4 assumed small models
+choose worse as the tool list grows, and made loading-when-needed the default. Measured, neither held
+(`docs/runs/P10-T04-tools.md`, `docs/runs/P10-T04-lazy.md`). qwen3.5:9b, gemma4:12b and glm-5.2 chose
+no worse with 64 tools than with 8. Behind `use_plugin`, qwen3.5:9b used the plugin's tool 6 times in
+16, against 17 or 18 in 20 when offered tools directly, and every model was about four times slower.
+**Recommended: plugins load directly by default** (instructions and tools in every request). "Load
+only when needed" (`lazyPlugins` in settings) is a per-plugin choice for saving tokens; the budget
+warning suggests it past about 2,000 tokens (twice Alice's 940-token prompt) or past 64 tools (the
+measured range). Rejected: *keep lazy as the default*, which costs accuracy and time on the models
+people run locally, for a token saving most setups do not need.
+
+**In the build (P10-T04, 2026-11-06).** `PluginSession` (core) holds a visit's plugins; `use_plugin`
+returns the plugin's instructions at once, and the tool loop now reads the tool list again before each
+round, so its tools are callable in the same answer. A manifest tool with `policy: 'ask'` goes through
+the gate (`askFirst`). The prompt's section is `YOUR PLUGINS`, with `PLUGIN IN USE: <NAME>` for each
+loaded one, placed after the home and before the plans (`PromptContext.plugins`, a protocol addition
+under this ADR). With memory off, a plugin's data lasts the visit only. Settings changes apply from
+the next visit to `/chat`.

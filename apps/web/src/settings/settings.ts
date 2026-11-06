@@ -205,6 +205,11 @@ export const SettingsSchema = z.object({
   captions: z.boolean().default(false),
   /** P10-T03 (ADR-72 item 1): each installed plugin's settings, as the person chose them; the manifest's defaults fill the rest. */
   plugins: z.record(z.string(), z.record(z.string(), JsonValueSchema)).default({}),
+  /**
+   * P10-T04 (ADR-72 item 4, as amended): plugins that load only when she uses them (`use_plugin`). The rest load
+   * directly, instructions and tools in every request: measured faster and more reliable on a small model.
+   */
+  lazyPlugins: z.array(z.string().min(1)).default([]),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -227,6 +232,7 @@ export const DEFAULT_SETTINGS: Settings = {
   checkUpdates: false,
   captions: false,
   plugins: {},
+  lazyPlugins: [],
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets

@@ -77,9 +77,15 @@ export function withPluginSetting(settings: Settings, id: string, key: string, v
   return { ...settings, plugins: { ...settings.plugins, [id]: { ...settings.plugins[id], [key]: value } } };
 }
 
+/** Whether a plugin loads only when she uses it (ADR-72 item 4, as amended); off, it loads directly. */
+export function withPluginLazy(settings: Settings, id: string, lazy: boolean): Settings {
+  const rest = settings.lazyPlugins.filter((other) => other !== id);
+  return { ...settings, lazyPlugins: lazy ? [...rest, id] : rest };
+}
+
 /** Settings with no trace of the plugin: disabled for every character, its values gone. */
 export function withoutPlugin(settings: Settings, id: string): Settings {
   const characters = Object.fromEntries(Object.entries(settings.characters).map(([characterId, character]) => [characterId, { ...character, plugins: character.plugins.filter((other) => other !== id) }]));
   const { [id]: _removed, ...plugins } = settings.plugins;
-  return { ...settings, characters, plugins };
+  return { ...settings, characters, plugins, lazyPlugins: settings.lazyPlugins.filter((other) => other !== id) };
 }

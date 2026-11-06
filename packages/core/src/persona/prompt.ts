@@ -10,6 +10,7 @@ import { renderMemory } from '../memory/recall';
 import { renderPlans } from '../plan/render';
 import { renderOpening, renderSince } from '../time/render';
 import { partOfDayWords } from '../time/words';
+import { renderPlugins } from '../plugins/session';
 import { renderHome } from './home';
 
 /**
@@ -149,6 +150,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
       : []),
     // P5-T07 (ADR-48): their home, by area, and the room they are in.
     ...(context.home ? renderHome(context.home) : []),
+    // P10-T04 (ADR-72): her plugins, a line each until used, then their own instructions.
+    ...(context.plugins ? renderPlugins(context.plugins) : []),
     // P4-T07 (ADR-41): how to plan together, and the plans — after memory, before "right now".
     ...(context.plans ? renderPlans(context.plans, context.now) : []),
     // P6-T02 (ADR-51): when they last talked, and how to open when she speaks first — just

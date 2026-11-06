@@ -96,7 +96,7 @@ describe('PluginsSection (P10-T03)', () => {
     expect(within(consent).getByText('1 × Public domain')).toBeTruthy();
     expect(within(consent).getByText('sky__draw')).toBeTruthy();
     expect(within(consent).getByText(/Runs without asking/)).toBeTruthy();
-    expect(within(consent).getByText(/About \d+ tokens in every conversation while it is on/)).toBeTruthy();
+    expect(within(consent).getByText(/About \d+ tokens in every request while it is on \(an estimate\)\. It can be set to load only when needed\./)).toBeTruthy();
     // The address asset is not downloaded to show the consent screen.
     expect(given.requests.some((url) => url.includes('moon.jpg'))).toBe(false);
     expect(await given.shelf.list()).toEqual([]);
@@ -126,6 +126,9 @@ describe('PluginsSection (P10-T03)', () => {
     expect(reversals.checked).toBe(true);
     fireEvent.click(reversals);
     expect(latest.plugins).toEqual({ sky: { reversals: false } });
+    expect(within(list).getByText(/About \d+ tokens in every request while it is on \(an estimate\); \d+ if it loads only when needed\./)).toBeTruthy();
+    fireEvent.click(within(list).getByLabelText(/^Load only when needed/));
+    expect(latest.lazyPlugins).toEqual(['sky']);
   });
 
   it('lists every problem with a plugin that cannot be installed', async () => {

@@ -1422,6 +1422,11 @@ kbd {
   gap: var(--gap-md);
 }
 
+/* A plugin budget warning (P10-T04): advice, in the warning colour, never a block. */
+.plugin-budget {
+  color: var(--warning);
+}
+
 .plugin-remove {
   display: flex;
   flex-direction: column;

@@ -74,7 +74,7 @@ export function PluginConsent({ facts, replaces, characterName, onInstall, onCan
         )}
         <dt>Prompt</dt>
         <dd>
-          About {facts.promptTokens.idle} tokens in every conversation while it is on, and about {facts.promptTokens.used} more once she uses it (an estimate).
+          About {facts.promptTokens.idle + facts.promptTokens.used} tokens in every request while it is on (an estimate). It can be set to load only when needed.
         </dd>
       </dl>
 

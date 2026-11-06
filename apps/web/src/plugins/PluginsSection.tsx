@@ -1,11 +1,12 @@
 import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
+import { pluginBudget } from '@latentpresence/core';
 import type { JsonValue, MemoryStore, PluginSetting } from '@latentpresence/protocol';
 import { PACKS, packFor } from '../characters/packs';
 import { chooseMemoryStore } from '../chat/chat-memory';
 import type { Settings } from '../settings/settings';
 import { PluginAssets } from './assets';
 import { inspectPlugin, type PluginInspection } from './inspect';
-import { enabledPlugins, installPlugin, loadPlugin, removePlugin, withPluginEnabled, withPluginSetting, withoutPlugin, type LoadedPlugin } from './manage';
+import { enabledPlugins, installPlugin, loadPlugin, removePlugin, withPluginEnabled, withPluginLazy, withPluginSetting, withoutPlugin, type LoadedPlugin } from './manage';
 import { PluginConsent } from './PluginConsent';
 import { defaultPluginShelf, type InstalledPlugin, type PluginShelf } from './shelf';
 import { sourceFromFolder, sourceFromUrl, sourceFromZip, type PluginSource } from './sources';
@@ -196,6 +197,12 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
         />
       )}
 
+      {budgetWarnings(rows, settings).map((warning) => (
+        <p className="field-hint plugin-budget" key={warning} role="status">
+          {warning}
+        </p>
+      ))}
+
       {rows.length === 0 ? (
         <p className="field-hint">No plugins installed.</p>
       ) : (
@@ -228,6 +235,13 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
                       </label>
                     ))}
                   </div>
+                  <p className="field-hint">
+                    About {loaded.plugin.promptTokens.idle + loaded.plugin.promptTokens.used} tokens in every request while it is on (an estimate); {loaded.plugin.promptTokens.idle} if it loads only when needed.
+                  </p>
+                  <label className="tools-switch">
+                    <input checked={settings.lazyPlugins.includes(info.id)} onChange={(event) => onChange((prev) => withPluginLazy(prev, info.id, event.target.checked))} type="checkbox" />
+                    Load only when needed: saves its {loaded.plugin.promptTokens.used} tokens until she uses it, but the first use is slower and small models use it less reliably
+                  </label>
                   {Object.entries(loaded.plugin.manifest.settings).map(([key, setting]) => (
                     <PluginSettingField
                       id={`plugin-${info.id}-${key}`}
@@ -273,6 +287,19 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
       )}
     </section>
   );
+}
+
+/** Each character's warnings, from the plugins turned on for them (ADR-72 item 4). */
+function budgetWarnings(rows: readonly Row[], settings: Settings): string[] {
+  return PACKS.flatMap(({ persona }) => {
+    const on = enabledPlugins(settings, persona.id);
+    const costs = rows.flatMap(({ info, loaded }) =>
+      loaded.ok && on.includes(info.id)
+        ? [{ name: info.name, tools: loaded.plugin.manifest.tools.length, promptTokens: loaded.plugin.promptTokens, always: !settings.lazyPlugins.includes(info.id) }]
+        : [],
+    );
+    return costs.length === 0 ? [] : [...pluginBudget(costs, persona.name).warnings];
+  });
 }
 
 function PluginSettingField({ id, setting, value, onChange }: { readonly id: string; readonly setting: PluginSetting; readonly value: JsonValue | undefined; readonly onChange: (value: JsonValue) => void }): ReactElement {

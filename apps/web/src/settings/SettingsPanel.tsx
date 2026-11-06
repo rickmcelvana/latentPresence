@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
@@ -16,10 +16,16 @@ import { LanguageModelSection } from './LanguageModelSection';
 import { DocumentsSection } from './DocumentsSection';
 import { MemorySection } from './MemorySection';
 import { ToolsSection } from './ToolsSection';
-import { PluginsSection } from '../plugins/PluginsSection';
 import { VaultNote } from './VaultNote';
 import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
+
+/**
+ * P10-T04: Settings → Plugins loads after the page draws. It brings the plugin checker and the
+ * manifest schema, and with them the page went past its budget (ADR-68: 233.6 of 230 kB gzipped);
+ * it sits below the fold, so nothing is lost by its arriving a moment later.
+ */
+const PluginsSection = lazy(async () => ({ default: (await import('../plugins/PluginsSection')).PluginsSection }));
 
 /**
  * The settings content (P1-T10): Language model, Character, Voice, Hearing, Memory, Speaking up and Tools, plus the Companion
@@ -100,7 +106,9 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
 
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
-      <PluginsSection onChange={(update) => setSettings(update)} settings={settings} />
+      <Suspense fallback={null}>
+        <PluginsSection onChange={(update) => setSettings(update)} settings={settings} />
+      </Suspense>
 
       {api !== null && <CompanionSettings controller={companion} />}
 

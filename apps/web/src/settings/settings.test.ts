@@ -73,6 +73,7 @@ describe('loadSettings', () => {
       checkUpdates: true,
       captions: true,
       plugins: { tarot: { reversals: false } },
+      lazyPlugins: ['tarot'],
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
