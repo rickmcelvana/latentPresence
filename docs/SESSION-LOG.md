@@ -1070,3 +1070,10 @@ Left: Nothing shows a plugin's cards on the wall yet (T05), and she is not offer
 Next: P10-T04, the prompt and the context budget.
 Decisions: ADR-72's T03 build notes: IndexedDB in the desktop app too (no data-folder file), our own zip reader, CORS reported with its ambiguity, "turn it on" ticked by default.
 Lessons: The CORS fix and the pinned path only counted once a real card came through the page from Rick's server. Unit tests with a fake fetch could not have shown that.
+
+## 2026-11-06 claude (17) — P10-T04: plugins in her prompt, measured
+Did: Measured first (`pnpm live:plugin-tools`, `docs/runs/P10-T04-tools.md`): 10 requests at 8, 16, 32 and 64 plugin-like tools. qwen3.5:9b 12, 17, 17 and 18 of 20; gemma4:12b 20 of 20 throughout; glm-5.2:cloud 20, 20, 19, 19. No model chose worse as the list grew. Built `PluginSession` (core), `use_plugin`, the `YOUR PLUGINS` prompt section (`PromptContext.plugins`), `askFirst` for tools that ask, and the tool loop re-reading its list each round. `/chat` loads the character's plugins. Live check of loading when needed (`pnpm live:plugins`, five plugins including the real tarot): gemma and glm 20/20 and 16/16, but about 4× slower; qwen3.5:9b 13/20, and only 6/16 then used the plugin's tool (once it typed `[use_plugin:office]` and claimed success). So plugins load directly by default, with "load only when needed" per plugin and a warning past about 2,000 tokens or 64 tools. Settings → Plugins now loads after the page draws (Settings was 233.6 of 230 kB; now 224.3). Gate green, 2327 TS tests.
+Left: ADR-72 item 4 amendment for Rick. Not tried in the app against a live model (the page test and the live scripts cover the pieces). Not pushed.
+Next: P10-T05, the spread on the wall.
+Decisions: ADR-72 item 4 amendment proposed: load directly by default (measured). Thresholds 2,000 tokens (twice Alice's 940-token prompt) and 64 tools (the measured range).
+Lessons: The ADR's premise was a belief about small models, so measure it before building on it. Here it was false at the sizes people run, and the "safe" design was the slower, less reliable one.
