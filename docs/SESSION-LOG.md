@@ -1049,3 +1049,10 @@ Left: P10-T01 not started. The PROJECT.md post-1.0 reset is still open. R-9, R-1
 Next: P10-T01, the plugin manifest.
 Decisions: ADR-72 accepted. P10-T06 ships short card meanings, since the Open WebUI tool left them to the model.
 Lessons: Ask what else a server holds before planning a download. The same deck was there at a quarter of the size.
+
+## 2026-11-06 claude (14) — P10-T01: the plugin manifest
+Did: `PluginManifest` (format 1, strict) in the protocol, with tools as steps over six primitives, and its JSON Schema generated and held to the source by a test. `checkPlugin` in core follows every cross-reference and says each problem in a sentence; the done-when's six broken manifests are each refused by name (16 tests, three rules mutation-checked). `packages/plugin-tools` is new: `pnpm plugin:check <folder> [--fetch] [--pin]`, plus the gate's check of every folder in `plugins/`. `plugins/tarot` drafted: 78 cards in Rick's numbering, one/three/Celtic-cross spreads, a reversals setting, and the deck's JPEGs pinned (4,837,006 bytes, all downloaded and hash-checked). Gate green, 2277 TS tests.
+Left: card meanings (P10-T06). The instructions are a first draft. Not pushed.
+Next: P10-T02, primitives and declarative tools.
+Decisions: ADR-72's build notes: `$` references and `{{ }}` templates, the primitives' shapes, strict objects, image assets only, and the node side as its own package.
+Lessons: `tsc -b` before the tests existed proved nothing. Core's ES2023 lib has no TextEncoder, which only showed up once the tests did, so run the typecheck after the last file, not the first.
