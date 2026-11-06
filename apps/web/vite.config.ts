@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
@@ -166,6 +167,8 @@ export default defineConfig({
   // `/dev/face` (P3-T06) reads the generated face set from `live/out/faces` through Vite's
   // `/@fs/` route; this is where that folder is on this machine. Only that page names it.
   define: {
+    // P10-T03: the app's own version, for a plugin's `minApp` (ADR-72). One number for the web and the desktop app.
+    APP_VERSION: JSON.stringify((JSON.parse(readFileSync(new URL('../desktop/src-tauri/tauri.conf.json', import.meta.url), 'utf8')) as { version: string }).version),
     FACE_SET_DIR: JSON.stringify(fileURLToPath(new URL('../../packages/ml-web/live/out/faces/', import.meta.url)).replaceAll('\\', '/')),
   },
   test: {

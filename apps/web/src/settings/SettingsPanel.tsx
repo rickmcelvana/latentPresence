@@ -16,6 +16,7 @@ import { LanguageModelSection } from './LanguageModelSection';
 import { DocumentsSection } from './DocumentsSection';
 import { MemorySection } from './MemorySection';
 import { ToolsSection } from './ToolsSection';
+import { PluginsSection } from '../plugins/PluginsSection';
 import { VaultNote } from './VaultNote';
 import { VoiceSection } from './VoiceSection';
 import { loadSettings, saveSettings, type LlmSettings, type Settings, type SttSettings, type TtsSettings } from './settings';
@@ -80,7 +81,7 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
         character={settings.character}
         characters={settings.characters}
         onSelect={(character) => setSettings((prev) => ({ ...prev, character }))}
-        onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { body: null, ...prev.characters[id], voice } } }))}
+        onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { body: null, plugins: [], ...prev.characters[id], voice } } }))}
         tts={settings.tts}
       />
 
@@ -98,6 +99,8 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
       <InitiativeSection initiative={settings.initiative} onChange={(initiative) => setSettings((prev) => ({ ...prev, initiative }))} />
 
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
+
+      <PluginsSection onChange={(update) => setSettings(update)} settings={settings} />
 
       {api !== null && <CompanionSettings controller={companion} />}
 

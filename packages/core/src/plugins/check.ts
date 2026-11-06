@@ -35,8 +35,11 @@ export interface PluginFolder {
 }
 
 export interface CheckPluginOptions {
-  /** Lowercase hex. Injected: the core has no crypto of its own (the page has `crypto.subtle`, node `node:crypto`). */
-  readonly sha256: (bytes: Uint8Array) => Promise<string>;
+  /**
+   * Lowercase hex. Injected: the core has no crypto of its own (the page has `crypto.subtle`, node `node:crypto`).
+   * Null where there is none (a page served over plain http, ADR-70): the size is still checked.
+   */
+  readonly sha256: (bytes: Uint8Array) => Promise<string | null>;
   /** The running app's version, for `minApp`. Absent, `minApp` is not compared. */
   readonly appVersion?: string;
   /** Downloads an asset's address to check its bytes. Absent, an address is checked as listed. */
@@ -140,7 +143,7 @@ export async function checkPlugin(manifestText: string, folder: PluginFolder, op
     const from = asset.path ?? asset.url ?? '';
     if (bytes.length !== asset.bytes) problems.push(`${label}: ${from} is ${bytes.length} bytes, and the manifest says ${asset.bytes}.`);
     const hash = await options.sha256(bytes);
-    if (hash !== asset.sha256) problems.push(`${label}: ${from} has SHA-256 ${hash}, and the manifest says ${asset.sha256}.`);
+    if (hash !== null && hash !== asset.sha256) problems.push(`${label}: ${from} has SHA-256 ${hash}, and the manifest says ${asset.sha256}.`);
     const sniffed = sniffImage(bytes);
     if (sniffed !== null && sniffed !== asset.type) problems.push(`${label}: ${from} is ${sniffed}, and the manifest says ${asset.type}.`);
   }

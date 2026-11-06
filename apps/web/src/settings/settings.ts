@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { McpTransportSchema } from '@latentpresence/protocol';
+import { JsonValueSchema, McpTransportSchema } from '@latentpresence/protocol';
 import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
 import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
@@ -164,6 +164,8 @@ export const CharacterSettingsSchema = z.object({
   /** P7-T02 (ADR-59): the body this character wears, a built-in id or an own body's `own:` id;
    * `null`, or a body no longer there, is the pack's default. Defaulted, so older documents load. */
   body: z.string().min(1).nullable().default(null),
+  /** P10-T03 (ADR-72 item 4, amending ADR-55): the ids of the plugins enabled for this character. Defaulted. */
+  plugins: z.array(z.string().min(1)).default([]),
 });
 export type CharacterSettings = z.infer<typeof CharacterSettingsSchema>;
 
@@ -201,6 +203,8 @@ export const SettingsSchema = z.object({
   checkUpdates: z.boolean().default(false),
   /** P9-T01 (ADR-67): captions on the call's stage, from the call bar. Defaulted, so an earlier document loads. */
   captions: z.boolean().default(false),
+  /** P10-T03 (ADR-72 item 1): each installed plugin's settings, as the person chose them; the manifest's defaults fill the rest. */
+  plugins: z.record(z.string(), z.record(z.string(), JsonValueSchema)).default({}),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -222,6 +226,7 @@ export const DEFAULT_SETTINGS: Settings = {
   closeToTray: true,
   checkUpdates: false,
   captions: false,
+  plugins: {},
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets
@@ -255,7 +260,7 @@ function hasCharacters(stored: unknown): boolean {
 function keepVoiceForAlice(settings: Settings): Settings {
   const { tts } = settings;
   if (tts.kind !== 'kokoro-browser' || tts.voiceId === packFor(DEFAULT_CHARACTER_ID).persona.voice.voiceId) return settings;
-  return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { body: null, ...settings.characters[DEFAULT_CHARACTER_ID], voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
+  return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { body: null, plugins: [], ...settings.characters[DEFAULT_CHARACTER_ID], voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
 }
 
 function hasWelcomed(stored: unknown): boolean {
@@ -273,7 +278,7 @@ function markWelcomed(settings: Settings): Settings {
 
 /** The settings with `body` chosen for one character (P7-T02, ADR-59), its voice kept. `null` is its pack's default. */
 export function withBodyChoice(settings: Settings, characterId: string, body: string | null): Settings {
-  const current = settings.characters[characterId] ?? { voice: null, body: null };
+  const current = settings.characters[characterId] ?? { voice: null, body: null, plugins: [] };
   return { ...settings, characters: { ...settings.characters, [characterId]: { ...current, body } } };
 }
 

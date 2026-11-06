@@ -3064,6 +3064,28 @@ in context for abilities they are not using. *Plugins global like MCP servers:* 
   nothing is saved. `clear` removes a key. `MemoryStore` cannot delete a block, so "forget its
   data" in P10-T03 writes the block empty.
 - **`show`** hands the host a `PluginDisplay` (title, and per item a caption, an asset id and
-  `flip`). A reversed card is drawn upside down (Rick, 2026-11-06).
+  `flip`). A reversed card is drawn face up and rotated 180°, so the picture is upside down (Rick, 2026-11-06).
 - **The tarot tool runs end to end in `packages/plugin-tools`**, from disk through `checkPlugin`,
   because the core reads no files.
+
+**In the build (P10-T03, 2026-11-06).**
+- **Installed plugins live in IndexedDB everywhere**, the desktop app included: its webview's
+  storage is already in the app's data folder, so no file of our own is needed (amends item 8's
+  "app's data folder"). An installed plugin is checked again every time it loads, and one that no
+  longer passes is shown with its problems and not run.
+- **Zips are read with the browser's own `DecompressionStream`**, stored or deflated entries
+  only, capped at 2,000 entries and 100 MB expanded. No library is added.
+- **From an address**, only the files the manifest names are fetched (instructions, data, folder
+  assets), and only by paths the schema allows. Address assets wait for their first showing and go
+  to their own cache, `latentpresence-plugin-assets`, checked on the way in and on every read. A
+  browser cannot tell a server that is down from one without CORS, so the sentence names the host
+  and says both.
+- **The consent screen** shows author, licence, origin, every host, the possible download, bytes
+  kept, picture licences, tools and whether they ask, servers and schedules (listed, not added:
+  P10-T07), the prompt estimate and the check's notes. "Turn it on for <character>" is ticked by
+  default. Nothing is kept until Install.
+- **The app knows its version** (`APP_VERSION`, from `tauri.conf.json` at build) for `minApp`.
+  Outside a secure context there is no `crypto.subtle`, so only the size is checked (ADR-70).
+- **Removing** takes the plugin, its downloaded pictures, its per-character switches and its
+  settings. Its data goes only if the person ticks "Also forget", which writes each character's
+  block empty.

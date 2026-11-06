@@ -37,7 +37,7 @@ export interface PluginDisplayItem {
   readonly caption: string;
   /** The asset id of its image, for `cards`; null for `list`. */
   readonly image: string | null;
-  /** Turned upside down: a reversed card. */
+  /** Rotated 180°, still face up: a reversed card. */
   readonly flip: boolean;
 }
 

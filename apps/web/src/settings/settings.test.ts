@@ -57,7 +57,7 @@ describe('loadSettings', () => {
       memory: 'browser',
       initiative: 'rare',
       character: 'theo',
-      characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.95 }, body: null }, alice: { voice: null, body: null } },
+      characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.95 }, body: null, plugins: ['tarot'] }, alice: { voice: null, body: null, plugins: [] } },
       tools: {
         servers: [{ id: 'srv-1', label: 'DeepWiki', url: 'https://mcp.deepwiki.com/mcp', transport: 'http', enabled: true, auth: 'none' }],
         grants: { 'srv-1': { read_wiki_structure: { policy: 'auto', fingerprint: '0badf00d' }, ask_question: { policy: 'never', fingerprint: null } } },
@@ -72,6 +72,7 @@ describe('loadSettings', () => {
       closeToTray: false,
       checkUpdates: true,
       captions: true,
+      plugins: { tarot: { reversals: false } },
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);
@@ -128,12 +129,12 @@ describe('loadSettings', () => {
     const { character: _character, characters: _characters, ...beforeT06 } = DEFAULT_SETTINGS;
     const picked = { ...beforeT06, tts: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 } };
     const loaded = loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(picked) }));
-    expect(loaded.characters).toEqual({ alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 }, body: null } });
+    expect(loaded.characters).toEqual({ alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1.1 }, body: null, plugins: [] } });
     expect(loaded.tts.voiceId).toBe('bf_emma');
     // Saved again, it has a characters key, so what she has is not written over by a later load.
     const storage = memoryStorage();
-    saveSettings({ ...loaded, characters: { alice: { voice: null, body: null } } }, storage);
-    expect(loadSettings(storage).characters).toEqual({ alice: { voice: null, body: null } });
+    saveSettings({ ...loaded, characters: { alice: { voice: null, body: null, plugins: [] } } }, storage);
+    expect(loadSettings(storage).characters).toEqual({ alice: { voice: null, body: null, plugins: [] } });
   });
 
   it("writes no migrated voice when the old voice already is Alice's, or the engine is a server (P6-T06)", () => {
@@ -147,11 +148,11 @@ describe('loadSettings', () => {
   it("loads a character saved before bodies with the pack's default, and keeps the voice when a body is chosen (P7-T02, ADR-59)", () => {
     const before = { ...DEFAULT_SETTINGS, characters: { theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 } } } };
     const loaded = loadSettings(memoryStorage({ [SETTINGS_STORAGE_KEY]: JSON.stringify(before) }));
-    expect(loaded.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: null });
+    expect(loaded.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: null, plugins: [] });
 
     const chosen = withBodyChoice(loaded, 'theo', 'own:1');
-    expect(chosen.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: 'own:1' });
-    expect(withBodyChoice(chosen, 'alice', 'placeholder').characters['alice']).toEqual({ voice: null, body: 'placeholder' });
+    expect(chosen.characters['theo']).toEqual({ voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 0.9 }, body: 'own:1', plugins: [] });
+    expect(withBodyChoice(chosen, 'alice', 'placeholder').characters['alice']).toEqual({ voice: null, body: 'placeholder', plugins: [] });
   });
 
   it('loads a document saved before the wizard as welcomed when a model was chosen, and not when none was (P8-T02)', () => {

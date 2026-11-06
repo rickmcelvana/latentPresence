@@ -1344,6 +1344,92 @@ kbd {
   align-self: flex-start;
 }
 
+/* Settings → Plugins (P10-T03, ADR-72): install controls, the consent screen's facts, the list. */
+.plugin-install,
+.plugin-characters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm) var(--gap-md);
+}
+
+.plugin-file {
+  position: relative;
+  overflow: hidden;
+}
+
+/* The real file input covers its label, invisible, so the label is what is seen and clicked. */
+.plugin-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.plugin-address {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.plugin-address-row {
+  display: flex;
+  gap: var(--gap-sm);
+}
+
+.plugin-address-row .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugin-problems ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  margin: 0;
+  padding-left: var(--gap-lg);
+}
+
+.plugin-consent {
+  gap: var(--gap-md);
+}
+
+.plugin-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--gap-xs) var(--gap-md);
+  margin: 0;
+  font-size: 13px;
+}
+
+.plugin-facts dt {
+  color: var(--text-muted);
+}
+
+.plugin-facts dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.plugin-facts-wrap {
+  overflow-wrap: anywhere;
+}
+
+.plugin-mono {
+  font-family: var(--font-mono);
+}
+
+.plugin-item {
+  gap: var(--gap-md);
+}
+
+.plugin-remove {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding-top: var(--gap-sm);
+  border-top: 1px solid var(--border);
+}
+
 .tools-companion,
 .tools-add {
   display: flex;

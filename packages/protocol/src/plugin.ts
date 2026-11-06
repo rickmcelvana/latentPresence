@@ -186,7 +186,7 @@ export type PluginAsset = z.infer<typeof PluginAssetSchema>;
 
 /**
  * How shown items look. `cards`: an image per item from the asset named in its `image` field,
- * turned over when its `flip` field is true, captioned by a template over its fields. `list`:
+ * rotated 180° (still face up) when its `flip` field is true, captioned by a template over its fields. `list`:
  * a line per item. On the screen unless it says the whiteboard (ADR-49).
  */
 export const PluginBoardSchema = z.discriminatedUnion('layout', [

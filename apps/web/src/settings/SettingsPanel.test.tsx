@@ -266,10 +266,10 @@ describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
     const voice = screen.getByLabelText('Voice for Theo') as HTMLSelectElement;
     expect(voice.value).toBe('');
     fireEvent.change(voice, { target: { value: 'bm_george' } });
-    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 1 }, body: null } }));
+    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: { kind: 'kokoro-browser', voiceId: 'bm_george', speed: 1 }, body: null, plugins: [] } }));
     expect((screen.getByLabelText('Voice for Theo') as HTMLSelectElement).value).toBe('bm_george');
     fireEvent.change(screen.getByLabelText('Voice for Theo'), { target: { value: '' } });
-    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: null, body: null } }));
+    await waitFor(() => expect(stored(storage).characters).toEqual({ theo: { voice: null, body: null, plugins: [] } }));
   });
 
   it("on a server it is a voice id for the character, blank meaning the one in Voice, and a Kokoro choice is not shown there", async () => {
@@ -282,7 +282,7 @@ describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
         llm: { endpoint: null, baseUrl: '', modelId: null, temperature: null },
         tts: { kind: 'openai-compatible', baseUrl: 'http://x/v1', model: 'tts-1', voiceId: 'alloy', speed: 1 },
         stt: { kind: 'moonshine-browser', model: 'moonshine-tiny' },
-        characters: { alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1 }, body: null } },
+        characters: { alice: { voice: { kind: 'kokoro-browser', voiceId: 'bf_emma', speed: 1 }, body: null, plugins: [] } },
       }),
     );
     render(<SettingsPanel deps={testDeps({ storage })} />);
@@ -291,11 +291,11 @@ describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
     fireEvent.change(voice, { target: { value: 'nova' } });
     await waitFor(() =>
       expect(stored(storage).characters).toEqual({
-        alice: { voice: { kind: 'openai-compatible', voiceId: 'nova', speed: 1 }, body: null },
+        alice: { voice: { kind: 'openai-compatible', voiceId: 'nova', speed: 1 }, body: null, plugins: [] },
       }),
     );
     fireEvent.change(screen.getByLabelText('Voice for Alice'), { target: { value: '' } });
-    await waitFor(() => expect(stored(storage).characters).toEqual({ alice: { voice: null, body: null } }));
+    await waitFor(() => expect(stored(storage).characters).toEqual({ alice: { voice: null, body: null, plugins: [] } }));
   });
 });
 

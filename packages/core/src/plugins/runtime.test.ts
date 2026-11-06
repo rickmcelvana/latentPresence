@@ -109,7 +109,7 @@ describe('pluginTools (P10-T02)', () => {
     expect(tools[1]?.definition.parameters).toMatchObject({ properties: { dice: { default: 'd6' }, times: { minimum: 1, maximum: 3 } }, required: [] });
   });
 
-  it('draws a spread, returns it, and shows it with reversed cards turned over', async () => {
+  it('draws a spread, returns it, and shows it with reversed cards upside down', async () => {
     const host = new FakePluginHost({ seed: 7 });
     const result = (await tool(pluginTools(plugin(), host), 'sky__draw')({ spread: 'two' })) as { spread: PluginRow; cards: PluginRow[] };
     expect(result.spread).toEqual(SPREADS[1]);
