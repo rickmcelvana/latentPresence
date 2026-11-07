@@ -3,7 +3,7 @@
   "format": 1,
   "id": "tarot",
   "name": "Tarot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Rick McElvana",
   "licence": "Apache-2.0",
   "homepage": "https://github.com/rickmcelvana/latentPresence/tree/main/plugins/tarot",
@@ -17,7 +17,7 @@
   "tools": [
     {
       "name": "draw_spread",
-      "description": "Shuffles the deck, draws the cards for a spread, and lays them out on the wall. Returns the spread and each card with its position and whether it came up reversed.",
+      "description": "Shuffles the deck, draws the cards for a spread, and lays them out on the wall. Returns the spread and each card with its position, whether it came up reversed, and its upright and reversed meanings.",
       "parameters": {
         "spread": {
           "type": "string",

@@ -46,6 +46,33 @@ describe('tarot__draw_spread (P10-T02)', () => {
     for (const item of shown?.items ?? []) expect(plugin.manifest.assets.some((asset) => asset.id === item.image)).toBe(true);
   });
 
+  it("hands the model each card's upright and reversed meaning with it (P10-T06)", async () => {
+    const [tool] = pluginTools(await tarot(), new FakePluginHost({ seed: 7 }));
+    const result = (await tool?.run({ spread: 'three' }, { call: CALL })) as { cards: PluginRow[] };
+    for (const card of result.cards) {
+      expect(typeof card['upright']).toBe('string');
+      expect(typeof card['reversed_meaning']).toBe('string');
+      expect(typeof card['reversed']).toBe('boolean');
+    }
+  });
+
+  it('has a short meaning each way for all 78 cards, every one its own (P10-T06)', async () => {
+    const cards = (await tarot()).data['cards'] ?? [];
+    expect(cards).toHaveLength(78);
+    const all: string[] = [];
+    for (const card of cards) {
+      for (const key of ['upright', 'reversed_meaning']) {
+        const meaning = card[key];
+        const label = `${String(card['name'])} ${key}`;
+        expect(typeof meaning, label).toBe('string');
+        // Short enough that a small model reads it as a cue, not a script.
+        expect(String(meaning).length, label).toBeLessThanOrEqual(100);
+        all.push(String(meaning));
+      }
+    }
+    expect(new Set(all).size).toBe(all.length);
+  });
+
   it('turns reversed cards upside down, about half of them, and none when reversals are off', async () => {
     const plugin = await tarot();
     const flips = async (settings: Record<string, boolean>) => {

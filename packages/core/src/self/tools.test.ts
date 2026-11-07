@@ -101,6 +101,24 @@ describe('withLocalTools (P4-T06, ADR-40)', () => {
     expect(await said('', 'Saved.')).toBe('Saved. Next.');
   });
 
+  it('asks once more, reasoning off, when the round after a result ends in thought alone (P10-T06)', async () => {
+    const { notes } = notesOn();
+    const silent = [{ type: 'reasoning-delta', text: 'Now I read the cards...' }, { type: 'finish', reason: 'stop', usage: null }] as const;
+    const llm = scripted([toolRound('Let me look.'), silent, after('The Moon, reversed.')]);
+    const chunks = await collect(withLocalTools(llm, () => selfNoteTools(notes)).stream(request));
+    expect(llm.requests.map((r) => r.reasoning)).toEqual([undefined, undefined, 'off']);
+    expect(llm.requests[2]?.messages).toEqual(llm.requests[1]?.messages);
+    expect(chunks.flatMap((chunk) => (chunk.type === 'text-delta' ? [chunk.text] : [])).join('')).toBe('Let me look. The Moon, reversed. Next.');
+    // Only once: a second silence ends the answer as it is.
+    const twice = scripted([toolRound(''), silent, silent, after('never asked')]);
+    await collect(withLocalTools(twice, () => selfNoteTools(notes)).stream(request));
+    expect(twice.requests).toHaveLength(3);
+    // And a first round that says nothing is left alone: no tool has answered yet.
+    const first = scripted([silent]);
+    await collect(withLocalTools(first, () => selfNoteTools(notes)).stream(request));
+    expect(first.requests).toHaveLength(1);
+  });
+
   it('offers no tools on the last round, so an answer always ends in words', async () => {
     const { notes } = notesOn();
     const again = [{ type: 'tool-call', call: call('self_read_block', { name: 'x' }) }, { type: 'finish', reason: 'tool-calls', usage: null }] as const;

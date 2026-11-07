@@ -84,6 +84,10 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
       // model and one to the person: "together." then "So I've…" must not arrive as
       // "together.So I've…" (seen live, P4-T07). A space goes between them when neither has one.
       let spoken = '';
+      // A thinking model may end the round after a tool's result in reasoning alone, saying nothing
+      // (qwen3.5:9b, P10-T06: it drew the cards, then thought and stopped). Asked once more with
+      // reasoning off, it answers in words.
+      let hushed = false;
       for (let round = 0; ; round += 1) {
         if (round > 0) local = tools();
         // The last round offers no local tools, so an answer always ends in words.
@@ -102,7 +106,7 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
           spoken += joined;
           return joined;
         };
-        for await (const chunk of llm.stream({ ...request, messages, tools: [...request.tools, ...offered.map((tool) => tool.definition)] }, callOptions)) {
+        for await (const chunk of llm.stream({ ...request, ...(hushed ? { reasoning: 'off' as const } : {}), messages, tools: [...request.tools, ...offered.map((tool) => tool.definition)] }, callOptions)) {
           if (chunk.type === 'tool-call' && offered.some((tool) => tool.definition.name === chunk.call.name)) {
             calls.push(chunk.call);
           } else if (chunk.type === 'tool-call' && local.some((tool) => tool.definition.name === chunk.call.name)) {
@@ -139,6 +143,10 @@ export function withLocalTools(llm: LLMProvider, tools: () => readonly LocalTool
             { role: 'assistant', content: text, toolCalls: late },
             ...late.map((call): LlmMessage => ({ role: 'tool', callId: call.id, content: { error: OUT_OF_ROUNDS } })),
           ];
+          continue;
+        }
+        if (calls.length === 0 && late.length === 0 && round > 0 && !hushed && text.trim() === '' && callOptions?.signal?.aborted !== true) {
+          hushed = true;
           continue;
         }
         if (calls.length === 0 || callOptions?.signal?.aborted === true) {

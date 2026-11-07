@@ -3125,3 +3125,14 @@ URL, so `img-src` is unchanged; a picture that fails stays a blank card and the 
 layout stays until the next one or **Clear the wall** (a call control shown only while one is up); then
 the plan and the sources come back. It is not kept across visits. Built by the architect, not a
 subagent: the 80% rule came from looking at it in the pane.
+
+**In the build (P10-T06, 2026-11-06).** Tarot 0.2.0 gives each card a short `upright` and
+`reversed_meaning` (100 characters at most each), written for this plugin from the cards'
+traditional associations. They are the plugin's own text, under its manifest's author and licence,
+so no outside source is named. `draw_spread` returns them with the card. The instructions tell her to
+draw at once (three cards by default), to read the drawn cards and no others, and to call the tool
+before speaking of any card. **One change outside the plugin:** `withLocalTools` asks a round again,
+once, with reasoning off, when the round after a tool's result ends in reasoning alone with no words.
+qwen3.5:9b did this every time (it drew the cards, then went silent), and the app would have too.
+Live (`docs/runs/P10-T06-tarot.md`, 10 runs each): glm-5.2 10/10, gemma4:12b 10/10, qwen3.5:9b 9/10.
+qwen's misses across the runs were invented or doubled draws. How it feels in a call is R-68.
