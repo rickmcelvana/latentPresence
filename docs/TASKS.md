@@ -185,30 +185,6 @@ refresh left over from a clean driver install (59.9 fps, capped), then re-read a
 nothing measurable here, and the page still runs at the display's refresh. **The 60 fps half
 passes with 2× margin.**
 
-### R-68 · A tarot reading in a call · **ready to run** (P10-T06, 2026-11-06) · ~15 minutes
-How Tarot feels as a spoken reading, which the live runs cannot judge (`docs/runs/P10-T06-tarot.md`:
-glm-5.2 and gemma4:12b 10/10, qwen3.5:9b 9/10). On the desktop, after `git pull`:
-1. Start the app from the checkout (the plugin wall is not in a release yet):
-   ```bash
-   pnpm --filter @latentpresence/web run dev
-   ```
-   and open `http://localhost:5173`.
-2. **Settings → Plugins → Or its address**, paste
-   `https://raw.githubusercontent.com/rickmcelvana/latentPresence/main/plugins/tarot/plugin.json`,
-   **Read it**, then **Install** with "Turn it on for Alice" ticked. If 0.1.0 is already installed,
-   the screen says 0.2.0 replaces it.
-3. **Chat**, with the model you use most (glm-5.2:cloud, then a local one if you like), **Start voice**,
-   and say "Read my cards." Three cards should appear on the screen to her right. Reversed ones are
-   upside down, and she should read exactly those cards and say which came up reversed.
-4. Ask for "a Celtic cross". Cards 1–5 go on the whiteboard, 6–10 on the screen, numbered, with
-   the positions listed under them.
-5. **Clear the wall** (in the call controls) takes them down.
-
-**Passes when** it feels like a reading you would want to sit through: her tone, the length, the
-cards matching what she says. Note any card meaning that reads wrong. The meanings are one line
-each in `plugins/tarot/data/cards.json` (`upright`, `reversed_meaning`): edit them there, or tell
-me which and how.
-
 ## Open — claude (say go, or add the key)
 
 P1-T08 answered two of the three browser questions in the Claude desktop app's Browser pane
@@ -227,6 +203,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-73 · R-68: a tarot reading in a call** — Rick 2026-11-06: **passed** on the second try ("worked perfectly"). The first try (nemotron-3-nano Celtic cross fine; a glm-5.2 three-card spread hidden behind the open transcript drawer) led to a one-board layout moving to the whiteboard while the drawer is open. P10-T06 done.
 - **D-72 · R-1: the bare avatar on a low-end laptop** — Rick 2026-11-05: Intel UHD Graphics 600, canvas 958×538: **59.9 fps median, 51.3 5th percentile**, avatar loaded in 2095 ms. It holds the panel's 60 Hz with about one frame in twenty late. 540p and without the room; R-13 is the stage. `docs/spikes/B-vrm-lipsync.md`.
 - **D-71 · R-67: the user docs on the site** — Rick 2026-11-04: **passed**, pushed, deployed and read. P9-T04 done.
 - **D-70 · C-9: voice in the desktop app with its runtime from the build** — claude 2026-11-03: the exe
