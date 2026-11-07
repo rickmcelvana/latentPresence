@@ -47,9 +47,9 @@ In `docs/TASKS.md`, each with the command that runs it. **Open for Rick:** **R-7
 
 ## Last three sessions
 
-- 2026-11-06 claude (20) — **Check what covers the view, not only what draws it.** R-68's first try: the cards were drawn on the screen, behind the open transcript drawer. A one-board layout now moves to the whiteboard while the drawer is open.
-
 - 2026-11-06 claude (22) — **Paths as models write them.** P10-T08: Office writes through the companion's own Files server (ADR-73, proposed). Live, the strict path rules failed two of three models; accepting the paths they write, and a refusal that says what to write instead, fixed it.
+
+- 2026-11-06 claude (23) — **Check what a library measured.** R-69 passed; autofit sized a column of formulas by their empty stored results, so totals showed ###. ADR-73 accepted.
 
 - 2026-11-07 claude (24) — **Pin everything the listing vouches for.** P10-T09: the index pins each plugin's manifest and every file it names, at a commit, so nothing a person was shown can change under them.
 
