@@ -1084,3 +1084,10 @@ Left: She was not loaded in the pane (the placeholder body's 10.8 MB download wa
 Next: P10-T06, Tarot's meanings with Rick.
 Decisions: Cards past five span both boards. Captions under the cards are kept only while the cards stay at least 80% of the numbered layout's size (seen in the pane). Owner: main, not sub, because that rule needed looking.
 Lessons: Every test was green while the first Celtic cross looked wrong: small captioned cards on one board, big numbered ones on the other. A layout test checks what you thought to check; the pane shows the rest.
+
+## 2026-11-06 claude (19) — P10-T06: Tarot reads its cards
+Did: Gave all 78 cards a short `upright` and `reversed_meaning`, written for the plugin and returned with each draw (Tarot 0.2.0). The instructions now say: draw at once, three cards by default, read only the drawn cards, call the tool before naming any. Added `pnpm live:tarot` (`docs/runs/P10-T06-tarot.md`). Five runs, each changing one thing: glm asked "what's on your mind?" before drawing (instructions fixed). qwen3.5:9b drew and then went silent, a tool-loop problem the app shares, so `withLocalTools` now asks once more with reasoning off. qwen went 5/10, then 7/10 after one more instruction line, and 9/10 in the final run. Final: glm-5.2 10/10, gemma4:12b 10/10, qwen3.5:9b 9/10. Added R-68 for Rick. Gate green, 2352 TS tests.
+Left: R-68 (how it feels in a call; the meanings are for Rick to tune). qwen3.5:9b can still invent or double a draw. Not pushed.
+Next: P10-T07, plugin MCP servers and schedules, when Rick says.
+Decisions: The meanings are the plugin's own text under its manifest's author and licence. A silent round after a tool result is retried once with reasoning off (core).
+Lessons: When a plugin works on two models and fails on the third, check the shared path first. The silence was the tool loop's, and the fix helps every tool.
