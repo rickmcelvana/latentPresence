@@ -1374,6 +1374,47 @@ kbd {
   cursor: pointer;
 }
 
+/* Browse (P10-T09): the index, fetched on the press, and a line for a plugin that is not in it. */
+.plugin-browse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm) var(--gap-md);
+}
+
+.plugin-index-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plugin-index-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-sm) var(--gap-md);
+  padding: var(--gap-sm) var(--gap-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.plugin-index {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.plugin-unlisted {
+  display: block;
+  margin-top: var(--gap-xs);
+  color: var(--warning);
+}
+
 .plugin-address {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,5 @@
 import type { PluginFolder } from '@latentpresence/core';
+import type { PluginIndexEntry } from '@latentpresence/protocol';
 import { readZip } from './zip';
 
 /**
@@ -17,7 +18,8 @@ export interface PluginSource {
 export type PluginOrigin =
   | { readonly kind: 'folder'; readonly name: string }
   | { readonly kind: 'zip'; readonly name: string }
-  | { readonly kind: 'url'; readonly url: string };
+  /** `listed`: from the index, every file matching the hash it was listed with (ADR-72 item 9). */
+  | { readonly kind: 'url'; readonly url: string; readonly listed: boolean };
 
 export class SourceProblem extends Error {
   /** The HTTP status, when a server answered with one. */
@@ -79,7 +81,7 @@ export async function sourceFromZip(name: string, bytes: Uint8Array): Promise<Pl
  * any asset kept in the folder. The address must send CORS, as raw GitHub files do. What the
  * manifest names is read loosely here; `checkPlugin` says what is wrong with it afterwards.
  */
-export async function sourceFromUrl(address: string, fetcher: typeof fetch): Promise<PluginSource> {
+export async function sourceFromUrl(address: string, fetcher: typeof fetch, listing?: Listing): Promise<PluginSource> {
   let url: URL;
   try {
     url = new URL(address);
@@ -87,20 +89,54 @@ export async function sourceFromUrl(address: string, fetcher: typeof fetch): Pro
     throw new SourceProblem(`"${address}" is not a web address.`);
   }
   if (url.protocol !== 'https:') throw new SourceProblem('A plugin\'s address must start with https://.');
-  const manifestText = await download(url, fetcher);
+  const manifestBytes = await downloadBytes(url, fetcher);
+  if (listing !== undefined) await checkListed(listing, 'plugin.json', manifestBytes, listing.entry.sha256);
+  const manifestText = new TextDecoder().decode(manifestBytes);
+  if (listing !== undefined && manifestId(manifestText) !== listing.entry.id) throw new SourceProblem(`${listing.entry.name} is listed as "${listing.entry.id}", but its plugin.json says otherwise.`);
   const named = namedFiles(manifestText);
   const files = new Map<string, Uint8Array>();
   for (const path of named) {
     // A path the schema will refuse is not fetched: `..` must never climb out of the plugin's folder on a server either.
     if (!/^[A-Za-z0-9_][A-Za-z0-9._-]*(\/[A-Za-z0-9_][A-Za-z0-9._-]*)*$/.test(path)) continue;
+    const pinned = listing?.entry.files[path];
+    if (listing !== undefined && pinned === undefined) throw new SourceProblem(changed(listing, path));
     try {
-      files.set(path, await downloadBytes(new URL(path, url), fetcher));
+      const bytes = await downloadBytes(new URL(path, url), fetcher);
+      if (listing !== undefined && pinned !== undefined) await checkListed(listing, path, bytes, pinned);
+      files.set(path, bytes);
     } catch (error) {
       if (!(error instanceof SourceProblem && error.status === 404)) throw error;
       // Missing: `checkPlugin` names it.
     }
   }
-  return { manifestText, files, origin: { kind: 'url', url: url.href } };
+  return { manifestText, files, origin: { kind: 'url', url: url.href, listed: listing !== undefined } };
+}
+
+/**
+ * A plugin installed from the index (ADR-72 item 9): its entry, whose hashes every file must match,
+ * and the page's SHA-256 (`null` outside a secure context, where nothing can be checked).
+ */
+export interface Listing {
+  readonly entry: PluginIndexEntry;
+  readonly sha256: (bytes: Uint8Array) => Promise<string | null>;
+}
+
+function changed(listing: Listing, path: string): string {
+  return `${listing.entry.name}'s ${path} is not the one that was listed, so it is not installed. It may have changed since; the index needs updating first.`;
+}
+
+async function checkListed(listing: Listing, path: string, bytes: Uint8Array, expected: string): Promise<void> {
+  const actual = await listing.sha256(bytes);
+  if (actual === null) throw new SourceProblem('This page cannot check a download (it needs https or localhost), so nothing from the index is installed here.');
+  if (actual !== expected) throw new SourceProblem(changed(listing, path));
+}
+
+function manifestId(manifestText: string): unknown {
+  try {
+    return (JSON.parse(manifestText) as { id?: unknown } | null)?.id;
+  } catch {
+    return undefined;
+  }
 }
 
 function namedFiles(manifestText: string): string[] {
@@ -117,10 +153,6 @@ function namedFiles(manifestText: string): string[] {
   if (typeof manifest.data === 'object' && manifest.data !== null) for (const path of Object.values(manifest.data)) if (typeof path === 'string') paths.add(path);
   if (Array.isArray(manifest.assets)) for (const asset of manifest.assets) if (typeof asset === 'object' && asset !== null && typeof (asset as { path?: unknown }).path === 'string') paths.add((asset as { path: string }).path);
   return [...paths];
-}
-
-async function download(url: URL, fetcher: typeof fetch): Promise<string> {
-  return new TextDecoder().decode(await downloadBytes(url, fetcher));
 }
 
 async function downloadBytes(url: URL, fetcher: typeof fetch): Promise<Uint8Array> {

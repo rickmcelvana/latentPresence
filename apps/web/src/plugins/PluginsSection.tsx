@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
+import type { PluginIndexEntry } from '@latentpresence/protocol';
 import { Schedules, pluginBudget, type ScheduleRequest, type ScheduleResult } from '@latentpresence/core';
 import type { JsonValue, MemoryStore, PluginSetting } from '@latentpresence/protocol';
 import { PACKS, packFor } from '../characters/packs';
@@ -7,6 +8,7 @@ import { companionConfigApi, type CompanionConfigApi } from '../desktop/companio
 import { desktopShell } from '../desktop/desktop';
 import type { Settings } from '../settings/settings';
 import { PluginAssets } from './assets';
+import { PLUGIN_INDEX_URL, fetchPluginIndex, sourceFromIndex, type PluginIndexRead } from './browse';
 import { inspectPlugin, type PluginInspection } from './inspect';
 import { enabledPlugins, installPlugin, loadPlugin, removePlugin, withPluginEnabled, withPluginLazy, withPluginSetting, withoutPlugin, type LoadedPlugin } from './manage';
 import { PluginConsent } from './PluginConsent';
@@ -34,6 +36,8 @@ export interface PluginsDeps {
   readonly companion: CompanionConfigApi | null;
   /** The person's IANA zone, where a plugin's schedule is read (ADR-58). */
   readonly timeZone: string;
+  /** P10-T09: the plugin index, fetched only on Browse. */
+  readonly indexUrl: string;
 }
 
 const windowFetch: typeof fetch = (input, init) => window.fetch(input, init);
@@ -46,6 +50,7 @@ export function defaultPluginsDeps(): PluginsDeps {
     memory: async (settings) =>
       (await chooseMemoryStore({ setting: settings.memory, companionUrl: settings.companionUrl, fetch: windowFetch, indexedDB: globalThis.indexedDB }))?.store ?? null,
     appVersion: APP_VERSION,
+    indexUrl: PLUGIN_INDEX_URL,
     companion: ((shell) => (shell === null ? null : companionConfigApi(shell.invoke)))(desktopShell()),
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
@@ -68,6 +73,42 @@ async function loadRows(deps: PluginsDeps): Promise<readonly Row[]> {
   return Promise.all(list.map(async (info) => ({ info, loaded: await loadPlugin(deps.shelf, info.id, deps.appVersion) })));
 }
 
+/** The index's plugins, each with Read it (to the consent screen) and whether it is installed. */
+function PluginIndexList({ index, installed, busy, onRead }: { readonly index: PluginIndexRead; readonly installed: readonly InstalledPlugin[]; readonly busy: boolean; readonly onRead: (entry: PluginIndexEntry) => void }): ReactElement {
+  return (
+    <div className="plugin-index">
+      {index.plugins.length === 0 ? <p className="field-hint">The index lists no plugins yet.</p> : null}
+      <ul aria-label="Plugins in the index" className="plugin-index-list">
+        {index.plugins.map((entry) => {
+          const have = installed.find((plugin) => plugin.id === entry.id);
+          return (
+            <li className="plugin-index-item" key={entry.id}>
+              <div className="tools-server-title">
+                <span className="tools-server-label">
+                  {entry.name} {entry.version}
+                </span>
+                <span className="field-hint">{entry.summary}</span>
+                <span className="field-hint">
+                  {entry.author} · {entry.licence}
+                  {entry.tags.length === 0 ? '' : ` · ${entry.tags.join(', ')}`}
+                </span>
+              </div>
+              {have?.version === entry.version ? (
+                <span className="pill">Installed</span>
+              ) : (
+                <button className="btn btn-ghost" disabled={busy} onClick={() => onRead(entry)} type="button">
+                  {have === undefined ? 'Read it' : `Update from ${have.version}`}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {index.skipped > 0 ? <p className="field-hint">{index.skipped} more could not be read by this version of the app.</p> : null}
+    </div>
+  );
+}
+
 export function PluginsSection({ settings, onChange, deps: given }: PluginsSectionProps): ReactElement {
   const [deps] = useState(() => given ?? defaultPluginsDeps());
   const [rows, setRows] = useState<readonly Row[]>([]);
@@ -77,6 +118,9 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
   const [address, setAddress] = useState('');
   const [removing, setRemoving] = useState<string | null>(null);
   const [forget, setForget] = useState(false);
+  // P10-T09 (ADR-72 item 9): the index, fetched only on the press.
+  const [index, setIndex] = useState<PluginIndexRead | null>(null);
+  const [browseProblem, setBrowseProblem] = useState<string | null>(null);
   const active = packFor(settings.character).persona;
 
   useEffect(() => {
@@ -101,6 +145,18 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
       else setProblems(inspection.problems);
     } catch (error) {
       setProblems([error instanceof Error ? error.message : String(error)]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const browse = async () => {
+    setBusy(true);
+    setBrowseProblem(null);
+    try {
+      setIndex(await fetchPluginIndex(deps.fetch, deps.indexUrl));
+    } catch (error) {
+      setBrowseProblem(`The list could not be fetched. ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setBusy(false);
     }
@@ -198,6 +254,25 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
           </button>
         </div>
       </form>
+      <div className="plugin-browse">
+        <button className="btn btn-ghost" disabled={busy} onClick={() => void browse()} type="button">
+          {index === null ? 'Browse plugins…' : 'Browse again'}
+        </button>
+        <span className="field-hint">Fetches the list from {new URL(deps.indexUrl).host}, only when you press it.</span>
+      </div>
+      {browseProblem === null ? null : (
+        <p className="field-error" role="alert">
+          {browseProblem}
+        </p>
+      )}
+      {index === null ? null : (
+        <PluginIndexList
+          busy={busy}
+          index={index}
+          installed={rows.map((row) => row.info)}
+          onRead={(entry) => void read(() => sourceFromIndex(entry, deps.fetch))}
+        />
+      )}
       {busy ? <p className="field-hint">Reading the plugin…</p> : null}
 
       {problems.length === 0 ? null : (

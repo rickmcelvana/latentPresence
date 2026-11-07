@@ -30,6 +30,7 @@
     "openapi": "vite-node packages/protocol/scripts/write-openapi.ts",
     "plugin:schema": "vite-node packages/protocol/scripts/write-plugin-schema.ts",
     "plugin:check": "vite-node packages/plugin-tools/src/cli.ts",
+    "plugin:index": "vite-node packages/plugin-tools/src/index-cli.ts",
     "pins:write": "pnpm --filter @latentpresence/ml-web exec vite-node tools/pin-models.ts --write",
     "pins:check": "pnpm --filter @latentpresence/ml-web exec vite-node tools/pin-models.ts",
     "clips:build": "vite-node packages/avatar/tools/build-clips.ts",

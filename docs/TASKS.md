@@ -111,6 +111,33 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-70 · The plugin index live, and a friend's plugin · ~20 minutes, then the friend (P10-T09)
+**1. CORS on the site's `/plugins/`.** The app fetches `latentpresence.com/plugins/index.json` from
+another site, so Caddy must allow it. In the Caddyfile on the server, inside the `latentpresence.com {`
+block, add these two lines:
+```
+@plugins path /plugins/*
+header @plugins Access-Control-Allow-Origin "*"
+```
+Then reload Caddy:
+```bash
+sudo systemctl reload caddy
+```
+**2. Push and deploy the site** (`Z:\dev\latent\latentpresence.com`, branch `master`): it has a new
+commit with `plugins/index.json`, both JSON Schemas and the `docs/plugins/` page. Deploy it as you did
+for R-67. Then check from this PC:
+```bash
+curl -sI -H "Origin: https://app.latentpresence.com" https://latentpresence.com/plugins/index.json
+```
+It should say `200` and `Access-Control-Allow-Origin: *`.
+**3. Browse in the app.** Settings → Plugins → **Browse plugins…**: Tarot and Office should be listed,
+Tarot with "Installed". Remove Office if you have it, then **Read it** on Office: the consent screen
+should say "listed in the latentPresence index and unchanged since". Install it.
+**4. A friend writes one.** Send them https://latentpresence.com/docs/plugins/ and the full guide
+(`docs/plugins.md` on GitHub). They copy `plugins/template`, make a plugin of their own, and install it
+from a folder or zip. Write down **every question they ask**: each one goes into the guide.
+
+
 
 ### Laptop session — R-13 and R-9 in one sitting · ~40 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).

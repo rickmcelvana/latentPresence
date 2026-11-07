@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import committedIndex from './generated/plugin-index.schema.json' with { type: 'json' };
 import committed from './generated/plugin.schema.json' with { type: 'json' };
-import { PluginManifestSchema, PluginStepSchema, pluginManifestJsonSchema, type PluginManifestInput } from './plugin';
+import { PluginIndexSchema, PluginManifestSchema, PluginStepSchema, pluginIndexJsonSchema, pluginManifestJsonSchema, type PluginManifestInput } from './plugin';
 
 const MINIMAL: PluginManifestInput = {
   format: 1,
@@ -102,5 +103,17 @@ describe('PluginManifestSchema (P10-T01, ADR-72)', () => {
 
   it('is the JSON Schema that is committed — run `pnpm plugin:schema` after changing plugin.ts', () => {
     expect(pluginManifestJsonSchema()).toEqual(committed);
+    expect(pluginIndexJsonSchema()).toEqual(committedIndex);
+  });
+});
+
+describe('PluginIndexSchema (ADR-72 item 9)', () => {
+  const entry = { id: 'tarot', name: 'Tarot', summary: 'Draws cards.', author: 'Rick', version: '0.2.0', licence: 'Apache-2.0', manifest: 'https://raw.githubusercontent.com/o/r/0123/plugins/tarot/plugin.json', sha256: 'a'.repeat(64), files: { 'instructions.md': 'b'.repeat(64) } };
+  it('reads an index and refuses an entry that is not pinned or not https', () => {
+    expect(PluginIndexSchema.parse({ format: 1, plugins: [entry] }).plugins[0]?.tags).toEqual([]);
+    expect(PluginIndexSchema.safeParse({ format: 1, plugins: [{ ...entry, sha256: 'abc' }] }).success).toBe(false);
+    expect(PluginIndexSchema.safeParse({ format: 1, plugins: [{ ...entry, manifest: 'http://x.example/plugin.json' }] }).success).toBe(false);
+    expect(PluginIndexSchema.safeParse({ format: 1, plugins: [{ ...entry, files: { '../x': 'b'.repeat(64) } }] }).success).toBe(false);
+    expect(PluginIndexSchema.safeParse({ format: 2, plugins: [] }).success).toBe(false);
   });
 });

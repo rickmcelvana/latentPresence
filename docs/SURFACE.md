@@ -2925,3 +2925,10 @@ After Rick's Caddy change: `1.png`, `78.png`, `1.jpg`, `78.jpg` all answer 200 w
 | A round trip | A sheet written with formats and a `=SUM` reads back with the formula; a DOCX written from Markdown reads back as the same Markdown (`office.rs` tests). In LibreOffice (R-69, and `soffice --headless --convert-to png`): formulas calculate on open and follow edits, and the DOCX opens with no repair |
 | `Worksheet::autofit()` and formulas | It measures a formula cell by its stored result, empty here, so a column of formulas is as wide as its heading: "Left" was 4.4 characters and `120.00` showed `###` (R-69). Widths are set with `set_column_width` from our own measure instead |
 | Live, three models (`docs/runs/P10-T08-office.md`) | glm-5.2 made the budget with `=SUM` totals, wrote the letter and edited Thursday to Friday in **every one of four runs**. gemma4:12b did all three in one of two runs after an instruction line was added. qwen3.5:9b often said it would make a file and called nothing |
+
+## Where the plugin index and its plugins are served from — measured 2026-11-07 (ADR-72 item 9, P10-T09)
+
+| Fact | Result |
+|---|---|
+| `raw.githubusercontent.com/rickmcelvana/latentPresence/<commit>/plugins/…` | `curl -I` with `Origin: https://app.latentpresence.com`: 200, `Access-Control-Allow-Origin: *`, `Content-Type: text/plain`, `Cache-Control: max-age=300`. A commit address never changes, so the index pins plugins there. Every file's SHA-256 fetched from it matched the index `pnpm plugin:index` wrote at 4122910 (six files, Tarot and Office) |
+| `latentpresence.com` | Caddy answers with **no `Access-Control-Allow-Origin`**, and `/plugins/index.json` was 404 before this task. Browse in the app (from `localhost:5173`) failed as a browser fails on a missing CORS header, and says so. The site needs the header on `/plugins/*` (R-70) |

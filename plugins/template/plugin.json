@@ -1,0 +1,41 @@
+{
+  "$schema": "https://latentpresence.com/plugins/plugin.schema.json",
+  "format": 1,
+  "id": "template",
+  "name": "Fortunes",
+  "version": "0.1.0",
+  "author": "Your name",
+  "licence": "Apache-2.0",
+  "summary": "Draws a fortune from a small deck and rolls dice; use it when someone asks for their fortune or a roll.",
+  "minApp": "1.0.0",
+  "instructions": "instructions.md",
+  "data": {
+    "fortunes": "data/fortunes.json"
+  },
+  "tools": [
+    {
+      "name": "draw_fortune",
+      "description": "Draws one fortune at random and writes it on the whiteboard. Returns the fortune.",
+      "steps": [
+        { "use": "draw", "as": "fortune", "table": "fortunes" },
+        { "use": "show", "board": "fortune", "items": "$fortune", "title": "Your fortune" }
+      ],
+      "returns": ["fortune"]
+    },
+    {
+      "name": "roll_dice",
+      "description": "Rolls dice written like d20, 3d6 or 2d10+1. Returns the total and each die.",
+      "parameters": {
+        "dice": { "type": "string", "description": "The dice, like d20, 3d6 or 2d10+1.", "default": "d6" }
+      },
+      "steps": [
+        { "use": "roll", "as": "roll", "dice": "$args.dice" },
+        { "use": "template", "as": "said", "text": "{{args.dice}}: {{roll.total}}" }
+      ],
+      "returns": ["roll", "said"]
+    }
+  ],
+  "boards": {
+    "fortune": { "layout": "list", "where": "whiteboard", "line": "{{text}}" }
+  }
+}

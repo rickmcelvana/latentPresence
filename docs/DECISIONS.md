@@ -3035,6 +3035,21 @@ updates:* code and bytes change under a person without their consent. *Every ena
 tools in every request:* small local models get worse as the tool list grows, and the person pays
 in context for abilities they are not using. *Plugins global like MCP servers:* see item 4.
 
+**In the build (P10-T09, 2026-11-07): the index.** `PluginIndexSchema` in `packages/protocol` (an
+architect-owned change under this item): each entry has the manifest's address and `sha256`, and
+**`files`, the SHA-256 of every other file the manifest names**. Item 9 named the manifest's hash only,
+but the instructions and data are not pinned by the manifest, so they could have changed under a
+listing (recommended option taken, flagged in the session note). Plugins are served from
+`raw.githubusercontent.com` at a commit, which sends CORS and never changes; the index itself from
+`latentpresence.com/plugins/index.json`, which needs a CORS header (R-70). `pnpm plugin:index` writes
+entries from a pushed commit, never the working tree. Browse fetches the index only on the press and
+reads it entry by entry (one it cannot read is counted, not fatal). A listed plugin is installed through
+`sourceFromUrl` with its entry: any file whose hash differs, or that the entry does not list, is
+refused before anything else is fetched. The consent screen says "listed in the latentPresence index
+and unchanged since", or for an address that is not listed, "Not in the latentPresence index". The
+guide is `docs/plugins.md` (short version: the site's `docs/plugins/`), the template `plugins/template/`
+(a working Fortunes plugin, tested), and both JSON Schemas are published beside the index.
+
 **In the build (P10-T01, 2026-11-06).** Decisions the ADR left open:
 - **References and templates.** Any step value that is a string starting with `$` is a reference
   (`$args.x`, `$settings.x`, `$<step>.path`). Templates use the same paths inside `{{ }}`. A

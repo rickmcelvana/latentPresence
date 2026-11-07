@@ -288,3 +288,45 @@ export function pluginManifestJsonSchema(): Record<string, unknown> {
   const schema = z.toJSONSchema(PluginManifestSchema, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>;
   return { ...schema, title: 'latentPresence plugin manifest', description: `plugin.json, format ${PLUGIN_FORMAT} (ADR-72). Cross-references are checked by \`pnpm plugin:check\`.` };
 }
+
+// ── The index (ADR-72 item 9, P10-T09) ────────────────────────────────────────
+
+/** Bumped when a field of the index changes meaning. */
+export const PLUGIN_INDEX_FORMAT = 1;
+
+const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/, { error: 'must be 64 lowercase hex characters' });
+
+/**
+ * One plugin in the index. The manifest's address should name a fixed version (a commit, not a
+ * branch). `sha256` is the manifest's and `files` every other file of the folder the manifest names
+ * (its instructions, its data, assets kept in the folder): a plugin changed in any of them after it
+ * was listed is refused until the index is updated. Assets at an address are pinned by the
+ * manifest itself.
+ */
+export const PluginIndexEntrySchema = z.strictObject({
+  id: PluginIdSchema,
+  name: z.string().min(1).max(60),
+  summary: z.string().min(1).max(200),
+  author: z.string().min(1).max(100),
+  version: SemverSchema,
+  licence: z.string().min(1).max(100),
+  tags: z.array(z.string().min(1).max(30)).max(10).default([]),
+  manifest: HttpsUrlSchema,
+  sha256: Sha256Schema,
+  files: z.record(PluginPathSchema, Sha256Schema).default({}),
+});
+export type PluginIndexEntry = z.infer<typeof PluginIndexEntrySchema>;
+
+/** `plugins/index.json` on latentpresence.com, curated by pull request in the site's repository. */
+export const PluginIndexSchema = z.strictObject({
+  $schema: z.string().optional(),
+  format: z.literal(PLUGIN_INDEX_FORMAT),
+  plugins: z.array(PluginIndexEntrySchema).max(500),
+});
+export type PluginIndex = z.infer<typeof PluginIndexSchema>;
+
+/** The JSON Schema published beside the index (`pnpm plugin:schema`). */
+export function pluginIndexJsonSchema(): Record<string, unknown> {
+  const schema = z.toJSONSchema(PluginIndexSchema, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>;
+  return { ...schema, title: 'latentPresence plugin index', description: `plugins/index.json, format ${PLUGIN_INDEX_FORMAT} (ADR-72 item 9). Written by \`pnpm plugin:index\`.` };
+}

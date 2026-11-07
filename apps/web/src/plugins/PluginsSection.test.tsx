@@ -60,7 +60,7 @@ function deps(files: Record<string, Uint8Array>, store = new FakeMemoryStore(), 
     const bytes = files[String(input)];
     return bytes === undefined ? new Response(null, { status: 404 }) : new Response(bytes as Uint8Array<ArrayBuffer>);
   }) as typeof fetch;
-  return { shelf: new InMemoryPluginShelf(), assets: new PluginAssets({ fetch: fetcher, cache: async () => null }), fetch: fetcher, memory: async () => store, appVersion: '1.0.0', companion, timeZone: 'America/Toronto', store, requests };
+  return { shelf: new InMemoryPluginShelf(), assets: new PluginAssets({ fetch: fetcher, cache: async () => null }), fetch: fetcher, memory: async () => store, appVersion: '1.0.0', companion, timeZone: 'America/Toronto', indexUrl: 'https://latentpresence.com/plugins/index.json', store, requests };
 }
 
 function Harness({ given, onSettings }: { readonly given: PluginsDeps; readonly onSettings: (settings: Settings) => void }): ReactElement {
@@ -231,5 +231,83 @@ describe('PluginsSection (P10-T03)', () => {
       expect(within(offers).getByText('Not added.')).toBeTruthy();
       expect(latest.tools.servers).toEqual([]);
     });
+  });
+});
+
+describe('Browse (P10-T09, ADR-72 item 9)', () => {
+  const INDEX = 'https://latentpresence.com/plugins/index.json';
+
+  /** The index entry for the served sky plugin, with every file's hash as served. */
+  async function listed(files: Record<string, Uint8Array>, extra: Record<string, unknown> = {}): Promise<Record<string, Uint8Array>> {
+    const hash = async (path: string) => (await pageSha256(files[`${BASE}${path}`]!)) ?? '';
+    const entry = {
+      id: 'sky',
+      name: 'Sky cards',
+      summary: 'Draws sky cards.',
+      author: 'Rick',
+      version: '0.2.0',
+      licence: 'Apache-2.0',
+      tags: ['cards'],
+      manifest: `${BASE}plugin.json`,
+      sha256: await hash('plugin.json'),
+      files: { 'instructions.md': await hash('instructions.md'), 'data/cards.json': await hash('data/cards.json') },
+      ...extra,
+    };
+    return { ...files, [INDEX]: encode(JSON.stringify({ format: 1, plugins: [entry, { id: 'Broken entry' }] })) };
+  }
+
+  it('fetches the index only on the press, lists it, and installs a listed plugin with every file checked', async () => {
+    const given = deps(await listed(await served()));
+    const { container } = render(<Harness given={given} onSettings={() => {}} />);
+    await screen.findByText('No plugins installed.');
+    expect(given.requests).toEqual([]);
+    expect(screen.getByText('Fetches the list from latentpresence.com, only when you press it.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse plugins…' }));
+    const list = await screen.findByRole('list', { name: 'Plugins in the index' });
+    expect(given.requests).toEqual([INDEX]);
+    expect(within(list).getByText('Sky cards 0.2.0')).toBeTruthy();
+    expect(within(list).getByText('Rick · Apache-2.0 · cards')).toBeTruthy();
+    expect(screen.getByText('1 more could not be read by this version of the app.')).toBeTruthy();
+    await expectAccessible(container);
+
+    fireEvent.click(within(list).getByRole('button', { name: 'Read it' }));
+    const consent = await screen.findByRole('region', { name: 'Install Sky cards' });
+    expect(within(consent).getByText(/listed in the latentPresence index and unchanged since/)).toBeTruthy();
+    expect(within(consent).queryByText(/Not in the latentPresence index/)).toBeNull();
+    fireEvent.click(within(consent).getByRole('button', { name: 'Install' }));
+    await screen.findByRole('list', { name: 'Installed plugins' });
+    expect(within(screen.getByRole('list', { name: 'Plugins in the index' })).getByText('Installed')).toBeTruthy();
+  });
+
+  it('refuses a listed plugin whose manifest or a file changed since it was listed', async () => {
+    const files = await served();
+    const index = await listed(files);
+    // The data changed after listing.
+    const given = deps({ ...index, [`${BASE}data/cards.json`]: encode('[{"id":"sun","name":"The Sun","image":"moon"}]') });
+    render(<Harness given={given} onSettings={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Browse plugins…' }));
+    fireEvent.click(within(await screen.findByRole('list', { name: 'Plugins in the index' })).getByRole('button', { name: 'Read it' }));
+    expect((await screen.findByRole('alert')).textContent).toContain("Sky cards's data/cards.json is not the one that was listed");
+    expect(await given.shelf.list()).toEqual([]);
+    cleanup();
+
+    // The manifest changed: a new version served at the same address.
+    const bumped = await served((m) => (m.version = '0.3.0'));
+    const changed = deps({ ...index, [`${BASE}plugin.json`]: bumped[`${BASE}plugin.json`]! });
+    render(<Harness given={changed} onSettings={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Browse plugins…' }));
+    fireEvent.click(within(await screen.findByRole('list', { name: 'Plugins in the index' })).getByRole('button', { name: 'Read it' }));
+    expect((await screen.findByRole('alert')).textContent).toContain("Sky cards's plugin.json is not the one that was listed");
+    expect(changed.requests.some((url) => url.endsWith('instructions.md'))).toBe(false);
+  });
+
+  it('says so when the index cannot be reached, and marks a plugin from an address as not in the index', async () => {
+    const given = deps(await served());
+    render(<Harness given={given} onSettings={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Browse plugins…' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('The list could not be fetched. The index at latentpresence.com answered 404.');
+    await readAddress();
+    expect(screen.getByText(/Not in the latentPresence index: nobody there has looked at it/)).toBeTruthy();
   });
 });

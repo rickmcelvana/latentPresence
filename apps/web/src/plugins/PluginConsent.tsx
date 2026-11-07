@@ -25,7 +25,7 @@ function originText(facts: PluginConsentFacts): string {
     case 'zip':
       return `the file "${facts.origin.name}"`;
     case 'url':
-      return facts.origin.url;
+      return facts.origin.listed ? `${facts.origin.url}, listed in the latentPresence index and unchanged since` : facts.origin.url;
   }
 }
 
@@ -58,7 +58,12 @@ export function PluginConsent({ facts, replaces, characterName, onInstall, onCan
           )}
         </dd>
         <dt>From</dt>
-        <dd className="plugin-facts-wrap">{originText(facts)}</dd>
+        <dd className="plugin-facts-wrap">
+          {originText(facts)}
+          {facts.origin.kind === 'url' && !facts.origin.listed ? (
+            <span className="plugin-unlisted">Not in the latentPresence index: nobody there has looked at it. Install it only if you trust who made it.</span>
+          ) : null}
+        </dd>
         <dt>Contacts</dt>
         <dd>{facts.hosts.length === 0 ? 'No one: everything it needs is in it.' : facts.hosts.join(', ')}</dd>
         <dt>Downloads</dt>
