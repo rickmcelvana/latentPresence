@@ -773,6 +773,13 @@ describe('ChatPage — schedules (P6-T08, ADR-58)', () => {
       expect(decoded[0]?.type).toBe('image/jpeg');
       expect(new Uint8Array(await decoded[0]!.arrayBuffer())).toEqual(jpeg);
 
+      // The open drawer covers the screen: the layout moves to the whiteboard, and back when it closes (R-68).
+      fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+      await waitFor(() => expect(stage.shown.at(-1)?.plugin?.whiteboard).toMatchObject({ layout: 'cards', title: 'Your card' }));
+      expect(stage.shown.at(-1)?.plugin?.screen).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Transcript' }));
+      await waitFor(() => expect(stage.shown.at(-1)?.plugin?.screen).toMatchObject({ layout: 'cards' }));
+
       fireEvent.click(screen.getByRole('button', { name: 'Clear the wall' }));
       await waitFor(() => expect(stage.shown.at(-1)?.plugin).toBeUndefined());
       expect(screen.queryByRole('button', { name: 'Clear the wall' })).toBeNull();

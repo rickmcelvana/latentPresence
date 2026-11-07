@@ -77,7 +77,7 @@ import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from '
 import { loadChatPlugins } from '../plugins/chat-plugins';
 import type { PluginAssets } from '../plugins/assets';
 import { defaultPluginShelf, type PluginShelf } from '../plugins/shelf';
-import { usePluginWall } from '../plugins/wall';
+import { pluginWall as placeLayout, usePluginWall } from '../plugins/wall';
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { setPresence, useDesktopTray } from '../desktop/tray';
@@ -384,7 +384,7 @@ function ConfiguredChatPage({
   fetchModel,
 }: ConfiguredChatPageProps): ReactElement {
   // P10-T05 (ADR-72 item 6): what a plugin put on the boards, until it is replaced or cleared.
-  const { wall: pluginWall, show: showOnWall, clear: clearWall } = usePluginWall();
+  const { layout: pluginLayout, show: showOnWall, clear: clearWall } = usePluginWall();
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
@@ -787,10 +787,6 @@ function ConfiguredChatPage({
   const subscribePlans = useCallback((listener: () => void) => plans?.subscribe(listener) ?? (() => {}), [plans]);
   const plansSnapshot = useCallback(() => plans?.snapshot() ?? null, [plans]);
   const planState = useSyncExternalStore(subscribePlans, plansSnapshot);
-  const displays = useMemo<Displays>(() => {
-    const plan = planState === null ? null : pickPlan(planState.plans, planState.focusId);
-    return { whiteboard: plan === null ? null : planToWhiteboard(plan), screen: sourcesToScreen(latestCitedSources(lines, citationSource)), plugin: pluginWall ?? undefined };
-  }, [planState, lines, citationSource, pluginWall]);
 
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(chat.busy);
@@ -809,6 +805,13 @@ function ConfiguredChatPage({
   // Read once: only the *starting* width decides the drawer's default (decision 9). A
   // window resized mid-session keeps whatever the person set with the Transcript button.
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
+  // P10-T05: a plugin's layout takes a board until replaced or cleared. The open drawer covers the screen,
+  // so a layout for the screen alone moves to the whiteboard while it is open (R-68).
+  const pluginWall = useMemo(() => (pluginLayout === null ? null : placeLayout(pluginLayout.display, pluginLayout.decoded, drawerOpen)), [pluginLayout, drawerOpen]);
+  const displays = useMemo<Displays>(() => {
+    const plan = planState === null ? null : pickPlan(planState.plans, planState.focusId);
+    return { whiteboard: plan === null ? null : planToWhiteboard(plan), screen: sourcesToScreen(latestCitedSources(lines, citationSource)), plugin: pluginWall ?? undefined };
+  }, [planState, lines, citationSource, pluginWall]);
   // Which view the drawer shows (P4-T05, P4-T07). Always transcript at first, per the
   // rule above — Memory and Plans only open the drawer when a person asks it to.
   const [drawerView, setDrawerView] = useState<'transcript' | 'memory' | 'plans' | 'schedules' | 'thoughts' | 'body'>('transcript');

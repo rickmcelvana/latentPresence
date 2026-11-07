@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginDisplay } from '@latentpresence/core';
 import { DEFAULT_CARD_ASPECT } from '@latentpresence/avatar';
-import { pluginWall, usePluginWall, type DecodedPicture } from './wall';
+import { pluginWall, usePluginWall, type DecodedPicture, type PluginWallState } from './wall';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -18,6 +18,17 @@ function display(count: number, overrides: Partial<PluginDisplay> = {}): PluginD
     items: Array.from({ length: count }, (_, index) => ({ caption: `Card ${index + 1}`, image: `card-${index + 1}`, flip: index === 1 })),
     ...overrides,
   };
+}
+
+/** The hook's layout, placed as the page places it with the drawer closed. */
+function wallOf(state: PluginWallState) {
+  return state.layout === null ? null : pluginWall(state.layout.display, state.layout.decoded);
+}
+
+/** The cards on the screen, or none. */
+function cardsOf(state: PluginWallState) {
+  const screen = wallOf(state)?.screen;
+  return screen?.layout === 'cards' ? screen.cards : [];
 }
 
 function picture(width = 250, height = 419): DecodedPicture & { closed: boolean } {
@@ -53,6 +64,13 @@ describe('pluginWall', () => {
     expect(wall.screen).toMatchObject({ title: null, firstNumber: 6 });
   });
 
+  it('moves a layout for the screen to the whiteboard while the drawer hides the screen (R-68)', () => {
+    expect(pluginWall(display(3), new Map(), true)).toMatchObject({ whiteboard: { layout: 'cards', title: 'A reading' }, screen: null });
+    // A layout across both boards stays as it is: half of it is behind the drawer, and closing it shows it.
+    expect(pluginWall(display(10), new Map(), true)).toEqual(pluginWall(display(10), new Map(), false));
+    expect(pluginWall(display(3, { where: 'whiteboard' }), new Map(), true).whiteboard).not.toBeNull();
+  });
+
   it('shows a list as its lines, on its board', () => {
     const wall = pluginWall(display(0, { layout: 'list', where: 'whiteboard', title: 'Rolls', items: [{ caption: '2d6: 7', image: null, flip: false }] }), new Map());
     expect(wall).toEqual({ whiteboard: { layout: 'list', title: 'Rolls', lines: ['2d6: 7'] }, screen: null });
@@ -79,16 +97,16 @@ describe('usePluginWall', () => {
       return new Blob([id], { type: 'image/jpeg' });
     };
     const { result } = renderHook(() => usePluginWall(decode));
-    expect(result.current.wall).toBeNull();
+    expect(wallOf(result.current)).toBeNull();
 
     act(() => result.current.show({ ...display(3), items: [...display(3).items, { caption: 'Again', image: 'card-1', flip: false }] }, pictures));
-    expect(result.current.wall?.screen?.layout).toBe('cards');
-    await waitFor(() => expect(result.current.wall?.screen?.layout === 'cards' && result.current.wall.screen.cards.every((card) => card.picture?.source !== null)).toBe(true));
+    expect(wallOf(result.current)?.screen?.layout).toBe('cards');
+    await waitFor(() => expect(cardsOf(result.current).length === 4 && cardsOf(result.current).every((card) => card.picture?.source !== null)).toBe(true));
     expect(asked.toSorted()).toEqual(['card-1', 'card-2', 'card-3']);
     expect(decode).toHaveBeenCalledTimes(3);
 
     act(() => result.current.clear());
-    expect(result.current.wall).toBeNull();
+    expect(wallOf(result.current)).toBeNull();
     expect(made.every((one) => one.closed)).toBe(true);
   });
 
@@ -97,7 +115,7 @@ describe('usePluginWall', () => {
     const { result } = renderHook(() => usePluginWall(async () => picture()));
     act(() => result.current.show(display(3), failingSecond));
     await waitFor(() => expect(warn).toHaveBeenCalledWith('plugin tarot: picture "card-2" not shown: it no longer matches its SHA-256'));
-    await waitFor(() => expect(result.current.wall?.screen?.layout === 'cards' && result.current.wall.screen.cards.map((card) => card.picture?.source !== null)).toEqual([true, false, true]));
+    await waitFor(() => expect(cardsOf(result.current).map((card) => card.picture?.source !== null)).toEqual([true, false, true]));
   });
 
   it('replaces one layout with the next, letting the old pictures go', async () => {
@@ -105,9 +123,9 @@ describe('usePluginWall', () => {
     const decodes = [first, picture()];
     const { result } = renderHook(() => usePluginWall(async () => decodes.shift() ?? picture()));
     act(() => result.current.show(display(1), async () => new Blob(['a'])));
-    await waitFor(() => expect(result.current.wall?.screen?.layout === 'cards' && result.current.wall.screen.cards[0]?.picture?.source).toBe(first));
+    await waitFor(() => expect(cardsOf(result.current)[0]?.picture?.source).toBe(first));
     act(() => result.current.show(display(1, { title: 'Another' }), async () => new Blob(['b'])));
     expect(first.closed).toBe(true);
-    expect(result.current.wall?.screen).toMatchObject({ title: 'Another', cards: [{ picture: { source: null } }] });
+    expect(wallOf(result.current)?.screen).toMatchObject({ title: 'Another', cards: [{ picture: { source: null } }] });
   });
 });

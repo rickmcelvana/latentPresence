@@ -3136,3 +3136,12 @@ once, with reasoning off, when the round after a tool's result ends in reasoning
 qwen3.5:9b did this every time (it drew the cards, then went silent), and the app would have too.
 Live (`docs/runs/P10-T06-tarot.md`, 10 runs each): glm-5.2 10/10, gemma4:12b 10/10, qwen3.5:9b 9/10.
 qwen's misses across the runs were invented or doubled draws. How it feels in a call is R-68.
+
+**After R-68's first try (2026-11-06).** Rick saw a three-card reading with no cards, though the tool
+had run. The open transcript drawer covers the right of the room, where the screen hangs, and a
+one-board layout goes on the screen by default. **While the drawer is open, a layout meant for the
+screen alone goes on the whiteboard**, and moves back when the drawer closes. A layout across both
+boards stays as it is: half of it is behind the drawer until it closes. Ruled out first, live: GLM
+after an earlier reading and a chat drew 10/10 (`TAROT_CASE=later pnpm live:tarot`,
+`docs/runs/P10-T06-tarot-later.md`), and Rick's path through the pane with the drawer closed showed
+the cards.

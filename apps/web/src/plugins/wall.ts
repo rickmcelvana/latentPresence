@@ -20,8 +20,12 @@ export interface Shown {
   readonly pictures: PluginPictures;
 }
 
-/** The layout as the boards take it: a picture by its asset id, loaded or not yet. */
-export function pluginWall(display: PluginDisplay, decoded: ReadonlyMap<string, DecodedPicture | null>): PluginWall {
+/**
+ * The layout as the boards take it: a picture by its asset id, loaded or not yet. While the screen is
+ * hidden (the call's drawer covers the right of the room, where it hangs: R-68, 2026-11-06, a three-card
+ * reading drawn behind the open transcript), a layout for the screen alone goes on the whiteboard.
+ */
+export function pluginWall(display: PluginDisplay, decoded: ReadonlyMap<string, DecodedPicture | null>, screenHidden = false): PluginWall {
   let content: PluginBoardContent;
   if (display.layout === 'list') {
     content = { layout: 'list', title: display.title, lines: display.items.map((item) => item.caption) };
@@ -39,12 +43,18 @@ export function pluginWall(display: PluginDisplay, decoded: ReadonlyMap<string, 
       })),
     };
   }
-  return placeOnWall(content, display.where);
+  return placeOnWall(content, screenHidden && display.where === 'screen' ? 'whiteboard' : display.where);
+}
+
+/** The layout on the wall and its pictures so far; `pluginWall` places it. */
+export interface ShownLayout {
+  readonly display: PluginDisplay;
+  readonly decoded: ReadonlyMap<string, DecodedPicture | null>;
 }
 
 export interface PluginWallState {
   /** What a plugin put on the boards, or null: they show their own content. */
-  readonly wall: PluginWall | null;
+  readonly layout: ShownLayout | null;
   readonly show: (display: PluginDisplay, pictures: PluginPictures) => void;
   readonly clear: () => void;
 }
@@ -97,6 +107,6 @@ export function usePluginWall(decode: (blob: Blob) => Promise<DecodedPicture> = 
     setDecoded(new Map());
     setShown(null);
   }, []);
-  const wall = useMemo(() => (shown === null ? null : pluginWall(shown.display, decoded)), [shown, decoded]);
-  return { wall, show, clear };
+  const layout = useMemo(() => (shown === null ? null : { display: shown.display, decoded }), [shown, decoded]);
+  return { layout, show, clear };
 }
