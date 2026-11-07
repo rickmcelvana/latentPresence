@@ -268,9 +268,65 @@ pub fn spreadsheet_bytes(sheets: &[Sheet], title: &str) -> Result<Vec<u8>, Strin
         if sheet.header && !sheet.rows.is_empty() {
             worksheet.set_freeze_panes(1, 0).map_err(words)?;
         }
-        worksheet.autofit();
+        // Not `autofit()`: it measures a formula by its stored result, which is empty, so a column of
+        // totals came out as wide as its heading and showed ### once calculated (R-69, 2026-11-06).
+        for (column, width) in column_widths(sheet).into_iter().enumerate() {
+            let column = u16::try_from(column).map_err(|_| "Too many columns.".to_owned())?;
+            worksheet.set_column_width(column, width).map_err(words)?;
+        }
     }
     workbook.save_to_buffer().map_err(words)
+}
+
+/// How many characters a number takes in a column's format.
+fn number_chars(number: f64, kind: ColumnFormat) -> usize {
+    let sign = usize::from(number < 0.0);
+    match kind {
+        ColumnFormat::Money => {
+            let whole = format!("{:.0}", number.abs().trunc()).len();
+            sign + whole + (whole - 1) / 3 + 3
+        }
+        ColumnFormat::Percent => format!("{:.1}%", number * 100.0).len(),
+        ColumnFormat::Date => 10,
+        ColumnFormat::Text | ColumnFormat::Number => format!("{number}").len(),
+    }
+}
+
+/// Each column's width in characters: its widest cell, and room for what its formulas will
+/// show — two digits more than its widest number, as a total outgrows the items it adds up.
+pub fn column_widths(sheet: &Sheet) -> Vec<f64> {
+    let columns = sheet.rows.iter().map(Vec::len).max().unwrap_or(0);
+    (0..columns)
+        .map(|c| {
+            let kind = sheet.formats.get(c).copied().unwrap_or(ColumnFormat::Text);
+            let mut widest = 0usize;
+            let mut numbers = 0usize;
+            let mut formulas = false;
+            for (r, row) in sheet.rows.iter().enumerate() {
+                let chars = match row.get(c) {
+                    None | Some(Cell::Empty) => 0,
+                    // A bold heading is a little wider than its letters.
+                    Some(Cell::Text(text)) if sheet.header && r == 0 => text.chars().count() + 1,
+                    Some(Cell::Text(text)) => text.chars().count(),
+                    Some(Cell::Bool(_)) => 5,
+                    Some(Cell::Number(number)) => {
+                        let chars = number_chars(*number, kind);
+                        numbers = numbers.max(chars);
+                        chars
+                    }
+                    Some(Cell::Formula(_)) => {
+                        formulas = true;
+                        0
+                    }
+                };
+                widest = widest.max(chars);
+            }
+            if formulas {
+                widest = widest.max(numbers + 2).max(10);
+            }
+            (widest as f64 + 2.0).clamp(8.0, 60.0)
+        })
+        .collect()
 }
 
 /// `A`, `B`, … `Z`, `AA`: a column as a spreadsheet names it.
@@ -1034,6 +1090,30 @@ mod tests {
             page.ends_with("[rows 2–3 of 4. Not the whole sheet: read on with from_row 4.]"),
             "{page}"
         );
+    }
+
+    #[test]
+    fn a_column_of_formulas_is_wide_enough_for_what_they_will_show() {
+        // R-69's sheet: "Left" is all formulas, so its heading was its only measure and it showed ###.
+        let sheets = sheets_from(Some(&json!([{
+            "name": "November 2026",
+            "formats": ["text", "money", "money", "money"],
+            "rows": [["Item", "Budget", "Spent", "Left"], ["Produce", 120, 0, "=B2-C2"], ["Household & cleaning", 1250.5, 25, "=B3-C3"], ["Total", "=SUM(B2:B3)", "=SUM(C2:C3)", "=B4-C4"]]
+        }])))
+        .expect("parses");
+        let widths = column_widths(&sheets[0]);
+        assert_eq!(widths[0], 22.0, "the longest item, 20 characters, and room");
+        // "1,250.50" is 8 characters; a total may be two digits wider.
+        assert!(
+            widths.iter().skip(1).all(|width| *width >= 12.0),
+            "{widths:?}"
+        );
+        assert_eq!(
+            number_chars(1_234_567.0, ColumnFormat::Money),
+            "1,234,567.00".len()
+        );
+        assert_eq!(number_chars(-5.0, ColumnFormat::Money), "-5.00".len());
+        assert_eq!(number_chars(0.255, ColumnFormat::Percent), "25.5%".len());
     }
 
     #[test]

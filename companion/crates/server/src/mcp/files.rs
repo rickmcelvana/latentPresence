@@ -35,6 +35,8 @@ const TEXT_FILES: usize = 2000;
 const OFFICE_LIMIT: u64 = 20 * 1024 * 1024;
 /// The most rows of a sheet one `read_spreadsheet` shows.
 const SHEET_ROWS: usize = 80;
+/// The most file names a "not there" lists.
+const SHOWN_NAMES: usize = 20;
 
 pub struct FilesServer {
     /// Canonical, as the filesystem names them.
@@ -511,12 +513,52 @@ const NOT_OPEN: &str =
 
 /// Office (ADR-73): reading spreadsheets and documents in every root, writing them in the open ones.
 impl FilesServer {
+    /// The files of these kinds in the open folders and at the top of each root, by name: what
+    /// a "not there" names, so she need not list folders to find the one she meant (R-69: she
+    /// misremembered the name of a note she had written a turn before).
+    fn named_files(&self, kinds: &[&str]) -> String {
+        let mut names: Vec<String> = Vec::new();
+        for folder in self.writable.iter().chain(&self.roots) {
+            let Ok(entries) = std::fs::read_dir(folder) else {
+                continue;
+            };
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if path.is_file()
+                    && has_extension(&path, kinds)
+                    && !name.starts_with('.')
+                    && !names.contains(&name)
+                {
+                    names.push(name);
+                }
+            }
+        }
+        names.sort();
+        let more = names.len().saturating_sub(SHOWN_NAMES);
+        names.truncate(SHOWN_NAMES);
+        match (names.is_empty(), more) {
+            (true, _) => format!(
+                " There are no {} files in the folders you may write in.",
+                kinds.join(" or ")
+            ),
+            (false, 0) => format!(" These are there: {}.", names.join(", ")),
+            (false, more) => format!(" These are there: {}, and {more} more.", names.join(", ")),
+        }
+    }
+
     /// An existing spreadsheet or document to read, with its bytes.
     fn office_file(&self, path: &str, kinds: &[&str]) -> Result<(PathBuf, Vec<u8>), String> {
         if path.is_empty() {
             return Err(format!("Give the path of the file ({}).", kinds.join(", ")));
         }
-        let file = self.resolve(path)?;
+        let file = self.resolve(path).map_err(|why| {
+            if why.starts_with("There is no") {
+                format!("{why}{}", self.named_files(kinds))
+            } else {
+                why
+            }
+        })?;
         if !has_extension(&file, kinds) {
             return Err(format!(
                 "{} is not a {} file; read_text_file reads text.",
@@ -792,8 +834,9 @@ impl FilesServer {
         };
         if !file.exists() {
             return refuse(format!(
-                "There is no {} to edit; write_document makes one.",
-                shown(&file)
+                "There is no {} to edit; write_document makes one.{}",
+                shown(&file),
+                self.named_files(&["docx"])
             ));
         }
         let bytes = match std::fs::read(&file) {
@@ -1343,6 +1386,36 @@ mod tests {
             missing.is_error && missing.text.contains("is not in"),
             "{}",
             missing.text
+        );
+        // A name she misremembers is answered with the names that are there (R-69).
+        let wrong = files.call(
+            "read_document",
+            &json_args(json!({ "path": "The plan.docx" })),
+        );
+        assert!(
+            wrong.is_error && wrong.text.ends_with("These are there: Plan.docx."),
+            "{}",
+            wrong.text
+        );
+        let wrong = files.call(
+            "edit_document",
+            &json_args(json!({ "path": "The plan.docx", "find": "", "replace_with": "x" })),
+        );
+        assert!(
+            wrong.text.ends_with("These are there: Plan.docx."),
+            "{}",
+            wrong.text
+        );
+        let none = files.call(
+            "read_spreadsheet",
+            &json_args(json!({ "path": "Budget.xlsx" })),
+        );
+        assert!(
+            none.text.ends_with(
+                "There are no xlsx or xls or ods files in the folders you may write in."
+            ),
+            "{}",
+            none.text
         );
 
         // Someone else's document in the open folder: read, never written over or edited.

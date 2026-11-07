@@ -111,27 +111,6 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-69 · Office in the desktop app · ~15 minutes (P10-T08, ADR-73)
-The first look at both native dialogs (a folder opened for writing here, a plugin program in P10-T07)
-and at the files in a real spreadsheet program. In the checkout, after `git pull` and `pnpm install`:
-```bash
-pnpm --filter @latentpresence/desktop dev
-```
-1. **Settings → Companion → Folders she may read**: add a folder of your own (an empty one, say
-   `Documents\latent office`), then tick **She may make documents and spreadsheets here**. A
-   Windows dialog titled "Let her write in this folder?" should name the folder. Try **Not now** first
-   (the box stays clear), then tick again and choose **Let her write here**.
-2. **Settings → Tools**: the companion on. **Settings → Plugins**: install `plugins/office` from the
-   checkout and turn it on for Alice. Under it, **Make it** on "Weekday mornings: the day's plan".
-3. In a call, say: *"Make a spreadsheet of this month's grocery budget."* An ask card should come up
-   for the write; allow it. Open the `.xlsx` from the folder in Excel (or LibreOffice): are the totals
-   numbers, not 0, and do they change when you change a number?
-4. Say: *"Draft a short note to my landlord about the dripping tap."* Then: *"Change it to say Friday
-   morning."* Open the `.docx` in Word: does it open without a repair message, with the title and
-   the change?
-5. Untick the folder's box: the next "make me a spreadsheet" should be refused in her words.
-Tell me what you saw at each step; the morning plan fires on the next weekday at 8.
-
 
 ### Laptop session — R-13 and R-9 in one sitting · ~40 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
@@ -225,6 +204,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-74 · R-69: Office in the desktop app** — Rick 2026-11-06: **passed**, in LibreOffice (installed after all). The folder switch and its dialog as described; the grocery budget made with its numbers filled in, and adding $25 to a Spent cell changed the total; the landlord note drafted, changed by voice, and opened with no issues; unticking the folder refused the next spreadsheet. Two things fixed from it: the Left column (all formulas) showed `###`, because columns were fitted while formulas had no value yet, so widths now allow for formula results (checked by rendering in LibreOffice); and she listed folders after guessing a file name wrong, so a "not there" now names the files that are. The morning plan was made; its first firing is still to be seen. P10-T08 done; ADR-73 accepted.
 - **D-73 · R-68: a tarot reading in a call** — Rick 2026-11-06: **passed** on the second try ("worked perfectly"). The first try (nemotron-3-nano Celtic cross fine; a glm-5.2 three-card spread hidden behind the open transcript drawer) led to a one-board layout moving to the whiteboard while the drawer is open. P10-T06 done.
 - **D-72 · R-1: the bare avatar on a low-end laptop** — Rick 2026-11-05: Intel UHD Graphics 600, canvas 958×538: **59.9 fps median, 51.3 5th percentile**, avatar loaded in 2095 ms. It holds the panel's 60 Hz with about one frame in twenty late. 540p and without the room; R-13 is the stage. `docs/spikes/B-vrm-lipsync.md`.
 - **D-71 · R-67: the user docs on the site** — Rick 2026-11-04: **passed**, pushed, deployed and read. P9-T04 done.

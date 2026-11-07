@@ -75,7 +75,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
 | ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amended 2026-11-06 (load directly by default, measured; accepted by Rick) | 2026-11-05 |
-| ADR-73 | Office writes through the companion's own Files server: read and write tools for .xlsx and .docx, writing only in folders opened for writing through a native dialog, and only over files she made; the Office plugin declares no servers | proposed | 2026-11-06 |
+| ADR-73 | Office writes through the companion's own Files server: read and write tools for .xlsx and .docx, writing only in folders opened for writing through a native dialog, and only over files she made; the Office plugin declares no servers | accepted 2026-11-06 (Rick, after R-69) | 2026-11-06 |
 
 ---
 
@@ -3168,7 +3168,7 @@ started on an `mcp.json` holding exactly the entry the shell writes ran the prog
 server written for the check) and answered its tool through `/mcp/call`. Not tried live: the
 dialog itself, which needs the desktop app; Office's program offer (P10-T08) is the first real one.
 
-## ADR-73 Office writes through the companion's own Files server, only in folders the person opened for writing (proposed 2026-11-06, P10-T08)
+## ADR-73 Office writes through the companion's own Files server, only in folders the person opened for writing (accepted 2026-11-06, P10-T08)
 
 **Context.** P10-T08 asks for MCP servers that create and edit documents and spreadsheets *in the
 Files folders*. Read on 2026-11-06: the third-party Office servers (`excel-mcp-server` in Rust,
@@ -3218,3 +3218,9 @@ models: a bare name she had just written was looked for only in the Files roots,
 the open folder itself ("Office/Letter.docx") was refused. Both now resolve, and a refusal ends
 "Give just a file name, like ...". The Settings switch is "She may make documents and spreadsheets
 here" on each Files folder; its native dialog is `companion_config_open_folder_for_writing`.
+
+**After R-69 (2026-11-06, D-74).** A column of formulas was sized to its heading, because
+`autofit()` measures a formula by its stored result, which is empty, so "Left" showed `###` once
+calculated. Columns are now sized by `column_widths`: the widest cell, and for a column with
+formulas two digits more than its widest number. When she asks for a file that is not there, the
+refusal names the files of that kind that are, so she need not list folders. Rick accepted this ADR.
