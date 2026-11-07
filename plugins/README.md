@@ -9,6 +9,10 @@ data, and its assets or their pinned addresses. The format is `PluginManifest` i
 pnpm plugin:check plugins/tarot
 ```
 
+```bash
+pnpm plugin:check plugins/office
+```
+
 `--fetch` also downloads and checks every asset at an address; `--pin` writes each asset's size and
 SHA-256 into `plugin.json` first. The gate checks every folder here (`packages/plugin-tools`).
 The authoring guide is P10-T09's.

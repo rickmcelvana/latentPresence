@@ -75,6 +75,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
 | ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amended 2026-11-06 (load directly by default, measured; accepted by Rick) | 2026-11-05 |
+| ADR-73 | Office writes through the companion's own Files server: read and write tools for .xlsx and .docx, writing only in folders opened for writing through a native dialog, and only over files she made; the Office plugin declares no servers | proposed | 2026-11-06 |
 
 ---
 
@@ -3166,3 +3167,54 @@ schedules come back as they were; the companion switch it turned on stays on. Li
 started on an `mcp.json` holding exactly the entry the shell writes ran the program (a stdio MCP
 server written for the check) and answered its tool through `/mcp/call`. Not tried live: the
 dialog itself, which needs the desktop app; Office's program offer (P10-T08) is the first real one.
+
+## ADR-73 Office writes through the companion's own Files server, only in folders the person opened for writing (proposed 2026-11-06, P10-T08)
+
+**Context.** P10-T08 asks for MCP servers that create and edit documents and spreadsheets *in the
+Files folders*. Read on 2026-11-06: the third-party Office servers (`excel-mcp-server` in Rust,
+`docx-mcp-server` and others on PyPI and npm) take any path they are handed, so nothing keeps
+them inside the Files folders; most need Python or Node on the person's machine; several did not
+state a licence where it could be read. A plugin's program has fixed arguments (ADR-72 item 7),
+so it cannot be told which folders the person picked. ADR-43 made Files read-only and left
+writing "to its own decision". This is that decision.
+
+**Decisions (recommended).**
+
+1. **The companion's Files server writes, nothing else.** Five tools join it:
+   `read_spreadsheet` and `read_document` (every Files folder: they only read),
+   `write_spreadsheet`, `write_document` and `edit_document` (only in a folder opened for writing).
+   Spreadsheets are written with `rust_xlsxwriter` (MIT OR Apache-2.0) and read with `calamine`
+   (MIT). DOCX is written as plain WordprocessingML with the `zip` and `quick-xml` the companion
+   already has, and read back as Markdown (headings, lists, bold, italic).
+2. **Writing is per folder and off by default.** `mcp.json` gains `files.write`, a list of folders
+   that must also be in `files.roots`. In the desktop app each Files folder has a switch, and
+   turning it on goes through a native dialog from the shell (as ADR-63 does for folders and
+   ADR-72 item 7 for programs), so no page can open a folder for writing alone. Turning it off needs
+   no dialog.
+3. **She changes only what she made.** Every file she writes carries a custom document property
+   (`latentPresence`). Writing over or editing a file without it is refused, in words that say to
+   choose a new name. Replacing one of her own files needs `replace: true`. Only `.xlsx` and
+   `.docx`. The folder must already exist, the path is canonicalised under a writable root as Files
+   reads are, and there are size limits (rows, columns, cells, characters).
+4. **Each write is a tool call like any other.** The page gates it with the ask card (ADR-42),
+   and a schedule's run asks the same way unless the person said "always".
+5. **The Office plugin** (`plugins/office/`) brings instructions and two schedule presets (a
+   weekday morning plan and a Sunday digest) and declares **no MCP servers**: its tools are
+   `files__*`. **No round limit in the manifest**: a sheet or an edit takes two or three rounds,
+   inside the four the loop allows. **No tool-only schedules**: Office's presets run in the page
+   with catch-up, so nothing needs the app closed. Both stay in the backlog.
+
+**Rejected.** *Third-party servers as plugin programs*: they cannot be confined to the Files
+folders and need runtimes the app does not ship. *A separate Office program in the companion*: it
+would need the folders passed in, and two servers would guard the same roots.
+
+**In the build (P10-T08, 2026-11-06).** `mcp/office.rs` holds the conversions and `files.rs` the
+rules: a write is staged beside the file and renamed into place, refused over a file without the
+mark, and refused over one of hers without `replace: true`. **Presets may name the app's own
+tools** (`PLUGIN_APP_TOOLS` in `packages/protocol`: `plan_list`, `schedule_list`; and
+`files__<tool>`), which `plugin:check` accepts and `presetRequest` keeps as they are; this is the
+protocol change this ADR covers. Live (`pnpm live:office`) showed two lookups too strict for the
+models: a bare name she had just written was looked for only in the Files roots, and a path naming
+the open folder itself ("Office/Letter.docx") was refused. Both now resolve, and a refusal ends
+"Give just a file name, like ...". The Settings switch is "She may make documents and spreadsheets
+here" on each Files folder; its native dialog is `companion_config_open_folder_for_writing`.

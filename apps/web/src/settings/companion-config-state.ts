@@ -66,6 +66,8 @@ export interface CompanionController {
   readonly change: (topic: CompanionTopic, change: CompanionConfigChange) => Promise<boolean>;
   readonly pickFolder: (target: 'files' | 'documents') => Promise<boolean>;
   readonly pickSqlite: (name: string) => Promise<boolean>;
+  /** ADR-73: asks the shell, which asks the person, to let her write in a Files folder. */
+  readonly openForWriting: (path: string) => Promise<boolean>;
   readonly openFile: () => Promise<void>;
   readonly reload: () => Promise<boolean>;
   /** Asks the companion whether Home Assistant is up, once. */
@@ -255,6 +257,14 @@ export function useCompanionConfig(options: CompanionConfigOptions): CompanionCo
     [api, run],
   );
 
+  const openForWriting = useCallback(
+    (path: string): Promise<boolean> => {
+      if (api === null) return Promise.resolve(false);
+      return run('files', () => api.openFolderForWriting(path), 'tools');
+    },
+    [api, run],
+  );
+
   const openFile = useCallback(async (): Promise<void> => {
     if (api === null) return;
     setErrors((previous) => without(previous, 'programs'));
@@ -274,5 +284,5 @@ export function useCompanionConfig(options: CompanionConfigOptions): CompanionCo
 
   const version = useCallback((topic: CompanionTopic): number => versions[topic] ?? 0, [versions]);
 
-  return { config, loading, loadError, busy, errors, notices, homeState, version, load, retry, change, pickFolder, pickSqlite, openFile, reload, checkHome };
+  return { config, loading, loadError, busy, errors, notices, homeState, version, load, retry, change, pickFolder, pickSqlite, openForWriting, openFile, reload, checkHome };
 }

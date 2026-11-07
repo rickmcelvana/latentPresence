@@ -52,6 +52,7 @@
     "live:plugin-tools": "pnpm --filter @latentpresence/providers exec vite-node live/plugin-tools.ts",
     "live:plugins": "pnpm --filter @latentpresence/providers exec vite-node live/plugins.ts",
     "live:tarot": "pnpm --filter @latentpresence/providers exec vite-node live/tarot.ts",
+    "live:office": "pnpm --filter @latentpresence/providers exec vite-node live/office.ts",
     "live:cite": "pnpm --filter @latentpresence/providers exec vite-node live/cite.ts",
     "live:user-affect": "pnpm --filter @latentpresence/providers exec vite-node live/user-affect.ts",
     "live:tts": "pnpm --filter @latentpresence/providers exec vite-node live/tts.ts",

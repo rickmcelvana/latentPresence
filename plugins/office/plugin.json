@@ -1,0 +1,33 @@
+{
+  "$schema": "../../packages/protocol/src/generated/plugin.schema.json",
+  "format": 1,
+  "id": "office",
+  "name": "Office",
+  "version": "0.1.0",
+  "author": "Rick McElvana",
+  "licence": "Apache-2.0",
+  "homepage": "https://github.com/rickmcelvana/latentPresence/tree/main/plugins/office",
+  "summary": "Makes and edits Word documents and spreadsheets in the folders the person opened for writing; use it when they ask for a document, a list or a sheet.",
+  "minApp": "1.0.0",
+  "instructions": "instructions.md",
+  "schedules": [
+    {
+      "id": "morning_plan",
+      "description": "Weekday mornings: the day's plan",
+      "cron": "0 8 * * 1-5",
+      "taskPrompt": "It is a weekday morning. Look at their plans with plan_list and at today's schedules with schedule_list. If one of their Files folders has a document called Plan or To do, read it with files__read_document (files__search_files finds it). Then tell them, in two or three sentences, what today holds and the one thing to start with.",
+      "tools": ["plan_list", "schedule_list", "files__search_files", "files__read_document"],
+      "delivery": "notify",
+      "catchUp": "run_once"
+    },
+    {
+      "id": "weekly_digest",
+      "description": "Sunday evening: the week's digest, as a document",
+      "cron": "0 18 * * 0",
+      "taskPrompt": "It is Sunday evening. Write this week's digest as a Word document with files__write_document, in the first folder files__list_allowed_directories says you may write in, named \"Week of\" and this week's Monday as a date, like \"Week of 2026-11-02.docx\". In it: a # title, a ## section for what got done and what is still open in their plans (plan_list), and a ## section for what is coming next week (schedule_list). Keep it to one page. Then tell them in one sentence that it is there and its name.",
+      "tools": ["plan_list", "schedule_list", "files__list_allowed_directories", "files__write_document"],
+      "delivery": "notify",
+      "catchUp": "skip"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import type { DatabaseView, EmbeddingView, SearchProvider, SecretState } from '../desktop/companion-config';
 import type { CompanionController, CompanionTopic } from './companion-config-state';
 
@@ -102,10 +102,11 @@ function SecretField({
 }
 
 /** A path she may read from or search, with its Remove. */
-function PathRow({ path, remove, disabled }: { readonly path: string; readonly remove: () => void; readonly disabled: boolean }): ReactElement {
+function PathRow({ path, remove, disabled, children }: { readonly path: string; readonly remove: () => void; readonly disabled: boolean; readonly children?: ReactNode }): ReactElement {
   return (
     <li className="companion-row">
       <code className="companion-path">{path}</code>
+      {children}
       <button aria-label={`Remove ${path}`} className="btn btn-sm btn-danger" disabled={disabled} onClick={remove} type="button">
         Remove
       </button>
@@ -198,6 +199,22 @@ export function HomePanel({ controller, locked }: PanelProps & { readonly locked
 
 // --- Folders she may read -----------------------------------------------------------------
 
+/** ADR-73: whether she may also make documents and spreadsheets in one Files folder. */
+function WriteSwitch({ controller, path, disabled }: { readonly controller: CompanionController; readonly path: string; readonly disabled: boolean }): ReactElement {
+  const open = controller.config?.writable.includes(path) ?? false;
+  return (
+    <label className="companion-write">
+      <input
+        checked={open}
+        disabled={disabled}
+        onChange={() => void (open ? controller.change('files', { kind: 'closeRootForWriting', path }) : controller.openForWriting(path))}
+        type="checkbox"
+      />
+      <span>She may make documents and spreadsheets here</span>
+    </label>
+  );
+}
+
 export function FilesPanel({ controller, locked }: PanelProps & { readonly locked: boolean }): ReactElement {
   const roots = controller.config?.roots ?? [];
   const disabled = controller.busy || locked;
@@ -206,13 +223,17 @@ export function FilesPanel({ controller, locked }: PanelProps & { readonly locke
       <div className="panel-header">
         <span className="panel-title">Folders she may read</span>
       </div>
-      <p className="panel-note">Your notes, for example. She can only read what is in them, never change it.</p>
+      <p className="panel-note">
+        Your notes, for example. She only reads what is in them, unless you let her make documents and spreadsheets in one; even then she never changes a file she did not make.
+      </p>
       {roots.length === 0 ? (
         <p className="field-hint">No folders yet.</p>
       ) : (
         <ul className="companion-list">
           {roots.map((path) => (
-            <PathRow disabled={disabled} key={path} path={path} remove={() => void controller.change('files', { kind: 'removeRoot', path })} />
+            <PathRow disabled={disabled} key={path} path={path} remove={() => void controller.change('files', { kind: 'removeRoot', path })}>
+              <WriteSwitch controller={controller} disabled={disabled} path={path} />
+            </PathRow>
           ))}
         </ul>
       )}

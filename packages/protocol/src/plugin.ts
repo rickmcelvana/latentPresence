@@ -221,8 +221,16 @@ export const PluginMcpServerSchema = z.discriminatedUnion('transport', [
 export type PluginMcpServer = z.infer<typeof PluginMcpServerSchema>;
 
 /**
+ * The app's own tools a schedule preset may name besides the plugin's (ADR-73): her plans and
+ * schedules, to read, and any tool of the companion's Files server as `files__<tool>`.
+ */
+export const PLUGIN_APP_TOOLS: readonly string[] = ['plan_list', 'schedule_list'];
+export const PLUGIN_APP_SERVER = 'files';
+
+/**
  * A schedule offered when the plugin is enabled, in the person's own time zone. `tools` names
- * the plugin's tools, or `<mcp id>__<tool>` for one of its servers' tools.
+ * the plugin's tools, `<mcp id>__<tool>` for one of its servers' tools, or one of the app's
+ * (`PLUGIN_APP_TOOLS`, `files__<tool>`).
  */
 export const PluginSchedulePresetSchema = z.strictObject({
   id: PluginNameSchema,

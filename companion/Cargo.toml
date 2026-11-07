@@ -58,3 +58,8 @@ tempfile = "3"
 # to the core's firing fixtures (packages/core/src/scheduler/fixtures/firings.json).
 croner = "4.0.1"
 chrono-tz = "0.10.4"
+# P10-T08 (ADR-73): Office in the Files server. rust_xlsxwriter (MIT OR Apache-2.0) writes .xlsx;
+# calamine (MIT) reads .xlsx, .xls and .ods. DOCX is written and read with the zip + quick-xml above.
+# Licences and calls read 2026-11-06, docs/SURFACE.md.
+rust_xlsxwriter = { version = "0.102.0", default-features = false }
+calamine = { version = "0.38.0", default-features = false, features = ["chrono"] }

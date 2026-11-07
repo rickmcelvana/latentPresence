@@ -248,7 +248,7 @@ describe('checkPlugin (P10-T01)', () => {
       m.tools.push({ ...tool, parameters: { spread: { type: 'string', description: 'x' } } });
       m.settings = { mode: { type: 'choice', label: 'Mode', choices: ['a', 'b'], default: 'c' }, reversals: { type: 'switch', label: 'r', default: true } };
       m.schedules = [
-        { id: 'a', description: 'x', cron: 'every morning', taskPrompt: '', tools: ['draw', 'fly', 'notes__read'], delivery: 'notify' },
+        { id: 'a', description: 'x', cron: 'every morning', taskPrompt: '', tools: ['draw', 'fly', 'notes__read', 'plan_list', 'files__write_document'], delivery: 'notify' },
         { id: 'a', description: 'x', cron: '0 8 * * *', taskPrompt: '', delivery: 'notify' },
       ];
     });
@@ -263,8 +263,8 @@ describe('checkPlugin (P10-T01)', () => {
     ]);
     expect(problems.slice(-3)).toEqual([
       expect.stringMatching(/^Schedule "a": "every morning" is not a cron expression this app reads \(.+\)\.$/),
-      'Schedule "a": "fly" is neither one of the plugin\'s tools nor "<server>__<tool>" for one of its MCP servers.',
-      'Schedule "a": "notes__read" is neither one of the plugin\'s tools nor "<server>__<tool>" for one of its MCP servers.',
+      'Schedule "a": "fly" is none of the plugin\'s tools, "<server>__<tool>" for one of its MCP servers, or one of the app\'s (plan_list, schedule_list, files__<tool>).',
+      'Schedule "a": "notes__read" is none of the plugin\'s tools, "<server>__<tool>" for one of its MCP servers, or one of the app\'s (plan_list, schedule_list, files__<tool>).',
     ]);
   });
 

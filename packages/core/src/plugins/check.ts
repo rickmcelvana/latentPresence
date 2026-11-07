@@ -1,4 +1,6 @@
 import {
+  PLUGIN_APP_SERVER,
+  PLUGIN_APP_TOOLS,
   PLUGIN_FORMAT,
   PLUGIN_PRIMITIVES,
   PluginManifestSchema,
@@ -178,8 +180,9 @@ export async function checkPlugin(manifestText: string, folder: PluginFolder, op
     }
     for (const name of schedule.tools) {
       const server = name.includes('__') ? name.slice(0, name.indexOf('__')) : null;
-      if (server === null ? !toolNames.has(name) : !mcpIds.has(server)) {
-        problems.push(`${label}: "${name}" is neither one of the plugin's tools nor "<server>__<tool>" for one of its MCP servers.`);
+      const known = server === null ? toolNames.has(name) || PLUGIN_APP_TOOLS.includes(name) : mcpIds.has(server) || server === PLUGIN_APP_SERVER;
+      if (!known) {
+        problems.push(`${label}: "${name}" is none of the plugin's tools, "<server>__<tool>" for one of its MCP servers, or one of the app's (${[...PLUGIN_APP_TOOLS, `${PLUGIN_APP_SERVER}__<tool>`].join(", ")}).`);
       }
     }
   }

@@ -311,6 +311,26 @@ describe('Settings → On this computer (P8-T06)', () => {
     expect(files.queryByText(/Turned on/)).toBeNull();
   });
 
+  it('opens a folder for writing only through the shell, which may say no, and closes it with no dialog (ADR-73)', async () => {
+    const api = new FakeCompanionConfig(emptyCompanionConfig({ roots: ['C:\\Notes'] }));
+    await loaded(api, { tools: true, search: true });
+    const files = within(panel('Folders she may read'));
+    const box = () => files.getByRole('checkbox', { name: 'She may make documents and spreadsheets here' }) as HTMLInputElement;
+    expect(box().checked).toBe(false);
+    api.nextWriteAnswer = false;
+    fireEvent.click(box());
+    await waitFor(() => expect(api.writeAsks).toEqual(['C:\\Notes']));
+    expect(box().checked).toBe(false);
+    api.nextWriteAnswer = true;
+    fireEvent.click(box());
+    await waitFor(() => expect(box().checked).toBe(true));
+    expect(api.config.writable).toEqual(['C:\\Notes']);
+    fireEvent.click(box());
+    await waitFor(() => expect(box().checked).toBe(false));
+    expect(api.writeAsks).toHaveLength(2);
+    expect(api.changes.at(-1)).toStrictEqual({ kind: 'closeRootForWriting', path: 'C:\\Notes' });
+  });
+
   it('disables every button while a change is in flight', async () => {
     const api = new FakeCompanionConfig(emptyCompanionConfig({ roots: ['C:\\Notes'] }));
     let release: (() => void) | undefined;

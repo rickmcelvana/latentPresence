@@ -8,6 +8,7 @@ export function emptyCompanionConfig(overrides: Partial<CompanionConfig> = {}): 
     problems: [],
     home: null,
     roots: [],
+    writable: [],
     web: null,
     databases: [],
     servers: [],
@@ -35,6 +36,9 @@ export class FakeCompanionConfig implements CompanionConfigApi {
   readFails: string | null = null;
   nextFolder: string | null = null;
   nextSqlite: string | null = null;
+  /** What the shell's own dialog will answer for opening a folder for writing (ADR-73). */
+  nextWriteAnswer = true;
+  readonly writeAsks: string[] = [];
   /** What the shell's own dialog will answer for a plugin's program (P10-T07). */
   nextPluginAnswer = true;
   readonly pluginAsks: PluginServerRequest[] = [];
@@ -96,6 +100,14 @@ export class FakeCompanionConfig implements CompanionConfigApi {
     return Promise.resolve(this.config);
   }
 
+  openFolderForWriting(path: string): Promise<CompanionConfig | null> {
+    this.writeAsks.push(path);
+    if (!this.config.roots.includes(path)) return Promise.reject(`${path} is not one of the Files folders.`);
+    if (!this.nextWriteAnswer) return Promise.resolve(null);
+    if (!this.config.writable.includes(path)) this.config = { ...this.config, writable: [...this.config.writable, path] };
+    return Promise.resolve(this.config);
+  }
+
   removePluginServers(plugin: string): Promise<CompanionConfig> {
     this.config = { ...this.config, servers: this.config.servers.filter((server) => server.plugin !== plugin) };
     return Promise.resolve(this.config);
@@ -121,7 +133,9 @@ export class FakeCompanionConfig implements CompanionConfigApi {
       case 'removeWeb':
         return { ...config, web: null };
       case 'removeRoot':
-        return { ...config, roots: config.roots.filter((path) => path !== change.path) };
+        return { ...config, roots: config.roots.filter((path) => path !== change.path), writable: config.writable.filter((path) => path !== change.path) };
+      case 'closeRootForWriting':
+        return { ...config, writable: config.writable.filter((path) => path !== change.path) };
       case 'addDatabase':
         return {
           ...config,

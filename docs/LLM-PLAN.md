@@ -551,7 +551,7 @@ Done when: "read my cards" draws a three-card spread that shows on the wall, and
 Depends: P10-T03. A manifest's HTTP and stdio servers and schedule presets, offered on enable and removed with the plugin (item 7); stdio only where a companion runs, with the full command on the consent screen; tagged in Settings → Tools and the Schedules view.
 Done when: a fixture plugin with an HTTP server, a stdio server and a daily schedule installs, asks once for each, runs a tool and fires the schedule, and on removal leaves `mcp.json`, the tool list and the schedules as they were (Rust and TS tests; live through a companion).
 
-### P10-T08 Office, the second plugin — owner: main
+### P10-T08 Office, the second plugin — owner: main — built 2026-11-06; R-69 open (ADR-73 proposed)
 Depends: P10-T07. `plugins/office/`: MCP servers that create and edit documents and spreadsheets in the Files folders (chosen in this task, licences read, verified and recorded in `SURFACE.md`), instructions, and schedule presets (a weekly digest, a morning plan). Longer multi-step jobs may need more than four tool rounds; if so, a manifest-declared round limit, capped, decided here. Tool-only schedules from her tools (the backlog item from ADR-58) land here if Office needs them with the app closed.
 Done when: "make a spreadsheet of this month's grocery budget" writes a real `.xlsx` in a Files folder that opens in a spreadsheet program, after the ask card; a document is drafted and edited by voice; a schedule preset is offered, created and fires.
 

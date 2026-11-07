@@ -256,7 +256,13 @@ async fn files_is_listed_first_and_called_through_the_same_route() {
     assert_eq!(listed["servers"][0]["id"], "files");
     assert_eq!(listed["servers"][0]["label"], "Files");
     assert_eq!(listed["servers"][0]["kind"], "files");
-    assert_eq!(listed["tools"].as_array().map(Vec::len), Some(5));
+    assert_eq!(listed["tools"].as_array().map(Vec::len), Some(7));
+    // Read-only (ADR-73): the write tools come only with a folder in `files.write`.
+    assert!(
+        listed["tools"]
+            .as_array()
+            .is_some_and(|tools| !tools.iter().any(|tool| tool["name"] == "write_document"))
+    );
     let (status, body) = send(
         &router,
         call_request("files", "read_text_file", json!({ "path": "note.txt" })),

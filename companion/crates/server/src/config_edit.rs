@@ -174,6 +174,8 @@ pub struct ConfigView {
     pub problems: Vec<String>,
     pub home: Option<HomeView>,
     pub roots: Vec<String>,
+    /// The roots open for writing (ADR-73), as the file has them.
+    pub writable: Vec<String>,
     pub web: Option<WebView>,
     pub databases: Vec<DatabaseView>,
     pub servers: Vec<ServerView>,
@@ -206,6 +208,10 @@ pub enum Change {
     },
     RemoveWeb,
     RemoveRoot {
+        path: String,
+    },
+    /// ADR-73: she may no longer write in this folder. Opening one is the shell's, after its dialog.
+    CloseRootForWriting {
         path: String,
     },
     /// A database by address (`postgres://`, `mysql://`, `mariadb://`); the address goes to the store.
@@ -453,6 +459,7 @@ pub fn view(files: &ConfigFiles, store: &dyn SecretStore) -> ConfigView {
         problems,
         home,
         roots: strings(&mcp, "/files/roots"),
+        writable: strings(&mcp, "/files/write"),
         web,
         databases,
         servers,
@@ -610,8 +617,20 @@ pub fn apply(files: &ConfigFiles, change: Change, store: &dyn SecretStore) -> Re
         Change::RemoveRoot { path } => {
             let mut mcp = read_json(&files.mcp)?;
             let files_section = object(&mut mcp, "files");
-            if let Some(roots) = files_section.get_mut("roots").and_then(Value::as_array_mut) {
-                roots.retain(|root| root.as_str() != Some(path.as_str()));
+            for key in ["roots", "write"] {
+                if let Some(list) = files_section.get_mut(key).and_then(Value::as_array_mut) {
+                    list.retain(|root| root.as_str() != Some(path.as_str()));
+                }
+            }
+            write_json(&files.mcp, &mcp)
+        }
+        Change::CloseRootForWriting { path } => {
+            let mut mcp = read_json(&files.mcp)?;
+            if let Some(list) = object(&mut mcp, "files")
+                .get_mut("write")
+                .and_then(Value::as_array_mut)
+            {
+                list.retain(|root| root.as_str() != Some(path.as_str()));
             }
             write_json(&files.mcp, &mcp)
         }
@@ -728,6 +747,22 @@ fn push_unique(list: &mut Map<String, Value>, key: &str, path: &Path) {
 pub fn add_root(files: &ConfigFiles, picked: &Path) -> Result<(), String> {
     let mut mcp = read_json(&files.mcp)?;
     push_unique(object(&mut mcp, "files"), "roots", picked);
+    write_json(&files.mcp, &mcp)
+}
+
+/// ADR-73: she may make documents and spreadsheets in this Files folder. **Only after the person
+/// said yes in the shell's own dialog**: never at a page's word. It must be one of the roots, as
+/// the file names it.
+pub fn open_root_for_writing(files: &ConfigFiles, root: &str) -> Result<(), String> {
+    let mut mcp = read_json(&files.mcp)?;
+    let known = mcp
+        .pointer("/files/roots")
+        .and_then(Value::as_array)
+        .is_some_and(|roots| roots.iter().any(|known| known.as_str() == Some(root)));
+    if !known {
+        return Err(format!("{root} is not one of the Files folders."));
+    }
+    push_unique(object(&mut mcp, "files"), "write", Path::new(root));
     write_json(&files.mcp, &mcp)
 }
 
@@ -1279,5 +1314,44 @@ mod tests {
         let files = files(&dir);
         assert_eq!(remove_plugin_servers(&files, "office").unwrap(), 0);
         assert!(!files.mcp.exists());
+    }
+
+    #[test]
+    fn a_files_folder_opens_for_writing_only_if_it_is_one_and_closes_and_goes_with_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = rick_like(&dir);
+        let store = MapStore::default();
+        let refused = open_root_for_writing(&files, "C:/Users/me/Desktop").unwrap_err();
+        assert!(
+            refused.contains("is not one of the Files folders"),
+            "{refused}"
+        );
+        open_root_for_writing(&files, "C:/Users/me/Documents/notes").unwrap();
+        open_root_for_writing(&files, "C:/Users/me/Documents/notes").unwrap();
+        assert_eq!(
+            view(&files, &store).writable,
+            ["C:/Users/me/Documents/notes"]
+        );
+        // The companion reads it as a folder it may write in.
+        let config = McpConfig::parse(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+        assert_eq!(
+            config.writable,
+            [std::path::PathBuf::from("C:/Users/me/Documents/notes")]
+        );
+
+        let close = Change::CloseRootForWriting {
+            path: "C:/Users/me/Documents/notes".into(),
+        };
+        apply(&files, close, &store).unwrap();
+        assert!(view(&files, &store).writable.is_empty());
+        assert_eq!(view(&files, &store).roots, ["C:/Users/me/Documents/notes"]);
+
+        open_root_for_writing(&files, "C:/Users/me/Documents/notes").unwrap();
+        let remove = Change::RemoveRoot {
+            path: "C:/Users/me/Documents/notes".into(),
+        };
+        apply(&files, remove, &store).unwrap();
+        let shown = view(&files, &store);
+        assert!(shown.roots.is_empty() && shown.writable.is_empty());
     }
 }

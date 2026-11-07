@@ -453,6 +453,51 @@ async fn companion_config_remove_plugin_servers(
     Ok(config_edit::view(&files, &OsStore))
 }
 
+/// ADR-73: she may make documents and spreadsheets in this Files folder. The page only asks:
+/// **this shell** asks the person in a dialog of its own and writes `files.write` only on yes.
+/// `Ok(None)` when they say no. Closing a folder again is an ordinary change
+/// (`closeRootForWriting`).
+#[tauri::command]
+async fn companion_config_open_folder_for_writing(
+    path: String,
+    app: tauri::AppHandle,
+    companion: tauri::State<'_, Companion>,
+) -> Result<Option<ConfigView>, String> {
+    let files = config_files()?;
+    if !config_edit::view(&files, &OsStore).roots.contains(&path) {
+        return Err(format!("{path} is not one of the Files folders."));
+    }
+    let question = folder_write_question(&path);
+    let dialog = app.clone();
+    let yes = tauri::async_runtime::spawn_blocking(move || {
+        dialog
+            .dialog()
+            .message(question)
+            .title("Let her write in this folder?")
+            .kind(MessageDialogKind::Warning)
+            .buttons(MessageDialogButtons::OkCancelCustom(
+                "Let her write here".into(),
+                "Not now".into(),
+            ))
+            .blocking_show()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    if !yes {
+        return Ok(None);
+    }
+    config_edit::open_root_for_writing(&files, &path)?;
+    companion.restart().await?;
+    Ok(Some(config_edit::view(&files, &OsStore)))
+}
+
+/// The words of the dialog: where, what she may do there, and what she never does.
+fn folder_write_question(path: &str) -> String {
+    format!(
+        "The companion would let her make Word documents and spreadsheets in\n\n{path}\n\nand in the folders inside it, and change the ones she made. She never writes over a file she did not make, and the app asks you before each write unless you choose Always. You can turn this off in Settings → Companion → Files."
+    )
+}
+
 /// Restarts the companion on the files as they are now: after `mcp.json` was edited by hand.
 #[tauri::command]
 async fn companion_config_reload(
@@ -565,6 +610,7 @@ pub fn run() {
             companion_config_reload,
             companion_config_add_plugin_server,
             companion_config_remove_plugin_servers,
+            companion_config_open_folder_for_writing,
             tray::tray_close_to_tray,
             tray::presence_set,
             updates::app_version,
@@ -669,6 +715,19 @@ mod tests {
         );
         assert!(
             asked.contains("\n\nnpx -y @example/docs-mcp\n\n"),
+            "{asked}"
+        );
+    }
+
+    #[test]
+    fn opening_a_folder_for_writing_names_it_and_says_what_she_never_does() {
+        let asked = super::folder_write_question("C:/Users/me/Documents/office");
+        assert!(
+            asked.contains("\n\nC:/Users/me/Documents/office\n\n"),
+            "{asked}"
+        );
+        assert!(
+            asked.contains("never writes over a file she did not make"),
             "{asked}"
         );
     }

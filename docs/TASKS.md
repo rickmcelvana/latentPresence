@@ -111,6 +111,28 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-69 · Office in the desktop app · ~15 minutes (P10-T08, ADR-73)
+The first look at both native dialogs (a folder opened for writing here, a plugin program in P10-T07)
+and at the files in a real spreadsheet program. In the checkout, after `git pull` and `pnpm install`:
+```bash
+pnpm --filter @latentpresence/desktop dev
+```
+1. **Settings → Companion → Folders she may read**: add a folder of your own (an empty one, say
+   `Documents\latent office`), then tick **She may make documents and spreadsheets here**. A
+   Windows dialog titled "Let her write in this folder?" should name the folder. Try **Not now** first
+   (the box stays clear), then tick again and choose **Let her write here**.
+2. **Settings → Tools**: the companion on. **Settings → Plugins**: install `plugins/office` from the
+   checkout and turn it on for Alice. Under it, **Make it** on "Weekday mornings: the day's plan".
+3. In a call, say: *"Make a spreadsheet of this month's grocery budget."* An ask card should come up
+   for the write; allow it. Open the `.xlsx` from the folder in Excel (or LibreOffice): are the totals
+   numbers, not 0, and do they change when you change a number?
+4. Say: *"Draft a short note to my landlord about the dripping tap."* Then: *"Change it to say Friday
+   morning."* Open the `.docx` in Word: does it open without a repair message, with the title and
+   the change?
+5. Untick the folder's box: the next "make me a spreadsheet" should be refused in her words.
+Tell me what you saw at each step; the morning plan fires on the next weekday at 8.
+
+
 ### Laptop session — R-13 and R-9 in one sitting · ~40 minutes
 All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: the quick frame-rate reading first, then the long conversation. R-1 was read

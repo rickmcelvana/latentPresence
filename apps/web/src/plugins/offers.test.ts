@@ -70,6 +70,11 @@ describe('presetRequest', () => {
     });
   });
 
+  it("names the app's own tools as they are: her plans and the companion's Files (ADR-73)", () => {
+    const preset = { ...manifest.schedules[0]!, tools: ['plan_list', 'files__write_document'] };
+    expect(presetRequest(manifest, preset).tools).toEqual(['plan_list', 'files__write_document']);
+  });
+
   it('makes a reminder, with no tools, of a preset with no task', () => {
     const reminder = { ...manifest.schedules[0]!, taskPrompt: '  ', tools: [] };
     expect(presetRequest(manifest, reminder)).toEqual({ description: 'A morning digest', repeat: '0 8 * * *', delivery: 'notify', catchUp: 'skip' });

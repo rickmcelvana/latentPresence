@@ -1169,6 +1169,15 @@ kbd {
   overflow-wrap: anywhere;
 }
 
+/* ADR-73: whether she may make documents and spreadsheets in a Files folder. */
+.companion-write {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .companion-subsection {
   display: flex;
   flex-direction: column;

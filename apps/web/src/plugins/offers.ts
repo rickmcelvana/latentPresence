@@ -1,5 +1,5 @@
 import { mcpToolName, type ScheduleRequest } from '@latentpresence/core';
-import type { PluginManifest, PluginMcpServer, PluginSchedulePreset } from '@latentpresence/protocol';
+import { PLUGIN_APP_TOOLS, type PluginManifest, type PluginMcpServer, type PluginSchedulePreset } from '@latentpresence/protocol';
 import type { Settings, ToolServerSetting } from '../settings/settings';
 
 /**
@@ -70,7 +70,8 @@ export function withHttpServer(settings: Settings, manifest: PluginManifest, ser
 export function presetRequest(manifest: PluginManifest, preset: PluginSchedulePreset): ScheduleRequest {
   const tools = preset.tools.map((name) => {
     const at = name.indexOf('__');
-    if (at < 0) return `${manifest.id}__${name}`;
+    // Her own tools (ADR-73) by their own names; the plugin's own by the plugin's.
+    if (at < 0) return PLUGIN_APP_TOOLS.includes(name) && !manifest.tools.some((tool) => tool.name === name) ? name : `${manifest.id}__${name}`;
     const server = manifest.mcp.find((candidate) => candidate.id === name.slice(0, at));
     const label = server === undefined ? name.slice(0, at) : server.transport === 'http' ? server.name : pluginStdioName(manifest.id, server.id);
     return mcpToolName(label, name.slice(at + 2));

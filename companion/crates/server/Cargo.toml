@@ -35,6 +35,11 @@ croner.workspace = true
 chrono-tz.workspace = true
 # P8-T01 (ADR-60): the desktop app's pairing token, from the OS's random source.
 rand.workspace = true
+# P10-T08 (ADR-73): documents and spreadsheets she makes in the Files folders.
+rust_xlsxwriter.workspace = true
+calamine.workspace = true
+zip.workspace = true
+quick-xml.workspace = true
 
 # P8-T06 (ADR-63): the secrets the desktop app keeps in Credential Manager instead of mcp.json.
 # The same crate and version as the desktop shell; Windows only, as the app is.

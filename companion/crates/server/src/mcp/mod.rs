@@ -9,6 +9,7 @@
 pub mod config;
 pub mod files;
 pub mod home;
+pub mod office;
 pub mod sql;
 pub mod web;
 
@@ -233,7 +234,7 @@ impl McpHost {
     pub fn start(config: McpConfig) -> SharedHost {
         let host = Arc::new(Self::default());
         if !config.roots.is_empty() {
-            let (files, problems) = FilesServer::new(&config.roots);
+            let (files, problems) = FilesServer::new(&config.roots, &config.writable);
             for problem in &problems {
                 eprintln!("companion: mcp files root skipped: {problem}");
             }
@@ -569,13 +570,15 @@ impl McpHost {
 }
 
 fn ready_files(files: FilesServer) -> ServerState {
+    let instructions = if files.can_write() {
+        "Folders on this computer the person chose. You may read in all of them, and make documents and spreadsheets in the ones marked for writing. List the allowed folders first."
+    } else {
+        "Read-only: folders on this computer the person chose. List the allowed folders first."
+    };
     ServerState::Ready {
+        tools: files.tools(),
+        instructions: Some(instructions.into()),
         connection: Connection::Files(Arc::new(files)),
-        tools: FilesServer::tools(),
-        instructions: Some(
-            "Read-only: folders on this computer the person chose. List the allowed folders first."
-                .into(),
-        ),
     }
 }
 

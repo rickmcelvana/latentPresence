@@ -229,6 +229,8 @@ pub struct McpConfig {
     pub servers: Vec<(String, ServerSpec)>,
     /// The folders the Files server may read. Empty: no Files server.
     pub roots: Vec<PathBuf>,
+    /// The folders among them it may also write in (ADR-73): documents and spreadsheets she makes.
+    pub writable: Vec<PathBuf>,
     /// The databases, by name, in name order; disabled entries are left out.
     pub databases: Vec<(String, DatabaseSpec)>,
     /// The web server, when `web` is in the file.
@@ -323,6 +325,9 @@ impl RawDatabase {
 struct RawFiles {
     #[serde(default)]
     roots: Vec<PathBuf>,
+    /// ADR-73: folders opened for writing; each must also be in `roots`.
+    #[serde(default)]
+    write: Vec<PathBuf>,
 }
 
 /// Unknown fields are allowed here: other clients' files carry their own (`type`, `timeout`).
@@ -385,9 +390,14 @@ impl McpConfig {
                 (name, spec)
             })
             .collect();
+        let (roots, writable) = raw
+            .files
+            .map(|files| (files.roots, files.write))
+            .unwrap_or_default();
         Ok(Self {
             servers,
-            roots: raw.files.map(|files| files.roots).unwrap_or_default(),
+            roots,
+            writable,
             databases: raw
                 .databases
                 .into_iter()

@@ -83,6 +83,8 @@ export interface CompanionConfig {
   readonly home: HomeView | null;
   /** Folders the Files server may read. */
   readonly roots: readonly string[];
+  /** The ones among them she may also make documents and spreadsheets in (ADR-73). */
+  readonly writable: readonly string[];
   readonly web: WebView | null;
   readonly databases: readonly DatabaseView[];
   readonly servers: readonly ServerView[];
@@ -98,6 +100,8 @@ export type CompanionConfigChange =
   | { readonly kind: 'web'; readonly provider: SearchProvider | null; readonly url?: string; readonly key?: string; readonly readPages: boolean }
   | { readonly kind: 'removeWeb' }
   | { readonly kind: 'removeRoot'; readonly path: string }
+  /** ADR-73: she may no longer write there. Opening one for writing is `openFolderForWriting`. */
+  | { readonly kind: 'closeRootForWriting'; readonly path: string }
   | { readonly kind: 'addDatabase'; readonly name: string; readonly url: string; readonly description?: string }
   | { readonly kind: 'removeDatabase'; readonly name: string }
   /** A database whose address is written in `mcp.json`: the address moves to Credential Manager. */
@@ -124,6 +128,11 @@ export interface CompanionConfigApi {
   addPluginServer(request: PluginServerRequest): Promise<CompanionConfig | null>;
   /** Removes the servers this plugin added, and only those. */
   removePluginServers(plugin: string): Promise<CompanionConfig>;
+  /**
+   * ADR-73: lets her write in one of the Files folders. The shell asks in its own dialog and
+   * writes it only on yes; `null` when the person says no.
+   */
+  openFolderForWriting(path: string): Promise<CompanionConfig | null>;
 }
 
 export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
@@ -136,5 +145,6 @@ export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
     reload: () => invoke<CompanionConfig>('companion_config_reload'),
     addPluginServer: (request) => invoke<CompanionConfig | null>('companion_config_add_plugin_server', { request }),
     removePluginServers: (plugin) => invoke<CompanionConfig>('companion_config_remove_plugin_servers', { plugin }),
+    openFolderForWriting: (path) => invoke<CompanionConfig | null>('companion_config_open_folder_for_writing', { path }),
   };
 }
