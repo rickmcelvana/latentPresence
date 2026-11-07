@@ -1098,3 +1098,10 @@ Left: R-68 still open: Rick to run it again. Not pushed.
 Next: R-68 again, then P10-T07.
 Decisions: A one-board layout follows the drawer; a two-board one stays put.
 Lessons: "No cards" had three possible causes. The transcript line said the tool ran, and the pane said the wall worked. What was left was what Rick could see, so check what covers the view, not only what draws it.
+
+## 2026-11-06 claude (21) — P10-T07: a plugin's servers, programs and schedules
+Did: Recorded R-68 passed (D-73) and P10-T06 done. Built ADR-72 item 7 (`apps/web/src/plugins/offers.ts`, `PluginOffers.tsx`). Each server, program and schedule a plugin offers is asked once in Settings → Plugins, and the answer is kept in `settings.pluginOffers`. HTTP servers go to Settings → Tools, tagged. Programs go into the companion's `mcp.json` only through the desktop shell, after a native dialog shows the whole command (`config_edit::add_plugin_server` / `remove_plugin_servers`, tagged `"plugin"`, never replacing an entry). Schedules are made per character through `Schedules.create`, with tools named as she has them. Removal takes it all back; Tools and the Schedules panel say "from the … plugin". Tests: a fixture plugin with all three installs, asks once each, adds each, fires its schedule (the plugin tool runs), and on removal leaves Tools, mcp.json and the schedules as they were. Live: a companion ran the exact tagged entry the shell writes and answered its tool. Gate green, 2362 TS tests.
+Left: The native dialog not seen live (needs the desktop app); Office (T08) is the first real program offer. Not pushed.
+Next: P10-T08, Office.
+Decisions: An amendment to ADR-63 item 4 for plugins alone: a program enters mcp.json from a page request only through the shell's own dialog. Adding a program turns on Tools → companion, and removing the plugin leaves that switch on.
+Lessons: The safety line for programs is who draws the question. The page can ask, but only the shell can show the command and take the yes, so the consent cannot be faked from the page.
