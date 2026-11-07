@@ -51,6 +51,8 @@ $1
 $1
 - 2026-11-06 claude (19) — **Fix the weakness where it lives.** P10-T06: Tarot reads its cards. qwen3.5:9b drew and then went silent; the cause was the tool loop, not Tarot, so it was fixed there for every tool. Then one instruction line took it from 5/10 to 9/10.
 
+- 2026-11-06 claude (20) — **Check what covers the view, not only what draws it.** R-68's first try: the cards were drawn on the screen, behind the open transcript drawer. A one-board layout now moves to the whiteboard while the drawer is open.
+
 - 2026-11-06 claude (21) — **Consent belongs to whoever draws the question.** P10-T07: a plugin's servers, programs and schedules. A page may ask for a program, but only the desktop shell shows its command and takes the yes, so a page cannot fake the consent.
 
 ## Dev-only routes
