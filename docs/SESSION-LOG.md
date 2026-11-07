@@ -1112,3 +1112,10 @@ Left: R-69, both native dialogs and the files in Excel or LibreOffice (none on t
 Next: R-69; then P10-T09, the index and the authoring guide.
 Decisions: ADR-73 (proposed, flagged here): Office is the companion's Files server writing, not a third-party program. No manifest round limit and no tool-only schedules: the live runs took two to four rounds.
 Lessons: The path rules were right on paper and failed in use: models name the folder in the path, and look up a file by the bare name they just gave it. Reading the refusal each model got showed why, so look at the actual refusal, not just the count.
+
+## 2026-11-06 claude (23) — R-69 passed; Office's sheets fixed; ADR-73 accepted
+Did: Recorded R-69 passed in LibreOffice (D-74) and Rick's acceptance of ADR-73; P10-T08 done. Fixed the two findings. The Left column showed `###`: rust_xlsxwriter's `autofit()` measures a formula by its stored result, which is empty, so the column was fitted to "Left". Columns are now sized by our own measure (`column_widths`), and rendering through `soffice --headless --convert-to png` showed Rick's file with `###` and the new one with every total. A read or edit of a document that is not there now names the documents that are, so she need not list folders. Gate green.
+Left: Office's morning plan firing on Monday at 8, still to be seen. Not pushed.
+Next: P10-T09, the index and the authoring guide, when Rick says.
+Decisions: none new.
+Lessons: Where a library measures for you, check what it measured. autofit was right for every cell it could see and wrong for the one kind it could not, and a headless render showed it in a second.
