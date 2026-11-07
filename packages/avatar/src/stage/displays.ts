@@ -1,3 +1,5 @@
+import type { PluginWall } from './plugin-boards';
+
 /**
  * The room's two diegetic displays (P5-T08, ADR-49): what the whiteboard and the screen show,
  * and the layout that turns it into positioned lines of text.
@@ -23,6 +25,11 @@ export interface ScreenContent {
 export interface Displays {
   readonly whiteboard: WhiteboardContent | null;
   readonly screen: ScreenContent | null;
+  /**
+   * A plugin's layout (P10-T05, ADR-72 item 6), drawn in place of a board's own content until it is
+   * cleared; then the plan and the sources come back.
+   */
+  readonly plugin?: PluginWall | undefined;
 }
 
 /**
@@ -136,7 +143,7 @@ function cutWord(word: string, font: BoardFont, measure: MeasureText, width: num
 }
 
 /** Words wrapped to `width`; a word longer than a line is cut with an ellipsis. */
-function wrap(text: string, font: BoardFont, measure: MeasureText, width: number): string[] {
+export function wrapText(text: string, font: BoardFont, measure: MeasureText, width: number): string[] {
   const words = text.split(/\s+/u).filter((word) => word !== '');
   const lines: string[] = [];
   let line = '';
@@ -179,7 +186,7 @@ export function layoutBoard(blocks: readonly BoardBlock[], measure: MeasureText,
     if (block.style === 'gap') {
       return { spec, font, lineHeight, indent, lines: [], height: BOARD_TEXT.body * box.pixelsPerMetre * BOARD_TEXT.lineHeight * GAP_LINES, gap: true };
     }
-    const lines = wrap(block.text, font, measure, box.width - 2 * box.padding - indent);
+    const lines = wrapText(block.text, font, measure, box.width - 2 * box.padding - indent);
     return { spec, font, lineHeight, indent, lines, height: lines.length * lineHeight, gap: false };
   });
 

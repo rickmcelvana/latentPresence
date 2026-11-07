@@ -539,7 +539,7 @@ Done when: installing the tarot draft from a folder shows its true size, hosts a
 Depends: P10-T02. One line per enabled plugin and the shared `use_plugin(id)` tool; instructions and tools join the conversation once used; "always loaded"; the token estimate per plugin and the warning (item 4). Measure first: how many tools and how much prompt the small local models in `docs/SURFACE.md` take before they choose worse, and set the thresholds from that.
 Done when: with five fixture plugins enabled the request carries five lines and one extra tool until one is used, then that plugin's tools; a live check picks the right plugin (or none) for ten prompts on a small local model and on glm-5.2:cloud, recorded in `docs/runs/P10-T04-lazy.md`; the warning appears at the measured thresholds.
 
-### P10-T05 Plugin layouts on the boards — owner: sub (brief from main)
+### P10-T05 Plugin layouts on the boards — owner: main (planned sub) — done 2026-11-06
 Depends: P10-T02, P5-T08. `cards` and `list` layouts on ADR-49's boards (item 6), images from the plugin's cached blobs; a layout stays until replaced, and the plan and sources return when it is cleared.
 Done when: a three-card spread and a ten-card one project through the real `framing('medium', …)` with captions at 16 px or more and the cards clear of her; seen in the Browser pane at 1080p.
 

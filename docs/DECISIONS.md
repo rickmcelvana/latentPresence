@@ -74,7 +74,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-69 | The security review: the companion answers only requests naming it by IP or localhost (DNS rebinding); the pairing code from every request when bound off loopback; a Content Security Policy in every build (meta), frame-ancestors as a hosted header; advisories weekly, not in the gate | accepted | 2026-11-01 |
 | ADR-70 | Every download pinned to a commit and checked against a SHA-256, on the wire and in the cache, through one generated table (`registry/pins.ts`); the workers' `fetch` is the seam for libraries that fetch for themselves; ONNX Runtime from the build, never jsDelivr, and the build fails otherwise; the registry and the privacy page ship in the app at `/privacy` | accepted 2026-11-03 (Rick, after R-66; C-9 passed) | 2026-11-03 |
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
-| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amendment proposed 2026-11-06 (load directly by default, measured) | 2026-11-05 |
+| ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amended 2026-11-06 (load directly by default, measured; accepted by Rick) | 2026-11-05 |
 
 ---
 
@@ -3090,7 +3090,7 @@ in context for abilities they are not using. *Plugins global like MCP servers:* 
   settings. Its data goes only if the person ticks "Also forget", which writes each character's
   block empty.
 
-**Amendment to item 4 (proposed 2026-11-06, P10-T04's measurement).** Item 4 assumed small models
+**Amendment to item 4 (accepted 2026-11-06 by Rick, from P10-T04's measurement).** Item 4 assumed small models
 choose worse as the tool list grows, and made loading-when-needed the default. Measured, neither held
 (`docs/runs/P10-T04-tools.md`, `docs/runs/P10-T04-lazy.md`). qwen3.5:9b, gemma4:12b and glm-5.2 chose
 no worse with 64 tools than with 8. Behind `use_plugin`, qwen3.5:9b used the plugin's tool 6 times in
@@ -3108,3 +3108,20 @@ the gate (`askFirst`). The prompt's section is `YOUR PLUGINS`, with `PLUGIN IN U
 loaded one, placed after the home and before the plans (`PromptContext.plugins`, a protocol addition
 under this ADR). With memory off, a plugin's data lasts the visit only. Settings changes apply from
 the next visit to `/chat`.
+
+**In the build (P10-T05, 2026-11-06).** The layouts are pure (`packages/avatar/src/stage/plugin-boards.ts`,
+text measure injected, like ADR-49's), drawn by the same `DisplayBoard`. **Cards past five span both
+boards**, left to right: the first half on the whiteboard with the title, the rest on the screen, the
+count carried on. A board is 84 cm wide, so ten cards on one leave no room for 16 px captions. Captions
+are body text (16.3 px at `medium` 1080p, as the plan's). **Captions sit under the cards unless they
+would need more than three lines, a word is wider than its card, or the cards would come out under
+12 cm or below 80% of the numbered layout's size.** Otherwise each card carries its number on a patch
+of the board's colour, and the captions are listed below in full. Seen in the Browser pane at 1080p: a
+Celtic cross laid out as two rows of small captioned cards next to one row of numbered ones looked
+wrong, so the 80% rule is from looking at it. Nothing is cut that a person needs to read. A reversed
+card is drawn face up, rotated 180° about its centre. A picture comes only from the plugin's pinned
+assets: `PluginAssets.blob` gives checked bytes, and `createImageBitmap` decodes them. Nothing loads by
+URL, so `img-src` is unchanged; a picture that fails stays a blank card and the console says why. A
+layout stays until the next one or **Clear the wall** (a call control shown only while one is up); then
+the plan and the sources come back. It is not kept across visits. Built by the architect, not a
+subagent: the 80% rule came from looking at it in the pane.

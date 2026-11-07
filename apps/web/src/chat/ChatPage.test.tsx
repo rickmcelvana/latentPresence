@@ -22,6 +22,7 @@ import { connectDocuments } from './chat-documents';
 import type { NotificationPermissionState, PageNotifications } from './notifications';
 import { InMemoryBodyShelf } from '../characters/body-shelf';
 import { InMemoryPluginShelf } from '../plugins/shelf';
+import { pageSha256 } from '../plugins/inspect';
 import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { BodyReport } from '@latentpresence/avatar/vrm';
@@ -715,6 +716,68 @@ describe('ChatPage — schedules (P6-T08, ADR-58)', () => {
       expect(names).not.toContain('sky__draw');
       expect(systemOf(chats[0])).toContain('- sky: Draws sky cards; use it when someone asks for one.');
       expect(systemOf(chats[0])).not.toContain('Draw when asked.');
+    }
+  });
+
+  it("puts a plugin's cards on the wall, its own picture decoded, reversed ones turned, until Clear the wall (P10-T05)", async () => {
+    setViewportWidth(1024);
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...JSON.parse(storage.getItem(SETTINGS_STORAGE_KEY) ?? '{}'), characters: { alice: { voice: null, body: null, plugins: ['sky'] } } }));
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+    const manifest = {
+      format: 1, id: 'sky', name: 'Sky cards', version: '0.1.0', author: 'Test', licence: 'Apache-2.0', summary: 'Draws sky cards.', minApp: '1.0.0',
+      instructions: 'instructions.md', data: { cards: 'data/cards.json' },
+      assets: [{ id: 'sun', path: 'sun.jpg', type: 'image/jpeg', bytes: jpeg.length, sha256: (await pageSha256(jpeg)) ?? '', licence: 'Public domain', source: 'test' }],
+      tools: [{ name: 'draw', description: 'Draws a card.', steps: [{ use: 'draw', as: 'card', table: 'cards' }, { use: 'show', board: 'spread', items: '$card', title: 'Your card' }], returns: ['card'] }],
+      boards: { spread: { layout: 'cards', image: 'image', flip: 'down', caption: '{{name}}' } },
+    };
+    const shelf = new InMemoryPluginShelf();
+    await shelf.put(
+      { id: 'sky', name: 'Sky cards', version: '0.1.0', summary: manifest.summary, origin: { kind: 'folder', name: 'sky' }, installedAt: '2026-11-06T12:00:00Z' },
+      { manifestText: JSON.stringify(manifest), files: new Map([['instructions.md', new TextEncoder().encode('Draw when asked.')], ['data/cards.json', new TextEncoder().encode('[{"id":"sun","name":"The Sun","image":"sun","down":true}]')], ['sun.jpg', jpeg]]) },
+    );
+    // jsdom decodes no images: a stand-in for the browser's, 250 × 419 like a tarot card.
+    const decoded: Blob[] = [];
+    vi.stubGlobal('createImageBitmap', async (blob: Blob) => {
+      decoded.push(blob);
+      return { width: 250, height: 419, close: () => {} };
+    });
+    const store = new FakeMemoryStore();
+    const { build } = schedulingModel((_request, round) =>
+      round === 1
+        ? [
+            { type: 'tool-call', call: { id: 'd1', name: 'sky__draw', arguments: {}, source: 'llm', requestedAt: '2026-11-06T12:00:00.000Z' } },
+            { type: 'finish', reason: 'tool-calls', usage: null },
+          ]
+        : null,
+    );
+    const stage = new DisplayRenderer();
+    const chooseMemory = async () => ({ store, kind: 'browser' as const, reason: 'a test store' });
+    try {
+      render(<ChatPage buildProvider={build} chooseMemory={chooseMemory} createRenderer={() => stage} deps={testDeps({ storage })} pluginShelf={shelf} />);
+      await waitFor(() => expect(store.calls).toContain('currentFacts'));
+      await act(() => settle());
+      expect(screen.queryByRole('button', { name: 'Clear the wall' })).toBeNull();
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'pull a card for me' } });
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
+
+      await waitFor(() => {
+        const card = stage.shown.at(-1)?.plugin?.screen;
+        expect(card?.layout === 'cards' && card.cards[0]?.picture?.source).toBeTruthy();
+      });
+      const wall = stage.shown.at(-1)?.plugin;
+      expect(wall?.whiteboard).toBeNull();
+      expect(wall?.screen).toMatchObject({ layout: 'cards', title: 'Your card', aspect: 250 / 419, cards: [{ caption: 'The Sun', flip: true, picture: { id: 'sun' } }] });
+      // The picture is the plugin's own checked bytes, as its type; nothing was fetched by address.
+      expect(decoded[0]?.type).toBe('image/jpeg');
+      expect(new Uint8Array(await decoded[0]!.arrayBuffer())).toEqual(jpeg);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Clear the wall' }));
+      await waitFor(() => expect(stage.shown.at(-1)?.plugin).toBeUndefined());
+      expect(screen.queryByRole('button', { name: 'Clear the wall' })).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 });

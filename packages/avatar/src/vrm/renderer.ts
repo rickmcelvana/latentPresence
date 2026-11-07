@@ -18,14 +18,15 @@ import {
   type Viseme,
 } from '@latentpresence/protocol';
 import type { ExpressionPlan } from '../expressions';
-import { type Displays, screenBlocks, whiteboardBlocks } from '../stage/displays';
+import { type BoardBlock, type Displays, screenBlocks, whiteboardBlocks } from '../stage/displays';
+import { type PluginBoardContent, listBlocks } from '../stage/plugin-boards';
 import { type GazeOffset, type Vec3, gazePoint } from '../gaze';
 import type { LifeBone, LifePose } from '../life';
 import { type Body, CameraRig, DEFAULT_FOV_DEGREES, DEFAULT_TRANSITION_MS, type CameraPreset, framing } from '../stage/camera';
 import { AdditivePose } from './additive-pose';
 import { ClipPlayer } from './clip-player';
 import { VrmFaceDriver } from './face';
-import type { CreateCanvas } from './display-board';
+import { type CreateCanvas, type DisplayBoard, pictureKey } from './display-board';
 import { DEFAULT_STAGE_OPTIONS, type StageBoards, type StageOptions, buildStage, stageBoards } from './stage';
 import { type BodyReport, checkBody } from './body-check';
 import { readVrm } from './inspect';
@@ -124,6 +125,13 @@ interface Loaded {
  * The rules shared with `FakeAvatarRenderer`: nothing but `mount` before a surface,
  * nothing that drives the character before one is loaded, and `dispose` is final.
  */
+/** A board shows a plugin's layout when there is one, else its own blocks (or nothing). */
+function showOn(board: DisplayBoard, plugin: PluginBoardContent | null, own: readonly BoardBlock[] | null): void {
+  if (plugin === null) board.show(own);
+  else if (plugin.layout === 'cards') board.showCards(plugin);
+  else board.show(listBlocks(plugin));
+}
+
 export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
   readonly id = 'vrm';
 
@@ -353,11 +361,13 @@ export class VrmAvatarRenderer implements AvatarRenderer<HTMLCanvasElement> {
    */
   setDisplays(displays: Displays): void {
     this.assertLive();
-    const key = JSON.stringify(displays);
+    const key = JSON.stringify(displays, pictureKey);
     if (key === this.displaysKey) return;
     this.displaysKey = key;
-    this.boards?.whiteboard.show(displays.whiteboard === null ? null : whiteboardBlocks(displays.whiteboard));
-    this.boards?.screen.show(displays.screen === null ? null : screenBlocks(displays.screen));
+    if (this.boards === null) return;
+    // A plugin's layout takes a board until it is cleared (P10-T05); then its own content comes back.
+    showOn(this.boards.whiteboard, displays.plugin?.whiteboard ?? null, displays.whiteboard === null ? null : whiteboardBlocks(displays.whiteboard));
+    showOn(this.boards.screen, displays.plugin?.screen ?? null, displays.screen === null ? null : screenBlocks(displays.screen));
   }
 
   /**

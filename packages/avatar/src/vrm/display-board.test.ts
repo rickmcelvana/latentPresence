@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { screenBlocks, whiteboardBlocks } from '../stage/displays';
-import { DisplayBoard, type BoardCanvas, hexColour } from './display-board';
+import { DisplayBoard, type BoardCanvas, drawPicture, hexColour, pictureKey } from './display-board';
 import { STAGE_PALETTE, buildStage, stageBoards } from './stage';
 
 interface Recorded {
@@ -98,5 +98,46 @@ describe('stage boards with a canvas', () => {
     expect(recorded.rects.at(-1)).toBe(`${hexColour(STAGE_PALETTE.screenOff)} 0,0,1024,610`);
     boards?.screen.show(screenBlocks({ heading: 'Sources', items: [{ title: 'Manual', where: 'p. 12', text: 'Hold the button.' }] }));
     expect(recorded.fills.map((fill) => fill.text)).toEqual(['Sources', 'Manual', 'p. 12', 'Hold the button.']);
+  });
+});
+
+/** Records the calls that place a picture. */
+function recorder(): { readonly calls: string[]; readonly ctx: CanvasRenderingContext2D } {
+  const calls: string[] = [];
+  const ctx = {
+    globalAlpha: 1,
+    fillStyle: '',
+    save: () => calls.push('save'),
+    restore: () => calls.push('restore'),
+    translate: (x: number, y: number) => calls.push(`translate ${x},${y}`),
+    rotate: (angle: number) => calls.push(`rotate ${angle.toFixed(4)}`),
+    drawImage: (_source: unknown, ...args: number[]) => calls.push(`drawImage ${args.join(',')}`),
+    fillRect: (...args: number[]) => calls.push(`fillRect ${args.join(',')}`),
+  } as unknown as CanvasRenderingContext2D;
+  return { calls, ctx };
+}
+const PICTURE = {} as CanvasImageSource;
+const keyFor = (loaded: CanvasImageSource | null): string => JSON.stringify({ cards: [{ picture: { id: 'card-1', source: loaded } }] }, pictureKey);
+
+describe("a plugin's pictures (P10-T05)", () => {
+
+  it('draws a reversed card face up, turned 180° about its centre', () => {
+    const { calls, ctx } = recorder();
+    drawPicture(ctx, { picture: { id: 'card-1', source: PICTURE }, flip: true, x: 10, y: 20, width: 60, height: 100 }, '#888888');
+    expect(calls).toEqual(['save', 'translate 40,70', `rotate ${Math.PI.toFixed(4)}`, 'drawImage -30,-50,60,100', 'restore']);
+  });
+
+  it('draws an upright card unturned, and a missing one as a faint space', () => {
+    const upright = recorder();
+    drawPicture(upright.ctx, { picture: { id: 'card-1', source: PICTURE }, flip: false, x: 10, y: 20, width: 60, height: 100 }, '#888888');
+    expect(upright.calls.some((call) => call.startsWith('rotate'))).toBe(false);
+    const missing = recorder();
+    drawPicture(missing.ctx, { picture: { id: 'card-2', source: null }, flip: true, x: 10, y: 20, width: 60, height: 100 }, '#888888');
+    expect(missing.calls).toEqual(['save', 'fillRect 10,20,60,100', 'restore']);
+  });
+
+  it('keys content by whether each picture has loaded, not by the image', () => {
+    expect(keyFor(null)).toBe('{"cards":[{"picture":{"id":"card-1","source":false}}]}');
+    expect(keyFor(PICTURE)).toBe('{"cards":[{"picture":{"id":"card-1","source":true}}]}');
   });
 });

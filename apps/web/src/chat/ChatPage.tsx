@@ -10,7 +10,6 @@ import {
   Plans,
   PermissionPrompts,
   FakeMemoryStore,
-  type PluginDisplay,
   type PluginSession,
   Schedules,
   SelfNotes,
@@ -76,7 +75,9 @@ import type { FaceReadingHandle, FaceReadingOptions, FaceReadingStatus } from '.
 import { chatLlmProvider, type ChatLlmOptions } from './chat-llm';
 import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from './chat-memory';
 import { loadChatPlugins } from '../plugins/chat-plugins';
+import type { PluginAssets } from '../plugins/assets';
 import { defaultPluginShelf, type PluginShelf } from '../plugins/shelf';
+import { usePluginWall } from '../plugins/wall';
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
 import { setPresence, useDesktopTray } from '../desktop/tray';
@@ -221,6 +222,8 @@ export interface ChatPageProps {
   readonly bodyShelf?: BodyShelf;
   /** P10-T04: the installed plugins; this browser's by default. */
   readonly pluginShelf?: PluginShelf;
+  /** Test seam: where plugins' pictures come from (P10-T05). Production never passes it. */
+  readonly pluginAssets?: PluginAssets;
   /** Test seam: reading a file as a VRM body, refusing what the call cannot drive (P7-T02). Production never passes it. */
   readonly checkBodyFile?: (bytes: Uint8Array) => Promise<BodyReport>;
   /** Test seam, forwarded to `CallStage`: in place of `cachedModelFetch` for a built-in body. Production never passes it. */
@@ -264,6 +267,7 @@ export function ChatPage({
   notifications = pageNotifications(),
   bodyShelf,
   pluginShelf,
+  pluginAssets,
   checkBodyFile = checkBodyFileDefault,
   fetchModel,
 }: ChatPageProps = {}): ReactElement {
@@ -312,6 +316,7 @@ export function ChatPage({
       notifications={notifications}
       bodyShelf={shelf}
       pluginShelf={plugins}
+      {...(pluginAssets === undefined ? {} : { pluginAssets })}
       checkBodyFile={checkBodyFile}
       fetchModel={fetchModel}
       loadFaceReading={loadFaceReading}
@@ -348,6 +353,7 @@ interface ConfiguredChatPageProps {
   readonly notifications: PageNotifications;
   readonly bodyShelf: BodyShelf;
   readonly pluginShelf: PluginShelf;
+  readonly pluginAssets?: PluginAssets | undefined;
   readonly checkBodyFile: (bytes: Uint8Array) => Promise<BodyReport>;
   readonly fetchModel?: ((url: string, descriptor: ModelDescriptor, sha256: string) => Promise<Uint8Array>) | undefined;
 }
@@ -373,9 +379,12 @@ function ConfiguredChatPage({
   notifications,
   bodyShelf,
   pluginShelf,
+  pluginAssets,
   checkBodyFile,
   fetchModel,
 }: ConfiguredChatPageProps): ReactElement {
+  // P10-T05 (ADR-72 item 6): what a plugin put on the boards, until it is replaced or cleared.
+  const { wall: pluginWall, show: showOnWall, clear: clearWall } = usePluginWall();
   // One machine, one history and one session for the life of the page. A lazy `useState`
   // initializer rather than a ref: building either has a side effect (the machine starts)
   // that must happen exactly once, and a ref's value used later is what oxlint's
@@ -399,8 +408,7 @@ function ConfiguredChatPage({
     const builtTimeHolder: { since: LastConversation | null } = { since: null };
     // P10-T04 (ADR-72): the character's plugins for this visit, once loaded (the memory effect
     // below): a line each in the prompt until she uses one, then its instructions and tools.
-    // `display` is the newest layout a plugin showed, for the boards (P10-T05).
-    const builtPluginHolder: { session: PluginSession | null; display: PluginDisplay | null } = { session: null, display: null };
+    const builtPluginHolder: { session: PluginSession | null } = { session: null };
     // P5-T06 (ADR-47): what the web gave her to cite, beside her documents' hits.
     const builtWebSources = new Map<string, CitationSource>();
     const builtPrompts = new PermissionPrompts({ timers: hostTimers() });
@@ -568,9 +576,11 @@ function ConfiguredChatPage({
         characterId: pack.persona.id,
         store: choice?.store ?? new FakeMemoryStore(),
         prompts: permissionPrompts,
-        show: (display) => {
-          pluginHolder.display = display;
+        // P10-T05: a layout goes on the wall, with the plugin's own pictures.
+        show: (display, pictures) => {
+          if (live) showOnWall(display, pictures);
         },
+        ...(pluginAssets === undefined ? {} : { assets: pluginAssets }),
         onProblem: (id, problems) => console.warn(`plugin ${id} is off: ${problems.join(' ')}`),
       }).then((session) => {
         if (live) pluginHolder.session = session;
@@ -718,7 +728,7 @@ function ConfiguredChatPage({
       selfHolder.tools = [];
       timeHolder.since = null;
     };
-  }, [affect, chat, chatTools, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, notifications, pack.persona.id, pack.persona.name, pack.persona.summary, permissionPrompts, pluginHolder, pluginShelf, rawLlm, selfHolder, sessionId, settings, timeHolder, timeZone, userAffect]);
+  }, [affect, chat, chatTools, chooseMemory, companionUrl, deps.fetch, deps.storage, machine, memoryHolder, modelId, notifications, pack.persona.id, pack.persona.name, pack.persona.summary, permissionPrompts, pluginAssets, pluginHolder, pluginShelf, rawLlm, selfHolder, sessionId, settings, showOnWall, timeHolder, timeZone, userAffect]);
 
   // MCP servers (P5-T01, ADR-42): connected once per visit from Settings → Tools. One that
   // fails offers no tools, and the transcript says so — the person added it expecting it to work.
@@ -779,8 +789,8 @@ function ConfiguredChatPage({
   const planState = useSyncExternalStore(subscribePlans, plansSnapshot);
   const displays = useMemo<Displays>(() => {
     const plan = planState === null ? null : pickPlan(planState.plans, planState.focusId);
-    return { whiteboard: plan === null ? null : planToWhiteboard(plan), screen: sourcesToScreen(latestCitedSources(lines, citationSource)) };
-  }, [planState, lines, citationSource]);
+    return { whiteboard: plan === null ? null : planToWhiteboard(plan), screen: sourcesToScreen(latestCitedSources(lines, citationSource)), plugin: pluginWall ?? undefined };
+  }, [planState, lines, citationSource, pluginWall]);
 
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(chat.busy);
@@ -1466,6 +1476,11 @@ function ConfiguredChatPage({
           ))}
         </select>
           </>
+        )}
+        {pluginWall !== null && (
+          <button className="btn call-control-btn" onClick={clearWall} title="Take the plugin's layout off the wall; the plan and sources come back" type="button">
+            Clear the wall
+          </button>
         )}
         </div>
         {!tray.presence && (

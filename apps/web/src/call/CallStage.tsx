@@ -276,7 +276,7 @@ export function CallStage({
         const shown = displaysRef.current;
         const idling = idle.update(
           delta,
-          { state: machine.getState(), pleasure: inputs?.mood.pleasure ?? 0, energy: inputs?.energy ?? 0.5, showing: { whiteboard: shown.whiteboard !== null, screen: shown.screen !== null }, now: new Date() },
+          { state: machine.getState(), pleasure: inputs?.mood.pleasure ?? 0, energy: inputs?.energy ?? 0.5, showing: { whiteboard: shown.whiteboard !== null || (shown.plugin?.whiteboard ?? null) !== null, screen: shown.screen !== null || (shown.plugin?.screen ?? null) !== null }, now: new Date() },
           IDLE_HEAD,
         );
         if (idling.cues?.gesture != null) performer.perform({ kind: 'gesture', value: idling.cues.gesture, known: idling.cues.gesture, offset: 0 });

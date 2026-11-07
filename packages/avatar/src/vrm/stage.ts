@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { BoardBox } from '../stage/displays';
 import { DisplayBoard, type CreateCanvas } from './display-board';
 
 /**
@@ -184,18 +185,20 @@ function addPanel(
   group.add(panel);
 }
 
+/** A board's texture in pixels (P5-T08), for layouts measured as the board draws them (P10-T05's tests). */
+export function boardTextureBox(spec: { readonly width: number; readonly height: number }): BoardBox {
+  const pixelsPerMetre = BOARD_TEXTURE_WIDTH / spec.width;
+  return { width: BOARD_TEXTURE_WIDTH, height: Math.round(spec.height * pixelsPerMetre), pixelsPerMetre, padding: BOARD_PADDING_M * pixelsPerMetre };
+}
+
 function boardFor(
   spec: { readonly width: number; readonly height: number },
   palette: { readonly background: number; readonly ink: number; readonly accent: number; readonly muted: number },
   idleBackground: number,
   createCanvas: CreateCanvas | undefined,
 ): DisplayBoard {
-  const pixelsPerMetre = BOARD_TEXTURE_WIDTH / spec.width;
   return new DisplayBoard({
-    width: BOARD_TEXTURE_WIDTH,
-    height: Math.round(spec.height * pixelsPerMetre),
-    pixelsPerMetre,
-    padding: BOARD_PADDING_M * pixelsPerMetre,
+    ...boardTextureBox(spec),
     palette,
     idleBackground,
     createCanvas,

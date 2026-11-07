@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { Body, CameraPreset } from '../stage/camera';
 import { framing } from '../stage/camera';
-import { BOARD_TEXT } from '../stage/displays';
-import { STAGE_PALETTE, buildStage, stageBoards } from './stage';
+import { BOARD_TEXT, type BoardBox } from '../stage/displays';
+import { type CardsContent, layoutCards, placeOnWall } from '../stage/plugin-boards';
+import { SCREEN, STAGE_PALETTE, WHITEBOARD, boardTextureBox, buildStage, stageBoards } from './stage';
 
 const PRESETS: readonly CameraPreset[] = ['face', 'bust', 'medium', 'full'];
 
@@ -269,5 +270,76 @@ describe('buildStage', () => {
     const screen = new THREE.Box3().setFromObject(part(stage, 'screen'));
     expect(window.min.x).toBeGreaterThan(screen.max.x);
     expect(window.max.x - window.min.x).toBeCloseTo(1.1, 2);
+  });
+});
+
+/** Every character 0.55 of an em: wider than the system font, so wrapping here is the harder case. */
+function wideMeasure(text: string, font: { readonly sizePx: number }): number {
+  return [...text].length * font.sizePx * 0.55;
+}
+
+describe("a plugin's cards on the wall at the medium preset, 1080p (P10-T05, ADR-72 item 6)", () => {
+  const camera = mediumCamera(1920, 1080);
+  const stage = buildStage();
+  // Her standing box on her own plane, as ADR-49 measured it (see above).
+  const person = projectedRect(
+    boxCorners(new THREE.Box3(new THREE.Vector3(STANDING_PERSON_BOX.min.x, STANDING_PERSON_BOX.min.y, 0), new THREE.Vector3(STANDING_PERSON_BOX.max.x, STANDING_PERSON_BOX.max.y, 0))),
+    camera,
+  );
+  const slots = ['The present', 'What crosses it', 'What crowns it', 'What lies beneath', 'What is behind', 'What lies ahead', 'Yourself', 'Your surroundings', 'Hopes and fears', 'The outcome'];
+  const names = ['The Tower', 'Queen of Pentacles', 'The Hierophant', 'Ten of Swords', 'Wheel of Fortune', 'Page of Cups', 'The Moon', 'Knight of Wands', 'Two of Cups', 'The World'];
+  const spread = (positions: readonly string[], title: string): CardsContent => ({
+    layout: 'cards',
+    title,
+    cards: positions.map((slot, index) => ({ caption: `${slot}: ${names[index] ?? ''}`, picture: { id: `card-${index + 1}`, source: null }, flip: index % 2 === 1 })),
+    aspect: 250 / 419,
+    firstNumber: 1,
+  });
+
+  /** A texture rectangle (pixels from its top left) on a board's surface, in world space. */
+  function onSurface(name: string, box: BoardBox, x: number, y: number, width: number, height: number): THREE.Vector3[] {
+    const surface = part(stage, name) as THREE.Mesh;
+    surface.updateWorldMatrix(true, false);
+    const plane = (surface.geometry as THREE.PlaneGeometry).parameters;
+    return [
+      [x, y],
+      [x + width, y],
+      [x + width, y + height],
+      [x, y + height],
+    ].map(([u = 0, v = 0]) => new THREE.Vector3((u / box.width - 0.5) * plane.width, (0.5 - v / box.height) * plane.height, 0).applyMatrix4(surface.matrixWorld));
+  }
+
+  it.each([
+    ['three-card', ['Past', 'Present', 'Future'], 'Past, present and future', 3],
+    ['ten-card', slots, 'The Celtic cross', 10],
+  ] as const)('projects a %s spread with captions at 16 px or more, every card in frame and clear of her', (_name, positions, title, count) => {
+    const wall = placeOnWall(spread(positions, title), 'screen');
+    let shown = 0;
+    for (const [board, spec, surface] of [
+      [wall.whiteboard, WHITEBOARD, 'whiteboard-surface'],
+      [wall.screen, SCREEN, 'screen-surface'],
+    ] as const) {
+      if (board === null || board.layout !== 'cards') continue;
+      const box = boardTextureBox(spec);
+      const layout = layoutCards(board, wideMeasure, box);
+      shown += layout.pictures.length;
+      for (const line of layout.lines) {
+        const rect = pixels(projectedRect(onSurface(surface, box, line.x, line.y, 1, line.font.sizePx), camera), 1920, 1080);
+        expect(rect.height, line.text).toBeGreaterThanOrEqual(16);
+      }
+      for (const placed of layout.pictures) {
+        const corners = onSurface(surface, box, placed.x, placed.y, placed.width, placed.height);
+        for (const corner of corners) {
+          const ndc = corner.clone().project(camera);
+          expect(Math.abs(ndc.x)).toBeLessThanOrEqual(1);
+          expect(Math.abs(ndc.y)).toBeLessThanOrEqual(1);
+        }
+        const rect = projectedRect(corners, camera);
+        expect(overlaps(rect, person)).toBe(false);
+        // Large enough to see what the card is: at least 60 px across on a 1080p call.
+        expect(pixels(rect, 1920, 1080).width).toBeGreaterThanOrEqual(60);
+      }
+    }
+    expect(shown).toBe(count);
   });
 });
