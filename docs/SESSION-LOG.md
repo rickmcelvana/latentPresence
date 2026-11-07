@@ -1119,3 +1119,10 @@ Left: Office's morning plan firing on Monday at 8, still to be seen. Not pushed.
 Next: P10-T09, the index and the authoring guide, when Rick says.
 Decisions: none new.
 Lessons: Where a library measures for you, check what it measured. autofit was right for every cell it could see and wrong for the one kind it could not, and a headless render showed it in a second.
+
+## 2026-11-07 claude (24) — P10-T09: the plugin index and the authoring guide
+Did: `PluginIndexSchema` in the protocol, and its JSON Schema beside the manifest's. Browse in Settings → Plugins fetches `latentpresence.com/plugins/index.json` only on the press and reads it entry by entry. A listed plugin installs through `sourceFromUrl` with its entry, and any file whose SHA-256 differs, or that the entry does not list, is refused. The consent screen says listed and unchanged, or "Not in the latentPresence index" for an address. `pnpm plugin:index` writes entries from a pushed commit; the site's `plugins/index.json` lists Tarot and Office at 4122910, and every hash matched the live GitHub files. `docs/plugins.md` is the guide; `plugins/template/` is a working Fortunes plugin with a test; the site has a short `docs/plugins/` page (its style test passes). Seen in the pane: Browse fails clearly while the site sends no CORS. Gate green, 2375 TS tests.
+Left: R-70: Caddy's CORS header on `/plugins/*`, the site pushed and deployed (committed, not pushed), Browse live, a friend's plugin and their questions. Neither repo pushed.
+Next: R-70; fold the friend's questions into the guide; then Phase 10 is done.
+Decisions (flagged): index entries pin `files`, every file the manifest names, not only the manifest as item 9 said, because instructions and data are not pinned by the manifest. Plugins are served from raw GitHub at a commit; the index from the site.
+Lessons: Pin everything a listing vouches for. A manifest hash alone would have let a plugin's instructions change after review while the listing still looked valid.
