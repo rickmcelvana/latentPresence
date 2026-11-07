@@ -3155,7 +3155,7 @@ by the desktop shell (`companion_config_add_plugin_server`). It shows the whole 
 Windows dialog of its own, which no page can draw or answer, and writes the entry only on "Add it".
 The entry is named `<plugin>-<server>`, tagged `"plugin"`, and refused if that name is taken. Adding
 one turns on Tools → companion (ADR-63 item 6). In a browser the offer says it needs the desktop app.
-`companion_config_remove_plugin_servers` removes only tagged entries. **This amends ADR-63 item 4**
+`companion_config_remove_plugin_servers` removes only tagged entries. **This amends ADR-63 item 4 (accepted by Rick 2026-11-06)**
 for plugins alone: programs stay file-only for every page request except one that passes the
 shell's dialog. **Schedules** are made per character through `Schedules.create`, in the person's
 zone. The preset's tools are named as she has them: `<plugin>__<tool>`, a server's by its label, a
