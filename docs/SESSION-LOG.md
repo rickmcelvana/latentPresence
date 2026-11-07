@@ -1091,3 +1091,10 @@ Left: R-68 (how it feels in a call; the meanings are for Rick to tune). qwen3.5:
 Next: P10-T07, plugin MCP servers and schedules, when Rick says.
 Decisions: The meanings are the plugin's own text under its manifest's author and licence. A silent round after a tool result is retried once with reasoning off (core).
 Lessons: When a plugin works on two models and fails on the third, check the shared path first. The silence was the tool loop's, and the fix helps every tool.
+
+## 2026-11-06 claude (20) — R-68's first try: cards behind the drawer
+Did: Rick's first R-68 run: nemotron-3-nano's Celtic cross showed and looked right. After a model swap and a chat, glm-5.2's three-card reading ran the tool (in the transcript) but showed no cards. Ruled out the model: `TAROT_CASE=later pnpm live:tarot` (an earlier reading, a chat, then a request) drew 10/10. Ruled out the page path: Rick's sequence in the pane with the drawer closed showed the cards. The cause was the open transcript drawer, which covers the screen where a one-board layout goes. Such a layout now moves to the whiteboard while the drawer is open (seen both ways in the pane at 1080p). Gate green, 2353 TS tests.
+Left: R-68 still open: Rick to run it again. Not pushed.
+Next: R-68 again, then P10-T07.
+Decisions: A one-board layout follows the drawer; a two-board one stays put.
+Lessons: "No cards" had three possible causes. The transcript line said the tool ran, and the pane said the wall worked. What was left was what Rick could see, so check what covers the view, not only what draws it.
