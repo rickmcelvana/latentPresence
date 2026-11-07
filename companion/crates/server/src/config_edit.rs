@@ -6,7 +6,11 @@
 //!
 //! - **Only the safe sections.** Home Assistant, the folders the Files server may read, web
 //!   search, the databases, and the documents' folders and embedding. `mcpServers` — entries
-//!   that start programs — are shown, never written: a page that could add one could run anything.
+//!   that start programs — are shown, never written by a `Change`: a page that could add one could
+//!   run anything. The one exception is a plugin's server (ADR-72 item 7), added by
+//!   `add_plugin_server` only after the desktop shell has shown the person the whole command in a
+//!   dialog of its own, and tagged `"plugin"` so that `remove_plugin_servers` can take back exactly
+//!   what a plugin added and nothing the person wrote.
 //! - **The page never names a folder.** `Change` has no "add folder": `add_root` and
 //!   `add_documents_folder` are called by the desktop shell with a path the person picked in the
 //!   system's folder dialog (ADR-44's guarantee, kept).
@@ -143,6 +147,8 @@ pub struct ServerView {
     /// The command line or the address, for a person to recognise it; never a header or an env value.
     pub summary: String,
     pub disabled: bool,
+    /// The plugin that added it (ADR-72 item 7), or `None` for one the person wrote.
+    pub plugin: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -417,6 +423,10 @@ pub fn view(files: &ConfigFiles, store: &dyn SecretStore) -> ConfigView {
                             .get("disabled")
                             .and_then(Value::as_bool)
                             .unwrap_or(false),
+                        plugin: entry
+                            .get("plugin")
+                            .and_then(Value::as_str)
+                            .map(str::to_owned),
                     }
                 })
                 .collect()
@@ -731,6 +741,74 @@ pub fn add_documents_folder(files: &ConfigFiles, picked: &Path) -> Result<(), St
     let text = serde_json::to_string(&documents).map_err(|error| error.to_string())?;
     DocumentsConfig::parse(&text).map_err(|error| format!("Documents: {error}"))?;
     write_json(&files.documents, &documents)
+}
+
+/// A plugin's id and its server's id, as a plugin manifest allows them (`PluginIdSchema`,
+/// `PluginNameSchema`): the entry's name is `<plugin>-<server>`, so it can never be one the person
+/// chose unless they chose exactly that.
+fn valid_plugin_names(plugin: &str, server: &str) -> bool {
+    let id = |text: &str, max: usize, extra: char| {
+        let mut chars = text.chars();
+        matches!(chars.next(), Some(first) if first.is_ascii_lowercase())
+            && text.len() <= max
+            && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == extra)
+    };
+    id(plugin, 24, '-') && plugin.len() >= 2 && id(server, 32, '_')
+}
+
+/// The name a plugin's server gets in `mcpServers`.
+pub fn plugin_server_name(plugin: &str, server: &str) -> String {
+    format!("{plugin}-{server}")
+}
+
+/// A plugin's stdio server (ADR-72 item 7). **Only after the person saw the whole command and said
+/// yes in the shell's own dialog**; the page can only ask for it. Tagged with the plugin, and
+/// refused if an entry of that name is there already, so nothing the person wrote is replaced.
+pub fn add_plugin_server(
+    files: &ConfigFiles,
+    plugin: &str,
+    server: &str,
+    command: &str,
+    args: &[String],
+) -> Result<(), String> {
+    if !valid_plugin_names(plugin, server) {
+        return Err("A plugin server needs the plugin's id and the server's id, as its manifest gives them.".into());
+    }
+    if command.trim().is_empty() {
+        return Err("A plugin server needs a command.".into());
+    }
+    let name = plugin_server_name(plugin, server);
+    let mut mcp = read_json(&files.mcp)?;
+    let servers = object(&mut mcp, "mcpServers");
+    if servers.contains_key(&name) {
+        return Err(format!(
+            "mcp.json already has a server called \"{name}\"; it was left as it is."
+        ));
+    }
+    servers.insert(
+        name,
+        json!({ "command": command, "args": args, "plugin": plugin }),
+    );
+    McpConfig::parse(&serde_json::to_string(&mcp).map_err(|error| error.to_string())?)
+        .map_err(|error| format!("mcp.json: {error}"))?;
+    write_json(&files.mcp, &mcp)
+}
+
+/// Removes every `mcpServers` entry tagged with this plugin, and nothing else: an entry the person
+/// wrote, or one they edited and untagged, stays. Returns how many went; the file is not touched
+/// when there were none.
+pub fn remove_plugin_servers(files: &ConfigFiles, plugin: &str) -> Result<usize, String> {
+    let mut mcp = read_json(&files.mcp)?;
+    let Some(servers) = mcp.get_mut("mcpServers").and_then(Value::as_object_mut) else {
+        return Ok(0);
+    };
+    let before = servers.len();
+    servers.retain(|_, entry| entry.get("plugin").and_then(Value::as_str) != Some(plugin));
+    let removed = before - servers.len();
+    if removed > 0 {
+        write_json(&files.mcp, &mcp)?;
+    }
+    Ok(removed)
 }
 
 /// A SQLite file as a database. **Only for a file the person picked** in the system's dialog.
@@ -1111,5 +1189,95 @@ mod tests {
         assert_eq!(shown.problems.len(), 1);
         assert!(apply(&files, Change::RemoveHome, &MapStore::default()).is_err());
         assert_eq!(std::fs::read_to_string(&files.mcp).unwrap(), "{ not json");
+    }
+
+    #[test]
+    fn a_plugin_server_is_added_tagged_and_removed_without_touching_the_persons_own() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = rick_like(&dir);
+        let before: Value =
+            serde_json::from_str(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+
+        add_plugin_server(
+            &files,
+            "office",
+            "docs",
+            "npx",
+            &["-y".into(), "@example/docs-mcp".into()],
+        )
+        .unwrap();
+        let written: Value =
+            serde_json::from_str(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+        assert_eq!(
+            written["mcpServers"]["office-docs"],
+            json!({ "command": "npx", "args": ["-y", "@example/docs-mcp"], "plugin": "office" })
+        );
+        // The companion reads the file as it now is, with the plugin's server among its own.
+        let config = McpConfig::parse(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+        assert!(config.servers.iter().any(|(name, _)| name == "office-docs"));
+        // And the app shows whose it is.
+        let view = view(&files, &MapStore::default());
+        let shown = view
+            .servers
+            .iter()
+            .find(|server| server.name == "office-docs")
+            .unwrap();
+        assert_eq!(shown.plugin.as_deref(), Some("office"));
+        assert_eq!(shown.summary, "npx -y @example/docs-mcp");
+        assert_eq!(
+            view.servers
+                .iter()
+                .find(|server| server.name == "playwright")
+                .unwrap()
+                .plugin,
+            None
+        );
+
+        // Removing the plugin's servers leaves the file as it was.
+        assert_eq!(remove_plugin_servers(&files, "office").unwrap(), 1);
+        let after: Value =
+            serde_json::from_str(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+        assert_eq!(after, before);
+        assert_eq!(remove_plugin_servers(&files, "office").unwrap(), 0);
+    }
+
+    #[test]
+    fn a_plugin_server_never_replaces_an_entry_or_takes_a_name_it_should_not() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = rick_like(&dir);
+        // An entry the person wrote with that name stays as it is.
+        let mut mcp: Value =
+            serde_json::from_str(&std::fs::read_to_string(&files.mcp).unwrap()).unwrap();
+        mcp["mcpServers"]["office-docs"] = json!({ "command": "mine" });
+        write_json(&files.mcp, &mcp).unwrap();
+        let refused = add_plugin_server(&files, "office", "docs", "npx", &[]).unwrap_err();
+        assert!(
+            refused.contains("already has a server called \"office-docs\""),
+            "{refused}"
+        );
+        // And it is not the plugin's to remove: it carries no tag.
+        assert_eq!(remove_plugin_servers(&files, "office").unwrap(), 0);
+
+        for (plugin, server) in [
+            ("Office", "docs"),
+            ("office", "Docs"),
+            ("o", "docs"),
+            ("office", "../x"),
+            ("office", ""),
+        ] {
+            assert!(
+                add_plugin_server(&files, plugin, server, "npx", &[]).is_err(),
+                "{plugin} {server}"
+            );
+        }
+        assert!(add_plugin_server(&files, "office", "sheets", "  ", &[]).is_err());
+    }
+
+    #[test]
+    fn removing_plugin_servers_from_a_missing_file_is_nothing_to_do() {
+        let dir = tempfile::tempdir().unwrap();
+        let files = files(&dir);
+        assert_eq!(remove_plugin_servers(&files, "office").unwrap(), 0);
+        assert!(!files.mcp.exists());
     }
 }

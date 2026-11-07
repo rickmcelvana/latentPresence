@@ -53,6 +53,18 @@ export interface ServerView {
   /** The command line or address, to recognise it by. */
   readonly summary: string;
   readonly disabled: boolean;
+  /** The plugin that added it (P10-T07, ADR-72 item 7); null for one the person wrote. */
+  readonly plugin: string | null;
+}
+
+/** A plugin's stdio server, as its manifest has it, for the shell to ask about (P10-T07). */
+export interface PluginServerRequest {
+  readonly plugin: string;
+  readonly pluginName: string;
+  readonly server: string;
+  readonly serverName: string;
+  readonly command: string;
+  readonly args: readonly string[];
 }
 
 export interface EmbeddingView {
@@ -105,6 +117,13 @@ export interface CompanionConfigApi {
   openFile(): Promise<void>;
   /** Restarts the companion on the files as they are: after a hand edit. */
   reload(): Promise<CompanionConfig>;
+  /**
+   * A plugin's program (ADR-72 item 7): the shell shows the whole command in its own dialog and adds
+   * it, tagged, only on yes. `null` when the person says no.
+   */
+  addPluginServer(request: PluginServerRequest): Promise<CompanionConfig | null>;
+  /** Removes the servers this plugin added, and only those. */
+  removePluginServers(plugin: string): Promise<CompanionConfig>;
 }
 
 export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
@@ -115,5 +134,7 @@ export function companionConfigApi(invoke: Invoke): CompanionConfigApi {
     pickSqlite: (name) => invoke<CompanionConfig | null>('companion_config_pick_sqlite', { name }),
     openFile: () => invoke<void>('companion_config_open'),
     reload: () => invoke<CompanionConfig>('companion_config_reload'),
+    addPluginServer: (request) => invoke<CompanionConfig | null>('companion_config_add_plugin_server', { request }),
+    removePluginServers: (plugin) => invoke<CompanionConfig>('companion_config_remove_plugin_servers', { plugin }),
   };
 }

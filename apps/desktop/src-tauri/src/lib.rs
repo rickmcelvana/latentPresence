@@ -33,7 +33,7 @@ use latentpresence_companion::config_edit::{self, Change, ConfigFiles, ConfigVie
 use latentpresence_companion::{DEFAULT_PORT, pairing, relay, serve};
 use tauri::webview::{PermissionKind, PermissionResponse};
 use tauri::{Manager, RunEvent};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tokio::sync::oneshot;
 
 /// The Credential Manager "service" every key is filed under; the account is the page's ref
@@ -368,6 +368,91 @@ async fn companion_config_pick_sqlite(
     Ok(Some(config_edit::view(&files, &OsStore)))
 }
 
+/// The words of the shell's own dialog for a plugin's program: the whole command, as it will run.
+fn plugin_server_question(
+    plugin_name: &str,
+    server_name: &str,
+    command: &str,
+    args: &[String],
+) -> String {
+    let line = std::iter::once(command.to_owned())
+        .chain(args.iter().cloned())
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!(
+        "The plugin \"{plugin_name}\" asks to add \"{server_name}\" to the companion. It is a program, and the companion will start it with your permissions every time it starts:\n\n{line}\n\nAdd it only if you trust the plugin and know this program. Removing the plugin removes it."
+    )
+}
+
+/// What the page asks for: a plugin's server, as its manifest has it.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PluginServerRequest {
+    plugin: String,
+    plugin_name: String,
+    server: String,
+    server_name: String,
+    command: String,
+    #[serde(default)]
+    args: Vec<String>,
+}
+
+/// A plugin's stdio server (P10-T07, ADR-72 item 7). The page only asks: **this shell** shows the
+/// whole command in a dialog of its own, which no page can draw or answer, and writes the entry
+/// only on yes, tagged with the plugin. `Ok(None)` when the person says no.
+#[tauri::command]
+async fn companion_config_add_plugin_server(
+    request: PluginServerRequest,
+    app: tauri::AppHandle,
+    companion: tauri::State<'_, Companion>,
+) -> Result<Option<ConfigView>, String> {
+    let PluginServerRequest {
+        plugin,
+        plugin_name,
+        server,
+        server_name,
+        command,
+        args,
+    } = request;
+    let question = plugin_server_question(&plugin_name, &server_name, &command, &args);
+    let dialog = app.clone();
+    let yes = tauri::async_runtime::spawn_blocking(move || {
+        dialog
+            .dialog()
+            .message(question)
+            .title("Add a program to the companion?")
+            .kind(MessageDialogKind::Warning)
+            .buttons(MessageDialogButtons::OkCancelCustom(
+                "Add it".into(),
+                "Not now".into(),
+            ))
+            .blocking_show()
+    })
+    .await
+    .map_err(|error| error.to_string())?;
+    if !yes {
+        return Ok(None);
+    }
+    let files = config_files()?;
+    config_edit::add_plugin_server(&files, &plugin, &server, &command, &args)?;
+    companion.restart().await?;
+    Ok(Some(config_edit::view(&files, &OsStore)))
+}
+
+/// Removes the servers a plugin added, and only those (`"plugin"` in their entry). Taking back is
+/// the safe direction, so it asks nothing; the companion restarts only when something went.
+#[tauri::command]
+async fn companion_config_remove_plugin_servers(
+    plugin: String,
+    companion: tauri::State<'_, Companion>,
+) -> Result<ConfigView, String> {
+    let files = config_files()?;
+    if config_edit::remove_plugin_servers(&files, &plugin)? > 0 {
+        companion.restart().await?;
+    }
+    Ok(config_edit::view(&files, &OsStore))
+}
+
 /// Restarts the companion on the files as they are now: after `mcp.json` was edited by hand.
 #[tauri::command]
 async fn companion_config_reload(
@@ -478,6 +563,8 @@ pub fn run() {
             companion_config_pick_sqlite,
             companion_config_open,
             companion_config_reload,
+            companion_config_add_plugin_server,
+            companion_config_remove_plugin_servers,
             tray::tray_close_to_tray,
             tray::presence_set,
             updates::app_version,
@@ -566,5 +653,23 @@ mod tests {
         ] {
             assert!(matches!(permission_for(other), PermissionResponse::Default));
         }
+    }
+
+    #[test]
+    fn a_plugin_program_is_asked_about_with_its_whole_command() {
+        let asked = super::plugin_server_question(
+            "Office",
+            "Documents",
+            "npx",
+            &["-y".into(), "@example/docs-mcp".into()],
+        );
+        assert!(
+            asked.contains("\"Office\" asks to add \"Documents\""),
+            "{asked}"
+        );
+        assert!(
+            asked.contains("\n\nnpx -y @example/docs-mcp\n\n"),
+            "{asked}"
+        );
     }
 }

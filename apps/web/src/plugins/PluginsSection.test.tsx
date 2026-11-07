@@ -9,6 +9,7 @@ import { PluginAssets } from './assets';
 import { pageSha256 } from './inspect';
 import { PluginsSection, type PluginsDeps } from './PluginsSection';
 import { InMemoryPluginShelf } from './shelf';
+import { FakeCompanionConfig } from '../desktop/companion-config.fake';
 
 afterEach(cleanup);
 
@@ -43,14 +44,23 @@ async function served(edit: (m: PluginManifestInput) => void = () => {}): Promis
   };
 }
 
-function deps(files: Record<string, Uint8Array>, store = new FakeMemoryStore()): PluginsDeps & { readonly store: FakeMemoryStore; readonly requests: string[] } {
+/** A plugin offering an HTTP server, a program and a daily schedule (P10-T07). */
+function offering(m: PluginManifestInput): void {
+  m.mcp = [
+    { id: 'wiki', name: 'Wiki', transport: 'http', url: 'https://mcp.example.com/mcp' },
+    { id: 'docs', name: 'Documents', transport: 'stdio', command: 'npx', args: ['-y', '@example/docs-mcp'] },
+  ];
+  m.schedules = [{ id: 'daily', description: 'A daily sky card', cron: '0 9 * * *', taskPrompt: 'Draw a card and tell them.', tools: ['draw', 'wiki__search'], delivery: 'notify' }];
+}
+
+function deps(files: Record<string, Uint8Array>, store = new FakeMemoryStore(), companion: FakeCompanionConfig | null = null): PluginsDeps & { readonly store: FakeMemoryStore; readonly requests: string[] } {
   const requests: string[] = [];
   const fetcher = (async (input: RequestInfo | URL) => {
     requests.push(String(input));
     const bytes = files[String(input)];
     return bytes === undefined ? new Response(null, { status: 404 }) : new Response(bytes as Uint8Array<ArrayBuffer>);
   }) as typeof fetch;
-  return { shelf: new InMemoryPluginShelf(), assets: new PluginAssets({ fetch: fetcher, cache: async () => null }), fetch: fetcher, memory: async () => store, appVersion: '1.0.0', store, requests };
+  return { shelf: new InMemoryPluginShelf(), assets: new PluginAssets({ fetch: fetcher, cache: async () => null }), fetch: fetcher, memory: async () => store, appVersion: '1.0.0', companion, timeZone: 'America/Toronto', store, requests };
 }
 
 function Harness({ given, onSettings }: { readonly given: PluginsDeps; readonly onSettings: (settings: Settings) => void }): ReactElement {
@@ -159,5 +169,67 @@ describe('PluginsSection (P10-T03)', () => {
     expect(latest.characters['alice']?.plugins).toEqual([]);
     expect(latest.plugins).toEqual({});
     await waitFor(async () => expect((await given.store.readBlocks('alice')).find((block) => block.name === '_plugin:sky')?.content).toBe(''));
+  });
+
+  describe('what it offers beyond its tools (P10-T07, ADR-72 item 7)', () => {
+
+    it('asks once for each, adds each where it belongs, tagged, and removing the plugin leaves everything as it was', async () => {
+      const companion = new FakeCompanionConfig();
+      const store = new FakeMemoryStore();
+      const given = deps(await served(offering), store, companion);
+      let latest = DEFAULT_SETTINGS;
+      render(<Harness given={given} onSettings={(next) => (latest = next)} />);
+      await readAddress();
+      const consent = screen.getByRole('region', { name: 'Install Sky cards' });
+      expect(within(consent).getByText('Server: Wiki')).toBeTruthy();
+      expect(within(consent).getByText('npx -y @example/docs-mcp')).toBeTruthy();
+      fireEvent.click(within(consent).getByRole('button', { name: 'Install' }));
+      const offers = await screen.findByRole('list', { name: 'What Sky cards offers' });
+      expect(within(offers).getAllByRole('listitem')).toHaveLength(3);
+      // Installing added nothing: each waits for its own answer.
+      expect(latest.tools.servers).toEqual([]);
+      expect(companion.pluginAsks).toEqual([]);
+      expect(await store.listSchedules('alice')).toEqual([]);
+
+      // The HTTP server joins Settings → Tools, tagged.
+      fireEvent.click(within(offers).getAllByRole('button', { name: 'Add it' })[0]!);
+      await waitFor(() => expect(latest.tools.servers).toEqual([{ id: 'plugin:sky:wiki', label: 'Wiki', url: 'https://mcp.example.com/mcp', transport: 'http', enabled: true, auth: 'none', plugin: 'sky' }]));
+      // The program goes to the shell, which asks in its own dialog with the whole command.
+      fireEvent.click(within(offers).getByRole('button', { name: 'Add it…' }));
+      await waitFor(() => expect(companion.config.servers).toEqual([{ name: 'sky-docs', summary: 'npx -y @example/docs-mcp', disabled: false, plugin: 'sky' }]));
+      expect(companion.pluginAsks).toEqual([{ plugin: 'sky', pluginName: 'Sky cards', server: 'docs', serverName: 'Documents', command: 'npx', args: ['-y', '@example/docs-mcp'] }]);
+      expect(latest.tools.companion).toBe(true);
+      // The schedule is made for Alice, daily at 9 in her zone, with her tools by their names.
+      fireEvent.click(within(offers).getByRole('button', { name: 'Make it' }));
+      await waitFor(async () => expect(await store.listSchedules('alice')).toHaveLength(1));
+      const [made] = await store.listSchedules('alice');
+      expect(made).toMatchObject({ description: 'A daily sky card', trigger: { kind: 'cron', expression: '0 9 * * *', timeZone: 'America/Toronto' }, taskPrompt: 'Draw a card and tell them.', allowedTools: ['sky__draw', 'wiki__search'], status: 'active' });
+      // Each was asked once: nothing is left to answer.
+      await waitFor(() => expect(within(offers).queryAllByRole('button')).toEqual([]));
+      expect(latest.pluginOffers['sky']).toEqual({ 'server:wiki': 'added', 'server:docs': 'added', 'schedule:alice:daily': made?.id });
+
+      fireEvent.click(within(screen.getByRole('list', { name: 'Installed plugins' })).getByRole('button', { name: 'Remove' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove Sky cards' }));
+      await screen.findByText('No plugins installed.');
+      expect(latest.tools).toEqual({ ...DEFAULT_SETTINGS.tools, companion: true });
+      expect(latest.pluginOffers).toEqual({});
+      expect(companion.config.servers).toEqual([]);
+      expect(await store.listSchedules('alice')).toEqual([]);
+    });
+
+    it('says a program needs the desktop app, and takes a no thanks as the answer', async () => {
+      const given = deps(await served(offering));
+      let latest = DEFAULT_SETTINGS;
+      render(<Harness given={given} onSettings={(next) => (latest = next)} />);
+      await readAddress();
+      fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+      const offers = await screen.findByRole('list', { name: 'What Sky cards offers' });
+      expect(within(offers).getByText('Only in the desktop app, where the companion may start programs.')).toBeTruthy();
+      expect(within(offers).queryByRole('button', { name: 'Add it…' })).toBeNull();
+      fireEvent.click(within(offers).getAllByRole('button', { name: 'No thanks' })[0]!);
+      expect(latest.pluginOffers['sky']).toEqual({ 'server:wiki': 'declined' });
+      expect(within(offers).getByText('Not added.')).toBeTruthy();
+      expect(latest.tools.servers).toEqual([]);
+    });
   });
 });

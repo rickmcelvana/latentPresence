@@ -279,6 +279,7 @@ export function ToolsSection({ tools, onChange, vault, connect, fetch, companion
                 <div className="tools-server-head">
                   <div className="tools-server-title">
                     <span className="tools-server-label">{server.label}</span>
+                    {server.plugin !== undefined && <span className="pill plugin-tag">from the {server.plugin} plugin</span>}
                     <span className="tools-server-url">
                       {server.url} · {TRANSPORT_LABELS[server.transport]}
                     </span>

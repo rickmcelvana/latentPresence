@@ -74,6 +74,7 @@ describe('loadSettings', () => {
       captions: true,
       plugins: { tarot: { reversals: false } },
       lazyPlugins: ['tarot'],
+      pluginOffers: { tarot: { 'schedule:alice:daily': 'sched-1' } },
     };
     saveSettings(settings, storage);
     expect(loadSettings(storage)).toEqual(settings);

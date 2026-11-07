@@ -103,6 +103,8 @@ export const ToolServerSettingSchema = z.object({
   transport: McpTransportSchema,
   enabled: z.boolean(),
   auth: z.enum(['none', 'bearer']),
+  /** The plugin that added it (P10-T07, ADR-72 item 7); removing the plugin removes it. */
+  plugin: z.string().optional(),
 });
 export type ToolServerSetting = z.infer<typeof ToolServerSettingSchema>;
 
@@ -210,6 +212,12 @@ export const SettingsSchema = z.object({
    * directly, instructions and tools in every request: measured faster and more reliable on a small model.
    */
   lazyPlugins: z.array(z.string().min(1)).default([]),
+  /**
+   * P10-T07 (ADR-72 item 7): what the person answered to each thing a plugin offers, so each is asked
+   * once. By plugin id, then `server:<id>` → `added` | `declined`, or `schedule:<character>:<id>` →
+   * the schedule's id | `declined`. Removing the plugin takes back what was added and forgets these.
+   */
+  pluginOffers: z.record(z.string(), z.record(z.string(), z.string())).default({}),
 });
 export type Settings = z.infer<typeof SettingsSchema>;
 
@@ -233,6 +241,7 @@ export const DEFAULT_SETTINGS: Settings = {
   captions: false,
   plugins: {},
   lazyPlugins: [],
+  pluginOffers: {},
 };
 
 /** The vault ref for an LLM endpoint's key. Keyed by endpoint id so switching presets

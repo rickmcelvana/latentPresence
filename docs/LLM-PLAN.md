@@ -547,7 +547,7 @@ Done when: a three-card spread and a ten-card one project through the real `fram
 Depends: P10-T03, P10-T04, P10-T05. Port Rick's Open WebUI tool (`Z:dev	arot	arot.py`, its map summarised in `SURFACE.md` 2026-11-06) into `plugins/tarot/`: 78 cards (names; upright and reversed meanings written for this plugin or taken from a public-domain text, with the source in the manifest), spreads (one card, three cards, Celtic cross), instructions for how she reads. Assets: `https://moongoddesscoven.com/tarot/<n>.jpg` (4.8 MB for the deck, the same 250 × 419 px as the PNGs), each pinned with bytes and SHA-256; the server sends CORS since 2026-11-06. The script had no meanings (the model supplied them); shipping short ones keeps small local models consistent. A deck of our own from ComfyUI is welcome later as a second asset set.
 Done when: "read my cards" draws a three-card spread that shows on the wall, and she reads those cards (not others) in 10/10 live runs on glm-5.2:cloud and a small local model; a Rick check in `docs/TASKS.md` for how it feels in a call.
 
-### P10-T07 Plugin MCP servers and schedules — owner: main
+### P10-T07 Plugin MCP servers and schedules — owner: main — done 2026-11-06
 Depends: P10-T03. A manifest's HTTP and stdio servers and schedule presets, offered on enable and removed with the plugin (item 7); stdio only where a companion runs, with the full command on the consent screen; tagged in Settings → Tools and the Schedules view.
 Done when: a fixture plugin with an HTTP server, a stdio server and a daily schedule installs, asks once for each, runs a tool and fires the schedule, and on removal leaves `mcp.json`, the tool list and the schedules as they were (Rust and TS tests; live through a companion).
 

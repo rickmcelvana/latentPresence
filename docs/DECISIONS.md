@@ -3145,3 +3145,24 @@ boards stays as it is: half of it is behind the drawer until it closes. Ruled ou
 after an earlier reading and a chat drew 10/10 (`TAROT_CASE=later pnpm live:tarot`,
 `docs/runs/P10-T06-tarot-later.md`), and Rick's path through the pane with the drawer closed showed
 the cards.
+
+**In the build (P10-T07, 2026-11-06).** Each thing a plugin offers is shown under it in Settings →
+Plugins once it is on for someone, with Add / No thanks, and **each answer is kept**
+(`settings.pluginOffers`), so nothing is asked twice. **HTTP servers** join Settings → Tools as
+`plugin:<plugin>:<server>`, labelled with the manifest's name, on, `plugin`-tagged and shown "from
+the … plugin". Their tools are still gated one by one (ADR-42). **Programs (stdio)** are added only
+by the desktop shell (`companion_config_add_plugin_server`). It shows the whole command in a native
+Windows dialog of its own, which no page can draw or answer, and writes the entry only on "Add it".
+The entry is named `<plugin>-<server>`, tagged `"plugin"`, and refused if that name is taken. Adding
+one turns on Tools → companion (ADR-63 item 6). In a browser the offer says it needs the desktop app.
+`companion_config_remove_plugin_servers` removes only tagged entries. **This amends ADR-63 item 4**
+for plugins alone: programs stay file-only for every page request except one that passes the
+shell's dialog. **Schedules** are made per character through `Schedules.create`, in the person's
+zone. The preset's tools are named as she has them: `<plugin>__<tool>`, a server's by its label, a
+program's by its companion name. The panel shows "from the … plugin". **Removing the plugin**
+deletes its schedules, asks the shell to remove its programs, removes its servers and their grants,
+and forgets its answers. A test checks that Settings → Tools, `mcp.json` (the fake) and the
+schedules come back as they were; the companion switch it turned on stays on. Live: a companion
+started on an `mcp.json` holding exactly the entry the shell writes ran the program (a stdio MCP
+server written for the check) and answered its tool through `/mcp/call`. Not tried live: the
+dialog itself, which needs the desktop app; Office's program offer (P10-T08) is the first real one.

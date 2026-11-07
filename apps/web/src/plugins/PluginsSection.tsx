@@ -1,13 +1,17 @@
 import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
-import { pluginBudget } from '@latentpresence/core';
+import { Schedules, pluginBudget, type ScheduleRequest, type ScheduleResult } from '@latentpresence/core';
 import type { JsonValue, MemoryStore, PluginSetting } from '@latentpresence/protocol';
 import { PACKS, packFor } from '../characters/packs';
 import { chooseMemoryStore } from '../chat/chat-memory';
+import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
+import { desktopShell } from '../desktop/desktop';
 import type { Settings } from '../settings/settings';
 import { PluginAssets } from './assets';
 import { inspectPlugin, type PluginInspection } from './inspect';
 import { enabledPlugins, installPlugin, loadPlugin, removePlugin, withPluginEnabled, withPluginLazy, withPluginSetting, withoutPlugin, type LoadedPlugin } from './manage';
 import { PluginConsent } from './PluginConsent';
+import { PluginOffers } from './PluginOffers';
+import { pluginAdditions, withoutPluginOffers } from './offers';
 import { defaultPluginShelf, type InstalledPlugin, type PluginShelf } from './shelf';
 import { sourceFromFolder, sourceFromUrl, sourceFromZip, type PluginSource } from './sources';
 
@@ -26,6 +30,10 @@ export interface PluginsDeps {
   /** The memory store to forget a plugin's data in; null when memory is off. */
   readonly memory: (settings: Settings) => Promise<MemoryStore | null>;
   readonly appVersion: string;
+  /** P10-T07: the desktop shell's route to the companion's `mcp.json`, for a plugin's programs; null in a browser. */
+  readonly companion: CompanionConfigApi | null;
+  /** The person's IANA zone, where a plugin's schedule is read (ADR-58). */
+  readonly timeZone: string;
 }
 
 const windowFetch: typeof fetch = (input, init) => window.fetch(input, init);
@@ -38,6 +46,8 @@ export function defaultPluginsDeps(): PluginsDeps {
     memory: async (settings) =>
       (await chooseMemoryStore({ setting: settings.memory, companionUrl: settings.companionUrl, fetch: windowFetch, indexedDB: globalThis.indexedDB }))?.store ?? null,
     appVersion: APP_VERSION,
+    companion: ((shell) => (shell === null ? null : companionConfigApi(shell.invoke)))(desktopShell()),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
 }
 
@@ -119,10 +129,26 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
     await refresh();
   };
 
+  // P10-T07 (ADR-72 item 7): through the ordinary store, for one character, in the person's zone.
+  const makeSchedule =
+    settings.memory === 'off'
+      ? null
+      : async (characterId: string, request: ScheduleRequest): Promise<ScheduleResult> => {
+          const store = await deps.memory(settings);
+          if (store === null) return { ok: false, reason: 'Her memory could not be reached, so the schedule was not made.' };
+          return new Schedules({ store, characterId, timeZone: deps.timeZone, companion: false }).create(request);
+        };
+
   const remove = async (id: string) => {
-    const store = forget ? await deps.memory(settings) : null;
-    await removePlugin(id, { shelf: deps.shelf, assets: deps.assets, ...(store === null ? {} : { forget: { store, characterIds: PACKS.map((pack) => pack.persona.id) } }) });
-    onChange((prev) => withoutPlugin(prev, id));
+    // What it added goes with it (ADR-72 item 7): its schedules, its programs, its servers and their grants.
+    const loaded = rows.find((row) => row.info.id === id)?.loaded;
+    const added = pluginAdditions(settings, loaded?.ok === true ? loaded.plugin.manifest : null, id);
+    const needsStore = forget || added.schedules.length > 0;
+    const store = needsStore ? await deps.memory(settings) : null;
+    for (const { scheduleId } of added.schedules) await store?.deleteSchedule(scheduleId);
+    if (added.programs) await deps.companion?.removePluginServers(id);
+    await removePlugin(id, { shelf: deps.shelf, assets: deps.assets, ...(store === null || !forget ? {} : { forget: { store, characterIds: PACKS.map((pack) => pack.persona.id) } }) });
+    onChange((prev) => withoutPluginOffers(withoutPlugin(prev, id), id));
     setRemoving(null);
     setForget(false);
     await refresh();
@@ -242,6 +268,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
                     <input checked={settings.lazyPlugins.includes(info.id)} onChange={(event) => onChange((prev) => withPluginLazy(prev, info.id, event.target.checked))} type="checkbox" />
                     Load only when needed: saves its {loaded.plugin.promptTokens.used} tokens until she uses it, but the first use is slower and small models use it less reliably
                   </label>
+                  <PluginOffers companion={deps.companion} makeSchedule={makeSchedule} manifest={loaded.plugin.manifest} onChange={onChange} settings={settings} />
                   {Object.entries(loaded.plugin.manifest.settings).map(([key, setting]) => (
                     <PluginSettingField
                       id={`plugin-${info.id}-${key}`}

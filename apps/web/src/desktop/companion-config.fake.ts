@@ -1,4 +1,4 @@
-import type { CompanionConfig, CompanionConfigApi, CompanionConfigChange, DatabaseView } from './companion-config';
+import type { CompanionConfig, CompanionConfigApi, CompanionConfigChange, DatabaseView, PluginServerRequest } from './companion-config';
 
 /** What nothing configured looks like. */
 export function emptyCompanionConfig(overrides: Partial<CompanionConfig> = {}): CompanionConfig {
@@ -35,6 +35,9 @@ export class FakeCompanionConfig implements CompanionConfigApi {
   readFails: string | null = null;
   nextFolder: string | null = null;
   nextSqlite: string | null = null;
+  /** What the shell's own dialog will answer for a plugin's program (P10-T07). */
+  nextPluginAnswer = true;
+  readonly pluginAsks: PluginServerRequest[] = [];
 
   constructor(config: CompanionConfig = emptyCompanionConfig()) {
     this.config = config;
@@ -81,6 +84,20 @@ export class FakeCompanionConfig implements CompanionConfigApi {
 
   reload(): Promise<CompanionConfig> {
     this.reloads += 1;
+    return Promise.resolve(this.config);
+  }
+
+  addPluginServer(request: PluginServerRequest): Promise<CompanionConfig | null> {
+    this.pluginAsks.push(request);
+    if (!this.nextPluginAnswer) return Promise.resolve(null);
+    const name = `${request.plugin}-${request.server}`;
+    if (this.config.servers.some((server) => server.name === name)) return Promise.reject(`mcp.json already has a server called "${name}"; it was left as it is.`);
+    this.config = { ...this.config, servers: [...this.config.servers, { name, summary: [request.command, ...request.args].join(' '), disabled: false, plugin: request.plugin }] };
+    return Promise.resolve(this.config);
+  }
+
+  removePluginServers(plugin: string): Promise<CompanionConfig> {
+    this.config = { ...this.config, servers: this.config.servers.filter((server) => server.plugin !== plugin) };
     return Promise.resolve(this.config);
   }
 

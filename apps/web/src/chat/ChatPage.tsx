@@ -77,6 +77,7 @@ import { chooseMemoryStore, type ChooseMemoryOptions, type MemoryChoice } from '
 import { loadChatPlugins } from '../plugins/chat-plugins';
 import type { PluginAssets } from '../plugins/assets';
 import { defaultPluginShelf, type PluginShelf } from '../plugins/shelf';
+import { scheduleOwners } from '../plugins/offers';
 import { pluginWall as placeLayout, usePluginWall } from '../plugins/wall';
 import { connectToolServers, homePrompt, settingsToolGrants, type ConnectToolServersOptions, type ToolServerStatus } from './chat-tools';
 import { connectDocuments, type ConnectDocumentsOptions, type ConnectedDocuments } from './chat-documents';
@@ -805,6 +806,8 @@ function ConfiguredChatPage({
   // Read once: only the *starting* width decides the drawer's default (decision 9). A
   // window resized mid-session keeps whatever the person set with the Transcript button.
   const [drawerOpen, setDrawerOpen] = useState(() => window.innerWidth >= DRAWER_OPEN_AT_PX);
+  // P10-T07: whose each schedule is, for the Schedules panel (settings are read once per visit).
+  const scheduleOwnerMap = useMemo(() => scheduleOwners(settings), [settings]);
   // P10-T05: a plugin's layout takes a board until replaced or cleared. The open drawer covers the screen,
   // so a layout for the screen alone moves to the whiteboard while it is open (R-68).
   const pluginWall = useMemo(() => (pluginLayout === null ? null : placeLayout(pluginLayout.display, pluginLayout.decoded, drawerOpen)), [pluginLayout, drawerOpen]);
@@ -1288,7 +1291,7 @@ function ConfiguredChatPage({
         ) : drawerView === 'plans' ? (
           <PlansPanel characterName={pack.persona.name} plans={plans} />
         ) : drawerView === 'schedules' ? (
-          <SchedulesPanel characterName={pack.persona.name} notifications={notifications} schedules={schedules} timeZone={timeZone} />
+          <SchedulesPanel characterName={pack.persona.name} notifications={notifications} owners={scheduleOwnerMap} schedules={schedules} timeZone={timeZone} />
         ) : drawerView === 'thoughts' ? (
           <InnerPanel characterName={pack.persona.name} inner={inner} />
         ) : drawerView === 'body' ? (

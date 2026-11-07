@@ -436,8 +436,8 @@ describe('Settings → On this computer (P8-T06)', () => {
     const api = new FakeCompanionConfig(
       emptyCompanionConfig({
         servers: [
-          { name: 'git', summary: 'uvx mcp-server-git', disabled: false },
-          { name: 'old', summary: 'node old.js', disabled: true },
+          { name: 'git', summary: 'uvx mcp-server-git', disabled: false, plugin: null },
+          { name: 'old', summary: 'node old.js', disabled: true, plugin: null },
         ],
       }),
     );

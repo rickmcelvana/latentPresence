@@ -23,6 +23,8 @@ export interface SchedulesPanelProps {
   readonly notifications: PageNotifications;
   /** Test seam: the clock the words are measured from. */
   readonly now?: (() => Date) | undefined;
+  /** P10-T07: the plugin that made each schedule, by schedule id, to say whose it is. */
+  readonly owners?: ReadonlyMap<string, string> | undefined;
 }
 
 /** The words refresh this often, so "in 3 hours" does not go stale on a panel left open. */
@@ -34,7 +36,7 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function SchedulesPanel({ schedules, characterName, timeZone, notifications, now }: SchedulesPanelProps): ReactElement {
+export function SchedulesPanel({ schedules, characterName, timeZone, notifications, now, owners }: SchedulesPanelProps): ReactElement {
   if (schedules === null) {
     return (
       <section className="panel schedules-panel">
@@ -47,10 +49,10 @@ export function SchedulesPanel({ schedules, characterName, timeZone, notificatio
       </section>
     );
   }
-  return <SchedulesView characterName={characterName} notifications={notifications} now={now} schedules={schedules} timeZone={timeZone} />;
+  return <SchedulesView characterName={characterName} notifications={notifications} now={now} owners={owners} schedules={schedules} timeZone={timeZone} />;
 }
 
-function SchedulesView({ schedules, characterName, timeZone, notifications, now }: SchedulesPanelProps & { schedules: Schedules }): ReactElement {
+function SchedulesView({ schedules, characterName, timeZone, notifications, now, owners }: SchedulesPanelProps & { schedules: Schedules }): ReactElement {
   const subscribe = useCallback((listener: () => void) => schedules.subscribe(listener), [schedules]);
   const getSnapshot = useCallback(() => schedules.snapshot(), [schedules]);
   const all = useSyncExternalStore(subscribe, getSnapshot);
@@ -125,6 +127,7 @@ function SchedulesView({ schedules, characterName, timeZone, notifications, now 
                     onConfirm={(on) => setConfirming(on ? schedule.id : null)}
                     onPause={() => act(schedules.pause(schedule.id))}
                     onResume={() => act(schedules.resume(schedule.id))}
+                    owner={owners?.get(schedule.id) ?? null}
                     schedule={schedule}
                     timeZone={timeZone}
                   />
@@ -136,7 +139,7 @@ function SchedulesView({ schedules, characterName, timeZone, notifications, now 
                 <summary>Finished ({finished.length})</summary>
                 <ul aria-label="Finished" className="schedules-list">
                   {finished.map((schedule) => (
-                    <ScheduleRow clock={clock} key={schedule.id} schedule={schedule} timeZone={timeZone} />
+                    <ScheduleRow clock={clock} key={schedule.id} owner={owners?.get(schedule.id) ?? null} schedule={schedule} timeZone={timeZone} />
                   ))}
                 </ul>
               </details>
@@ -150,6 +153,8 @@ function SchedulesView({ schedules, characterName, timeZone, notifications, now 
 
 interface RowProps {
   readonly schedule: Schedule;
+  /** The plugin that made it, or null. */
+  readonly owner: string | null;
   readonly clock: Date;
   readonly timeZone: string;
   /** Present only on an upcoming row: the buttons. */
@@ -171,7 +176,7 @@ function repeatLabel(schedule: Schedule): string {
   return schedule.trigger.kind === 'cron' ? (repeatWords(schedule.trigger.expression) ?? schedule.trigger.expression) : 'once';
 }
 
-function ScheduleRow({ schedule, clock, timeZone, confirming, onConfirm, onCancel, onPause, onResume }: RowProps): ReactElement {
+function ScheduleRow({ schedule, owner, clock, timeZone, confirming, onConfirm, onCancel, onPause, onResume }: RowProps): ReactElement {
   const last = schedule.lastRun;
   // Not a pill: "Thursday 15 October at 09:00 (in 2 days and 1 hour)" must wrap in a narrow drawer.
   const nextClass = schedule.status === 'paused' ? 'schedules-next schedules-next-paused' : 'schedules-next';
@@ -183,6 +188,7 @@ function ScheduleRow({ schedule, clock, timeZone, confirming, onConfirm, onCance
         <span className={nextClass}>{nextWords(schedule, clock, timeZone)}</span>
         <span>{repeatLabel(schedule)}</span>
         {schedule.runOn === 'companion' && <span>runs on the companion</span>}
+        {owner !== null && <span>from the {owner} plugin</span>}
       </span>
       {last !== null && last.outcome !== 'skipped' && (
         <p className="schedules-last">

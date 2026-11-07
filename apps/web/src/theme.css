@@ -1422,6 +1422,55 @@ kbd {
   gap: var(--gap-md);
 }
 
+/* What a plugin offers beyond its tools (P10-T07): servers, programs, schedules, each asked once. */
+.plugin-offers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding-top: var(--gap-sm);
+  border-top: 1px solid var(--border);
+}
+
+.plugin-offer-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plugin-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  padding: var(--gap-sm) var(--gap-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.plugin-offer-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.plugin-offer-answer {
+  color: var(--accent);
+}
+
+.plugin-offer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+/* Whose it is: a server or program a plugin added, in Settings and the Schedules panel (P10-T07). */
+.plugin-tag {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* A plugin budget warning (P10-T04): advice, in the warning colour, never a block. */
 .plugin-budget {
   color: var(--warning);

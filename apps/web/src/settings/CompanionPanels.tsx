@@ -694,6 +694,7 @@ export function ProgramsPanel({ controller }: PanelProps): ReactElement {
               <div className="companion-database-head">
                 <span className="tools-server-label">{server.name}</span>
                 {server.disabled && <span className="pill pill-warn">off</span>}
+                {server.plugin !== null && <span className="pill plugin-tag">from the {server.plugin} plugin</span>}
               </div>
               <code className="companion-path">{server.summary}</code>
             </li>
