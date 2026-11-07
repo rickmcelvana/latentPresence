@@ -176,8 +176,10 @@ pub async fn cors(request: Request, next: Next) -> Response {
         headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, allow_origin);
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_METHODS,
-            // PUT is P4-T02's: `dbRegisterEmbeddingModel` and `dbWriteBlock` are PUT.
-            HeaderValue::from_static("GET, POST, PUT"),
+            // PUT is P4-T02's: `dbRegisterEmbeddingModel` and `dbWriteBlock` are PUT. DELETE was
+            // missing until R-70 (2026-11-07): removing a plugin deletes its schedules, and the browser
+            // refused `DELETE /schedules/{id}` (and `/db/facts/{id}`, `/db/episodes/{id}`) with no word.
+            HeaderValue::from_static("GET, POST, PUT, DELETE"),
         );
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_HEADERS,

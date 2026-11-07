@@ -217,6 +217,25 @@ describe('PluginsSection (P10-T03)', () => {
       expect(await store.listSchedules('alice')).toEqual([]);
     });
 
+    it('says why it could not be removed when a schedule it made cannot be deleted, and keeps it (R-70)', async () => {
+      const store = new FakeMemoryStore();
+      const given = deps(await served(offering), store);
+      render(<Harness given={given} onSettings={() => {}} />);
+      await readAddress();
+      fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+      const offers = await screen.findByRole('list', { name: 'What Sky cards offers' });
+      fireEvent.click(within(offers).getByRole('button', { name: 'Make it' }));
+      await waitFor(async () => expect(await store.listSchedules('alice')).toHaveLength(1));
+      // The companion refused the request, as a preflight without DELETE did.
+      store.deleteSchedule = () => Promise.reject(new TypeError('Failed to fetch'));
+
+      fireEvent.click(within(screen.getByRole('list', { name: 'Installed plugins' })).getByRole('button', { name: 'Remove' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Remove Sky cards' }));
+      expect((await screen.findByRole('alert')).textContent).toMatch(/^A schedule it made could not be deleted \(Failed to fetch\), so nothing was removed\./u);
+      expect(await given.shelf.list()).toHaveLength(1);
+      expect(await store.listSchedules('alice')).toHaveLength(1);
+    });
+
     it('says a program needs the desktop app, and takes a no thanks as the answer', async () => {
       const given = deps(await served(offering));
       let latest = DEFAULT_SETTINGS;

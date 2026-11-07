@@ -121,6 +121,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
   // P10-T09 (ADR-72 item 9): the index, fetched only on the press.
   const [index, setIndex] = useState<PluginIndexRead | null>(null);
   const [browseProblem, setBrowseProblem] = useState<string | null>(null);
+  const [removeProblem, setRemoveProblem] = useState<string | null>(null);
   const active = packFor(settings.character).persona;
 
   useEffect(() => {
@@ -199,11 +200,27 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
     // What it added goes with it (ADR-72 item 7): its schedules, its programs, its servers and their grants.
     const loaded = rows.find((row) => row.info.id === id)?.loaded;
     const added = pluginAdditions(settings, loaded?.ok === true ? loaded.plugin.manifest : null, id);
+    setRemoveProblem(null);
+    // A step that fails stops it in words, with the plugin still there to try again (R-70: a refused
+    // request used to end it silently, and Remove seemed to do nothing).
+    const step = async (what: string, run: () => Promise<unknown>): Promise<boolean> => {
+      try {
+        await run();
+        return true;
+      } catch (error) {
+        setRemoveProblem(`${what} (${error instanceof Error ? error.message : String(error)}), so nothing was removed. Try again; if it keeps failing, delete it in her Schedules first.`);
+        return false;
+      }
+    };
     const needsStore = forget || added.schedules.length > 0;
-    const store = needsStore ? await deps.memory(settings) : null;
-    for (const { scheduleId } of added.schedules) await store?.deleteSchedule(scheduleId);
-    if (added.programs) await deps.companion?.removePluginServers(id);
-    await removePlugin(id, { shelf: deps.shelf, assets: deps.assets, ...(store === null || !forget ? {} : { forget: { store, characterIds: PACKS.map((pack) => pack.persona.id) } }) });
+    let store: MemoryStore | null = null;
+    if (needsStore && !(await step('Her memory could not be reached', async () => (store = await deps.memory(settings))))) return;
+    for (const { scheduleId } of added.schedules) {
+      if (!(await step('A schedule it made could not be deleted', async () => store?.deleteSchedule(scheduleId)))) return;
+    }
+    if (added.programs && !(await step('Its programs could not be taken out of the companion', async () => deps.companion?.removePluginServers(id)))) return;
+    const forgetting = store === null || !forget ? {} : { forget: { store, characterIds: PACKS.map((pack) => pack.persona.id) } };
+    if (!(await step('It could not be removed', () => removePlugin(id, { shelf: deps.shelf, assets: deps.assets, ...forgetting })))) return;
     onChange((prev) => withoutPluginOffers(withoutPlugin(prev, id), id));
     setRemoving(null);
     setForget(false);
@@ -317,7 +334,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
                   </span>
                   <span className="field-hint">{info.summary}</span>
                 </div>
-                <button className="btn btn-ghost" onClick={() => setRemoving(removing === info.id ? null : info.id)} type="button">
+                <button className="btn btn-ghost" onClick={() => { setRemoveProblem(null); setRemoving(removing === info.id ? null : info.id); }} type="button">
                   Remove
                 </button>
               </div>
@@ -377,10 +394,15 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
                     <button className="btn btn-danger" onClick={() => void remove(info.id)} type="button">
                       Remove {info.name}
                     </button>
-                    <button className="btn btn-ghost" onClick={() => setRemoving(null)} type="button">
+                    <button className="btn btn-ghost" onClick={() => { setRemoveProblem(null); setRemoving(null); }} type="button">
                       Keep it
                     </button>
                   </div>
+                  {removeProblem === null ? null : (
+                    <p className="field-error" role="alert">
+                      {removeProblem}
+                    </p>
+                  )}
                 </div>
               ) : null}
             </li>

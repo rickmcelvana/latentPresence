@@ -308,6 +308,27 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn every_route_that_deletes_is_allowed_by_the_preflight() {
+        // R-70: removing a plugin deletes its schedules from the page; the preflight refused DELETE.
+        for uri in ["/schedules/s1", "/db/facts/f1", "/db/episodes/e1"] {
+            let preflight = Request::builder()
+                .method("OPTIONS")
+                .uri(uri)
+                .header("origin", "http://tauri.localhost")
+                .header("access-control-request-method", "DELETE")
+                .body(Body::empty())
+                .expect("request builds");
+            let response = router().oneshot(preflight).await.expect("router answers");
+            assert_eq!(response.status(), StatusCode::NO_CONTENT, "{uri}");
+            let methods = response.headers()["access-control-allow-methods"]
+                .to_str()
+                .expect("ascii")
+                .to_owned();
+            assert!(methods.contains("DELETE"), "{uri}: {methods}");
+        }
+    }
+
+    #[tokio::test]
     async fn the_relay_forwards_the_key_and_body_and_nothing_else_and_streams_the_answer_back() {
         let (base, hits, _dropped) = upstream().await;
         let request = Request::builder()
