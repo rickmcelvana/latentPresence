@@ -76,6 +76,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
 | ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amended 2026-11-06 (load directly by default, measured; accepted by Rick) | 2026-11-05 |
 | ADR-73 | Office writes through the companion's own Files server: read and write tools for .xlsx and .docx, writing only in folders opened for writing through a native dialog, and only over files she made; the Office plugin declares no servers | accepted 2026-11-06 (Rick, after R-69) | 2026-11-06 |
+| ADR-74 | Characters people make: built-ins plus the person's own, kept in this browser; an id made once (`u-…`); Alice and Theo duplicated, never edited; an editor in Settings → Character; the AI disclosure fixed in the prompt; deleting keeps or forgets the memories (`MemoryStore.forgetCharacter`); shared as a `.persona.json` file; plugins offering characters later | proposed 2026-11-07 | 2026-11-07 |
 
 ---
 
@@ -3239,3 +3240,75 @@ here" on each Files folder; its native dialog is `companion_config_open_folder_f
 calculated. Columns are now sized by `column_widths`: the widest cell, and for a column with
 formulas two digits more than its widest number. When she asks for a file that is not there, the
 refusal names the files of that kind that are, so she need not list folders. Rick accepted this ADR.
+
+## ADR-74 Characters people make: kept in the browser, edited in Settings, shared as a file (proposed 2026-11-07, Phase 11)
+
+**Context.** Testers ask whether they can make characters of their own, and with plugins (ADR-72)
+that would cover a wide range of uses. ADR-55 made a character a pack: `personas/<id>.persona.json`
+(the protocol's `Persona`, parsed at load) plus an app entry naming its default body, and rejected
+"personas edited in the app" as its own task. Everything a character owns is already keyed by the
+persona's id: memory (all three stores, conformance-tested), its voice, body and plugins in
+`settings.characters[id]`, its schedules. What is fixed is the list: `PACKS` in
+`apps/web/src/characters/packs.ts`, a module constant read by seven places (the call's switcher,
+Settings → Character, the welcome wizard, Settings → Plugins and its offers, `settings.ts`,
+`default-persona.ts`). Two more facts shape this: the only line telling her to say she is an AI
+when sincerely asked is **one of Alice's own boundaries** (`renderSystemPrompt` adds only the
+persona's), so an editor could delete it; and `MemoryStore` has no way to forget a character
+except deleting row by row (over the companion, ~40 ms a statement).
+
+**Decisions (recommended).**
+
+1. **The character list is built-ins plus the person's own**, at run time. `PACKS` becomes a
+   registry read through one hook: Alice and Theo first, then stored characters by name. `packFor`
+   keeps its rule (an unknown or deleted id is Alice). The persona format is **unchanged**: a
+   character of the person's own is a `Persona` (version 1) plus its default body, which is any body
+   in the library (built in or their own `.vrm`).
+2. **Kept in this browser's IndexedDB**, as plugins and own bodies are (`CharacterShelf`, with an
+   in-memory fake for tests). Not in the memory store: a self block holds 2,000 characters and a
+   persona can be longer, and a character should exist before it has a database. The cost, said in
+   the editor: someone using one MariaDB from two machines has the memories on both but the character
+   only where it was made, until it is exported and imported.
+3. **The id is made once and never changes**, because it is the memory namespace: `u-` plus the
+   name in lowercase letters and digits plus four random characters (`u-madame-vey-7k2q`). Renaming
+   changes only `name`. The `u-` prefix keeps a person's id from ever meeting a built-in one.
+4. **Alice and Theo cannot be edited, only duplicated.** A duplicate is a new character with a new
+   id and no memories. Their files keep improving with the app, and Alice's memories stay hers.
+5. **The editor is in Settings → Character**: New, Duplicate, Edit, Delete. One form in the
+   persona's own terms: name; who they are (the summary); how they talk (style lines); what they
+   will not do (boundaries); a voice from the Kokoro list with a play button and speed; gestures
+   (rare, some, often); a default body from the library. A new character starts from Alice's style
+   and boundaries, filled in to edit, so a blank form never meets a model. Every limit is the
+   schema's (`LineSchema` 200 characters, 12 lines, summary 1,200) and is said in words beside the
+   field, with the cost per turn shown as it is for plugins (the whole persona is sent every turn).
+6. **She says she is an AI whatever the persona says.** The disclosure moves out of Alice's
+   boundaries into the fixed lines of `renderSystemPrompt` under "WHAT YOU WILL NOT DO", before
+   the persona's own. A persona can add boundaries, never remove that one. The schema keeps
+   `boundaries.min(1)` (the editor's starting lines satisfy it).
+7. **Deleting a character asks one question**: keep what they remember, or forget it. Kept, the
+   memories stay under the id, and importing that character's file again brings them back. Forgot,
+   everything under the id goes in one call. **Either way** its schedules, its plugin offers and
+   its `settings.characters` entry go: a schedule whose character is gone would fire as Alice.
+8. **`MemoryStore.forgetCharacter(characterId)`**, the one protocol change this ADR covers: every
+   episode, fact, plan, self block and schedule under the id, one statement per table on MariaDB
+   (`DELETE /db/characters/{id}` on the companion), a loop in the IndexedDB and fake stores; held
+   to "forgetting one character leaves every other untouched" in the conformance suite. Refused
+   for a built-in id, which is cleared through the Memory view as today.
+9. **Shared as a file**: Export writes `<name>.persona.json` (the `Persona` only: no body, no
+   memories, no settings). Import reads one, checks it with the schema (each problem in a sentence,
+   as `plugin:check` does), and shows it before adding: the name, the summary and the line count,
+   since every word of it is sent to their model every turn. An imported file keeps its id when
+   that id is free and starts with `u-`; a built-in id or a taken one is offered as "add as a new
+   character" (a new id) or, for a taken one, "replace it" (same id, memories kept). Nothing is
+   fetched: import is a file the person picks. A short guide, `docs/characters.md`, and a page on
+   the site.
+10. **Later, not in this phase's first five tasks: a plugin may offer a character** (ADR-72
+    item 7's pattern: offered once on install, accepted or not, removed with the plugin unless the
+    person keeps it). It needs a `characters` field in `PluginManifest`, so it waits for its own
+    ADR note, after testers have made characters by hand.
+
+**Rejected.** *Editing Alice and Theo in place*: an app update would have to merge into the person's
+edits, or lose them. *Persona files in the companion's config folder*: the browser-only person (no
+companion) is the common case. *A character in the memory store*: the 2,000-character block limit,
+and a character should exist without a database. *Letting the persona carry the AI disclosure*: it
+is a promise the app makes, not a trait of a character. *Fetching characters from an address or an
+index*: a file is enough until people share them widely; the plugin index shows how to add it later.

@@ -111,6 +111,35 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-71 · The app on Debian: Chrome first, then the companion · ~1 hour (ADR-07)
+Linux ships as **the hosted app in Chrome, plus the companion built from source** (no Linux desktop app: WebKitGTK has no WebGPU). That has been measured once, in Spike E on Fedora in September, and never end to end. The open question from then: Chrome on Linux gave **no WebGPU adapter as launched** and needed `--disable-gpu-sandbox`; forcing it on gave SwiftShader (software), which is slow and passes a naive check.
+**1. The GPU driver.** In a terminal: `nvidia-smi`. It should name your card and a driver version. If it says the command is not found or no device, the NVIDIA driver is not installed: stop here and tell Claude what Debian version you have (`cat /etc/debian_version`).
+**2. Chrome.** Install Google Chrome from google.com/chrome (the `.deb`), then:
+```bash
+sudo apt install ./google-chrome-stable_current_amd64.deb
+```
+**3. What Chrome gives.** Open `chrome://gpu` and copy the lines under "Graphics Feature Status" for **WebGPU** and **Vulkan**. Then open https://app.latentpresence.com, go through the welcome steps (model: your Ollama cloud key, or an endpoint you have), and in /chat press **Start voice** and talk for a minute. Note: does she hear you, how long before she answers, does the avatar move smoothly. If voice is refused or the page says no GPU, quit Chrome and start it from a terminal with:
+```bash
+google-chrome --disable-gpu-sandbox https://app.latentpresence.com
+```
+and try again. Write down which of the two worked.
+**4. The companion from source.** In a terminal:
+```bash
+sudo apt install -y build-essential git curl
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+(choose the default install, then close and reopen the terminal). Install Node 22 or newer from nodejs.org (or your usual way), then:
+```bash
+corepack enable
+git clone https://github.com/rickmcelvana/latentPresence.git
+cd latentPresence
+pnpm install
+pnpm companion
+```
+The first build takes several minutes. When it says `listening on http://127.0.0.1:8787` it prints a **pairing code**: in Chrome, Settings → Companion, enter it. Check that Memory works (tell her something, reload, ask her) and, if you want, put `DATABASE_URL` in a `.env` beside `package.json` to use the MariaDB.
+**5. Report**: the `nvidia-smi` line, the two `chrome://gpu` lines, whether `--disable-gpu-sandbox` was needed, how voice and the avatar felt, and whether the companion built and paired. Anything that needed a step not written here goes in the Linux docs.
+
+
 ### R-70 · The plugin index live, and a friend's plugin · ~20 minutes, then the friend (P10-T09)
 **1. CORS on the site's `/plugins/`.** The app fetches `latentpresence.com/plugins/index.json` from
 another site, so Caddy must allow it. In the Caddyfile on the server, inside the `latentpresence.com {`

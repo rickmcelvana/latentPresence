@@ -159,6 +159,19 @@ Deliverables
 
 Exit criteria: on a fresh install, Tarot and Office installed from the index, both enabled on one character, both working in one conversation within the context warning; and one plugin written from the guide alone by someone other than the architect.
 
+## Phase 11 — Characters people make (planned 2026-11-07, ADR-74)
+
+Goal: anyone can make, edit and share a character of their own, which with plugins covers uses we will never build ourselves.
+
+Deliverables
+- The character list as built-ins plus the person's own, kept in the browser; a fixed id per character as its memory namespace.
+- An editor in Settings → Character (new, duplicate, edit, delete) in the persona's own terms, with every limit said in words and the per-turn cost shown.
+- The AI disclosure fixed in the prompt, whatever a persona says.
+- Deleting a character keeps or forgets its memories, in one call on every store.
+- Export and import as a `.persona.json` file; a short guide.
+
+Exit criteria: someone other than the architect makes a character in the editor, talks to it with a plugin enabled, exports it, and a second browser imports it and talks to the same character; deleting it with "forget" leaves every other character's memories untouched.
+
 ---
 
 ## Cross-cutting rules

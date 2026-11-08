@@ -558,3 +558,32 @@ Done when: "make a spreadsheet of this month's grocery budget" writes a real `.x
 ### P10-T09 The index and the authoring guide — owner: main + human — built 2026-11-07; R-70 open (the site deployed with CORS on /plugins/, Browse live, a friend's plugin)
 Depends: P10-T06. `plugins/index.json` in the site's repository (item 9) with Tarot and Office; Browse in Settings → Plugins, fetched only on the press; `docs/plugins.md` (a short version on the site) and `plugins/template/`; the JSON Schema published beside the index.
 Done when: Browse lists both, installs one, and refuses an entry whose manifest hash changed; a friend of Rick's writes and installs a plugin from the guide alone, and every question they asked is folded back into the guide (a Rick check).
+
+---
+
+## Phase 11 — Characters people make (planned 2026-11-07, ADR-74 proposed)
+
+Order: T01 → T02 → T03, then T04 and T05 in either order; T06 waits for testers. Phase exit criterion in `docs/PLAN.md`.
+
+### P11-T01 The character list and its shelf — owner: main
+`CharacterShelf` (IndexedDB, and an in-memory fake) holding the person's characters: a `Persona` and its default body id. `PACKS` becomes a registry read through one hook (built-ins first, then the person's by name), and the seven readers move to it: the call's switcher, Settings → Character, the welcome wizard's character step, Settings → Plugins and its offers, `settings.ts`, `default-persona.ts`. `packFor` keeps its rule. Ids made by `newCharacterId(name)` (`u-` + slug + four random characters, ADR-74 item 3). A stored character whose default body is gone wears Alice's.
+Done when: a stored character is listed in all four places and can be switched to; ChatPage's ADR-55 done-when test passes with a stored character as the second one (one store, two namespaces); an unknown id is still Alice; the shelf survives a reload (fake-indexeddb).
+
+### P11-T02 The AI disclosure fixed in the prompt — owner: main
+Move "If someone sincerely asks whether you are a person or an AI, tell them plainly" out of `personas/alice.persona.json` into the fixed lines of `renderSystemPrompt` (item 6), before the persona's boundaries; Theo's file checked for the same line. Snapshot tests updated.
+Done when: a persona with none of Alice's boundaries still carries the line; a live check (`docs/runs/P11-T02.md`) asks "are you a real person?" sincerely of a persona written to claim it is human, and she says she is an AI, on glm-5.2:cloud and a small local model.
+
+### P11-T03 The character editor — owner: main
+Depends: P11-T01, P11-T02. Settings → Character: New, Duplicate (on Alice and Theo, the only action they have), Edit, Delete (item 5). The form: name, who they are, how they talk, what they will not do, voice with a play button and speed, gestures, default body from the library; a new character starts from Alice's lines. Every limit beside its field in words; the per-turn cost shown as plugins show theirs; problems in sentences from `PersonaSchema`. Delete asks "keep what they remember, or forget it" but, until T04, only "keep" is offered; its schedules, plugin offers and settings entry go either way (item 7). Styled in `theme.css` the same day; axe in the page test.
+Done when: a page test makes a character, edits a line, renames it (id unchanged), switches to it and deletes it; the form refuses a 13th style line and a 201-character line in words; a schedule of a deleted character is gone; seen in the Browser pane.
+
+### P11-T04 Forgetting a character — owner: main
+Depends: P11-T03. `MemoryStore.forgetCharacter(characterId)` in `packages/protocol` (item 8, the ADR note): the fake and IndexedDB stores; the companion's `DELETE /db/characters/{id}` with one statement per table in MariaDB, refused for `alice` and `theo`; the conformance suite's "forgetting one character leaves every other untouched", run against the dev MariaDB too. Delete's "forget it" turns on.
+Done when: the conformance test passes on all three stores (the MariaDB leg in `vector` CI); forgetting a character with 500 episodes over the companion is one request; the page shows what was forgotten.
+
+### P11-T05 Export, import and the guide — owner: main + human
+Depends: P11-T03. Export writes `<name>.persona.json` (the `Persona` only). Import picks a file, checks it (each problem in a sentence), shows the name, the summary and the line count, and adds it under the id rules of item 9 (free `u-` id kept; a built-in or taken id offered as a new character, or for a taken one, "replace it" with memories kept). `docs/characters.md` and a short page on the site.
+Done when: a page test exports a character, deletes it keeping its memories, imports the file and finds the memories again; a file with Alice's id comes in as a new character; a broken file is refused in sentences; a Rick check: someone other than the architect makes a character with a plugin enabled and moves it to a second browser (the phase's exit criterion).
+
+### P11-T06 A plugin offers a character — owner: main (after T05 and tester feedback)
+A `characters` field in `PluginManifest` (its own ADR-72 note), offered once on install like schedules (ADR-72 item 7), kept or removed with the plugin. Planned only once testers have made characters by hand.
