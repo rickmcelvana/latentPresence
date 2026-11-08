@@ -561,7 +561,7 @@ Done when: Browse lists both, installs one, and refuses an entry whose manifest 
 
 ---
 
-## Phase 11 — Characters people make (planned 2026-11-07, ADR-74 proposed)
+## Phase 11 — Characters people make (planned 2026-11-07, ADR-74 accepted 2026-11-08)
 
 Order: T01 → T02 → T03, then T04 and T05 in either order; T06 waits for testers. Phase exit criterion in `docs/PLAN.md`.
 

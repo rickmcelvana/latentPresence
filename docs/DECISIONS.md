@@ -76,7 +76,7 @@ One entry per decision. `proposed` until Rick confirms, then `accepted`. Superse
 | ADR-71 | 1.0 ships with Phase 1's exit criterion (R-9) and the laptop half of R-13 unmeasured, said in the release's notes; R-1 was read on the weakest class of GPU; release notes live in `docs/releases/` and reach the app through `latest.json` | accepted 2026-11-05 (Rick) | 2026-11-05 |
 | ADR-72 | Plugins: a manifest bundling instructions, declarative tools over built-in primitives, data, pinned assets, board layouts, MCP servers and schedule presets; no plugin code in the page; per character, loaded lazily; installed from a folder, zip or URL behind a consent screen; a static index on latentpresence.com, fetched only when asked | accepted 2026-11-06 (Rick); item 4 amended 2026-11-06 (load directly by default, measured; accepted by Rick) | 2026-11-05 |
 | ADR-73 | Office writes through the companion's own Files server: read and write tools for .xlsx and .docx, writing only in folders opened for writing through a native dialog, and only over files she made; the Office plugin declares no servers | accepted 2026-11-06 (Rick, after R-69) | 2026-11-06 |
-| ADR-74 | Characters people make: built-ins plus the person's own, kept in this browser; an id made once (`u-…`); Alice and Theo duplicated, never edited; an editor in Settings → Character; the AI disclosure fixed in the prompt; deleting keeps or forgets the memories (`MemoryStore.forgetCharacter`); shared as a `.persona.json` file; plugins offering characters later | proposed 2026-11-07 | 2026-11-07 |
+| ADR-74 | Characters people make: built-ins plus the person's own, kept in this browser; an id made once (`u-…`); Alice and Theo duplicated, never edited; an editor in Settings → Character; the AI disclosure fixed in the prompt; deleting keeps or forgets the memories (`MemoryStore.forgetCharacter`); shared as a `.persona.json` file; plugins offering characters later | accepted 2026-11-08 (Rick) | 2026-11-07 |
 
 ---
 
@@ -3241,7 +3241,7 @@ calculated. Columns are now sized by `column_widths`: the widest cell, and for a
 formulas two digits more than its widest number. When she asks for a file that is not there, the
 refusal names the files of that kind that are, so she need not list folders. Rick accepted this ADR.
 
-## ADR-74 Characters people make: kept in the browser, edited in Settings, shared as a file (proposed 2026-11-07, Phase 11)
+## ADR-74 Characters people make: kept in the browser, edited in Settings, shared as a file (accepted 2026-11-08, Phase 11)
 
 **Context.** Testers ask whether they can make characters of their own, and with plugins (ADR-72)
 that would cover a wide range of uses. ADR-55 made a character a pack: `personas/<id>.persona.json`

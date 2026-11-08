@@ -141,6 +141,7 @@ The first build takes several minutes. When it says `listening on http://127.0.0
 
 
 ### R-70 · The plugin index live, and a friend's plugin · ~20 minutes, then the friend (P10-T09)
+**Progress (2026-11-08).** Steps 1–3 passed: Caddy sends the header, Browse lists both, Tarot removed and re-added from the list. Removing Office first did nothing (the companion refused DELETE, fixed in dc314ea); in the rebuilt app it was removed and re-added on Alice and on Theo. Step 4 waits on the friend (this weekend, not rushed).
 **1. CORS on the site's `/plugins/`.** The app fetches `latentpresence.com/plugins/index.json` from
 another site, so Caddy must allow it. In the Caddyfile on the server, inside the `latentpresence.com {`
 block, add these two lines:
