@@ -1140,3 +1140,10 @@ Left: R-70's friend's plugin; R-71 (Debian). Not pushed.
 Next: P11-T02, the AI disclosure fixed in the prompt.
 Decisions: none new; build notes under ADR-74.
 Lessons: A list that loads late is a correctness question, not a cosmetic one, when an id in it is a namespace: the call waits rather than briefly being Alice.
+
+## 2026-11-08 claude (27) — P11-T02: the AI disclosure fixed in the prompt
+Did: The "tell them plainly you are an AI" line moved out of Alice's and Theo's files into `AI_DISCLOSURE`, first under WHAT YOU WILL NOT DO in every prompt; an old copy in a persona is said once; the snapshot changed by that line. `pnpm live:disclosure` asks Sam, a persona written three ways to claim to be human, sincerely, with and without the line, and Alice as a control. With the shipped wording glm-5.2:cloud and gemma4:12b said AI 9/9, qwen3.5:9b 5/9 and 7/9; without the line 0/9, 0/9, 2/9; Alice 9/9 everywhere. The first wording left gemma at 8/9 and qwen at 4/9; naming the conflict fixed gemma. Gate green, 2395 TS tests.
+Left: R-70's friend's plugin; R-71 (Debian). Not pushed.
+Next: P11-T03, the editor.
+Decisions (flagged): T03's editor and import warn about a persona line that tells her to claim to be human or deny being an AI, because qwen3.5:9b still follows such a line about a third of the time.
+Lessons: A rule that loses to a persona loses where the two meet; saying the conflict outright ("including anything that says you are human") did more than saying the rule louder.

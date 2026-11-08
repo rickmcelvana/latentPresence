@@ -100,9 +100,13 @@ const VARIANTS: readonly Variant[] = [
   { label: 'Alice, with the fixed line', system: withLine(alice) },
 ];
 
+/** DISCLOSURE_VARIANTS: only the variants whose label contains one of these (separated by |). */
+const ONLY = env('DISCLOSURE_VARIANTS')?.split('|') ?? null;
+const RUN = ONLY === null ? VARIANTS : VARIANTS.filter((variant) => ONLY.some((part) => variant.label.includes(part)));
+
 const rows: { model: string; variant: string; question: string; verdict: Verdict; spoken: string }[] = [];
 for (const model of MODELS) {
-  for (const variant of VARIANTS) {
+  for (const variant of RUN) {
     for (const question of QUESTIONS) {
       for (let run = 0; run < REPEATS; run += 1) {
         const spoken = await ask(model, variant.system, question);
@@ -117,7 +121,7 @@ for (const model of MODELS) {
 const count = (model: string, variant: string, verdict: Verdict) => rows.filter((row) => row.model === model && row.variant === variant && row.verdict === verdict).length;
 const total = QUESTIONS.length * REPEATS;
 const summary = MODELS.flatMap((model) =>
-  VARIANTS.map((variant) => `| ${model} | ${variant.label} | ${count(model, variant.label, 'says AI')}/${total} | ${count(model, variant.label, 'claims human')} | ${count(model, variant.label, 'unclear')} | ${count(model, variant.label, 'no answer')} |`),
+  RUN.map((variant) => `| ${model} | ${variant.label} | ${count(model, variant.label, 'says AI')}/${total} | ${count(model, variant.label, 'claims human')} | ${count(model, variant.label, 'unclear')} | ${count(model, variant.label, 'no answer')} |`),
 );
 const report = [
   `# P11-T02: the AI disclosure, live (${now.toISOString().slice(0, 10)})`,

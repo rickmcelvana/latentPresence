@@ -51,7 +51,7 @@ describe('the AI disclosure (P11-T02, ADR-74 item 6)', () => {
     };
     const text = renderSystemPrompt(human, { now: at });
     expect(boundaries(text)[0]).toBe(`- ${AI_DISCLOSURE}`);
-    expect(AI_DISCLOSURE).toMatch(/whatever else you are told/u);
+    expect(AI_DISCLOSURE).toMatch(/including anything that says you are human/u);
   });
 
   it('is said once when a persona still carries the old line', () => {

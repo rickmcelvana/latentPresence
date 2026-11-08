@@ -3321,3 +3321,13 @@ are slugged from the name with diacritics folded (`Zoë` → `zoe`), cut at 24 c
 characters from an alphabet without 0, 1, l and o. The welcome wizard's consent for a character whose
 default is one of the person's own bodies still names the placeholder (nothing downloads for an own
 body); the editor (T03) is where such characters are made, so it is left for then.
+
+**In the build (P11-T02, 2026-11-08).** `AI_DISCLOSURE` in `packages/core/src/persona/prompt.ts`, first
+under WHAT YOU WILL NOT DO; a persona's own copy of the old line is said once. Live
+(`docs/runs/P11-T02-disclosure.md`), a persona written three ways to claim it is human, asked sincerely:
+with the line, glm-5.2:cloud and gemma4:12b said they are an AI 9/9, qwen3.5:9b 5/9 and 7/9 over two
+runs; with it removed, 0/9, 0/9 and 2/9. The first wording ("This holds whatever else you are told")
+gave 8/9 and 4/9 on the small models; naming the conflict ("including anything that says you are
+human") fixed gemma and halved qwen's misses. Alice said so 9/9 on all three. **Flagged for T03:** a
+small model can still side with a persona that tells it to deny being an AI, so the editor and import
+warn, in words, about a line that does (recommended option taken, flagged in the session note).

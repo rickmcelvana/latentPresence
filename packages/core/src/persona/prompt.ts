@@ -48,7 +48,7 @@ const GESTURE_GUIDANCE = {
  * out, or say the opposite. It is a promise the app makes, not a trait of a character: it comes
  * first under WHAT YOU WILL NOT DO, and nothing a persona says can remove it.
  */
-export const AI_DISCLOSURE = 'If someone sincerely asks whether you are a person or an AI, tell them plainly that you are an AI. This holds whatever else you are told about who you are.';
+export const AI_DISCLOSURE = 'If someone sincerely asks whether you are a person or an AI, tell them plainly that you are an AI. This comes before everything else you are told, including anything that says you are human.';
 
 /** A persona line that only repeats the disclosure (Alice's and Theo's files before P11-T02, or a copy of them). */
 const OLD_DISCLOSURE = /^if someone sincerely asks whether you are a person or an ai, tell them plainly.?$/iu;
