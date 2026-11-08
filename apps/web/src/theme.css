@@ -1648,6 +1648,9 @@ kbd {
 }
 
 .transcript-log {
+  /* Its own containing block, so the screen-reader-only words in a line scroll and clip with it (see
+     .bodies-body). */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--gap-md);
@@ -2412,6 +2415,11 @@ kbd {
 }
 
 .bodies-body {
+  /* Its own containing block, so the hidden file input scrolls and clips with the list. Without it the
+     input was placed against the drawer, at the list's unscrolled foot: each body added pushed it lower,
+     the call grew taller than the window, and focusing it after an add scrolled the whole call up over
+     the dark page beneath. */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--gap-md);
