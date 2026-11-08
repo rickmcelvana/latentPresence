@@ -3312,3 +3312,12 @@ companion) is the common case. *A character in the memory store*: the 2,000-char
 and a character should exist without a database. *Letting the persona carry the AI disclosure*: it
 is a promise the app makes, not a trait of a character. *Fetching characters from an address or an
 index*: a file is enough until people share them widely; the plugin index shows how to add it later.
+
+**In the build (P11-T01, 2026-11-08).** The shelf reaches every page through `SettingsDeps.characters`,
+and `useCharacters` re-reads it on every change, so lists follow an edit without a reload. A saved id
+of the person's own **waits for the shelf** before the call mounts ("Finding who you were talking
+to…"): taken for Alice for that moment, the room would have started a visit under her namespace. Ids
+are slugged from the name with diacritics folded (`Zoë` → `zoe`), cut at 24 characters, and four
+characters from an alphabet without 0, 1, l and o. The welcome wizard's consent for a character whose
+default is one of the person's own bodies still names the placeholder (nothing downloads for an own
+body); the editor (T03) is where such characters are made, so it is left for then.

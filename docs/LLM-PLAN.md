@@ -565,7 +565,7 @@ Done when: Browse lists both, installs one, and refuses an entry whose manifest 
 
 Order: T01 → T02 → T03, then T04 and T05 in either order; T06 waits for testers. Phase exit criterion in `docs/PLAN.md`.
 
-### P11-T01 The character list and its shelf — owner: main
+### P11-T01 The character list and its shelf — owner: main — done 2026-11-08
 `CharacterShelf` (IndexedDB, and an in-memory fake) holding the person's characters: a `Persona` and its default body id. `PACKS` becomes a registry read through one hook (built-ins first, then the person's by name), and the seven readers move to it: the call's switcher, Settings → Character, the welcome wizard's character step, Settings → Plugins and its offers, `settings.ts`, `default-persona.ts`. `packFor` keeps its rule. Ids made by `newCharacterId(name)` (`u-` + slug + four random characters, ADR-74 item 3). A stored character whose default body is gone wears Alice's.
 Done when: a stored character is listed in all four places and can be switched to; ChatPage's ADR-55 done-when test passes with a stored character as the second one (one store, two namespaces); an unknown id is still Alice; the shelf survives a reload (fake-indexeddb).
 

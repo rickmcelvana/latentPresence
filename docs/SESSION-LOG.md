@@ -1133,3 +1133,10 @@ Left: R-70's friend's plugin (this weekend, not rushed); the desktop app rebuilt
 Next: Rick accepts ADR-74, then P11-T01; R-71 when Rick boots Debian.
 Decisions (flagged): ADR-74 proposed, recommended options throughout: characters kept in IndexedDB, `u-` ids made once, built-ins duplicated not edited, the AI disclosure fixed in the prompt, `MemoryStore.forgetCharacter` the one protocol change, sharing by file.
 Lessons: An overflow:hidden box still scrolls when focus asks it to. A visually hidden absolute element must sit inside the scroller it belongs to, or it stretches whatever box it is positioned against.
+
+## 2026-11-08 claude (26) — P11-T01: the character list and its shelf
+Did: Recorded ADR-74 accepted and R-70 steps 1–3 passed (Office removed and re-added on Alice and Theo in the rebuilt app). P11-T01: `CharacterShelf` (IndexedDB and in-memory) keeps the person's characters; `BUILT_IN_PACKS` plus `useCharacters()` replace `PACKS` in the call's switcher, Settings → Character, the wizard, Settings → Plugins and its offers; `newCharacterId` makes `u-` ids and the shelf refuses any other; `bodyFor` wears an own default body. ADR-55's done-when test runs twice, the second time with a stored character. Seen in the pane: a character put on the real shelf is listed in Settings and Plugins, and the call opens as her. Gate green, 2392 TS tests.
+Left: R-70's friend's plugin; R-71 (Debian). Not pushed.
+Next: P11-T02, the AI disclosure fixed in the prompt.
+Decisions: none new; build notes under ADR-74.
+Lessons: A list that loads late is a correctness question, not a cosmetic one, when an id in it is a namespace: the call waits rather than briefly being Alice.
