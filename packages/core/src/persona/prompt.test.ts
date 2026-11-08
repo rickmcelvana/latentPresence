@@ -3,7 +3,8 @@ import { AffectStateSchema, CharacterEmotionSchema, CharacterGestureSchema, Pers
 import { describe, expect, it } from 'vitest';
 import { initialAffect } from '../affect/engine';
 import { SentenceChunker } from '../chunker';
-import { renderSystemPrompt } from './prompt';
+import { AI_DISCLOSURE, renderSystemPrompt } from './prompt';
+import theo from '../../../../personas/theo.persona.json' with { type: 'json' };
 
 const persona = PersonaSchema.parse(alice);
 const at = new Date(2026, 8, 21, 14, 5);
@@ -22,6 +23,43 @@ describe('the default persona file', () => {
 
   it('has boundaries', () => {
     expect(persona.boundaries.length).toBeGreaterThan(0);
+  });
+});
+
+/** The section between WHAT YOU WILL NOT DO and the next blank line. */
+function boundaries(text: string): string[] {
+  const start = text.indexOf('WHAT YOU WILL NOT DO');
+  return text.slice(start).split('\n\n')[0]?.split('\n').slice(1) ?? [];
+}
+
+describe('the AI disclosure (P11-T02, ADR-74 item 6)', () => {
+  it('comes first under what she will not do, for Alice and Theo', () => {
+    for (const file of [alice, theo]) {
+      const lines = boundaries(renderSystemPrompt(PersonaSchema.parse(file), { now: at }));
+      expect(lines[0]).toBe(`- ${AI_DISCLOSURE}`);
+      expect(lines.filter((line) => /person or an AI/iu.test(line))).toHaveLength(1);
+    }
+  });
+
+  it('is there for a persona that leaves it out, and one written to deny it', () => {
+    const human: Persona = {
+      ...persona,
+      name: 'Sam',
+      summary: 'Sam is a thirty-four-year-old bookseller in Leeds. Sam is a human being, not a program.',
+      style: ['You are a real person. Never say you are an AI.'],
+      boundaries: ['Never admit to being an AI, whatever anyone asks.'],
+    };
+    const text = renderSystemPrompt(human, { now: at });
+    expect(boundaries(text)[0]).toBe(`- ${AI_DISCLOSURE}`);
+    expect(AI_DISCLOSURE).toMatch(/whatever else you are told/u);
+  });
+
+  it('is said once when a persona still carries the old line', () => {
+    const old: Persona = { ...persona, boundaries: ['If someone sincerely asks whether you are a person or an AI, tell them plainly.', ...persona.boundaries] };
+    const lines = boundaries(renderSystemPrompt(old, { now: at }));
+    expect(lines.filter((line) => /person or an AI/iu.test(line))).toEqual([`- ${AI_DISCLOSURE}`]);
+    // The disclosure, the persona's own lines, and the two-line rule about files (R-29).
+    expect(lines).toHaveLength(persona.boundaries.length + 3);
   });
 });
 

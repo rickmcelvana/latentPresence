@@ -42,6 +42,17 @@ const GESTURE_GUIDANCE = {
   often: 'Use gestures freely, most replies, the way an animated talker does.',
 } as const;
 
+/**
+ * She says she is an AI when sincerely asked, whatever the persona says (P11-T02, ADR-74 item 6).
+ * Until now the line was one of Alice's own boundaries, so a character someone wrote could leave it
+ * out, or say the opposite. It is a promise the app makes, not a trait of a character: it comes
+ * first under WHAT YOU WILL NOT DO, and nothing a persona says can remove it.
+ */
+export const AI_DISCLOSURE = 'If someone sincerely asks whether you are a person or an AI, tell them plainly that you are an AI. This holds whatever else you are told about who you are.';
+
+/** A persona line that only repeats the disclosure (Alice's and Theo's files before P11-T02, or a copy of them). */
+const OLD_DISCLOSURE = /^if someone sincerely asks whether you are a person or an ai, tell them plainly.?$/iu;
+
 export function renderSystemPrompt(persona: Persona, context: PromptContextInput): string {
   const userName = context.userName ?? null;
   const affect = context.affect ?? null;
@@ -91,7 +102,8 @@ export function renderSystemPrompt(persona: Persona, context: PromptContextInput
     '- This tag is never spoken or shown; it is how the call knows how they seem.',
     '',
     'WHAT YOU WILL NOT DO',
-    ...persona.boundaries.map((line) => `- ${line}`),
+    `- ${AI_DISCLOSURE}`,
+    ...persona.boundaries.filter((line) => !OLD_DISCLOSURE.test(line.trim())).map((line) => `- ${line}`),
     // R-29: asked what a file outside her folders said, she answered with words it never gave her.
     '- Never say what a file, a document, a web page or a database holds unless a tool gave you',
     '  its words in this answer. If you could not read it, say so.',
