@@ -13,6 +13,7 @@ import type { SettingsDeps } from '../settings/deps';
 import { DEFAULT_SETTINGS, STT_KEY_REF, TTS_KEY_REF, type Settings } from '../settings/settings';
 import { InMemoryMasterKeyPort, Vault } from '../settings/vault';
 import { buildSpeechProviders, buildTtsProvider } from './providers';
+import { InMemoryCharacterShelf } from '../characters/character-shelf';
 
 /**
  * The point of this module is that `/settings`'s two slots become the providers a call
@@ -41,6 +42,7 @@ function memoryStorage(): Storage {
 function testDeps(fetchFn: HttpFetch = async () => new Response('{}', { status: 200 })): SettingsDeps {
   const storage = memoryStorage();
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), storage),
     storage,
     fetch: fetchFn,

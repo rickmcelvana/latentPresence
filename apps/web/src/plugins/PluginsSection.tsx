@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent, type ReactElement } from 'react'
 import type { PluginIndexEntry } from '@latentpresence/protocol';
 import { Schedules, pluginBudget, type ScheduleRequest, type ScheduleResult } from '@latentpresence/core';
 import type { JsonValue, MemoryStore, PluginSetting } from '@latentpresence/protocol';
-import { PACKS, packFor } from '../characters/packs';
+import { BUILT_IN_CHARACTERS, type CharacterPack, type Characters } from '../characters/packs';
 import { chooseMemoryStore } from '../chat/chat-memory';
 import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
@@ -60,6 +60,8 @@ export interface PluginsSectionProps {
   readonly settings: Settings;
   readonly onChange: (update: (prev: Settings) => Settings) => void;
   readonly deps?: PluginsDeps;
+  /** Who a plugin can be turned on for (P11-T01): Alice and Theo when not given. */
+  readonly characters?: Characters;
 }
 
 interface Row {
@@ -109,7 +111,7 @@ function PluginIndexList({ index, installed, busy, onRead }: { readonly index: P
   );
 }
 
-export function PluginsSection({ settings, onChange, deps: given }: PluginsSectionProps): ReactElement {
+export function PluginsSection({ settings, onChange, deps: given, characters = BUILT_IN_CHARACTERS }: PluginsSectionProps): ReactElement {
   const [deps] = useState(() => given ?? defaultPluginsDeps());
   const [rows, setRows] = useState<readonly Row[]>([]);
   const [pending, setPending] = useState<Extract<PluginInspection, { ok: true }> | null>(null);
@@ -122,7 +124,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
   const [index, setIndex] = useState<PluginIndexRead | null>(null);
   const [browseProblem, setBrowseProblem] = useState<string | null>(null);
   const [removeProblem, setRemoveProblem] = useState<string | null>(null);
-  const active = packFor(settings.character).persona;
+  const active = characters.packFor(settings.character).persona;
 
   useEffect(() => {
     let cancelled = false;
@@ -219,7 +221,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
       if (!(await step('A schedule it made could not be deleted', async () => store?.deleteSchedule(scheduleId)))) return;
     }
     if (added.programs && !(await step('Its programs could not be taken out of the companion', async () => deps.companion?.removePluginServers(id)))) return;
-    const forgetting = store === null || !forget ? {} : { forget: { store, characterIds: PACKS.map((pack) => pack.persona.id) } };
+    const forgetting = store === null || !forget ? {} : { forget: { store, characterIds: characters.packs.map((pack) => pack.persona.id) } };
     if (!(await step('It could not be removed', () => removePlugin(id, { shelf: deps.shelf, assets: deps.assets, ...forgetting })))) return;
     onChange((prev) => withoutPluginOffers(withoutPlugin(prev, id), id));
     setRemoving(null);
@@ -315,7 +317,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
         />
       )}
 
-      {budgetWarnings(rows, settings).map((warning) => (
+      {budgetWarnings(rows, settings, characters.packs).map((warning) => (
         <p className="field-hint plugin-budget" key={warning} role="status">
           {warning}
         </p>
@@ -342,7 +344,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
               {loaded.ok ? (
                 <>
                   <div className="plugin-characters">
-                    {PACKS.map(({ persona }) => (
+                    {characters.packs.map(({ persona }) => (
                       <label className="tools-switch" key={persona.id}>
                         <input
                           checked={enabledPlugins(settings, persona.id).includes(info.id)}
@@ -360,7 +362,7 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
                     <input checked={settings.lazyPlugins.includes(info.id)} onChange={(event) => onChange((prev) => withPluginLazy(prev, info.id, event.target.checked))} type="checkbox" />
                     Load only when needed: saves its {loaded.plugin.promptTokens.used} tokens until she uses it, but the first use is slower and small models use it less reliably
                   </label>
-                  <PluginOffers companion={deps.companion} makeSchedule={makeSchedule} manifest={loaded.plugin.manifest} onChange={onChange} settings={settings} />
+                  <PluginOffers characters={characters} companion={deps.companion} makeSchedule={makeSchedule} manifest={loaded.plugin.manifest} onChange={onChange} settings={settings} />
                   {Object.entries(loaded.plugin.manifest.settings).map(([key, setting]) => (
                     <PluginSettingField
                       id={`plugin-${info.id}-${key}`}
@@ -414,8 +416,8 @@ export function PluginsSection({ settings, onChange, deps: given }: PluginsSecti
 }
 
 /** Each character's warnings, from the plugins turned on for them (ADR-72 item 4). */
-function budgetWarnings(rows: readonly Row[], settings: Settings): string[] {
-  return PACKS.flatMap(({ persona }) => {
+function budgetWarnings(rows: readonly Row[], settings: Settings, packs: readonly CharacterPack[]): string[] {
+  return packs.flatMap(({ persona }) => {
     const on = enabledPlugins(settings, persona.id);
     const costs = rows.flatMap(({ info, loaded }) =>
       loaded.ok && on.includes(info.id)

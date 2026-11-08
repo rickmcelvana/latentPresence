@@ -1,5 +1,5 @@
 import type { Persona } from '@latentpresence/protocol';
-import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
+import { ALICE } from '../characters/packs';
 
 /**
  * The persona the app ships with (P1-T12): Alice, the first pack (P6-T06).
@@ -9,4 +9,4 @@ import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
  * standing between a typo and a character with no boundaries. `/chat` now reads the active
  * pack's persona; this stays for what has only ever meant Alice (the dev pages, the tests).
  */
-export const defaultPersona: Persona = packFor(DEFAULT_CHARACTER_ID).persona;
+export const defaultPersona: Persona = ALICE.persona;

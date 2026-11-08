@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { defaultBodyDescriptor } from '../characters/bodies';
-import { packFor } from '../characters/packs';
+import type { Characters } from '../characters/packs';
+import { useCharacters } from '../characters/use-characters';
 import { companionConfigApi, type CompanionConfigApi } from '../desktop/companion-config';
 import { desktopShell } from '../desktop/desktop';
 import { useCompanionConfig, type CompanionController, type CompanionConfigOptions } from '../settings/companion-config-state';
@@ -82,6 +83,8 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
   const go = navigate ?? ((path: string) => window.location.assign(path));
 
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
+  const characters = useCharacters(deps.characters);
+  const { packFor } = characters;
   // Read through a ref so two changes in one event (a preset picked, then its URL) both land.
   const latest = useRef(settings);
   const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), steps.length - 1));
@@ -186,6 +189,7 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
       content = (
         <CharacterStep
           body={body}
+          characters={characters.packs}
           character={packFor(settings.character).persona.id}
           descriptor={bodyDescriptor}
           onBody={agreeBody}
@@ -221,6 +225,7 @@ export function Wizard({ deps: depsOverride, devices: devicesOverride, navigate,
           body={body}
           model={modelChosen ? `${endpointLabel(settings.llm.endpoint ?? '')}, ${settings.llm.modelId ?? ''}` : null}
           companion={inApp ? companion : null}
+          characters={characters}
           onGo={goTo}
           settings={settings}
           voice={voice}
@@ -292,10 +297,11 @@ interface SummaryProps {
   /** The companion's settings, in the desktop app; null in a browser, where the step does not exist. */
   readonly companion: CompanionController | null;
   readonly onGo: (step: StepId) => void;
+  readonly characters: Characters;
 }
 
 /** The last step: what was chosen, and a way back to anything skipped. */
-function Summary({ settings, model, body, voice, companion, onGo }: SummaryProps): ReactElement {
+function Summary({ settings, model, body, voice, companion, onGo, characters }: SummaryProps): ReactElement {
   const connected = companion === null ? [] : connectedSummary(companion);
   const rows: { label: string; value: string; fix: { step: StepId; label: string } | null }[] = [
     {
@@ -306,7 +312,7 @@ function Summary({ settings, model, body, voice, companion, onGo }: SummaryProps
     {
       label: 'Character',
       value:
-        packFor(settings.character).persona.name +
+        characters.packFor(settings.character).persona.name +
         (body === 'agreed' ? ', shown on screen.' : ', not shown yet. Chat asks again when you start.'),
       fix: body === 'agreed' ? null : { step: 'character', label: 'Show the character' },
     },

@@ -8,6 +8,8 @@ import type { SettingsDeps } from './deps';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { SettingsPanel } from './SettingsPanel';
 import { expectAccessible } from '../test/axe';
+import { InMemoryCharacterShelf } from '../characters/character-shelf';
+import { ownCharacter } from '../test/characters';
 
 afterEach(() => {
   cleanup();
@@ -46,6 +48,7 @@ function emptyCaches(): MinimalCacheStorage {
  * a test overrides as needed. Nothing here reaches the network. */
 function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), memoryStorage()),
     storage: memoryStorage(),
     fetch: (async () => new Response('{}', { status: 200 })) as HttpFetch,
@@ -248,6 +251,17 @@ describe('SettingsPanel — Character (P6-T06, ADR-55)', () => {
     expect([...picker.options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
     expect(picker.value).toBe('alice');
     expect(screen.getByText(/^Alice is /)).toBeTruthy();
+  });
+
+  it('offers their own characters after Alice and Theo, and choosing one shows its summary (P11-T01, ADR-74)', async () => {
+    const storage = memoryStorage();
+    render(<SettingsPanel deps={testDeps({ storage, characters: new InMemoryCharacterShelf([ownCharacter('Madame Vey', 'u-madame-vey-7k2q')]) })} />);
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Madame Vey' })).toBeTruthy());
+    const picker = screen.getByLabelText('Talking to') as HTMLSelectElement;
+    expect([...picker.options].map((option) => option.textContent)).toEqual(['Alice', 'Theo', 'Madame Vey']);
+    fireEvent.change(picker, { target: { value: 'u-madame-vey-7k2q' } });
+    await waitFor(() => expect(stored(storage).character).toBe('u-madame-vey-7k2q'));
+    expect(screen.getByText('Madame Vey reads tarot cards for people who call.')).toBeTruthy();
   });
 
   it('choosing Theo is saved as the active character and shows his summary and his own voice', async () => {

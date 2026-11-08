@@ -13,6 +13,8 @@ import { browserModelsFor } from '../voice/models';
 import type { WizardDevices } from './devices';
 import { Wizard } from './Wizard';
 import { expectAccessible } from '../test/axe';
+import { InMemoryCharacterShelf } from '../characters/character-shelf';
+import { ownCharacter } from '../test/characters';
 
 afterEach(() => {
   cleanup();
@@ -49,6 +51,7 @@ const health = (database: { kind: 'mariadb' | 'sqlite' | 'none'; connected: bool
 /** Deps for a wizard test: in-memory everything. Nothing here reaches the network or a device. */
 function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), memoryStorage()),
     storage: memoryStorage(),
     fetch: vi.fn(async () => new Response('{}', { status: 200 })) as unknown as HttpFetch,
@@ -617,5 +620,16 @@ describe('Wizard — the companion step, in the app only (P8-T06)', () => {
   it('a browser summary has no row for it', () => {
     render(<Wizard companionConfig={new FakeCompanionConfig()} deps={testDeps()} initialStep={5} navigate={() => {}} />);
     expect(screen.queryByText('Home, notes and documents')).toBeNull();
+  });
+});
+
+describe('Wizard — the character step lists their own characters (P11-T01, ADR-74)', () => {
+  it('offers them after Alice and Theo, and choosing one is saved', async () => {
+    const storage = memoryStorage();
+    render(<Wizard deps={testDeps({ storage, characters: new InMemoryCharacterShelf([ownCharacter('Madame Vey', 'u-madame-vey-7k2q')]) })} initialStep={2} navigate={() => {}} />);
+    const vey = await screen.findByRole('radio', { name: /Madame Vey/u });
+    expect(screen.getAllByRole('radio').map((radio) => (radio as HTMLInputElement).value)).toEqual(['alice', 'theo', 'u-madame-vey-7k2q']);
+    fireEvent.click(vey);
+    await waitFor(() => expect((JSON.parse(storage.getItem('latentpresence.settings.v1') ?? '{}') as { character?: string }).character).toBe('u-madame-vey-7k2q'));
   });
 });

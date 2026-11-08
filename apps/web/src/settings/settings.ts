@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { JsonValueSchema, McpTransportSchema } from '@latentpresence/protocol';
 import { DEFAULT_COMPANION_URL } from '@latentpresence/providers/web';
 import { KOKORO_DEFAULT_VOICE } from '@latentpresence/ml-web/voices';
-import { DEFAULT_CHARACTER_ID, packFor } from '../characters/packs';
+import { ALICE, DEFAULT_CHARACTER_ID } from '../characters/packs';
 import { desktopShell } from '../desktop/desktop';
 import { SETTINGS_STORAGE_KEY } from './welcomed';
 
@@ -274,7 +274,7 @@ function hasCharacters(stored: unknown): boolean {
  */
 function keepVoiceForAlice(settings: Settings): Settings {
   const { tts } = settings;
-  if (tts.kind !== 'kokoro-browser' || tts.voiceId === packFor(DEFAULT_CHARACTER_ID).persona.voice.voiceId) return settings;
+  if (tts.kind !== 'kokoro-browser' || tts.voiceId === ALICE.persona.voice.voiceId) return settings;
   return { ...settings, characters: { ...settings.characters, [DEFAULT_CHARACTER_ID]: { body: null, plugins: [], ...settings.characters[DEFAULT_CHARACTER_ID], voice: { kind: tts.kind, voiceId: tts.voiceId, speed: tts.speed } } } };
 }
 

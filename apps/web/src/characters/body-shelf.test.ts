@@ -1,7 +1,7 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
 import { InMemoryBodyShelf, IndexedDbBodyShelf, isOwnBodyId, type BodyShelf } from './body-shelf';
-import { BUILT_IN_BODIES, PLACEHOLDER_BODY_ID, bodyFor } from './bodies';
+import { BUILT_IN_BODIES, PLACEHOLDER_BODY_ID, THEO_BODY_ID, bodyFor } from './bodies';
 
 const described = { name: 'Mine', fileName: 'mine.vrm', bytes: 3, authors: ['Me'], missing: ['blink'] };
 
@@ -55,6 +55,13 @@ describe('bodyFor (P7-T02, ADR-59)', () => {
     // The generated Alice was a built-in body until 2026-10-16; a choice of her is the default now.
     expect(bodyFor('alice-generated', PLACEHOLDER_BODY_ID, shelf, [])).toMatchObject({ kind: 'download', id: PLACEHOLDER_BODY_ID });
     expect(bodyFor('own:1', PLACEHOLDER_BODY_ID, shelf, [mine])).toMatchObject({ kind: 'local', id: 'own:1', name: 'Mine' });
+  });
+
+  it("wears a character's own default body, and the placeholder once it is gone (P11-T01, ADR-74 item 1)", () => {
+    expect(bodyFor(null, 'own:1', shelf, [mine])).toMatchObject({ kind: 'local', id: 'own:1', name: 'Mine' });
+    expect(bodyFor('gone', 'own:1', shelf, [mine])).toMatchObject({ kind: 'local', id: 'own:1' });
+    expect(bodyFor(null, 'own:2', shelf, [mine])).toMatchObject({ kind: 'download', id: PLACEHOLDER_BODY_ID });
+    expect(bodyFor(THEO_BODY_ID, 'own:1', shelf, [mine])).toMatchObject({ kind: 'download', id: THEO_BODY_ID });
   });
 
   it('takes an own body on trust while the shelf is still being read', () => {

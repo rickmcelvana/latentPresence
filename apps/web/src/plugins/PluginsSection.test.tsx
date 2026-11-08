@@ -10,6 +10,8 @@ import { pageSha256 } from './inspect';
 import { PluginsSection, type PluginsDeps } from './PluginsSection';
 import { InMemoryPluginShelf } from './shelf';
 import { FakeCompanionConfig } from '../desktop/companion-config.fake';
+import { charactersFrom } from '../characters/packs';
+import { ownCharacter } from '../test/characters';
 
 afterEach(cleanup);
 
@@ -119,6 +121,24 @@ describe('PluginsSection (P10-T03)', () => {
     expect((within(list).getByLabelText('On for Alice') as HTMLInputElement).checked).toBe(true);
     expect((within(list).getByLabelText('On for Theo') as HTMLInputElement).checked).toBe(false);
     await expectAccessible(container);
+  });
+
+  it('can be turned on for their own characters too, by name (P11-T01, ADR-74)', async () => {
+    const given = deps(await served());
+    let latest = DEFAULT_SETTINGS;
+    render(
+      <PluginsSection
+        characters={charactersFrom([ownCharacter('Madame Vey', 'u-madame-vey-7k2q')])}
+        deps={given}
+        onChange={(update) => (latest = update(latest))}
+        settings={DEFAULT_SETTINGS}
+      />,
+    );
+    await readAddress();
+    fireEvent.click(screen.getByRole('button', { name: 'Install' }));
+    const list = await screen.findByRole('list', { name: 'Installed plugins' });
+    fireEvent.click(within(list).getByLabelText('On for Madame Vey'));
+    expect(latest.characters['u-madame-vey-7k2q']?.plugins).toEqual(['sky']);
   });
 
   it('turns it on per character, and keeps its own settings', async () => {

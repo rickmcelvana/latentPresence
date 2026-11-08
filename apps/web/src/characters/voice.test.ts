@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, type Settings } from '../settings/settings';
-import { packFor } from './packs';
+import { BUILT_IN_CHARACTERS } from './packs';
 import { characterVoice, withCharacterVoice } from './voice';
 
-const theo = packFor('theo').persona;
-const alice = packFor('alice').persona;
+const theo = BUILT_IN_CHARACTERS.packFor('theo').persona;
+const alice = BUILT_IN_CHARACTERS.packFor('alice').persona;
 
 const onServer: Settings = {
   ...DEFAULT_SETTINGS,

@@ -14,6 +14,7 @@ import { VoicePanel, type ActiveCall, type VoicePanelProps } from './VoicePanel'
 import { browserModelsFor } from './models';
 import type { SpeechProviders } from './providers';
 import { expectAccessible } from '../test/axe';
+import { InMemoryCharacterShelf } from '../characters/character-shelf';
 
 afterEach(cleanup);
 
@@ -44,6 +45,7 @@ function memoryStorage(): Storage {
 
 function testDeps(): SettingsDeps {
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), memoryStorage()),
     storage: memoryStorage(),
     fetch: (async () => new Response('{}', { status: 200 })) as HttpFetch,

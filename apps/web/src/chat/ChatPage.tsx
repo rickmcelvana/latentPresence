@@ -58,7 +58,8 @@ import { SchedulesPanel } from '../schedule/SchedulesPanel';
 import { InnerPanel } from '../inner/InnerPanel';
 import { defaultSettingsDeps, type SettingsDeps } from '../settings/deps';
 import { loadSettings, saveSettings, withBodyChoice, type Settings } from '../settings/settings';
-import { DEFAULT_CHARACTER_ID, PACKS, packFor, type CharacterPack } from '../characters/packs';
+import { ALICE, isBuiltInCharacter, type CharacterPack } from '../characters/packs';
+import { useCharacters } from '../characters/use-characters';
 import { withCharacterVoice } from '../characters/voice';
 import { bodyFor } from '../characters/bodies';
 import { defaultBodyShelf, type BodyShelf, type OwnBody } from '../characters/body-shelf';
@@ -92,7 +93,7 @@ function localTimeZone(): string {
 }
 
 /** Alice's name, the default character's (P1-T12); the page itself reads the active pack's persona (P6-T06). */
-export const CHAT_CHARACTER_NAME = packFor(DEFAULT_CHARACTER_ID).persona.name;
+export const CHAT_CHARACTER_NAME = ALICE.persona.name;
 /**
  * One session per visit (P4-T04b): memory recall leaves out the asking session, because the
  * history already carries it — so a fixed id would hide every earlier visit from her.
@@ -278,7 +279,9 @@ export function ChatPage({
   const [settings] = useState<Settings>(() => loadSettings(deps.storage));
   // P6-T06 (ADR-55): who she is this visit. Read once; a switch saves it and remounts the room below.
   const [characterId, setCharacterId] = useState(() => settings.character);
-  const pack = packFor(characterId);
+  // P11-T01 (ADR-74): the person's own characters too, once their shelf is read.
+  const characters = useCharacters(deps.characters);
+  const pack = characters.packFor(characterId);
   const switchCharacter = useCallback(
     (id: string) => {
       saveSettings({ ...loadSettings(deps.storage), character: id }, deps.storage);
@@ -301,9 +304,22 @@ export function ChatPage({
     );
   }
 
+  // A saved character of the person's own is not Alice while the shelf is still being read: a room
+  // mounted now would start a visit, and write memory, under the wrong namespace.
+  if (!characters.ready && !isBuiltInCharacter(characterId)) {
+    return (
+      <main className="chat-page">
+        <p className="chat-unconfigured-note" role="status">
+          Finding who you were talking to…
+        </p>
+      </main>
+    );
+  }
+
   return (
     <ConfiguredChatPage
       key={pack.persona.id}
+      characters={characters.packs}
       baseUrl={llm.baseUrl}
       buildProvider={buildProvider}
       camera={camera}
@@ -342,6 +358,8 @@ interface ConfiguredChatPageProps {
   /** P6-T06 (ADR-55): who this room is for, and how to change that. The room is keyed by the pack's id,
    * so a switch mounts a new one: a new session, with everything below built for the new character. */
   readonly pack: CharacterPack;
+  /** Everyone "Talking to" offers (P11-T01): Alice and Theo, then the person's own. */
+  readonly characters: readonly CharacterPack[];
   readonly onSwitch: (id: string) => void;
   readonly buildProvider: (options: ChatLlmOptions) => LLMProvider;
   readonly createRenderer?: (() => CallStageRenderer) | undefined;
@@ -368,6 +386,7 @@ function ConfiguredChatPage({
   companionUrl,
   settings,
   pack,
+  characters,
   onSwitch,
   buildProvider,
   createRenderer,
@@ -1475,7 +1494,7 @@ function ConfiguredChatPage({
           title="Who you are talking to. Switching starts a new visit."
           value={pack.persona.id}
         >
-          {PACKS.map((candidate) => (
+          {characters.map((candidate) => (
             <option key={candidate.persona.id} value={candidate.persona.id}>
               {candidate.persona.name}
             </option>

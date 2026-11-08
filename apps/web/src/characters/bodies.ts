@@ -49,13 +49,14 @@ export function defaultBodyDescriptor(defaultId: string): ModelDescriptor {
  * has, one that is no longer there falls back to the default, as an unknown id does.
  */
 export function bodyFor(saved: string | null, defaultId: string, shelf: BodyShelf, own: readonly OwnBody[] | null): StageBody {
-  const fallback = builtIn(defaultId) ?? (BUILT_IN_BODIES[0] as BuiltInBody);
-  const id = saved ?? fallback.id;
-  const found = builtIn(id);
-  if (found !== undefined) return builtInStageBody(found);
-  if (isOwnBodyId(id)) {
+  const wear = (id: string | null): StageBody | null => {
+    if (id === null) return null;
+    const found = builtIn(id);
+    if (found !== undefined) return builtInStageBody(found);
+    if (!isOwnBodyId(id)) return null;
     const kept = own?.find((body) => body.id === id);
-    if (own === null || kept !== undefined) return { kind: 'local', id, name: kept?.name ?? 'Your own body', read: () => shelf.read(id) };
-  }
-  return builtInStageBody(fallback);
+    return own === null || kept !== undefined ? { kind: 'local', id, name: kept?.name ?? 'Your own body', read: () => shelf.read(id) } : null;
+  };
+  // A character of the person's own may default to one of their own bodies (P11-T01, ADR-74 item 1).
+  return wear(saved) ?? wear(defaultId) ?? builtInStageBody(BUILT_IN_BODIES[0] as BuiltInBody);
 }

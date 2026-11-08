@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import type { ModelDescriptor } from '@latentpresence/protocol';
-import { PACKS } from '../characters/packs';
+import type { CharacterPack } from '../characters/packs';
 import { ConsentScreen } from '../consent/ConsentScreen';
 
 /** What the person has said about downloading the character's body. */
@@ -8,6 +8,8 @@ export type BodyChoice = 'unset' | 'agreed' | 'declined';
 
 export interface CharacterStepProps {
   readonly character: string;
+  /** Alice and Theo, then the person's own (P11-T01). */
+  readonly characters: readonly CharacterPack[];
   readonly onSelect: (id: string) => void;
   readonly body: BodyChoice;
   /** The default body of whoever is selected: each has their own, so each has their own consent. */
@@ -25,12 +27,12 @@ function firstSentence(summary: string): string {
  * Step 3 (P8-T02): who she is, and the consent for her body. Agreeing records it in `ModelConsent`
  * (the caller does); nothing is fetched here, and "Not now" is fine: `/chat` asks again.
  */
-export function CharacterStep({ character, onSelect, body, descriptor, onBody }: CharacterStepProps): ReactElement {
+export function CharacterStep({ character, characters, onSelect, body, descriptor, onBody }: CharacterStepProps): ReactElement {
   return (
     <>
       <fieldset className="welcome-choices">
         <legend className="field-label">Who do you want to talk to?</legend>
-        {PACKS.map(({ persona }) => {
+        {characters.map(({ persona }) => {
           const selected = persona.id === character;
           return (
             <label className={`welcome-choice ${selected ? 'welcome-choice-selected' : ''}`} key={persona.id}>

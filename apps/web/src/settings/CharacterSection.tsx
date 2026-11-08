@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react';
-import { PACKS, packFor } from '../characters/packs';
+import type { Characters } from '../characters/packs';
 import type { CharacterSettings, TtsSettings } from './settings';
 import { BROWSER_VOICE_GROUPS, languageLabel } from './VoiceSection';
 
 export interface CharacterSectionProps {
   /** The active character's id. */
   readonly character: string;
+  /** Everyone to choose from (P11-T01, ADR-74): Alice and Theo, then the person's own. */
+  readonly list: Characters;
   readonly characters: Readonly<Record<string, CharacterSettings>>;
   /** The engine in use: a saved voice counts only for the engine it was chosen on. */
   readonly tts: TtsSettings;
@@ -19,8 +21,8 @@ export interface CharacterSectionProps {
  * a voice id. No choice (`null`) is the persona's own voice on Kokoro, the one in Voice elsewhere.
  * Everything else in Settings stays the person's, not the character's.
  */
-export function CharacterSection({ character, characters, tts, onSelect, onVoice }: CharacterSectionProps): ReactElement {
-  const pack = packFor(character);
+export function CharacterSection({ character, list, characters, tts, onSelect, onVoice }: CharacterSectionProps): ReactElement {
+  const pack = list.packFor(character);
   const { persona } = pack;
   const saved = characters[persona.id]?.voice ?? null;
   const savedHere = saved !== null && saved.kind === tts.kind ? saved : null;
@@ -36,7 +38,7 @@ export function CharacterSection({ character, characters, tts, onSelect, onVoice
           Talking to
         </label>
         <select className="select" id="settings-character" onChange={(event) => onSelect(event.target.value)} value={persona.id}>
-          {PACKS.map((candidate) => (
+          {list.packs.map((candidate) => (
             <option key={candidate.persona.id} value={candidate.persona.id}>
               {candidate.persona.name}
             </option>

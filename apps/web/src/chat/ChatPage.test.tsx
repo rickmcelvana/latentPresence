@@ -26,6 +26,8 @@ import { pageSha256 } from '../plugins/inspect';
 import { initDesktop, resetDesktopForTests, type Invoke } from '../desktop/desktop';
 import { AVATAR_DESCRIPTOR } from '../call/character-asset';
 import type { BodyReport } from '@latentpresence/avatar/vrm';
+import { InMemoryCharacterShelf, type CharacterShelf } from '../characters/character-shelf';
+import { ownCharacter } from '../test/characters';
 
 afterEach(cleanup);
 
@@ -86,6 +88,7 @@ function seedConfigured(storage: Storage, llm: Partial<{ endpoint: string; baseU
 
 function testDeps(overrides: Partial<SettingsDeps> = {}): SettingsDeps {
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), memoryStorage()),
     storage: memoryStorage(),
     fetch: (async () => new Response('{}', { status: 200 })) as HttpFetch,
@@ -1767,7 +1770,11 @@ function recordingSpeaker(): { loadSpeaker: () => Promise<SpeakerLoader>; starte
 }
 
 describe('ChatPage — characters (P6-T06, ADR-55)', () => {
-  it("keeps two characters' memories apart in one store: Alice's is hers, Theo's is his, and each comes back as it was", async () => {
+  // P11-T01 (ADR-74): the same with one of the person's own characters as the second.
+  it.each([
+    ['theo', 'Theo'],
+    ['u-madame-vey-7k2q', 'Madame Vey'],
+  ])("keeps two characters' memories apart in one store: Alice's is hers, %s's is theirs, and each comes back as it was", async (other, otherName) => {
     const storage = memoryStorage();
     seedConfigured(storage);
     const store = new FakeMemoryStore();
@@ -1777,7 +1784,7 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
       chosen += 1;
       return { store, kind: 'browser' as const, reason: 'a test store' };
     };
-    const { container } = render(<ChatPage buildProvider={model.build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    const { container } = render(<ChatPage buildProvider={model.build} chooseMemory={chooseMemory} createRenderer={fakeCreateRenderer} deps={testDeps({ storage, characters: new InMemoryCharacterShelf([ownCharacter('Madame Vey', 'u-madame-vey-7k2q')]) })} />);
     const hasFact = async (characterId: string, object: string): Promise<boolean> => (await store.currentFacts(characterId)).some((fact) => fact.object === object);
     /** A new visit has chosen its store and read it: say nothing before that. */
     const arrived = async (visits: number): Promise<void> => {
@@ -1797,25 +1804,25 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
     await waitFor(async () => expect(await hasFact('alice', 'Mira')).toBe(true));
     expect(systemOf(model.chats[0])).toContain('You are Alice.');
 
-    // 2. Theo has none of it: not in his prompt, not in his store, not in his Memory view.
-    await switchTo('theo');
-    expect(savedCharacter(storage)).toBe('theo');
+    // 2. The other has none of it: not in their prompt, not in their store, not in their Memory view.
+    await switchTo(other);
+    expect(savedCharacter(storage)).toBe(other);
     await arrived(2);
-    expect(talkingTo().value).toBe('theo');
+    expect(talkingTo().value).toBe(other);
     fireEvent.click(screen.getByRole('button', { name: 'Memory' }));
     await waitFor(() => expect(drawerShows(container)).toContain('Kept in a test store'));
     await act(() => settle());
     expect(drawerShows(container)).not.toContain('Mira');
-    expect(await store.currentFacts('theo')).toEqual([]);
+    expect(await store.currentFacts(other)).toEqual([]);
     await sayInRoom('hello');
     await waitFor(() => expect(model.chats).toHaveLength(2));
-    expect(systemOf(model.chats[1])).toContain('You are Theo.');
+    expect(systemOf(model.chats[1])).toContain(`You are ${otherName}.`);
     expect(systemOf(model.chats[1])).not.toContain('Mira');
     expect(systemOf(model.chats[1])).not.toContain('You are Alice.');
 
-    // 3. What Theo is told is his.
+    // 3. What the other is told is theirs.
     await sayInRoom('I play the cello');
-    await waitFor(async () => expect(await hasFact('theo', 'cello')).toBe(true));
+    await waitFor(async () => expect(await hasFact(other, 'cello')).toBe(true));
 
     // 4. Back to Alice: hers, and not his.
     await switchTo('alice');
@@ -1830,11 +1837,54 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
     expect(systemOf(model.chats[3])).toContain('Mira');
     expect(systemOf(model.chats[3])).not.toContain('cello');
     expect(await hasFact('alice', 'cello')).toBe(false);
-    expect(await hasFact('theo', 'Mira')).toBe(false);
+    expect(await hasFact(other, 'Mira')).toBe(false);
     expect((await store.currentFacts('alice')).map((fact) => fact.characterId)).toEqual(['alice']);
-    expect((await store.currentFacts('theo')).map((fact) => fact.characterId)).toEqual(['theo']);
-    // What Theo was told went down under his name.
-    expect(new Set(store.rows.episodes.filter(({ episode }) => episode.text === 'I play the cello').map(({ episode }) => episode.characterId))).toEqual(new Set(['theo']));
+    expect((await store.currentFacts(other)).map((fact) => fact.characterId)).toEqual([other]);
+    // What the other was told went down under their name.
+    expect(new Set(store.rows.episodes.filter(({ episode }) => episode.text === 'I play the cello').map(({ episode }) => episode.characterId))).toEqual(new Set([other]));
+  });
+
+  it('waits for the shelf before opening as one of their own characters, and lists theirs after Alice and Theo (P11-T01)', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    seedSettings(storage, { character: 'u-madame-vey-7k2q' });
+    const shelf = new InMemoryCharacterShelf([ownCharacter('Madame Vey', 'u-madame-vey-7k2q')]);
+    const gate = openGate();
+    const slow: CharacterShelf = { list: async () => (await gate.promise, shelf.list()), put: (c) => shelf.put(c), remove: (id) => shelf.remove(id), subscribe: (l) => shelf.subscribe(l) };
+    let chosen = 0;
+    const seen: LlmRequest[] = [];
+    const provider = (): LLMProvider => ({
+      id: 'fake',
+      async listModels(): Promise<LlmModel[]> {
+        return [];
+      },
+      async *stream(request: LlmRequest): AsyncIterable<LlmStreamChunk> {
+        seen.push(request);
+        yield { type: 'text-delta', text: 'Hi.' };
+        yield { type: 'finish', reason: 'stop', usage: null };
+      },
+    });
+    render(<ChatPage buildProvider={provider} chooseMemory={async () => ((chosen += 1), null)} createRenderer={fakeCreateRenderer} deps={testDeps({ storage, characters: slow })} />);
+    // Not Alice in the meantime: no room, so no visit and nothing chosen for memory.
+    expect(screen.getByRole('status').textContent).toBe('Finding who you were talking to…');
+    expect(screen.queryByLabelText('Talking to')).toBeNull();
+    await act(() => settle());
+    expect(chosen).toBe(0);
+
+    gate.release();
+    await waitFor(() => expect(talkingTo().value).toBe('u-madame-vey-7k2q'));
+    expect([...talkingTo().options].map((option) => option.textContent)).toEqual(['Alice', 'Theo', 'Madame Vey']);
+    await sayInRoom('hello');
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(systemOf(seen[0])).toContain('You are Madame Vey.');
+  });
+
+  it('opens as Alice when their character saved in Settings is no longer on the shelf (P11-T01)', async () => {
+    const storage = memoryStorage();
+    seedConfigured(storage);
+    seedSettings(storage, { character: 'u-gone-aaaa' });
+    render(<ChatPage chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+    await waitFor(() => expect(talkingTo().value).toBe('alice'));
   });
 
   it('opens as the character saved in Settings, and as Alice when that is one it does not have', async () => {
@@ -1858,6 +1908,7 @@ describe('ChatPage — characters (P6-T06, ADR-55)', () => {
         },
       });
       const view = render(<ChatPage buildProvider={provider} chooseMemory={async () => null} createRenderer={fakeCreateRenderer} deps={testDeps({ storage })} />);
+      await screen.findByLabelText('Talking to');
       expect([...talkingTo().options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
       expect(talkingTo().value).toBe(name.toLowerCase());
       await sayInRoom('hello');

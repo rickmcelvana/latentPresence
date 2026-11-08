@@ -9,6 +9,7 @@ import { syncCloseToTray } from '../desktop/tray';
 import { DesktopAppSection } from './DesktopAppSection';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
+import { useCharacters } from '../characters/use-characters';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { InitiativeSection } from './InitiativeSection';
@@ -48,6 +49,7 @@ export interface SettingsPanelProps {
 export function SettingsPanel({ deps: depsOverride, companionConfig, listCompanion, homeWaitMs, homePollMs }: SettingsPanelProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
+  const characters = useCharacters(deps.characters);
 
   useEffect(() => {
     saveSettings(settings, deps.storage);
@@ -86,6 +88,7 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
       <CharacterSection
         character={settings.character}
         characters={settings.characters}
+        list={characters}
         onSelect={(character) => setSettings((prev) => ({ ...prev, character }))}
         onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { body: null, plugins: [], ...prev.characters[id], voice } } }))}
         tts={settings.tts}
@@ -107,7 +110,7 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
       <ToolsSection companionUrl={settings.companionUrl} onChange={(update) => setSettings((prev) => ({ ...prev, tools: update(prev.tools) }))} tools={settings.tools} vault={deps.vault} />
 
       <Suspense fallback={null}>
-        <PluginsSection onChange={(update) => setSettings(update)} settings={settings} />
+        <PluginsSection characters={characters} onChange={(update) => setSettings(update)} settings={settings} />
       </Suspense>
 
       {api !== null && <CompanionSettings controller={companion} />}

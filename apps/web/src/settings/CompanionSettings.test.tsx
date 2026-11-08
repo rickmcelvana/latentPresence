@@ -13,6 +13,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { loadSettings } from './settings';
 import { InMemoryMasterKeyPort, Vault } from './vault';
 import { expectAccessible } from '../test/axe';
+import { InMemoryCharacterShelf } from '../characters/character-shelf';
 
 afterEach(() => {
   cleanup();
@@ -42,6 +43,7 @@ function memoryStorage(): Storage {
 function testDeps(): SettingsDeps {
   const caches: MinimalCacheStorage = { keys: async () => [], open: () => Promise.reject(new Error('no cache')), delete: async () => false };
   return {
+    characters: new InMemoryCharacterShelf(),
     vault: new Vault(new InMemoryMasterKeyPort(), memoryStorage()),
     storage: memoryStorage(),
     fetch: (async () => new Response('{}', { status: 200 })) as HttpFetch,
