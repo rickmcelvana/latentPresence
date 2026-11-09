@@ -1167,3 +1167,9 @@ Did: read CI after the push: `mariadb vector` failed on "are searched nearest fi
 Left: push, then read CI. P11-T05. R-70's friend, R-71.
 Decisions: ADR-35 amended (vectors never deleted by cascade), recorded in SURFACE.md 2026-11-09. Taken as the fix, not a separate proposal: it changes no interface.
 Lessons: I first blamed the dev DB's state for the vector failure; CI's database was fresh, which should have ruled that out at once. And a probe that runs statements one at a time does not prove the combined statement works.
+
+## 2026-11-09 claude (31) — P11-T05: a character as a file
+Did: Export writes `<name>.persona.json` (the persona alone); Import… reads a picked file, refuses a broken one with each problem in a sentence naming the field as the editor does, or shows the name, summary, line counts and tokens per turn, the claims-human warning, and what happens to the id: a free `u-` id is kept (memories kept under it come back), a taken one can be replaced (body, plugins, memories kept) or added new, Alice's or Theo's or a strange id comes in new, "(imported)" when the name is taken. Both load on use: Settings 229.0 of 230 kB. Page tests: export, delete keeping, import, the memory is there; Alice's file comes in new; a broken file in sentences (axe clean). Seen in the pane (preview, warning, refusal; nothing saved). `docs/characters.md`; `docs/characters/` on the site, committed there (f554102), not pushed. R-72 written. Gate green, 2423 TS tests.
+Left: R-72 (Rick, with someone else), push both repositories. P11-T06 after tester feedback. R-70's friend, R-71.
+Decisions: the open details of item 9, taken and noted in ADR-74's build note (keepable id shape, "(imported)", unknown voice replaced with a warning, 64 kB limit).
+Lessons: none new; the budget held because the feature was lazy from its first line.
