@@ -1469,7 +1469,7 @@ async fn fill_character(router: &Router, character_id: &str) {
     let (status, body) = call(router, Method::PUT, "/db/blocks", Some(block)).await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let plan = json!({
-        "id": random_id("plan"), "characterId": character_id, "title": "A reading", "goal": null,
+        "id": random_id("plan"), "characterId": character_id, "title": "A reading", "goal": "three cards, read",
         "phases": [{ "id": random_id("phase"), "title": "Draw", "tasks": [{ "id": random_id("task"), "title": "three cards", "status": "todo", "notes": "" }] }],
         "status": "active", "version": 1, "updatedAt": "2026-11-08T12:00:00.000Z",
     });
