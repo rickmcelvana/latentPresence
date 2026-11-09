@@ -4,8 +4,16 @@
 //! width is fixed when its table is created — with one vector index per table. So vectors
 //! do not live on `turns`, `facts` or `chunks`; each collection gets a table per registered
 //! model, `<prefix>_<model id>`, holding `item_id` and `embedding` and nothing else, its
-//! foreign key cascading from the row it indexes. `vector_collections` says which one
-//! retrieval reads.
+//! foreign key on the row it indexes. `vector_collections` says which one retrieval reads.
+//!
+//! **A vector row is deleted by a statement on its own table, never by a cascade.** Verified
+//! against 11.8.8 on 2026-11-09: when InnoDB deletes vector rows through `ON DELETE CASCADE`,
+//! the vector index is not told. Its graph keeps the gone rows, and a search afterwards
+//! returns some of the live rows or none at all, and stays wrong after more inserts, until
+//! the index is dropped and built again (`docs/SURFACE.md`). So the foreign key restricts
+//! (a forgotten `delete_vectors` fails loudly instead of quietly breaking search), every
+//! delete calls `delete_vectors` first, and `repair_vector_tables` rebuilds, once, any table
+//! made when the key cascaded.
 //!
 //! **Retrieval must put the nearest-neighbour search in a subquery** and join and filter
 //! outside it (`self_check` proves the shape). Verified against 11.8.8 on 2026-09-27: a
@@ -17,7 +25,7 @@
 //! from the committed `.sqlx` cache (ADR-35); the vector tables' names are only known at
 //! run time, so their statements are built here from integers and never from user text.
 
-use sqlx::mysql::MySqlPool;
+use sqlx::mysql::{MySql, MySqlConnection, MySqlPool};
 use sqlx::{AssertSqlSafe, Row};
 
 use crate::DbError;
@@ -148,7 +156,9 @@ pub fn vector_table_name(collection: Collection, model_id: u32) -> String {
 
 /// The vector table for a collection and a model. `IF NOT EXISTS`, so registering twice is
 /// harmless. `M=8` and `DISTANCE=cosine` as P0-T06 measured them; every query against it
-/// must use `VEC_DISTANCE_COSINE` or it scans (`bench.rs`).
+/// must use `VEC_DISTANCE_COSINE` or it scans (`bench.rs`). The foreign key restricts: a
+/// cascade would leave the vector index wrong (the module's notes), so rows go by
+/// `delete_vectors`.
 pub fn vector_table_ddl(collection: Collection, model_id: u32, dimensions: u16) -> String {
     let name = vector_table_name(collection, model_id);
     format!(
@@ -156,10 +166,143 @@ pub fn vector_table_ddl(collection: Collection, model_id: u32, dimensions: u16) 
            item_id   BIGINT UNSIGNED NOT NULL PRIMARY KEY,\n  \
            embedding VECTOR({dimensions}) NOT NULL,\n  \
            VECTOR INDEX (embedding) M=8 DISTANCE=cosine,\n  \
-           CONSTRAINT {name}_item FOREIGN KEY (item_id) REFERENCES {item} (id) ON DELETE CASCADE\n\
+           CONSTRAINT {name}_item FOREIGN KEY (item_id) REFERENCES {item} (id)\n\
          ) ENGINE=InnoDB",
         item = collection.item_table(),
     )
+}
+
+/// Every vector table of a collection, whatever its status, named again from its integers.
+pub async fn vector_tables(
+    conn: &mut MySqlConnection,
+    collection: Collection,
+) -> Result<Vec<String>, DbError> {
+    let rows = sqlx::query("SELECT model_id FROM vector_collections WHERE collection = ?")
+        .bind(collection.as_str())
+        .fetch_all(&mut *conn)
+        .await?;
+    rows.iter()
+        .map(|row| Ok(vector_table_name(collection, row.try_get("model_id")?)))
+        .collect()
+}
+
+/// Deletes, from every vector table of `collection`, the vectors of the items `condition`
+/// selects (written over `i`, the item table, with one `?` for `bind`). Run it before
+/// deleting the items, in the same transaction: the foreign key refuses the items while a
+/// vector names them, and a cascade would break the index (the module's notes).
+pub async fn delete_vectors<B>(
+    conn: &mut MySqlConnection,
+    collection: Collection,
+    condition: &'static str,
+    bind: B,
+) -> Result<u64, DbError>
+where
+    B: for<'q> sqlx::Encode<'q, MySql> + sqlx::Type<MySql> + Clone + Send + 'static,
+{
+    let mut deleted = 0;
+    for table in vector_tables(conn, collection).await? {
+        deleted += sqlx::query(AssertSqlSafe(format!(
+            "DELETE FROM {table} WHERE item_id IN (SELECT i.id FROM {item} i WHERE {condition})",
+            item = collection.item_table(),
+        )))
+        .bind(bind.clone())
+        .execute(&mut *conn)
+        .await?
+        .rows_affected();
+    }
+    Ok(deleted)
+}
+
+/// Rebuilds the vector index of every registered table whose foreign key still cascades (or
+/// has none), and makes the key restrict. Such a table was made before 2026-11-09, and any
+/// delete since may have left its index wrong (the module's notes); dropping and adding the
+/// index is the one thing that mends it. The key's delete rule records that the table was
+/// done, so this runs once per table, on connecting. Returns the tables it rebuilt.
+pub async fn repair_vector_tables(pool: &MySqlPool) -> Result<Vec<String>, DbError> {
+    // Two companions (or two tests) connecting at once must not alter the same table together:
+    // a named lock, held on one connection, lets one do it and the other find it done.
+    let mut conn = pool.acquire().await?;
+    let locked: Option<i64> =
+        sqlx::query_scalar("SELECT GET_LOCK('latentpresence_vector_repair', 600)")
+            .fetch_one(&mut *conn)
+            .await?;
+    if locked != Some(1) {
+        return Err(DbError::Backend(
+            "another companion is repairing the vector tables; try again".into(),
+        ));
+    }
+    let repaired = repair_on(&mut conn).await;
+    sqlx::query("SELECT RELEASE_LOCK('latentpresence_vector_repair')")
+        .execute(&mut *conn)
+        .await?;
+    repaired
+}
+
+async fn repair_on(conn: &mut MySqlConnection) -> Result<Vec<String>, DbError> {
+    let registered = sqlx::query("SELECT collection, model_id FROM vector_collections ORDER BY id")
+        .fetch_all(&mut *conn)
+        .await?;
+    let existing: Vec<String> = sqlx::query(
+        "SELECT CAST(TABLE_NAME AS CHAR) AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
+    )
+    .fetch_all(&mut *conn)
+    .await?
+    .iter()
+    .map(|row| row.try_get("t"))
+    .collect::<Result<_, _>>()?;
+    let keys: Vec<(String, String)> = sqlx::query(
+        "SELECT CAST(CONSTRAINT_NAME AS CHAR) AS c, CAST(DELETE_RULE AS CHAR) AS r
+         FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE()",
+    )
+    .fetch_all(&mut *conn)
+    .await?
+    .iter()
+    .map(|row| Ok((row.try_get("c")?, row.try_get("r")?)))
+    .collect::<Result<_, sqlx::Error>>()?;
+
+    let mut repaired = Vec::new();
+    for row in registered {
+        let name: String = row.try_get("collection")?;
+        let Some(collection) = Collection::parse(&name) else {
+            continue;
+        };
+        let table = vector_table_name(collection, row.try_get("model_id")?);
+        if !existing.contains(&table) {
+            continue;
+        }
+        let key = format!("{table}_item");
+        let rule = keys
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, rule)| rule.as_str());
+        if matches!(rule, Some("RESTRICT" | "NO ACTION")) {
+            continue;
+        }
+        // One statement each: on 11.8.8 `DROP FOREIGN KEY` and `DROP INDEX` in one `ALTER` fail
+        // with errno 152 on the table copy's rename (`docs/SURFACE.md`). Each can run again
+        // after an interruption: the key, added last, is what marks the table done.
+        let item = collection.item_table();
+        let mut steps = Vec::new();
+        if rule.is_some() {
+            steps.push(format!("ALTER TABLE {table} DROP FOREIGN KEY {key}"));
+        }
+        steps.push(format!(
+            "ALTER TABLE {table} DROP INDEX IF EXISTS embedding"
+        ));
+        steps.push(format!(
+            "ALTER TABLE {table} ADD VECTOR INDEX IF NOT EXISTS embedding (embedding) M=8 DISTANCE=cosine"
+        ));
+        steps.push(format!(
+            "ALTER TABLE {table} ADD CONSTRAINT {key} FOREIGN KEY (item_id) REFERENCES {item} (id)"
+        ));
+        for step in steps {
+            sqlx::raw_sql(AssertSqlSafe(step))
+                .execute(&mut *conn)
+                .await?;
+        }
+        repaired.push(table);
+    }
+    Ok(repaired)
 }
 
 fn narrow_id(id: u64) -> Result<u32, DbError> {
@@ -308,7 +451,7 @@ pub async fn activate_collection(
 
 /// Proves the schema on a live server, leaving nothing behind: a throwaway model and its
 /// `turns` table, a session with a turn and a vector, the retrieval shape using the vector
-/// index, and a deleted session taking its turn and vector with it. What `memory-check`
+/// index, a cascade refused, and a deleted turn leaving the index whole. What `memory-check`
 /// runs, locally and in CI. Returns one line per step.
 pub async fn self_check(pool: &MySqlPool) -> Result<Vec<String>, DbError> {
     let mut report = Vec::new();
@@ -335,11 +478,12 @@ pub async fn self_check(pool: &MySqlPool) -> Result<Vec<String>, DbError> {
 
     let outcome = exercise(pool, &table).await;
     // Cleanup runs whatever the exercise found, and in dependency order.
+    // The vector table goes first: its key would refuse the turns.
     let cleanup = async {
-        sqlx::query("DELETE FROM sessions WHERE character_id = 'memory-check'")
+        sqlx::raw_sql(AssertSqlSafe(format!("DROP TABLE IF EXISTS {table}")))
             .execute(pool)
             .await?;
-        sqlx::raw_sql(AssertSqlSafe(format!("DROP TABLE IF EXISTS {table}")))
+        sqlx::query("DELETE FROM sessions WHERE character_id = 'memory-check'")
             .execute(pool)
             .await?;
         sqlx::query!(
@@ -443,16 +587,48 @@ async fn exercise(pool: &MySqlPool, table: &str) -> Result<Vec<String>, DbError>
     check(uses_index, "the retrieval shape uses the vector index")?;
     report.push("nearest-first retrieval uses the vector index".into());
 
-    sqlx::query("DELETE FROM sessions WHERE id = ?")
+    // A cascade would leave the index wrong; the key refuses it.
+    let cascade = sqlx::query("DELETE FROM sessions WHERE id = ?")
         .bind(session)
         .execute(pool)
+        .await;
+    check(
+        cascade.is_err(),
+        "a session whose turns have vectors is not deleted under them",
+    )?;
+    report.push("deleting a session under its vectors is refused".into());
+
+    // A turn deleted the way the store deletes one leaves every other turn findable.
+    let mut conn = pool.acquire().await?;
+    delete_vectors(&mut conn, Collection::Turns, "i.id = ?", turn_ids[0]).await?;
+    sqlx::query("DELETE FROM turns WHERE id = ?")
+        .bind(turn_ids[0])
+        .execute(&mut *conn)
+        .await?;
+    let found: Vec<u64> = sqlx::query(AssertSqlSafe(nearest.clone()))
+        .bind(&probe[..])
+        .fetch_all(&mut *conn)
+        .await?
+        .iter()
+        .map(|row| row.try_get("id"))
+        .collect::<Result<_, _>>()?;
+    check(
+        found == [turn_ids[2], turn_ids[1]],
+        "after a delete the index still finds every turn left, nearest first",
+    )?;
+    report.push("a deleted turn leaves the index whole".into());
+
+    delete_vectors(&mut conn, Collection::Turns, "i.session_id = ?", session).await?;
+    sqlx::query("DELETE FROM sessions WHERE id = ?")
+        .bind(session)
+        .execute(&mut *conn)
         .await?;
     let left: i64 = sqlx::query(AssertSqlSafe(format!("SELECT COUNT(*) AS n FROM {table}")))
-        .fetch_one(pool)
+        .fetch_one(&mut *conn)
         .await?
         .try_get("n")?;
-    check(left == 0, "deleting a session removes its turns' vectors")?;
-    report.push("deleting the session removed its turns and their vectors".into());
+    check(left == 0, "the session's vectors are deleted with it")?;
+    report.push("deleting the session, vectors first, removed its turns and vectors".into());
     Ok(report)
 }
 
@@ -476,7 +652,7 @@ mod tests {
     }
 
     #[test]
-    fn the_ddl_carries_the_width_the_index_and_the_cascade() {
+    fn the_ddl_carries_the_width_the_index_and_a_key_that_restricts() {
         let ddl = vector_table_ddl(Collection::Facts, 7, 1024);
         assert!(
             ddl.starts_with("CREATE TABLE IF NOT EXISTS fact_embeddings_7 ("),
@@ -484,10 +660,9 @@ mod tests {
         );
         assert!(ddl.contains("embedding VECTOR(1024) NOT NULL"), "{ddl}");
         assert!(ddl.contains("DISTANCE=cosine"), "{ddl}");
-        assert!(
-            ddl.contains("REFERENCES facts (id) ON DELETE CASCADE"),
-            "{ddl}"
-        );
+        // A cascade would leave the vector index wrong (the module's notes).
+        assert!(ddl.contains("REFERENCES facts (id)\n"), "{ddl}");
+        assert!(!ddl.contains("CASCADE"), "{ddl}");
     }
 
     #[test]

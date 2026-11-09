@@ -532,6 +532,22 @@ export function describeMemoryStoreConformance(target: ConformanceTarget): void 
         expect(other.vectorSearch).toBe('other-model');
         expect(other.episodes).toEqual([]);
       });
+
+      // MariaDB 11.8.8 lost live rows from its vector index when a cascade deleted one (2026-11-09).
+      it('still find every one left after one is deleted, and after a character is forgotten', async () => {
+        const characterId = random('conformance');
+        const sessionId = random('session');
+        const [gone, near, far] = [vector([1, 0, 0, 0]), vector([0.6, 0.8, 0, 0]), vector([0, 0, 1, 0])].map((embedding, index) => episode(characterId, sessionId, `kept thing ${index}`, { embedding }));
+        for (const written of [gone!, near!, far!]) await store.appendEpisode(written);
+        const forgotten = `u-${random('conformance')}`;
+        await store.appendEpisode(episode(forgotten, random('session'), 'forgotten thing', { embedding: vector([1, 0, 0, 0]) }));
+
+        await store.deleteEpisode(gone!.id);
+        await store.forgetCharacter(forgotten);
+        const found = await store.retrieve(request(characterId, '', { queryEmbedding: vector([0.9, 0.1, 0, 0]) }));
+        expect(found.vectorSearch).toBe('used');
+        expect(ids(found.episodes)).toEqual([near!.id, far!.id]);
+      });
     });
   });
 }

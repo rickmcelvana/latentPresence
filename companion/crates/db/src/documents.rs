@@ -95,12 +95,16 @@ pub async fn list_documents(
         .collect())
 }
 
-/// Delete a document. Its chunks and their vectors go with it (cascades), so there is nothing
-/// else to delete. `false`: there was no such document.
+/// Delete a document: its chunks' vectors by their own statement (`memory::delete_vectors`: a
+/// cascade would break the index), then the document, its chunks following by cascade. One
+/// transaction. `false`: there was no such document.
 pub async fn delete_document(pool: &MySqlPool, id: u64) -> Result<bool, StoreError> {
+    let mut tx = pool.begin().await?;
+    memory::delete_vectors(&mut tx, Collection::Chunks, "i.document_id = ?", id).await?;
     let result = sqlx::query!("DELETE FROM documents WHERE id = ?", id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(result.rows_affected() > 0)
 }
 
@@ -110,9 +114,18 @@ pub async fn delete_document_by_path(
     pool: &MySqlPool,
     path_key: &[u8; 32],
 ) -> Result<bool, StoreError> {
+    let mut tx = pool.begin().await?;
+    memory::delete_vectors(
+        &mut tx,
+        Collection::Chunks,
+        "i.document_id IN (SELECT d.id FROM documents d WHERE d.path_key = ?)",
+        path_key.to_vec(),
+    )
+    .await?;
     let result = sqlx::query!("DELETE FROM documents WHERE path_key = ?", &path_key[..])
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
+    tx.commit().await?;
     Ok(result.rows_affected() > 0)
 }
 

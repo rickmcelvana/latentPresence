@@ -1112,6 +1112,17 @@ the documents' chunks can take the name; memory is namespaced by `character_id` 
 times are `DATETIME(3)` UTC written by the companion; facts are bi-temporal (`valid_from`/
 `valid_to` in the world, `recorded_at`/`expired_at` in the store, `supersedes`).
 
+**Amended 2026-11-09: vector rows are never deleted by cascade.** On MariaDB 11.8.8 a vector
+row deleted through `ON DELETE CASCADE` stays in the vector index's graph, and search
+afterwards misses live rows, some or all, until the index is rebuilt (`docs/SURFACE.md`). CI
+found it when P11-T04's forget, the first test to delete a row with a vector, emptied the
+vector test after it. Every delete (a turn, a fact, a document, forgetting a character, the
+self-check) now deletes the vectors by its own statement first, in the same transaction
+(`memory::delete_vectors`). New vector tables' keys restrict, so a forgotten path fails
+instead of quietly breaking search. On connecting, `memory::repair_vector_tables` rebuilds the
+index of any table whose key still cascades and switches the key, under `GET_LOCK`; the key's
+delete rule records that a table is done.
+
 ## ADR-36 The companion's memory contract meets the schema (accepted 2026-09-27)
 
 **Context.** `packages/protocol`'s memory shapes and route table were written in P0-T02,
@@ -1232,7 +1243,7 @@ day stays answerable (ADR-37). A person asking her to forget something is a diff
 **Decisions.**
 
 1. **`deleteFact(id)` and `deleteEpisode(id)` are hard deletes** — the row, and its vectors by
-   the tables' `ON DELETE CASCADE` (ADR-35). Not an expiry with a flag: something a person asks
+   their own statement first (ADR-35, amended 2026-11-09: a cascade breaks the index). Not an expiry with a flag: something a person asks
    to be forgotten must not be recoverable from their own disk by the next feature that reads
    history. `not_found` for an unknown id, like every other write.
 2. **A fact read from a deleted turn stays**, unlinked (`source_turn` → null, `SET NULL`).

@@ -632,17 +632,21 @@ pub async fn current_facts(pool: &MySqlPool, character_id: &str) -> Result<Vec<F
         .collect())
 }
 
-/// `dbDeleteFact` (P4-T05, ADR-39): the person removes a fact — the row goes, and its vectors
-/// with it (`ON DELETE CASCADE`); a fact it superseded forgets the link (`SET NULL`). Not the
-/// kernel's expiry: what someone asks to be forgotten is not kept. `not_found` if unknown.
+/// `dbDeleteFact` (P4-T05, ADR-39): the person removes a fact — its vectors, then the row, in
+/// one transaction (`memory::delete_vectors`: never by cascade); a fact it superseded forgets
+/// the link (`SET NULL`). Not the kernel's expiry: what someone asks to be forgotten is not
+/// kept. `not_found` if unknown.
 pub async fn delete_fact(pool: &MySqlPool, uid: &str) -> Result<(), StoreError> {
+    let mut tx = pool.begin().await.map_err(DbError::from)?;
+    memory::delete_vectors(&mut tx, Collection::Facts, "i.uid = ?", uid.to_owned()).await?;
     let result = sqlx::query!("DELETE FROM facts WHERE uid = ?", uid)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(DbError::from)?;
     if result.rows_affected() == 0 {
         return Err(StoreError::NotFound(format!("no fact with id {uid:?}")));
     }
+    tx.commit().await.map_err(DbError::from)?;
     Ok(())
 }
 
@@ -698,17 +702,20 @@ pub async fn list_episodes(
         .collect()
 }
 
-/// `dbDeleteEpisode` (ADR-39): the turn goes, with its vectors; facts read from it stay,
-/// their `source_turn` set to null. The session row stays, even if now empty. `not_found`
-/// if unknown.
+/// `dbDeleteEpisode` (ADR-39): the turn goes, its vectors first (`memory::delete_vectors`);
+/// facts read from it stay, their `source_turn` set to null. The session row stays, even if
+/// now empty. `not_found` if unknown.
 pub async fn delete_episode(pool: &MySqlPool, uid: &str) -> Result<(), StoreError> {
+    let mut tx = pool.begin().await.map_err(DbError::from)?;
+    memory::delete_vectors(&mut tx, Collection::Turns, "i.uid = ?", uid.to_owned()).await?;
     let result = sqlx::query!("DELETE FROM turns WHERE uid = ?", uid)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(DbError::from)?;
     if result.rows_affected() == 0 {
         return Err(StoreError::NotFound(format!("no episode with id {uid:?}")));
     }
+    tx.commit().await.map_err(DbError::from)?;
     Ok(())
 }
 
@@ -1553,9 +1560,9 @@ pub fn own_character(character_id: &str) -> Result<(), StoreError> {
 }
 
 /// `dbForgetCharacter`: everything under one of the person's characters, one statement per table
-/// in one transaction. Facts go before turns (`facts_source_turn` would only null them), turns
-/// before sessions so the count is the turns', and the vector rows and plan items follow by their
-/// `ON DELETE CASCADE`. Refused for any id without the prefix: Alice and Theo are cleared one thing
+/// in one transaction. The vector rows go first, by their own statements (`memory::delete_vectors`:
+/// a cascade would break the index), facts before turns (`facts_source_turn` would only null
+/// them), turns before sessions so the count is the turns', and plan items follow their plans. Refused for any id without the prefix: Alice and Theo are cleared one thing
 /// at a time in the Memory view. Static text with binds, run unchecked as `memory::self_check` runs
 /// its own, so the committed `.sqlx` cache does not change.
 pub async fn forget_character(
@@ -1564,6 +1571,15 @@ pub async fn forget_character(
 ) -> Result<Forgotten, StoreError> {
     own_character(character_id)?;
     let mut tx = pool.begin().await.map_err(DbError::from)?;
+    for collection in [Collection::Facts, Collection::Turns] {
+        memory::delete_vectors(
+            &mut tx,
+            collection,
+            "i.character_id = ?",
+            character_id.to_owned(),
+        )
+        .await?;
+    }
     let mut take = async |sql: &'static str| -> Result<u64, StoreError> {
         Ok(sqlx::query(sql)
             .bind(character_id)

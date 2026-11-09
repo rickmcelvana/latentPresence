@@ -2094,7 +2094,9 @@ Against the development server (**MariaDB 11.8.8**, LAN), by a throwaway probe a
 
 - **A vector table can carry a foreign key with `ON DELETE CASCADE`** to the table its rows
   index; deleting the parent removed the vectors from an 8-wide and a 16-wide table at once.
-  An insert with no parent is refused (1452).
+  An insert with no parent is refused (1452). **Superseded 2026-11-09:** the rows go, but the
+  vector index is not told, and search is wrong afterwards (below, "A cascade leaves the
+  vector index wrong").
 - **A join filtered on the parent does not use the vector index.** `SELECT … FROM vec v JOIN
   items i … WHERE i.character_id = ? ORDER BY VEC_DISTANCE_COSINE(v.embedding, ?) LIMIT 8`
   plans `i` by `character_idx` with *Using temporary; Using filesort* and `v` by primary
@@ -2932,3 +2934,19 @@ After Rick's Caddy change: `1.png`, `78.png`, `1.jpg`, `78.jpg` all answer 200 w
 |---|---|
 | `raw.githubusercontent.com/rickmcelvana/latentPresence/<commit>/plugins/…` | `curl -I` with `Origin: https://app.latentpresence.com`: 200, `Access-Control-Allow-Origin: *`, `Content-Type: text/plain`, `Cache-Control: max-age=300`. A commit address never changes, so the index pins plugins there. Every file's SHA-256 fetched from it matched the index `pnpm plugin:index` wrote at 4122910 (six files, Tarot and Office) |
 | `latentpresence.com` | Caddy answers with **no `Access-Control-Allow-Origin`**, and `/plugins/index.json` was 404 before this task. Browse in the app (from `localhost:5173`) failed as a browser fails on a missing CORS header, and says so. The site needs the header on `/plugins/*` (R-70) |
+
+## A cascade leaves the vector index wrong — measured 2026-11-09 (P11-T04's CI failure)
+
+Against the development server (**MariaDB 11.8.8**, the version CI runs), by a throwaway probe: a parent table, and a vector table `VECTOR INDEX M=8 DISTANCE=cosine` whose foreign key is `ON DELETE CASCADE`, five rows, three of them the same vector.
+
+| Fact | Result |
+|---|---|
+| Delete two parents, the first rows written (the graph's entry), **by cascade** | 3 vector rows left; `ORDER BY VEC_DISTANCE_COSINE … LIMIT 40` returns **none of them** |
+| Delete one parent not at the entry, by cascade | 4 rows left; the search returns **2** |
+| Insert two more rows after the cascade | Still none found: the index stays wrong |
+| `OPTIMIZE TABLE`, `ALTER TABLE … FORCE` | No change |
+| `ALTER TABLE … DROP INDEX embedding`, then `ADD VECTOR INDEX` | Every row found again, nearest first |
+| The same deletes **by a `DELETE` on the vector table**, then the parents | Every row left found, before and after more inserts |
+| `DROP FOREIGN KEY` and `DROP INDEX` in **one** `ALTER` | Error 1025, *errno 152 "Cannot delete a parent row"* on the rename to `#sql-backup-…`. As four separate statements (drop key, drop index, add index, add key) it works, so the repair runs them one at a time, under `GET_LOCK` so two companions never alter one table together |
+
+Most likely because InnoDB carries out a cascade below the server layer, where the vector index (its own hidden graph) is kept, as it does for triggers; the probe shows only the effect. The companion now deletes vector rows by its own statement before the rows they index (`memory::delete_vectors`), the key restricts (a cascade is refused), and `memory::repair_vector_tables` rebuilds, once on connecting, any table whose key still cascades. CI's `mariadb vector` job found it: P11-T04's forget was the first test to delete a row that had a vector, and the vector test after it found nothing.

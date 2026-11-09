@@ -13,6 +13,7 @@ use http_body_util::BodyExt;
 use latentpresence_companion::schedules::model::ToolCall;
 use latentpresence_companion::schedules::runner::{ToolCaller, run_due};
 use latentpresence_companion::{memory_api, relay, router_with};
+use latentpresence_db::memory::{self, Collection};
 use latentpresence_db::store::Registry;
 use rand::Rng;
 use serde_json::{Value, json};
@@ -113,14 +114,27 @@ async fn remove_test_models(pool: &MySqlPool) {
         .expect("delete test models");
 }
 
+/// Turn and fact vectors the condition selects, from every vector table: what the store does
+/// before deleting rows (`memory::delete_vectors`).
+async fn delete_vectors_of(pool: &MySqlPool, condition: &'static str, bind: String) {
+    let mut conn = pool.acquire().await.expect("a connection");
+    for collection in [Collection::Turns, Collection::Facts] {
+        memory::delete_vectors(&mut conn, collection, condition, bind.clone())
+            .await
+            .expect("delete test vectors");
+    }
+}
+
 async fn cleanup(pool: &MySqlPool, character_id: &str) {
     cleanup_rows(pool, character_id).await;
     remove_test_models(pool).await;
 }
 
 async fn cleanup_rows(pool: &MySqlPool, character_id: &str) {
-    // Dependency order: turns/facts cascade from sessions/nothing, plans cascade their
+    // Dependency order: vectors by their own statement (a cascade would break the index, and
+    // the key refuses one), turns/facts cascade from sessions/nothing, plans cascade their
     // items, self_blocks and model-registry rows this test may have created.
+    delete_vectors_of(pool, "i.character_id = ?", character_id.to_owned()).await;
     let _ = sqlx::query("DELETE FROM sessions WHERE character_id = ?")
         .bind(character_id)
         .execute(pool)
@@ -970,16 +984,37 @@ async fn every_route_answers_unavailable_with_no_database() {
     assert_eq!(body["error"]["code"], "unavailable");
 }
 
-#[tokio::test]
-async fn deleting_a_session_removes_its_turns_vectors() {
-    let Some((router, pool, _serial)) = setup().await else {
-        return;
-    };
-    let character_id = random_id("test");
-    let session_id = random_id("session");
-    let model = json!({ "provider": "memory-api-test", "model": "four-wide", "dimensions": 4 });
+/// The turn ids the vector search returns for a character, nearest to [0.9, 0.1, 0, 0] first.
+async fn nearest_turns(router: &Router, character_id: &str, model: &Value) -> Vec<String> {
+    let retrieval = json!({
+        "characterId": character_id,
+        "sessionId": random_id("asking"),
+        "query": "",
+        "queryEmbedding": { "model": model, "vector": [0.9, 0.1, 0.0, 0.0] },
+        "limits": { "episodes": 5, "facts": 5, "documents": 0 },
+        "since": null,
+    });
+    let (status, body) = call(router, Method::POST, "/db/retrieve", Some(retrieval)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body["vectorSearch"], "used", "{body}");
+    body["episodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|episode| episode["id"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+/// Registers the four-wide test model, makes its turns collection the one searched, and writes
+/// three turns with vectors for the character: nearest to the probe first, then [0.6, 0.8],
+/// then [0, 0, 1].
+async fn three_turns_with_vectors(
+    router: &Router,
+    character_id: &str,
+    model: &Value,
+) -> (u32, Vec<String>) {
     let (status, body) = call(
-        &router,
+        router,
         Method::PUT,
         "/db/embedding-models",
         Some(model.clone()),
@@ -987,56 +1022,141 @@ async fn deleting_a_session_removes_its_turns_vectors() {
     .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     let model_id: u32 = body["modelId"].as_str().unwrap().parse().unwrap();
-
-    let turn_id = random_id("turn");
-    let episode = json!({
-        "id": turn_id,
-        "sessionId": session_id,
-        "characterId": character_id,
-        "role": "user",
-        "text": "gone soon",
-        "interrupted": false,
-        "at": "2026-09-27T12:00:00.000Z",
-        "embedding": { "model": model, "vector": [0.5, 0.5, 0.0, 0.0] },
-        "affect": null,
-    });
-    let (status, body) = call(&router, Method::POST, "/db/episodes", Some(episode)).await;
+    let request = json!({ "collection": "turns", "model": model });
+    let (status, body) = call(
+        router,
+        Method::POST,
+        "/db/collections/activate",
+        Some(request),
+    )
+    .await;
     assert_eq!(status, StatusCode::OK, "{body}");
+    let session_id = random_id("session");
+    let mut turns = Vec::new();
+    for vector in [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.6, 0.8, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+    ] {
+        let turn_id = random_id("turn");
+        let episode = json!({
+            "id": turn_id,
+            "sessionId": session_id,
+            "characterId": character_id,
+            "role": "user",
+            "text": "a turn with a vector",
+            "interrupted": false,
+            "at": "2026-09-27T12:00:00.000Z",
+            "embedding": { "model": model, "vector": vector },
+            "affect": null,
+        });
+        let (status, body) = call(router, Method::POST, "/db/episodes", Some(episode)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        turns.push(turn_id);
+    }
+    (model_id, turns)
+}
 
-    // The vector table is shared by every test using this model (`model_registry` is
-    // global, ADR-35), so counting the whole table would catch other tests' rows running
-    // concurrently — filter to this test's own turn by its integer id.
+#[tokio::test]
+async fn a_table_made_when_the_key_cascaded_is_rebuilt_once_and_found_whole_again() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let model = json!({ "provider": "memory-api-test", "model": "four-wide", "dimensions": 4 });
+    let (model_id, turns) = three_turns_with_vectors(&router, &character_id, &model).await;
+
+    // The table as it was made before 2026-11-09, and a delete through its cascade.
     let table = format!("turn_embeddings_{model_id}");
-    let turn_row_id: u64 = sqlx::query_scalar("SELECT id FROM turns WHERE uid = ?")
-        .bind(&turn_id)
-        .fetch_one(&pool)
-        .await
-        .expect("the turn was written");
-    let before: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
-        "SELECT COUNT(*) FROM {table} WHERE item_id = ?"
-    )))
-    .bind(turn_row_id)
-    .fetch_one(&pool)
-    .await
-    .expect("count before delete");
-    assert_eq!(before, 1);
-
-    sqlx::query("DELETE FROM sessions WHERE uid = ?")
-        .bind(&session_id)
+    let key = format!("{table}_item");
+    for sql in [
+        format!("ALTER TABLE {table} DROP FOREIGN KEY {key}"),
+        format!(
+            "ALTER TABLE {table} ADD CONSTRAINT {key} FOREIGN KEY (item_id) REFERENCES turns (id) ON DELETE CASCADE"
+        ),
+    ] {
+        sqlx::raw_sql(AssertSqlSafe(sql))
+            .execute(&pool)
+            .await
+            .expect("make the old key");
+    }
+    sqlx::query("DELETE FROM turns WHERE uid = ?")
+        .bind(&turns[0])
         .execute(&pool)
         .await
-        .expect("delete the session");
+        .expect("delete through the cascade");
+    let broken = nearest_turns(&router, &character_id, &model).await;
+    assert_ne!(
+        broken,
+        [turns[1].clone(), turns[2].clone()],
+        "MariaDB mended the index itself: memory.rs's notes are out of date"
+    );
 
-    let after: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
-        "SELECT COUNT(*) FROM {table} WHERE item_id = ?"
-    )))
-    .bind(turn_row_id)
+    let repaired = memory::repair_vector_tables(&pool).await.expect("repair");
+    assert!(repaired.contains(&table), "{repaired:?}");
+    assert_eq!(
+        nearest_turns(&router, &character_id, &model).await,
+        [turns[1].clone(), turns[2].clone()]
+    );
+    let rule: String = sqlx::query_scalar(
+        "SELECT CAST(DELETE_RULE AS CHAR) FROM information_schema.REFERENTIAL_CONSTRAINTS
+         WHERE CONSTRAINT_SCHEMA = DATABASE() AND CONSTRAINT_NAME = ?",
+    )
+    .bind(&key)
     .fetch_one(&pool)
     .await
-    .expect("count after delete");
+    .expect("the key is back");
+    assert_eq!(rule, "RESTRICT");
+    // Done once: the key's rule says so.
+    assert!(
+        !memory::repair_vector_tables(&pool)
+            .await
+            .expect("repair again")
+            .contains(&table)
+    );
+
+    cleanup(&pool, &character_id).await;
+}
+
+#[tokio::test]
+async fn deleting_a_turn_with_a_vector_leaves_the_rest_findable_and_a_cascade_is_refused() {
+    // MariaDB 11.8.8 does not tell a vector index about rows a cascade deletes: search then
+    // misses live rows (memory.rs's notes, docs/SURFACE.md 2026-11-09). The store deletes
+    // vectors itself and the key refuses a cascade; this proves both through the routes.
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let character_id = random_id("test");
+    let model = json!({ "provider": "memory-api-test", "model": "four-wide", "dimensions": 4 });
+    let (_, turns) = three_turns_with_vectors(&router, &character_id, &model).await;
+    let session_id: String = sqlx::query_scalar(
+        "SELECT s.uid FROM turns t JOIN sessions s ON s.id = t.session_id WHERE t.uid = ?",
+    )
+    .bind(&turns[0])
+    .fetch_one(&pool)
+    .await
+    .expect("the turns' session");
+
+    // The key restricts: a session cannot be deleted from under its turns' vectors.
+    let cascade = sqlx::query("DELETE FROM sessions WHERE uid = ?")
+        .bind(&session_id)
+        .execute(&pool)
+        .await;
+    assert!(cascade.is_err(), "a cascade to vector rows must be refused");
+
+    let (status, body) = call(
+        &router,
+        Method::DELETE,
+        &format!("/db/episodes/{}", turns[0]),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+
     assert_eq!(
-        after, 0,
-        "deleting the session must cascade to the turn's vector"
+        nearest_turns(&router, &character_id, &model).await,
+        [turns[1].clone(), turns[2].clone()],
+        "every turn left, nearest first"
     );
 
     cleanup(&pool, &character_id).await;
@@ -1426,9 +1546,11 @@ async fn remove_conformance_data() {
     let Some((_router, pool, _serial)) = setup().await else {
         return;
     };
+    delete_vectors_of(&pool, "i.character_id LIKE ?", "conformance-%".to_owned()).await;
+    delete_vectors_of(&pool, "i.character_id LIKE ?", "u-conformance-%".to_owned()).await;
     for table in ["sessions", "facts", "self_blocks", "plans", "schedules"] {
         sqlx::query(AssertSqlSafe(format!(
-            "DELETE FROM {table} WHERE character_id LIKE 'conformance-%'"
+            "DELETE FROM {table} WHERE character_id LIKE 'conformance-%' OR character_id LIKE 'u-conformance-%'"
         )))
         .execute(&pool)
         .await

@@ -83,6 +83,10 @@ pub async fn connect(url: &str) -> Result<MySqlPool, DbError> {
         .run(&pool)
         .await
         .map_err(|error| DbError::Backend(error.to_string()))?;
+    // Once per table made before 2026-11-09: its vector index may be wrong (memory.rs's notes).
+    for table in memory::repair_vector_tables(&pool).await? {
+        eprintln!("companion: rebuilt the vector index of {table}, once (MariaDB cascade fix)");
+    }
     Ok(pool)
 }
 

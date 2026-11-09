@@ -157,10 +157,21 @@ async fn database() -> Option<(MySqlPool, tokio::sync::OwnedMutexGuard<()>)> {
 }
 
 /// Every model a test registered (provider ends `/ingest-api-test/v1`), its vector tables and
-/// its collection rows, and the documents indexed with it. Documents first: their chunks'
-/// vectors cascade, and `documents.model_id` would otherwise be set null under us.
+/// its collection rows, and the documents indexed with it. Documents first, their chunks'
+/// vectors before them (a cascade would break the index, memory.rs): `documents.model_id`
+/// would otherwise be set null under us.
 async fn remove_test_models(pool: &MySqlPool) {
     let pattern = format!("%{PROVIDER_SUFFIX}");
+    let mut conn = pool.acquire().await.expect("a connection");
+    latentpresence_db::memory::delete_vectors(
+        &mut conn,
+        latentpresence_db::memory::Collection::Chunks,
+        "i.document_id IN (SELECT d.id FROM documents d JOIN model_registry m ON m.id = d.model_id WHERE m.provider LIKE ?)",
+        pattern.clone(),
+    )
+    .await
+    .expect("delete the test documents' vectors");
+    drop(conn);
     sqlx::query(
         "DELETE d FROM documents d JOIN model_registry m ON m.id = d.model_id
          WHERE m.provider LIKE ?",
@@ -200,6 +211,17 @@ async fn remove_test_models(pool: &MySqlPool) {
 }
 
 async fn cleanup(pool: &MySqlPool, folder: &str) {
+    // Chunk vectors by their own statement: a cascade would break the index (memory.rs).
+    let mut conn = pool.acquire().await.expect("a connection");
+    latentpresence_db::memory::delete_vectors(
+        &mut conn,
+        latentpresence_db::memory::Collection::Chunks,
+        "i.document_id IN (SELECT d.id FROM documents d WHERE d.folder = ?)",
+        folder.to_owned(),
+    )
+    .await
+    .expect("delete the test documents' vectors");
+    drop(conn);
     sqlx::query("DELETE FROM documents WHERE folder = ?")
         .bind(folder)
         .execute(pool)
