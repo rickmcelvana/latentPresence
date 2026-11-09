@@ -1161,3 +1161,9 @@ Left: the push, then read CI's `vector` run for the MariaDB leg. This PC has no 
 Next: P11-T05, export, import and the guide.
 Decisions: none new; the protocol change is ADR-74 item 8's.
 Lessons: Settings' budget moved twice this phase; a feature reached from one button belongs behind a dynamic import from the day it is written.
+
+## 2026-11-09 claude (30) — the vector index and cascades
+Did: read CI after the push: `mariadb vector` failed on "are searched nearest first" after P11-T04. A probe on the dev server (11.8.8) showed why: vector rows deleted by `ON DELETE CASCADE` stay in the vector index's graph, and search afterwards returns some live rows or none, even after more inserts; only dropping and adding the index mends it. Forget was the first test to delete a row with a vector, but deleting a turn, a fact or a document, and the self-check, all went the same way. Now `memory::delete_vectors` runs first on every path, in the same transaction; new vector tables' keys restrict; `memory::repair_vector_tables` rebuilds, once on connecting and under `GET_LOCK`, any table whose key still cascades (four separate `ALTER`s: one combining the drops fails with errno 152). Tests: a server test deleting a turn then searching, a repair test from a cascading table, a conformance case on every store, the self-check's new steps. On the dev DB: cargo tests all green, memory-check green, client conformance 23/23 through a companion; the dev DB's broken tables were rebuilt by the repair.
+Left: push, then read CI. P11-T05. R-70's friend, R-71.
+Decisions: ADR-35 amended (vectors never deleted by cascade), recorded in SURFACE.md 2026-11-09. Taken as the fix, not a separate proposal: it changes no interface.
+Lessons: I first blamed the dev DB's state for the vector failure; CI's database was fresh, which should have ruled that out at once. And a probe that runs statements one at a time does not prove the combined statement works.
