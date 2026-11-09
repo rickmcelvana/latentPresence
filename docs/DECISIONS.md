@@ -3342,3 +3342,16 @@ line, never blocks a save, and stays quiet on Alice's and Theo's files. Deleting
 every schedule of the character from the store Settings → Memory chose (loaded only then), then the
 shelf entry, then its settings (voice, body, plugins, plugin schedule answers); talking to it becomes
 talking to Alice. Seen in the pane: made, warned, saved, opened in the call, deleted.
+
+**In the build (P11-T04, 2026-11-08): the protocol change.** `MemoryStore.forgetCharacter(characterId)`
+returns `Forgotten` (episodes, facts, plans, blocks, schedules); `OWN_CHARACTER_PREFIX` moved into
+`packages/protocol` so every store refuses the same ids (`refuseBuiltIn` in core; the companion's
+`store::own_character`, checked before the database is asked). The companion route is
+`dbForgetCharacter`, `DELETE /db/characters/{id}`: facts, turns, sessions, plans, self blocks and
+schedules, one statement each in one transaction; vectors and plan items go by their cascades. The
+statements run through `sqlx::query` with static text, as `memory::self_check` does, because this PC
+has no `.env` or sqlx-cli since the reinstall and the `.sqlx` cache could not be refreshed; nothing
+in the cache changed. Forgetting is not an error when nothing is there (all counts 0). Delete offers
+"Delete and forget everything", and the page says what went ("one turn, one note and one schedule").
+The editor's rules and the delete code now load only when used: Settings went to 229.8 kB with them
+and is 228.6 of 230 kB without.

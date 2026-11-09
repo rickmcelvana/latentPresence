@@ -1154,3 +1154,10 @@ Left: R-70's friend's plugin; R-71 (Debian). In the Browser pane the saved model
 Next: P11-T04 (forgetting a character) or T05 (export and import).
 Decisions (flagged): no play button for a character's voice in Settings (Kokoro is never loaded there); blank lines dropped on save.
 Lessons: Settings has 1.3 kB left in its budget. The next thing it needs should arrive the way the editor and Plugins do, when it is opened.
+
+## 2026-11-08 claude (29) — P11-T04: forgetting a character
+Did: `MemoryStore.forgetCharacter` in the protocol (ADR-74 item 8): counts back, `bad_request` for any id not starting `u-`. Fake and IndexedDB stores, the companion client, and the companion's `DELETE /db/characters/{id}` (one statement per table, one transaction, refusal before the database). Conformance: "forgetting one character leaves every other untouched" passes on the fake and IndexedDB stores; the companion's integration tests skip here (no test database) and run in CI's `vector` job. "Delete and forget everything" in Settings → Character says what went. Settings hit 229.8 kB, so the editor's rules and the delete code now load on use: 228.6 of 230. Gate green, 2414 TS tests.
+Left: the push, then read CI's `vector` run for the MariaDB leg. This PC has no `.env` since the reinstall, so the dev MariaDB is unreachable from here (the new SQL is unchecked `sqlx::query`, no cache change). R-70's friend, R-71. Not pushed.
+Next: P11-T05, export, import and the guide.
+Decisions: none new; the protocol change is ADR-74 item 8's.
+Lessons: Settings' budget moved twice this phase; a feature reached from one button belongs behind a dynamic import from the day it is written.
