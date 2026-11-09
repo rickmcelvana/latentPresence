@@ -10,6 +10,10 @@ import { DesktopAppSection } from './DesktopAppSection';
 import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
 import { useCharacters } from '../characters/use-characters';
+import { defaultBodyShelf, type BodyShelf } from '../characters/body-shelf';
+import { withoutCharacter } from '../characters/edit';
+import { removeCharacter } from '../characters/remove-character';
+import type { MemoryStore } from '@latentpresence/protocol';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
 import { InitiativeSection } from './InitiativeSection';
@@ -44,12 +48,29 @@ export interface SettingsPanelProps {
   readonly listCompanion?: CompanionConfigOptions['listCompanion'];
   readonly homeWaitMs?: number;
   readonly homePollMs?: number;
+  /** Their own bodies, offered as a character's default (P11-T03). */
+  readonly bodyShelf?: BodyShelf;
+  /** The store a deleted character's schedules are deleted from; the one Settings → Memory chose when omitted. */
+  readonly memoryFor?: (settings: Settings) => Promise<MemoryStore | null>;
 }
 
-export function SettingsPanel({ deps: depsOverride, companionConfig, listCompanion, homeWaitMs, homePollMs }: SettingsPanelProps = {}): ReactElement {
+/** Loaded only when a character is deleted: the stores are not Settings' to carry (ADR-68). */
+async function chosenMemory(settings: Settings, fetch: SettingsDeps['fetch']): Promise<MemoryStore | null> {
+  const { chooseMemoryStore } = await import('../chat/chat-memory');
+  return (await chooseMemoryStore({ setting: settings.memory, companionUrl: settings.companionUrl, fetch, indexedDB: globalThis.indexedDB }))?.store ?? null;
+}
+
+export function SettingsPanel({ deps: depsOverride, companionConfig, listCompanion, homeWaitMs, homePollMs, bodyShelf, memoryFor }: SettingsPanelProps = {}): ReactElement {
   const deps = useMemo<SettingsDeps>(() => ({ ...defaultSettingsDeps(), ...depsOverride }), [depsOverride]);
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
   const characters = useCharacters(deps.characters);
+  const bodies = useMemo(() => bodyShelf ?? defaultBodyShelf(), [bodyShelf]);
+  const deleteCharacter = async (id: string): Promise<{ readonly schedules: number }> => {
+    const store = await (memoryFor ?? ((given: Settings) => chosenMemory(given, deps.fetch)))(settings);
+    const result = await removeCharacter(id, { shelf: deps.characters, memory: store });
+    setSettings((prev) => withoutCharacter(prev, id));
+    return result;
+  };
 
   useEffect(() => {
     saveSettings(settings, deps.storage);
@@ -89,6 +110,9 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
         character={settings.character}
         characters={settings.characters}
         list={characters}
+        bodyShelf={bodies}
+        onDelete={deleteCharacter}
+        shelf={deps.characters}
         onSelect={(character) => setSettings((prev) => ({ ...prev, character }))}
         onVoice={(id, voice) => setSettings((prev) => ({ ...prev, characters: { ...prev.characters, [id]: { body: null, plugins: [], ...prev.characters[id], voice } } }))}
         tts={settings.tts}

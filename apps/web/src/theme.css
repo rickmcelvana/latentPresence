@@ -1210,6 +1210,121 @@ kbd {
   gap: var(--gap-md);
 }
 
+/* --- Character editor (P11-T03, ADR-74 item 5) ------------------------------
+   Inside Settings → Character: the persona's fields in its own terms, each list
+   of short lines editable in place, a warning where a line tells them to claim
+   to be human, and the delete question laid out like a plugin's removal. */
+.character-manage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.character-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  padding: var(--gap-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.character-editor-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.character-editor-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap-md);
+}
+
+.character-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.character-line-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  margin: var(--gap-xs) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.character-line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.character-line-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.character-line-row > .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.character-line-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.character-warning {
+  margin: 0;
+  padding-left: var(--gap-sm);
+  color: var(--warning);
+  font-size: 12px;
+  border-left: 2px solid var(--warning);
+}
+
+.character-cost {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.character-problems {
+  margin: 0;
+  padding-left: var(--gap-md);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.character-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+.character-delete {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding-top: var(--gap-sm);
+  border-top: 1px solid var(--border);
+}
+
+.character-delete > p {
+  margin: 0;
+}
+
 .settings-elapsed {
   color: var(--text-muted);
   font-family: var(--font-mono);

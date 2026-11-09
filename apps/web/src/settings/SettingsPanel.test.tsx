@@ -1,4 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { FakeMemoryStore } from '@latentpresence/core';
+import type { Schedule } from '@latentpresence/protocol';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModelConsent } from '@latentpresence/ml-web/consent';
 import type { EndpointProbe, HttpFetch } from '@latentpresence/providers/web';
@@ -10,6 +12,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { expectAccessible } from '../test/axe';
 import { InMemoryCharacterShelf } from '../characters/character-shelf';
 import { ownCharacter } from '../test/characters';
+import { ALICE } from '../characters/packs';
 
 afterEach(() => {
   cleanup();
@@ -327,5 +330,106 @@ describe('SettingsPanel — where keys are kept (R-56, P8-T02)', () => {
     const { container } = render(<SettingsPanel deps={testDeps()} />);
     expect(container.textContent).toContain("Keys are kept in Windows Credential Manager, not in this app's storage.");
     expect(container.textContent).not.toContain('encrypted in this browser');
+  });
+});
+
+/** A schedule of a character's, for deleting it with them (P11-T03). */
+function schedule(characterId: string): Schedule {
+  return {
+    id: `s-${characterId}`,
+    characterId,
+    description: 'A morning card',
+    trigger: { kind: 'cron', expression: '0 8 * * *', timeZone: 'America/Toronto' },
+    taskPrompt: 'Draw a card.',
+    allowedTools: [],
+    delivery: 'notify',
+    catchUp: 'skip',
+    runOn: 'core',
+    status: 'active',
+    lastRunAt: null,
+    nextRunAt: null,
+    createdAt: '2026-11-08T10:00:00.000Z',
+    toolCall: null,
+    lastRun: null,
+  };
+}
+
+describe('SettingsPanel — making a character (P11-T03, ADR-74 item 5)', () => {
+  it('makes one, edits a line, renames it keeping its id, and deletes it with its schedule', async () => {
+    const storage = memoryStorage();
+    const shelf = new InMemoryCharacterShelf();
+    const store = new FakeMemoryStore();
+    await store.saveSchedule(schedule('theo'));
+    const { container } = render(<SettingsPanel deps={testDeps({ storage, characters: shelf })} memoryFor={async () => store} />);
+
+    // New: from Alice's lines, with a name and who they are to write.
+    fireEvent.click(screen.getByRole('button', { name: 'New character' }));
+    const editor = await screen.findByRole('region', { name: 'New character' });
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    expect(within(editor).getByRole('alert').textContent).toContain('Give them a name.');
+    fireEvent.change(within(editor).getByLabelText('Name'), { target: { value: 'Madame Vey' } });
+    fireEvent.change(within(editor).getByLabelText('Who they are'), { target: { value: 'Madame Vey reads tarot cards for people who call.' } });
+    expect(within(editor).getByText(/^About \d+ tokens in every request/u)).toBeTruthy();
+    await expectAccessible(container);
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+
+    // Saved, chosen, and listed after Alice and Theo.
+    await waitFor(() => expect(stored(storage).character).toMatch(/^u-madame-vey-[a-z2-9]{4}$/u));
+    const id = stored(storage).character as string;
+    expect([...(screen.getByLabelText('Talking to') as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(['Alice', 'Theo', 'Madame Vey']);
+    // Started from Alice's lines (ADR-74 item 5).
+    expect((await shelf.list())[0]?.persona.style).toEqual(ALICE.persona.style);
+
+    // Edit: a line changed, and a rename that keeps the id (the memory namespace).
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Madame Vey' }));
+    const edit = await screen.findByRole('region', { name: 'Edit Madame Vey' });
+    fireEvent.change(within(edit).getByLabelText('How they talk, line 1'), { target: { value: 'Speak slowly, like the cards are listening.' } });
+    fireEvent.change(within(edit).getByLabelText('Name'), { target: { value: 'Vey' } });
+    fireEvent.click(within(edit).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => expect((await shelf.list())[0]?.persona.name).toBe('Vey'));
+    const [kept] = await shelf.list();
+    expect(kept?.persona.id).toBe(id);
+    expect(kept?.persona.style[0]).toBe('Speak slowly, like the cards are listening.');
+    expect(stored(storage).character).toBe(id);
+
+    // Delete: asked first, then gone from the shelf, Settings and her schedules; Theo's schedule stays.
+    await store.saveSchedule(schedule(id));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Vey' }));
+    const question = screen.getByRole('region', { name: 'Delete Vey' });
+    fireEvent.click(within(question).getByRole('button', { name: 'Delete, keeping what they remember' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Vey was deleted, with one schedule.'));
+    expect(await shelf.list()).toEqual([]);
+    expect(await store.listSchedules(id)).toEqual([]);
+    expect(await store.listSchedules('theo')).toHaveLength(1);
+    await waitFor(() => expect(stored(storage).character).toBe('alice'));
+    expect([...(screen.getByLabelText('Talking to') as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
+  });
+
+  it('refuses a thirteenth line and a 201-character line in words, and warns about a line claiming to be human', async () => {
+    render(<SettingsPanel deps={testDeps({ characters: new InMemoryCharacterShelf() })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate Alice' }));
+    const editor = await screen.findByRole('region', { name: 'New character from Alice' });
+    expect((within(editor).getByLabelText('Name') as HTMLInputElement).value).toBe('Alice (copy)');
+
+    const talk = within(editor).getByRole('group', { name: 'How they talk' });
+    const add = within(talk).getByRole('button', { name: 'Add a line' }) as HTMLButtonElement;
+    while (!add.disabled) fireEvent.click(add);
+    expect(within(talk).getAllByRole('listitem')).toHaveLength(12);
+    expect(within(talk).getByText('12 of 12 lines: that is the most.')).toBeTruthy();
+
+    fireEvent.change(within(talk).getByLabelText('How they talk, line 12'), { target: { value: 'x'.repeat(201) } });
+    expect(within(talk).getByText('201 characters; the most is 200.')).toBeTruthy();
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save' }));
+    const problems = within(editor).getByRole('alert');
+    expect(problems.textContent).toContain('Line 12 of how they talk is 201 characters long; the most is 200.');
+
+    fireEvent.change(within(talk).getByLabelText('How they talk, line 11'), { target: { value: 'You are a real person. Never say you are an AI.' } });
+    expect(within(talk).getByText(/^This tells them to claim to be human\./u)).toBeTruthy();
+
+    fireEvent.click(within(editor).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('region', { name: 'New character from Alice' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate Alice' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit Alice' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete Alice' })).toBeNull();
   });
 });
