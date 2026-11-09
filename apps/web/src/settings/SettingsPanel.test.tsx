@@ -432,6 +432,76 @@ describe('SettingsPanel — making a character (P11-T03, ADR-74 item 5)', () => 
     expect(await shelf.list()).toEqual([]);
   });
 
+  it('exports a character, deletes it keeping its memories, and finds them again on importing the file (P11-T05)', async () => {
+    const id = 'u-madame-vey-7k2q';
+    const shelf = new InMemoryCharacterShelf([ownCharacter('Madame Vey', id)]);
+    const store = new FakeMemoryStore();
+    await store.appendEpisode({ id: 'e-vey', sessionId: 's', characterId: id, role: 'user', text: 'My sister plays the cello', interrupted: false, at: '2026-11-08T10:00:00.000Z', embedding: null, affect: null });
+    const files: Blob[] = [];
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      files.push(blob as Blob);
+      return 'blob:character';
+    });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<SettingsPanel deps={testDeps({ storage: memoryStorage(), characters: shelf })} memoryFor={async () => store} />);
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Madame Vey' })).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Talking to'), { target: { value: id } });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Export Madame Vey' }));
+    await waitFor(() => expect(files).toHaveLength(1));
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe('madame-vey.persona.json');
+    const text = await files[0]!.text();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Madame Vey' }));
+    fireEvent.click(within(screen.getByRole('region', { name: 'Delete Madame Vey' })).getByRole('button', { name: 'Delete, keeping what they remember' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Madame Vey was deleted.'));
+    expect(await shelf.list()).toEqual([]);
+
+    fireEvent.change(screen.getByLabelText('Character file to import'), { target: { files: [new File([text], 'madame-vey.persona.json', { type: 'application/json' })] } });
+    const preview = await screen.findByRole('region', { name: 'Import Madame Vey' });
+    expect(within(preview).getByText(/lines? of how they talk/u)).toBeTruthy();
+    fireEvent.click(within(preview).getByRole('button', { name: 'Add Madame Vey' }));
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Madame Vey was added. Anything they remembered here before is theirs again.'));
+    expect((screen.getByLabelText('Talking to') as HTMLSelectElement).value).toBe(id);
+    expect((await shelf.list()).map((kept) => kept.persona.id)).toEqual([id]);
+    expect((await store.listEpisodes(id, null)).map((episode) => episode.text)).toEqual(['My sister plays the cello']);
+    createObjectURL.mockRestore();
+    click.mockRestore();
+  });
+
+  it('brings a file with Alice’s id in as a new character, and refuses a broken file in sentences (P11-T05)', async () => {
+    const shelf = new InMemoryCharacterShelf();
+    const { container } = render(<SettingsPanel deps={testDeps({ characters: shelf })} />);
+    const input = screen.getByLabelText('Character file to import');
+
+    fireEvent.change(input, { target: { files: [new File([JSON.stringify({ version: 1, id: 'u-x-aaaa', name: '' })], 'broken.persona.json')] } });
+    const refused = await screen.findByRole('region', { name: 'Import broken.persona.json' });
+    expect(within(within(refused).getByRole('alert')).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'The name is empty.',
+      'Who they are is missing.',
+      'How they talk is missing.',
+      'What they will not do is missing.',
+      'The voice is missing.',
+      'How often they gesture is missing.',
+    ]);
+    await expectAccessible(container);
+    fireEvent.click(within(refused).getByRole('button', { name: 'Close' }));
+
+    fireEvent.change(screen.getByLabelText('Character file to import'), { target: { files: [new File([JSON.stringify(ALICE.persona)], 'alice.persona.json')] } });
+    const preview = await screen.findByRole('region', { name: 'Import Alice' });
+    expect(within(preview).getByText(/has Alice's id, who comes with the app/u)).toBeTruthy();
+    expect(within(preview).queryByRole('button', { name: 'Add Alice' })).toBeNull();
+    await expectAccessible(container);
+    fireEvent.click(within(preview).getByRole('button', { name: 'Add as a new character' }));
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Alice (imported) was added as a new character.'));
+    const [added] = await shelf.list();
+    expect(added?.persona.id).toMatch(/^u-alice-imported-[a-z2-9]{4}$/u);
+    expect((screen.getByLabelText('Talking to') as HTMLSelectElement).value).toBe(added?.persona.id);
+  });
+
   it('refuses a thirteenth line and a 201-character line in words, and warns about a line claiming to be human', async () => {
     render(<SettingsPanel deps={testDeps({ characters: new InMemoryCharacterShelf() })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Duplicate Alice' }));

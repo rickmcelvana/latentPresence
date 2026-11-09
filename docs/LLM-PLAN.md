@@ -581,7 +581,7 @@ Done when: a page test makes a character, edits a line, renames it (id unchanged
 Depends: P11-T03. `MemoryStore.forgetCharacter(characterId)` in `packages/protocol` (item 8, the ADR note): the fake and IndexedDB stores; the companion's `DELETE /db/characters/{id}` with one statement per table in MariaDB, refused for `alice` and `theo`; the conformance suite's "forgetting one character leaves every other untouched", run against the dev MariaDB too. Delete's "forget it" turns on.
 Done when: the conformance test passes on all three stores (the MariaDB leg in `vector` CI); forgetting a character with 500 episodes over the companion is one request; the page shows what was forgotten.
 
-### P11-T05 Export, import and the guide — owner: main + human
+### P11-T05 Export, import and the guide — owner: main + human — built 2026-11-09 (the page tests pass; the site page is committed in its repository, not pushed; Rick's check open)
 Depends: P11-T03. Export writes `<name>.persona.json` (the `Persona` only). Import picks a file, checks it (each problem in a sentence), shows the name, the summary and the line count, and adds it under the id rules of item 9 (free `u-` id kept; a built-in or taken id offered as a new character, or for a taken one, "replace it" with memories kept). `docs/characters.md` and a short page on the site.
 Done when: a page test exports a character, deletes it keeping its memories, imports the file and finds the memories again; a file with Alice's id comes in as a new character; a broken file is refused in sentences; a Rick check: someone other than the architect makes a character with a plugin enabled and moves it to a second browser (the phase's exit criterion).
 

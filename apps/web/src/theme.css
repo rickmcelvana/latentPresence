@@ -1325,6 +1325,25 @@ kbd {
   margin: 0;
 }
 
+/* A character file before it is added (P11-T05): who it is, its cost, what happens to its id. */
+.character-import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  padding: var(--gap-sm) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.character-import > p {
+  margin: 0;
+}
+
+.character-import-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
 .settings-elapsed {
   color: var(--text-muted);
   font-family: var(--font-mono);
@@ -1483,6 +1502,19 @@ kbd {
 
 /* The real file input covers its label, invisible, so the label is what is seen and clicked. */
 .plugin-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Import a character (P11-T05): the same invisible input over its label as a plugin file. */
+.character-file {
+  position: relative;
+  overflow: hidden;
+}
+
+.character-file-input {
   position: absolute;
   inset: 0;
   opacity: 0;

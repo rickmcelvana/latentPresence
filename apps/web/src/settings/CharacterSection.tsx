@@ -12,6 +12,9 @@ import { BROWSER_VOICE_GROUPS, languageLabel } from './VoiceSection';
 
 /** The editor loads when it is opened: Settings stays inside its budget (ADR-68) for everyone else. */
 const CharacterEditor = lazy(async () => ({ default: (await import('../characters/CharacterEditor')).CharacterEditor }));
+/** Export and import (P11-T05) load on use, the same way. */
+const CharacterImport = lazy(async () => ({ default: (await import('../characters/CharacterImport')).CharacterImport }));
+const share = () => import('../characters/share');
 
 export interface CharacterSectionProps {
   /** The active character's id. */
@@ -44,6 +47,7 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
   const [deleting, setDeleting] = useState(false);
   const [deleteProblem, setDeleteProblem] = useState<string | null>(null);
   const [deleted, setDeleted] = useState<string | null>(null);
+  const [importing, setImporting] = useState<{ readonly fileName: string; readonly text: string } | null>(null);
   const { persona } = pack;
   const saved = characters[persona.id]?.voice ?? null;
   const savedHere = saved !== null && saved.kind === tts.kind ? saved : null;
@@ -76,6 +80,16 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
     }
   };
 
+  const pick = async (file: File | undefined): Promise<void> => {
+    if (file === undefined) return;
+    const { CHARACTER_FILE_LIMIT } = await share();
+    // Never more than the limit and one byte: enough to say a larger file is not a character.
+    const text = await file.slice(0, CHARACTER_FILE_LIMIT + 1).text();
+    setDeleting(false);
+    setDeleted(null);
+    setImporting({ fileName: file.name, text });
+  };
+
   return (
     <section className="panel settings-section">
       <div className="panel-header">
@@ -96,7 +110,22 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
       </div>
       <p className="field-hint">{persona.summary}</p>
 
-      {editing === null ? (
+      {importing !== null ? (
+        <Suspense fallback={<p className="field-hint">Reading the file…</p>}>
+          <CharacterImport
+            fileName={importing.fileName}
+            list={list}
+            onAdded={(id, words) => {
+              setImporting(null);
+              setDeleted(words);
+              onSelect(id);
+            }}
+            onCancel={() => setImporting(null)}
+            shelf={shelf}
+            text={importing.text}
+          />
+        </Suspense>
+      ) : editing === null ? (
         <div className="character-manage">
           {!pack.builtIn && (
             <button aria-label={`Edit ${persona.name}`} className="btn btn-sm" onClick={() => void open((rules) => rules.editDraft(pack, null))} type="button">
@@ -114,6 +143,22 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
           <button className="btn btn-sm btn-ghost" onClick={() => void open((rules) => rules.newDraft())} type="button">
             New character
           </button>
+          <button aria-label={`Export ${persona.name}`} className="btn btn-sm btn-ghost" onClick={() => void share().then(({ downloadCharacter }) => downloadCharacter(persona))} type="button">
+            Export
+          </button>
+          <label className="btn btn-sm btn-ghost character-file">
+            Import…
+            <input
+              accept=".json,application/json"
+              aria-label="Character file to import"
+              className="character-file-input"
+              onChange={(event) => {
+                void pick(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+              type="file"
+            />
+          </label>
           {pack.builtIn && <span className="field-hint">{persona.name} comes with the app. Duplicate to make one of your own from them.</span>}
         </div>
       ) : (

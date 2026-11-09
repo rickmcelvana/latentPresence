@@ -3366,3 +3366,5 @@ in the cache changed. Forgetting is not an error when nothing is there (all coun
 "Delete and forget everything", and the page says what went ("one turn, one note and one schedule").
 The editor's rules and the delete code now load only when used: Settings went to 229.8 kB with them
 and is 228.6 of 230 kB without.
+
+**Build note, P11-T05 (2026-11-09).** Export and import load on use (`characters/share.ts`, `CharacterImport.tsx`); Settings is 229.0 of 230 kB. Choices the ADR left open, taken here: an id is kept only when it looks like one the app makes (`u-` and lowercase letters, digits, hyphens), since it names a URL path and a memory namespace; anything else comes in as new, as Alice's and Theo's do. A character added as new whose name someone here already has is called "(imported)". A voice the app does not have is replaced by Alice's, with a warning, rather than refused. Replacing keeps the stored body and when it was made. Files over 64 kB are refused unread. The claims-human warning shows on import as in the editor.

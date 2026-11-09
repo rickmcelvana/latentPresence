@@ -111,6 +111,16 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
+### R-72 · Someone else makes a character and moves it to another browser · ~30 minutes (P11-T05, Phase 11's exit criterion)
+The point is a person who has not watched it being built: a friend or the family member who tried the app. You only set up and watch; let them read the screens. Two browsers on one PC stand in for two computers (each keeps its own characters).
+**1. Start the app from this checkout** (the hosted app gets these changes only when it is next deployed):
+```bash
+pnpm dev
+```
+**2. First browser.** Open http://localhost:5173 in **Chrome** and set up a model as usual. Then hand it over with one instruction: "Make your own character in Settings → Character, give them the Tarot plugin, and talk to them." (Tarot is under Settings → Plugins → Browse plugins…, then turned on for their character.) Note anything they hesitate over or misread.
+**3. Move it.** Ask them to press **Export** on their character, then open http://localhost:5173 in **Edge**, set up the same model, and **Import…** the downloaded `.persona.json` in Settings → Character. Then turn Tarot on for it there and talk to it.
+**4. Report**: did they make the character without help; did the import preview make sense; did the character sound the same in Edge; did they find that plugins have to be turned on again (the file carries none). Their memories stay in Chrome: that is expected without a shared companion database. Anything they had to ask goes into `docs/characters.md`.
+
 ### R-71 · The app on Debian: Chrome first, then the companion · ~1 hour (ADR-07)
 Linux ships as **the hosted app in Chrome, plus the companion built from source** (no Linux desktop app: WebKitGTK has no WebGPU). That has been measured once, in Spike E on Fedora in September, and never end to end. The open question from then: Chrome on Linux gave **no WebGPU adapter as launched** and needed `--disable-gpu-sandbox`; forcing it on gave SwiftShader (software), which is slow and passes a naive check.
 **1. The GPU driver.** In a terminal: `nvidia-smi`. It should name your card and a driver version. If it says the command is not found or no device, the NVIDIA driver is not installed: stop here and tell Claude what Debian version you have (`cat /etc/debian_version`).
