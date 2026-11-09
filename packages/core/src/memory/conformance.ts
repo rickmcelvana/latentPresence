@@ -428,6 +428,84 @@ export function describeMemoryStoreConformance(target: ConformanceTarget): void 
       });
     });
 
+    describe('forgetting a character (P11-T04, ADR-74 item 8)', () => {
+      /** One of everything for a character: two turns, a fact read from one and a fact it superseded, a plan, two blocks, a schedule. */
+      const fill = async (characterId: string): Promise<void> => {
+        const sessionId = random('session');
+        const vector = target.vectors ? { model: CONFORMANCE_MODEL, vector: [1, 0, 0, 0] } : null;
+        const said = episode(characterId, sessionId, 'My sister plays the bassoonette', { embedding: vector });
+        await store.appendEpisode(said);
+        await store.appendEpisode(episode(characterId, sessionId, 'Tell me about the bassoonette', { role: 'assistant' }));
+        const older = fact(characterId, 'the bassoonette, once');
+        await store.upsertFact(older);
+        await store.supersedeFact(older.id, days(-1));
+        await store.upsertFact(fact(characterId, 'the bassoonette', { sourceEpisodeId: said.id, embedding: vector }));
+        await store.savePlan(plan(characterId));
+        await store.writeBlock({ characterId, name: 'persona', content: 'Reads cards.', updatedAt: days(-1), editableByCharacter: true });
+        await store.writeBlock({ characterId, name: '_mood', content: '{}', updatedAt: days(-1), editableByCharacter: false });
+        if ((await store.capabilities()).schedules) {
+          await store.saveSchedule({
+            id: random('schedule'),
+            characterId,
+            description: 'A morning card',
+            trigger: { kind: 'cron', expression: '0 8 * * *', timeZone: 'America/Toronto' },
+            taskPrompt: 'Draw a card.',
+            allowedTools: [],
+            delivery: 'notify',
+            catchUp: 'skip',
+            runOn: 'core',
+            status: 'active',
+            lastRunAt: null,
+            nextRunAt: days(1),
+            createdAt: days(-1),
+            toolCall: null,
+            lastRun: null,
+          });
+        }
+      };
+      const everything = async (characterId: string) => ({
+        episodes: (await store.listEpisodes(characterId, null)).length,
+        facts: (await store.currentFacts(characterId)).length,
+        plans: (await store.listPlans(characterId)).length,
+        blocks: (await store.readBlocks(characterId)).length,
+        schedules: (await store.capabilities()).schedules ? (await store.listSchedules(characterId)).length : 0,
+        found: (await store.retrieve(request(characterId, 'bassoonette'))).episodes.length,
+      });
+
+      it('takes every row of one of theirs, and leaves every other character as it was', async () => {
+        const forgotten = `u-${random('conformance')}`;
+        const neighbour = `u-${random('conformance')}`;
+        const builtIn = random('conformance');
+        for (const characterId of [forgotten, neighbour, builtIn]) await fill(characterId);
+        const before = await everything(neighbour);
+        const schedules = (await store.capabilities()).schedules ? 1 : 0;
+
+        // Every fact, current or superseded, and every block, the system ones too.
+        expect(await store.forgetCharacter(forgotten)).toEqual({ episodes: 2, facts: 2, plans: 1, blocks: 2, schedules });
+        expect(await everything(forgotten)).toEqual({ episodes: 0, facts: 0, plans: 0, blocks: 0, schedules: 0, found: 0 });
+        expect(await everything(neighbour)).toEqual(before);
+        expect(await everything(builtIn)).toEqual(before);
+
+        // Forgetting again, or one nobody wrote for, is not an error.
+        expect(await store.forgetCharacter(forgotten)).toEqual({ episodes: 0, facts: 0, plans: 0, blocks: 0, schedules: 0 });
+        // A plan of the same id starts again at version 1: nothing of the old one is left.
+        const again = plan(forgotten);
+        await store.savePlan(again);
+        expect(ids(await store.listPlans(forgotten))).toEqual([again.id]);
+      });
+
+      it('refuses Alice, Theo and any id that is not one of theirs, touching nothing', async () => {
+        const builtIn = random('conformance');
+        await fill(builtIn);
+        const before = await everything(builtIn);
+        expect(await refusal(store.forgetCharacter('alice'))).toBe('bad_request');
+        expect(await refusal(store.forgetCharacter('theo'))).toBe('bad_request');
+        expect(await refusal(store.forgetCharacter(builtIn))).toBe('bad_request');
+        expect(await refusal(store.forgetCharacter('u-'))).toBe('bad_request');
+        expect(await everything(builtIn)).toEqual(before);
+      });
+    });
+
     describe.runIf(target.vectors)('vectors', () => {
       const vector = (values: number[]) => ({ model: CONFORMANCE_MODEL, vector: values });
 

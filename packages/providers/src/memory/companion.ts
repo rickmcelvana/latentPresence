@@ -11,8 +11,9 @@ import {
   type Schedule,
   type SelfModelBlock,
   type SemanticFact,
+  type Forgotten,
 } from '@latentpresence/protocol';
-import { MemoryStoreError } from '@latentpresence/core';
+import { MemoryStoreError, refuseBuiltIn } from '@latentpresence/core';
 import type { z } from 'zod';
 import type { HttpFetch } from '../llm/discovery';
 import { normaliseBaseUrl } from '../llm/discovery';
@@ -124,6 +125,12 @@ export class CompanionMemoryStore implements MemoryStore {
 
   async deleteSchedule(id: string): Promise<void> {
     await this.call('schedulesDelete', { params: { id } });
+  }
+
+  /** One request: the companion forgets every table's rows in one transaction (ADR-74 item 8). Refused here first, as every store refuses. */
+  async forgetCharacter(characterId: string): Promise<Forgotten> {
+    refuseBuiltIn(characterId);
+    return this.call('dbForgetCharacter', { params: { id: characterId } });
   }
 
   /**

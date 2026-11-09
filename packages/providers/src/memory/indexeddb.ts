@@ -4,6 +4,7 @@ import {
   isCurrentFact,
   MemoryStoreError,
   rankHits,
+  refuseBuiltIn,
   sameModel,
   vectorSearchOutcome,
   words,
@@ -21,6 +22,7 @@ import {
   type Schedule,
   type SelfModelBlock,
   type SemanticFact,
+  type Forgotten,
 } from '@latentpresence/protocol';
 
 /**
@@ -302,6 +304,22 @@ export class IndexedDbMemoryStore implements MemoryStore {
     const tx = db.transaction('schedules', 'readwrite');
     tx.objectStore('schedules').delete(id);
     await txDone(tx);
+  }
+
+  /** One transaction over every store, each emptied of the character by its `characterId` index (ADR-74 item 8). */
+  async forgetCharacter(characterId: string): Promise<Forgotten> {
+    refuseBuiltIn(characterId);
+    const db = await this.open();
+    const tx = db.transaction(['episodes', 'facts', 'plans', 'blocks', 'schedules'], 'readwrite');
+    const take = async (name: 'episodes' | 'facts' | 'plans' | 'blocks' | 'schedules'): Promise<number> => {
+      const store = tx.objectStore(name);
+      const keys = await requestToPromise(store.index('characterId').getAllKeys(characterId));
+      for (const key of keys) store.delete(key);
+      return keys.length;
+    };
+    const forgotten = { episodes: await take('episodes'), facts: await take('facts'), plans: await take('plans'), blocks: await take('blocks'), schedules: await take('schedules') };
+    await txDone(tx);
+    return forgotten;
   }
 
   private episodesByCharacter(tx: IDBTransaction, characterId: string): Promise<MemoryEpisode[]> {

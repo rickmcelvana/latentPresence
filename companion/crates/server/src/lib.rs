@@ -310,7 +310,12 @@ mod tests {
     #[tokio::test]
     async fn every_route_that_deletes_is_allowed_by_the_preflight() {
         // R-70: removing a plugin deletes its schedules from the page; the preflight refused DELETE.
-        for uri in ["/schedules/s1", "/db/facts/f1", "/db/episodes/e1"] {
+        for uri in [
+            "/schedules/s1",
+            "/db/facts/f1",
+            "/db/episodes/e1",
+            "/db/characters/u-vey-aaaa",
+        ] {
             let preflight = Request::builder()
                 .method("OPTIONS")
                 .uri(uri)

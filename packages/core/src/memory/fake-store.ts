@@ -11,8 +11,9 @@ import {
   type Schedule,
   type SelfModelBlock,
   type SemanticFact,
+  type Forgotten,
 } from '@latentpresence/protocol';
-import { MemoryStoreError } from './errors';
+import { MemoryStoreError, refuseBuiltIn } from './errors';
 import { episodeText, factText, isCurrentFact, rankHits, sameModel, vectorSearchOutcome, words } from './local-search';
 
 /**
@@ -40,6 +41,17 @@ interface StoredFact {
 interface StoredEpisode {
   episode: MemoryEpisode;
   embedding: Embedding | null;
+}
+
+/** Deletes a map's entries that belong, and says how many went. */
+function take<T>(map: Map<string, T>, belongs: (value: T) => boolean): number {
+  let taken = 0;
+  for (const [key, value] of map) {
+    if (!belongs(value)) continue;
+    map.delete(key);
+    taken += 1;
+  }
+  return taken;
 }
 
 export class FakeMemoryStore implements MemoryStore {
@@ -179,6 +191,18 @@ export class FakeMemoryStore implements MemoryStore {
 
   async deleteSchedule(id: string): Promise<void> {
     this.schedules.delete(id);
+  }
+
+  async forgetCharacter(characterId: string): Promise<Forgotten> {
+    this.calls.push('forgetCharacter');
+    refuseBuiltIn(characterId);
+    return {
+      episodes: take(this.episodes, ({ episode }) => episode.characterId === characterId),
+      facts: take(this.facts, ({ fact }) => fact.characterId === characterId),
+      plans: take(this.plans, (plan) => plan.characterId === characterId),
+      blocks: take(this.blocks, (block) => block.characterId === characterId),
+      schedules: take(this.schedules, (schedule) => schedule.characterId === characterId),
+    };
   }
 
   private current(characterId: string): StoredFact[] {

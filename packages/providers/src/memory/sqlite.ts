@@ -9,6 +9,7 @@ import type {
   Schedule,
   SelfModelBlock,
   SemanticFact,
+  Forgotten,
 } from '@latentpresence/protocol';
 
 /**
@@ -85,6 +86,10 @@ export class SqliteMemoryStore implements MemoryStore {
   }
 
   async deleteSchedule(_id: string): Promise<void> {
+    throw SqliteMemoryStore.unavailable();
+  }
+
+  async forgetCharacter(_characterId: string): Promise<Forgotten> {
     throw SqliteMemoryStore.unavailable();
   }
 

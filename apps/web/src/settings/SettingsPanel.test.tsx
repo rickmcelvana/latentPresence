@@ -405,6 +405,33 @@ describe('SettingsPanel — making a character (P11-T03, ADR-74 item 5)', () => 
     expect([...(screen.getByLabelText('Talking to') as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(['Alice', 'Theo']);
   });
 
+  it('deletes one and forgets everything it remembered, in one call, leaving Theo’s as it was (P11-T04)', async () => {
+    const storage = memoryStorage();
+    const id = 'u-madame-vey-7k2q';
+    const shelf = new InMemoryCharacterShelf([ownCharacter('Madame Vey', id)]);
+    const store = new FakeMemoryStore();
+    for (const characterId of [id, 'theo']) {
+      await store.appendEpisode({ id: `e-${characterId}`, sessionId: 's', characterId, role: 'user', text: 'My sister plays the cello', interrupted: false, at: '2026-11-08T10:00:00.000Z', embedding: null, affect: null });
+      await store.writeBlock({ characterId, name: 'persona', content: 'Reads cards.', updatedAt: '2026-11-08T10:00:00.000Z', editableByCharacter: true });
+      await store.saveSchedule(schedule(characterId));
+    }
+    render(<SettingsPanel deps={testDeps({ storage, characters: shelf })} memoryFor={async () => store} />);
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Madame Vey' })).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Talking to'), { target: { value: id } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Madame Vey' }));
+    fireEvent.click(within(screen.getByRole('region', { name: 'Delete Madame Vey' })).getByRole('button', { name: 'Delete and forget everything' }));
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Madame Vey was deleted, and what they remembered is gone: one turn, one note and one schedule.'));
+    expect(store.calls.filter((call) => call === 'forgetCharacter')).toHaveLength(1);
+    expect(await store.listEpisodes(id, null)).toEqual([]);
+    expect(await store.readBlocks(id)).toEqual([]);
+    expect(await store.listSchedules(id)).toEqual([]);
+    expect(await store.listEpisodes('theo', null)).toHaveLength(1);
+    expect(await store.readBlocks('theo')).toHaveLength(1);
+    expect(await store.listSchedules('theo')).toHaveLength(1);
+    expect(await shelf.list()).toEqual([]);
+  });
+
   it('refuses a thirteenth line and a 201-character line in words, and warns about a line claiming to be human', async () => {
     render(<SettingsPanel deps={testDeps({ characters: new InMemoryCharacterShelf() })} />);
     fireEvent.click(screen.getByRole('button', { name: 'Duplicate Alice' }));

@@ -1,8 +1,12 @@
 import { Suspense, lazy, useState, type ReactElement } from 'react';
 import type { BodyShelf } from '../characters/body-shelf';
 import type { CharacterShelf } from '../characters/character-shelf';
-import { duplicateDraft, editDraft, newDraft, storedOf, type CharacterDraft } from '../characters/edit';
+import type { CharacterDraft } from '../characters/edit';
+
+/** The editor's rules arrive with the editor, not with Settings (ADR-68). */
+const editRules = () => import('../characters/edit');
 import type { Characters } from '../characters/packs';
+import type { Removed } from '../characters/remove-character';
 import type { CharacterSettings, TtsSettings } from './settings';
 import { BROWSER_VOICE_GROUPS, languageLabel } from './VoiceSection';
 
@@ -24,7 +28,7 @@ export interface CharacterSectionProps {
   /** Their own bodies, offered as a character's default body. */
   readonly bodyShelf: BodyShelf;
   /** Deletes one of theirs: its schedules, the shelf entry and its settings (ADR-74 item 7). */
-  readonly onDelete: (id: string) => Promise<{ readonly schedules: number }>;
+  readonly onDelete: (id: string, forget: boolean) => Promise<Removed>;
 }
 
 /**
@@ -44,7 +48,8 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
   const saved = characters[persona.id]?.voice ?? null;
   const savedHere = saved !== null && saved.kind === tts.kind ? saved : null;
 
-  const open = (draft: CharacterDraft): void => {
+  const open = async (make: (rules: Awaited<ReturnType<typeof editRules>>) => CharacterDraft): Promise<void> => {
+    const draft = make(await editRules());
     setDeleting(false);
     setDeleted(null);
     setEditing(draft);
@@ -52,19 +57,20 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
 
   const save = async (draft: CharacterDraft): Promise<void> => {
     const createdAt = draft.id === null ? null : ((await shelf.list()).find((kept) => kept.persona.id === draft.id)?.createdAt ?? null);
-    const stored = storedOf({ ...draft, createdAt }, new Date());
+    const stored = (await editRules()).storedOf({ ...draft, createdAt }, new Date());
     await shelf.put(stored);
     setEditing(null);
     onSelect(stored.persona.id);
   };
 
-  const remove = async (): Promise<void> => {
+  const remove = async (forget: boolean): Promise<void> => {
     setDeleteProblem(null);
     const name = pack.persona.name;
     try {
-      const { schedules } = await onDelete(pack.persona.id);
+      const removed = await onDelete(pack.persona.id, forget);
+      const { removedWords } = await import('../characters/remove-character');
       setDeleting(false);
-      setDeleted(schedules === 0 ? `${name} was deleted.` : `${name} was deleted, with ${schedules === 1 ? 'one schedule' : `${schedules} schedules`}.`);
+      setDeleted(removedWords(name, removed));
     } catch (error) {
       setDeleteProblem(`${name} could not be deleted (${error instanceof Error ? error.message : String(error)}), so nothing was. Try again.`);
     }
@@ -93,11 +99,11 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
       {editing === null ? (
         <div className="character-manage">
           {!pack.builtIn && (
-            <button aria-label={`Edit ${persona.name}`} className="btn btn-sm" onClick={() => open(editDraft(pack, null))} type="button">
+            <button aria-label={`Edit ${persona.name}`} className="btn btn-sm" onClick={() => void open((rules) => rules.editDraft(pack, null))} type="button">
               Edit
             </button>
           )}
-          <button aria-label={`Duplicate ${persona.name}`} className="btn btn-sm btn-ghost" onClick={() => open(duplicateDraft(pack))} type="button">
+          <button aria-label={`Duplicate ${persona.name}`} className="btn btn-sm btn-ghost" onClick={() => void open((rules) => rules.duplicateDraft(pack))} type="button">
             Duplicate
           </button>
           {!pack.builtIn && (
@@ -105,7 +111,7 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
               Delete…
             </button>
           )}
-          <button className="btn btn-sm btn-ghost" onClick={() => open(newDraft())} type="button">
+          <button className="btn btn-sm btn-ghost" onClick={() => void open((rules) => rules.newDraft())} type="button">
             New character
           </button>
           {pack.builtIn && <span className="field-hint">{persona.name} comes with the app. Duplicate to make one of your own from them.</span>}
@@ -119,11 +125,14 @@ export function CharacterSection({ character, list, characters, tts, onSelect, o
       {deleting && editing === null && (
         <div aria-label={`Delete ${persona.name}`} className="character-delete" role="region">
           <p>
-            Delete {persona.name}? Their schedules are deleted too. What they remember stays in her memory under their name, so importing them again brings it back.
+            Delete {persona.name}? Their schedules are deleted too. Kept, what they remember stays under their name, and importing them again brings it back. Forgotten, it is gone for good: every turn, fact, plan and note.
           </p>
           <div className="character-actions">
-            <button className="btn btn-danger" onClick={() => void remove()} type="button">
+            <button className="btn btn-danger" onClick={() => void remove(false)} type="button">
               Delete, keeping what they remember
+            </button>
+            <button className="btn btn-danger" onClick={() => void remove(true)} type="button">
+              Delete and forget everything
             </button>
             <button className="btn btn-ghost" onClick={() => setDeleting(false)} type="button">
               Keep them

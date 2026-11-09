@@ -739,6 +739,42 @@ async fn delete_schedule(
 }
 
 // ---------------------------------------------------------------------------------------
+// dbForgetCharacter (P11-T04, ADR-74 item 8)
+// ---------------------------------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+struct ForgottenResponse {
+    episodes: u64,
+    facts: u64,
+    plans: u64,
+    blocks: u64,
+    schedules: u64,
+}
+
+async fn forget_character(
+    State(state): State<MemoryState>,
+    Path(id): Path<String>,
+) -> Result<Json<ForgottenResponse>, ApiError> {
+    // Alice and Theo are refused whether or not there is a database to refuse them from.
+    store::own_character(&id)?;
+    let pool = pool_or_unavailable(&state)?;
+    let store::Forgotten {
+        episodes,
+        facts,
+        plans,
+        blocks,
+        schedules,
+    } = store::forget_character(pool, &id).await?;
+    Ok(Json(ForgottenResponse {
+        episodes,
+        facts,
+        plans,
+        blocks,
+        schedules,
+    }))
+}
+
+// ---------------------------------------------------------------------------------------
 // dbRetrieve
 // ---------------------------------------------------------------------------------------
 
@@ -901,6 +937,7 @@ pub fn router(state: MemoryState, has_database_url: bool) -> Router {
                 .route("/db/plans", get(list_plans).post(save_plan))
                 .route("/schedules", get(list_schedules).post(save_schedule))
                 .route("/schedules/{id}", delete(delete_schedule))
+                .route("/db/characters/{id}", delete(forget_character))
                 .with_state(state),
         )
 }

@@ -11,8 +11,7 @@ import { defaultSettingsDeps, type SettingsDeps } from './deps';
 import { CharacterSection } from './CharacterSection';
 import { useCharacters } from '../characters/use-characters';
 import { defaultBodyShelf, type BodyShelf } from '../characters/body-shelf';
-import { withoutCharacter } from '../characters/edit';
-import { removeCharacter } from '../characters/remove-character';
+import type { Removed } from '../characters/remove-character';
 import type { MemoryStore } from '@latentpresence/protocol';
 import { DownloadedModelsSection } from './DownloadedModelsSection';
 import { HearingSection } from './HearingSection';
@@ -65,9 +64,11 @@ export function SettingsPanel({ deps: depsOverride, companionConfig, listCompani
   const [settings, setSettings] = useState<Settings>(() => loadSettings(deps.storage));
   const characters = useCharacters(deps.characters);
   const bodies = useMemo(() => bodyShelf ?? defaultBodyShelf(), [bodyShelf]);
-  const deleteCharacter = async (id: string): Promise<{ readonly schedules: number }> => {
+  const deleteCharacter = async (id: string, forget: boolean): Promise<Removed> => {
     const store = await (memoryFor ?? ((given: Settings) => chosenMemory(given, deps.fetch)))(settings);
-    const result = await removeCharacter(id, { shelf: deps.characters, memory: store });
+    // Loaded only now, with the store: Settings stays inside its budget (ADR-68).
+    const [{ removeCharacter }, { withoutCharacter }] = await Promise.all([import('../characters/remove-character'), import('../characters/edit')]);
+    const result = await removeCharacter(id, { shelf: deps.characters, memory: store, forget });
     setSettings((prev) => withoutCharacter(prev, id));
     return result;
   };

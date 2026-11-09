@@ -911,6 +911,45 @@
           }
         ]
       }
+    },
+    "/db/characters/{id}": {
+      "delete": {
+        "operationId": "dbForgetCharacter",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DbForgetCharacterResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Every failure, one shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionError"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4647,6 +4686,44 @@
         },
         "required": [
           "ok"
+        ],
+        "additionalProperties": false
+      },
+      "DbForgetCharacterResponse": {
+        "type": "object",
+        "properties": {
+          "episodes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "facts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "plans": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "blocks": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "schedules": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "episodes",
+          "facts",
+          "plans",
+          "blocks",
+          "schedules"
         ],
         "additionalProperties": false
       }

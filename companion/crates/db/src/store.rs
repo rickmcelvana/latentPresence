@@ -1523,6 +1523,71 @@ pub async fn delete_schedule(pool: &MySqlPool, uid: &str) -> Result<(), StoreErr
     Ok(())
 }
 
+// ---------------------------------------------------------------------------------------
+// Forgetting a character (P11-T04, ADR-74 item 8)
+// ---------------------------------------------------------------------------------------
+
+/// Every id of a character the person made starts with this (`OWN_CHARACTER_PREFIX`).
+pub const OWN_CHARACTER_PREFIX: &str = "u-";
+
+/// What `forget_character` took, by kind (`ForgottenSchema`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Forgotten {
+    pub episodes: u64,
+    pub facts: u64,
+    pub plans: u64,
+    pub blocks: u64,
+    pub schedules: u64,
+}
+
+/// Refuses an id that is not one of the person's characters, before any statement.
+pub fn own_character(character_id: &str) -> Result<(), StoreError> {
+    if character_id.starts_with(OWN_CHARACTER_PREFIX)
+        && character_id.len() > OWN_CHARACTER_PREFIX.len()
+    {
+        return Ok(());
+    }
+    Err(StoreError::BadRequest(format!(
+        "{character_id:?} is not one of the characters you made, so it cannot be forgotten all at once"
+    )))
+}
+
+/// `dbForgetCharacter`: everything under one of the person's characters, one statement per table
+/// in one transaction. Facts go before turns (`facts_source_turn` would only null them), turns
+/// before sessions so the count is the turns', and the vector rows and plan items follow by their
+/// `ON DELETE CASCADE`. Refused for any id without the prefix: Alice and Theo are cleared one thing
+/// at a time in the Memory view. Static text with binds, run unchecked as `memory::self_check` runs
+/// its own, so the committed `.sqlx` cache does not change.
+pub async fn forget_character(
+    pool: &MySqlPool,
+    character_id: &str,
+) -> Result<Forgotten, StoreError> {
+    own_character(character_id)?;
+    let mut tx = pool.begin().await.map_err(DbError::from)?;
+    let mut take = async |sql: &'static str| -> Result<u64, StoreError> {
+        Ok(sqlx::query(sql)
+            .bind(character_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::from)?
+            .rows_affected())
+    };
+    let facts = take("DELETE FROM facts WHERE character_id = ?").await?;
+    let episodes = take("DELETE FROM turns WHERE character_id = ?").await?;
+    take("DELETE FROM sessions WHERE character_id = ?").await?;
+    let plans = take("DELETE FROM plans WHERE character_id = ?").await?;
+    let blocks = take("DELETE FROM self_blocks WHERE character_id = ?").await?;
+    let schedules = take("DELETE FROM schedules WHERE character_id = ?").await?;
+    tx.commit().await.map_err(DbError::from)?;
+    Ok(Forgotten {
+        episodes,
+        facts,
+        plans,
+        blocks,
+        schedules,
+    })
+}
+
 /// The companion's own jobs that are due: active, `runOn: companion`, next run at or before `now`.
 pub async fn due_companion_schedules(
     pool: &MySqlPool,

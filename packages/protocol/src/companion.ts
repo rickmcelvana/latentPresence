@@ -9,6 +9,7 @@ import {
   RetrievalRequestSchema,
   SelfModelBlockSchema,
   SemanticFactSchema,
+  ForgottenSchema,
 } from './memory';
 import { McpCallResultSchema, McpToolAnnotationsSchema } from './providers/mcp';
 import { ScheduleRunSchema, ScheduleSchema } from './schedule';
@@ -420,6 +421,15 @@ export const companionRoutes = {
     query: null,
     request: null,
     response: okSchema,
+  },
+  /** P11-T04 (ADR-74 item 8): one of the person's characters forgotten, one statement per table. */
+  dbForgetCharacter: {
+    method: 'DELETE',
+    path: '/db/characters/:id',
+    params: ItemParamsSchema,
+    query: null,
+    request: null,
+    response: ForgottenSchema,
   },
 } as const satisfies Record<string, CompanionRoute>;
 

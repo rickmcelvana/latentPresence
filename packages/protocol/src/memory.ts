@@ -189,6 +189,23 @@ export const EPISODE_PAGE_SIZE = 50;
  * never block the speaking path, so callers fire them without awaiting and adapters
  * must not depend on being awaited.
  */
+/**
+ * Every id of a character the person made starts with this (ADR-74 item 3), so none can be Alice's
+ * or Theo's. `forgetCharacter` refuses any other: a built-in character is cleared through the
+ * Memory view, one thing at a time, never all at once.
+ */
+export const OWN_CHARACTER_PREFIX = 'u-';
+
+/** What `forgetCharacter` took: rows by kind, for the page to say (P11-T04, ADR-74 item 8). */
+export const ForgottenSchema = z.object({
+  episodes: z.number().int().min(0),
+  facts: z.number().int().min(0),
+  plans: z.number().int().min(0),
+  blocks: z.number().int().min(0),
+  schedules: z.number().int().min(0),
+});
+export type Forgotten = z.infer<typeof ForgottenSchema>;
+
 export interface MemoryStore {
   readonly id: string;
   capabilities(): Promise<MemoryCapabilities>;
@@ -234,4 +251,12 @@ export interface MemoryStore {
   listSchedules(characterId: string): Promise<Schedule[]>;
   saveSchedule(schedule: Schedule): Promise<void>;
   deleteSchedule(id: string): Promise<void>;
+
+  /**
+   * Everything kept under one of the person's characters, gone in one call (P11-T04, ADR-74 item 8):
+   * every episode, fact, plan, self block and schedule, with their vectors. `bad_request` for an id
+   * that does not start with `OWN_CHARACTER_PREFIX`. Forgetting one nobody wrote anything for is not
+   * an error: every count is 0.
+   */
+  forgetCharacter(characterId: string): Promise<Forgotten>;
 }

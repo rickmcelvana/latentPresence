@@ -15,7 +15,7 @@ export {
   type FactWrites,
   type PlanFactsOptions,
 } from './facts';
-export { MemoryStoreError, type MemoryStoreErrorCode } from './errors';
+export { MemoryStoreError, refuseBuiltIn, type MemoryStoreErrorCode } from './errors';
 export { FakeMemoryStore } from './fake-store';
 export {
   cosine,

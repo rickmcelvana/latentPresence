@@ -1436,3 +1436,147 @@ async fn remove_conformance_data() {
     }
     remove_test_models(&pool).await;
 }
+
+/// One of everything for a character, written through the routes: two turns, a fact read from
+/// one, a block, a plan and a schedule.
+async fn fill_character(router: &Router, character_id: &str) {
+    let session_id = random_id("session");
+    let mut turns = Vec::new();
+    for (role, text) in [
+        ("user", "my sister plays the bassoonette"),
+        ("assistant", "tell me more"),
+    ] {
+        let id = random_id("turn");
+        let episode = json!({
+            "id": id, "sessionId": session_id, "characterId": character_id, "role": role, "text": text,
+            "interrupted": false, "at": "2026-11-08T12:00:00.000Z", "embedding": null, "affect": null,
+        });
+        let (status, body) = call(router, Method::POST, "/db/episodes", Some(episode)).await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        turns.push(id);
+    }
+    let fact = json!({
+        "id": random_id("fact"), "characterId": character_id, "subject": "sister", "predicate": "plays",
+        "object": "the bassoonette", "confidence": 0.9, "validFrom": "2026-01-01T00:00:00.000Z", "validTo": null,
+        "recordedAt": "2026-11-08T12:00:00.000Z", "sourceEpisodeId": turns[0], "embedding": null,
+    });
+    let (status, body) = call(router, Method::POST, "/db/facts", Some(fact)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let block = json!({
+        "characterId": character_id, "name": "persona", "content": "reads cards",
+        "updatedAt": "2026-11-08T12:00:00.000Z", "editableByCharacter": true,
+    });
+    let (status, body) = call(router, Method::PUT, "/db/blocks", Some(block)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let plan = json!({
+        "id": random_id("plan"), "characterId": character_id, "title": "A reading", "goal": null,
+        "phases": [{ "id": random_id("phase"), "title": "Draw", "tasks": [{ "id": random_id("task"), "title": "three cards", "status": "todo", "notes": "" }] }],
+        "status": "active", "version": 1, "updatedAt": "2026-11-08T12:00:00.000Z",
+    });
+    let (status, body) = call(router, Method::POST, "/db/plans", Some(plan)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let job = schedule(&random_id("schedule"), character_id, json!({}));
+    let (status, body) = call(router, Method::POST, "/schedules", Some(job)).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+}
+
+/// What a character has, by kind, read back through the routes.
+async fn counts(router: &Router, character_id: &str) -> Value {
+    let mut out = json!({});
+    for (kind, path, key) in [
+        ("episodes", "/db/episodes", "episodes"),
+        ("facts", "/db/facts", "facts"),
+        ("blocks", "/db/blocks", "blocks"),
+        ("plans", "/db/plans", "plans"),
+        ("schedules", "/schedules", "schedules"),
+    ] {
+        let (status, body) = call(
+            router,
+            Method::GET,
+            &format!("{path}?characterId={character_id}"),
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        out[kind] = json!(body[key].as_array().map_or(0, Vec::len));
+    }
+    out
+}
+
+#[tokio::test]
+async fn forgetting_a_character_takes_every_table_in_one_request_and_nothing_of_another() {
+    let Some((router, pool, _serial)) = setup().await else {
+        return;
+    };
+    let forgotten = format!("u-{}", random_id("test"));
+    let neighbour = format!("u-{}", random_id("test"));
+    fill_character(&router, &forgotten).await;
+    fill_character(&router, &neighbour).await;
+    let before = counts(&router, &neighbour).await;
+
+    let (status, body) = call(
+        &router,
+        Method::DELETE,
+        &format!("/db/characters/{forgotten}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_matches_schema("DbForgetCharacterResponse", &body);
+    assert_eq!(
+        body,
+        json!({ "episodes": 2, "facts": 1, "plans": 1, "blocks": 1, "schedules": 1 })
+    );
+    assert_eq!(
+        counts(&router, &forgotten).await,
+        json!({ "episodes": 0, "facts": 0, "blocks": 0, "plans": 0, "schedules": 0 })
+    );
+    assert_eq!(counts(&router, &neighbour).await, before);
+    let sessions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE character_id = ?")
+        .bind(&forgotten)
+        .fetch_one(&pool)
+        .await
+        .expect("count sessions");
+    assert_eq!(sessions, 0);
+
+    // Again is not an error; Alice is refused and keeps everything.
+    let (status, body) = call(
+        &router,
+        Method::DELETE,
+        &format!("/db/characters/{forgotten}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body,
+        json!({ "episodes": 0, "facts": 0, "plans": 0, "blocks": 0, "schedules": 0 })
+    );
+    cleanup(&pool, &neighbour).await;
+}
+
+#[tokio::test]
+async fn forgetting_alice_or_theo_is_refused_before_the_database() {
+    let router = router_with(
+        relay::Relay::measured(),
+        memory_api::MemoryState::default(),
+        false,
+        Default::default(),
+    );
+    for id in ["alice", "theo", "u-"] {
+        let (status, body) = call(
+            &router,
+            Method::DELETE,
+            &format!("/db/characters/{id}"),
+            None,
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST, "{id}: {body}");
+        assert_matches_error_schema(&body);
+        assert_eq!(body["error"]["code"], "bad_request");
+    }
+    // One of theirs, with no database to forget it from.
+    let (status, body) = call(&router, Method::DELETE, "/db/characters/u-vey-aaaa", None).await;
+    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    assert_matches_error_schema(&body);
+}
