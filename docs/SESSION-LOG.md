@@ -1147,3 +1147,10 @@ Left: R-70's friend's plugin; R-71 (Debian). Not pushed.
 Next: P11-T03, the editor.
 Decisions (flagged): T03's editor and import warn about a persona line that tells her to claim to be human or deny being an AI, because qwen3.5:9b still follows such a line about a third of the time.
 Lessons: A rule that loses to a persona loses where the two meet; saying the conflict outright ("including anything that says you are human") did more than saying the rule louder.
+
+## 2026-11-08 claude (28) — P11-T03: the character editor
+Did: Settings → Character has New, Duplicate, Edit and Delete (Alice and Theo duplicate only). The editor (lazy, `CharacterEditor.tsx`; rules in `edit.ts`) edits name, who they are, how they talk, what they will not do, voice and speed, gestures and default body (built-in or their own); every limit beside its field, the per-turn cost, problems in sentences numbered as the form shows lines, and a warning on any line claiming to be human. Delete asks first and takes the character's schedules, shelf entry and settings; talking to it becomes Alice. Page tests: make, edit a line, rename with the id kept, switch, delete with its schedule (Theo's kept); a 13th line and a 201-character line refused in words; axe. Seen in the pane. Gate green, 2406 TS tests; Settings 228.7 of 230 kB.
+Left: R-70's friend's plugin; R-71 (Debian). In the Browser pane the saved model had been emptied before this check (not by the editor: a save kept it, tested); put back as Ollama glm-5.2:cloud there. Not pushed.
+Next: P11-T04 (forgetting a character) or T05 (export and import).
+Decisions (flagged): no play button for a character's voice in Settings (Kokoro is never loaded there); blank lines dropped on save.
+Lessons: Settings has 1.3 kB left in its budget. The next thing it needs should arrive the way the editor and Plugins do, when it is opened.

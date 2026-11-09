@@ -3331,3 +3331,14 @@ gave 8/9 and 4/9 on the small models; naming the conflict ("including anything t
 human") fixed gemma and halved qwen's misses. Alice said so 9/9 on all three. **Flagged for T03:** a
 small model can still side with a persona that tells it to deny being an AI, so the editor and import
 warn, in words, about a line that does (recommended option taken, flagged in the session note).
+
+**In the build (P11-T03, 2026-11-08).** The editor is `characters/CharacterEditor.tsx`, loaded only when
+opened (Settings was at 228.7 of its 230 kB with it split off); its rules are plain functions in
+`characters/edit.ts`. Two calls the plan left open: **no play button for the voice**, because Settings
+never loads Kokoro (its model waits for consent and the call, as Settings → Voice already says); the
+voice is heard in the next call. **Blank lines are dropped on save** and problems number lines as the
+form shows them. The warning about claiming to be human (`claimsHuman`) looks at the summary and every
+line, never blocks a save, and stays quiet on Alice's and Theo's files. Deleting asks first, deletes
+every schedule of the character from the store Settings → Memory chose (loaded only then), then the
+shelf entry, then its settings (voice, body, plugins, plugin schedule answers); talking to it becomes
+talking to Alice. Seen in the pane: made, warned, saved, opened in the call, deleted.
