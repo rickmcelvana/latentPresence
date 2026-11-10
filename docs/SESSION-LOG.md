@@ -1173,3 +1173,10 @@ Did: Export writes `<name>.persona.json` (the persona alone); Import… reads a 
 Left: R-72 (Rick, with someone else), push both repositories. P11-T06 after tester feedback. R-70's friend, R-71.
 Decisions: the open details of item 9, taken and noted in ADR-74's build note (keepable id shape, "(imported)", unknown voice replaced with a warning, 64 kB limit).
 Lessons: none new; the budget held because the feature was lazy from its first line.
+
+## 2026-11-10 claude (32) — R-71: the WebGL failure on Debian
+Did: on Rick's Debian 13.7 boot (RTX 5060 Ti, `nvidia-open` from NVIDIA's CUDA repo, KDE Wayland) traced "Error creating WebGL context" to the driver, not the app: an `apt upgrade` at 01:42, after boot, moved the NVIDIA userspace 615.71 → 620.70 while the 615.71 module stayed loaded (`nvidia-smi`: version mismatch). The same upgrade installed kernel 6.12.116 with no headers (only `linux-headers-6.12.115…` was ever installed), so DKMS built 620.70 for 6.12.115 only, and the next boot would have had no GPU driver. R-71 got a progress note and step 1 the mismatch and headers advice.
+Left: Rick runs `sudo apt install linux-headers-amd64` (sudo is blocked inside the app), checks the 6.12.116 module was built, reboots, re-runs R-71 from step 3. Not verified after the fix.
+Next: R-71's report; R-72; push the site repository.
+Decisions: none.
+Lessons: on Debian with the CUDA repo, every `apt upgrade` can move the driver; reboot after it, and install the headers metapackage, not one kernel's headers.
