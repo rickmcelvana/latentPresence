@@ -45,7 +45,7 @@ console.log(
   `  ${manifest.tools.length} tool${plural(manifest.tools.length)}, ${tables} table${plural(tables)}, ${manifest.assets.length} asset${plural(manifest.assets.length)} ` +
     `(${(assetBytes / 1_000_000).toFixed(1)} MB${fetchAssets ? ', every one downloaded and checked' : '; addresses not downloaded, add --fetch'})`,
 );
-console.log(`  prompt: about ${promptTokens.idle} tokens while enabled, ${promptTokens.used} more once used (an estimate)`);
+console.log(`  prompt: about ${promptTokens.idle + promptTokens.used} tokens in every request while it is on, ${promptTokens.idle} if set to load only when needed (an estimate)`);
 for (const note of result.notes) console.log(`  note: ${note}`);
 
 function plural(count: number): string {

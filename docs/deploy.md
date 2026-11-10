@@ -6,7 +6,14 @@ are recorded under "Why" so nobody has to find them again.
 
 The product site, `latentpresence.com`, is not in this repository any more (2026-10-17); this
 page is about the app alone. The Windows app is released from GitHub Actions instead:
-[`release.md`](release.md).
+[`release.md`](release.md). One thing the app needs from the site's server: Browse in Settings →
+Plugins fetches `latentpresence.com/plugins/index.json` from the app's origin, so the site's Caddy
+block carries (R-70, on the server since 2026-11-08):
+
+```
+@plugins path /plugins/*
+header @plugins Access-Control-Allow-Origin "*"
+```
 
 The app is static files: `apps/web/dist` after a build. There is no server-side code. Models,
 the character and the person's data never touch this server: the page downloads models from

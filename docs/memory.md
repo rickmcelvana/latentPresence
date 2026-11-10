@@ -52,8 +52,15 @@ or a press wakes her and stops the sleep between steps.
 ## Namespaces
 
 A kernel belongs to one character; every read and write carries its `characterId` — the
-persona's `id` (ADR-55). Alice and Theo share one database (IndexedDB or MariaDB) and never see
-each other's turns, facts, plans or self blocks; the conformance suite holds every store to it.
+persona's `id` (ADR-55). Every character, Alice, Theo and each of the person's own (ADR-74), shares
+one database (IndexedDB or MariaDB) and never sees another's turns, facts, plans or self blocks; the
+conformance suite holds every store to it. A character the person made has an id made once
+(`u-madame-vey-7k2q`) that never changes, so renaming keeps its memories. Deleting it keeps them under
+the id or forgets them: `forgetCharacter` takes every row under one of the person's ids in one call
+(refused for Alice and Theo, whose memories are cleared one thing at a time in the Memory panel).
+
+In MariaDB, a vector row is deleted by its own statement before the row it indexes, never by
+`ON DELETE CASCADE`: on 11.8.8 a cascade leaves the vector index wrong (ADR-35, amended 2026-11-09).
 
 ## Schedules
 

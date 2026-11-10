@@ -1,7 +1,7 @@
 ---
 brief: P0-T00
 title: <short title>
-lane: aider | architect-direct
+lane: architect-direct | sub   # the Aider lane is retired (docs/WORKFLOW.md)
 status: draft | ready | running | reviewed | merged | rejected
 written_by: claude | deepseek
 date: YYYY-MM-DD

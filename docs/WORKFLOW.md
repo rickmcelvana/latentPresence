@@ -1,6 +1,6 @@
 # Workflow — sessions, the build loop, agent hand-offs
 
-Goal: any agent (Claude Code, DeepSeek, Aider) or human picks the project up in under two minutes without reading long files. This is the same loop as latentCreate and the other latent apps, trimmed to what this repo needs.
+Goal: any agent (Claude Code, DeepSeek) or human picks the project up in under two minutes without reading long files. This is the same loop as latentCreate and the other latent apps, trimmed to what this repo needs.
 
 ## Roles
 

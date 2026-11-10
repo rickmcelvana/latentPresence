@@ -519,7 +519,7 @@ Done when: tagged release, installers, web deploy, announcement, and `PROJECT.md
 
 ---
 
-## Phase 10 — Plugins (planned 2026-11-05, ADR-72 accepted 2026-11-06)
+## Phase 10 — Plugins (planned 2026-11-05, ADR-72 accepted 2026-11-06; done 2026-11-10)
 
 Order: T01 → T02 → T03, then T04 and T05 in either order, then T06 (Tarot); T07 → T08 (Office); T09 last. Phase exit criterion in `docs/PLAN.md`.
 
@@ -555,7 +555,7 @@ Done when: a fixture plugin with an HTTP server, a stdio server and a daily sche
 Depends: P10-T07. `plugins/office/`: MCP servers that create and edit documents and spreadsheets in the Files folders (chosen in this task, licences read, verified and recorded in `SURFACE.md`), instructions, and schedule presets (a weekly digest, a morning plan). Longer multi-step jobs may need more than four tool rounds; if so, a manifest-declared round limit, capped, decided here. Tool-only schedules from her tools (the backlog item from ADR-58) land here if Office needs them with the app closed.
 Done when: "make a spreadsheet of this month's grocery budget" writes a real `.xlsx` in a Files folder that opens in a spreadsheet program, after the ask card; a document is drafted and edited by voice; a schedule preset is offered, created and fires.
 
-### P10-T09 The index and the authoring guide — owner: main + human — built 2026-11-07; R-70 open (the site deployed with CORS on /plugins/, Browse live, a friend's plugin)
+### P10-T09 The index and the authoring guide — owner: main + human — done 2026-11-10 (R-70 passed, D-76: Browse live, a friend's plugin from the guide; their notes folded into the guide)
 Depends: P10-T06. `plugins/index.json` in the site's repository (item 9) with Tarot and Office; Browse in Settings → Plugins, fetched only on the press; `docs/plugins.md` (a short version on the site) and `plugins/template/`; the JSON Schema published beside the index.
 Done when: Browse lists both, installs one, and refuses an entry whose manifest hash changed; a friend of Rick's writes and installs a plugin from the guide alone, and every question they asked is folded back into the guide (a Rick check).
 
@@ -581,7 +581,7 @@ Done when: a page test makes a character, edits a line, renames it (id unchanged
 Depends: P11-T03. `MemoryStore.forgetCharacter(characterId)` in `packages/protocol` (item 8, the ADR note): the fake and IndexedDB stores; the companion's `DELETE /db/characters/{id}` with one statement per table in MariaDB, refused for `alice` and `theo`; the conformance suite's "forgetting one character leaves every other untouched", run against the dev MariaDB too. Delete's "forget it" turns on.
 Done when: the conformance test passes on all three stores (the MariaDB leg in `vector` CI); forgetting a character with 500 episodes over the companion is one request; the page shows what was forgotten.
 
-### P11-T05 Export, import and the guide — owner: main + human — built 2026-11-09 (the page tests pass; the site page is committed in its repository, not pushed; Rick's check open)
+### P11-T05 Export, import and the guide — owner: main + human — done 2026-11-10 (R-72 passed, D-77)
 Depends: P11-T03. Export writes `<name>.persona.json` (the `Persona` only). Import picks a file, checks it (each problem in a sentence), shows the name, the summary and the line count, and adds it under the id rules of item 9 (free `u-` id kept; a built-in or taken id offered as a new character, or for a taken one, "replace it" with memories kept). `docs/characters.md` and a short page on the site.
 Done when: a page test exports a character, deletes it keeping its memories, imports the file and finds the memories again; a file with Alice's id comes in as a new character; a broken file is refused in sentences; a Rick check: someone other than the architect makes a character with a plugin enabled and moves it to a second browser (the phase's exit criterion).
 

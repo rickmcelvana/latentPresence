@@ -111,47 +111,8 @@ environment variables pick targets; most write to `live/out/` or `docs/runs/`.
 
 ## Open — rick
 
-### R-72 · Someone else makes a character and moves it to another browser · ~30 minutes (P11-T05, Phase 11's exit criterion)
-The point is a person who has not watched it being built: a friend or the family member who tried the app. You only set up and watch; let them read the screens. Two browsers on one PC stand in for two computers (each keeps its own characters).
-**1. Start the app from this checkout** (the hosted app gets these changes only when it is next deployed):
-```bash
-pnpm dev
-```
-**2. First browser.** Open http://localhost:5173 in **Chrome** and set up a model as usual. Then hand it over with one instruction: "Make your own character in Settings → Character, give them the Tarot plugin, and talk to them." (Tarot is under Settings → Plugins → Browse plugins…, then turned on for their character.) Note anything they hesitate over or misread.
-**3. Move it.** Ask them to press **Export** on their character, then open http://localhost:5173 in **Edge**, set up the same model, and **Import…** the downloaded `.persona.json` in Settings → Character. Then turn Tarot on for it there and talk to it.
-**4. Report**: did they make the character without help; did the import preview make sense; did the character sound the same in Edge; did they find that plugins have to be turned on again (the file carries none). Their memories stay in Chrome: that is expected without a shared companion database. Anything they had to ask goes into `docs/characters.md`.
-
-### R-70 · The plugin index live, and a friend's plugin · ~20 minutes, then the friend (P10-T09)
-**Progress (2026-11-08).** Steps 1–3 passed: Caddy sends the header, Browse lists both, Tarot removed and re-added from the list. Removing Office first did nothing (the companion refused DELETE, fixed in dc314ea); in the rebuilt app it was removed and re-added on Alice and on Theo. Step 4 waits on the friend (this weekend, not rushed).
-**1. CORS on the site's `/plugins/`.** The app fetches `latentpresence.com/plugins/index.json` from
-another site, so Caddy must allow it. In the Caddyfile on the server, inside the `latentpresence.com {`
-block, add these two lines:
-```
-@plugins path /plugins/*
-header @plugins Access-Control-Allow-Origin "*"
-```
-Then reload Caddy:
-```bash
-sudo systemctl reload caddy
-```
-**2. Push and deploy the site** (`Z:\dev\latent\latentpresence.com`, branch `master`): it has a new
-commit with `plugins/index.json`, both JSON Schemas and the `docs/plugins/` page. Deploy it as you did
-for R-67. Then check from this PC:
-```bash
-curl -sI -H "Origin: https://app.latentpresence.com" https://latentpresence.com/plugins/index.json
-```
-It should say `200` and `Access-Control-Allow-Origin: *`.
-**3. Browse in the app.** Settings → Plugins → **Browse plugins…**: Tarot and Office should be listed,
-Tarot with "Installed". Remove Office if you have it, then **Read it** on Office: the consent screen
-should say "listed in the latentPresence index and unchanged since". Install it.
-**4. A friend writes one.** Send them https://latentpresence.com/docs/plugins/ and the full guide
-(`docs/plugins.md` on GitHub). They copy `plugins/template`, make a plugin of their own, and install it
-from a folder or zip. Write down **every question they ask**: each one goes into the guide.
-
-
-
 ### Laptop session — R-13 and R-9 in one sitting · ~40 minutes
-All three want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
+Both want a machine with **integrated graphics** (or at least not the desktop's RTX 5060 Ti).
 Do them in this order: the quick frame-rate reading first, then the long conversation. R-1 was read
 on a low-end laptop on 2026-11-05 (D-72); a bigger one, a family member's, is the next chance.
 
@@ -242,6 +203,8 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-77 · R-72: someone else makes a character and moves it** — Rick 2026-11-10: **passed**. A family member made a character with no help, and the chat behaved as the persona said. Export and Import were smooth, the character in Edge was the same as in Chrome, and Tarot loaded and worked. They never needed help. Phase 11's exit criterion (P11-T05 done).
+- **D-76 · R-70: the plugin index live, and a friend's plugin** — Rick 2026-11-10: **passed**. Steps 1–3 passed on 2026-11-08 (Caddy's header, Browse, Tarot and Office removed and re-added). Step 4: a friend wrote **Wheel of the Year** (two tools on `lookup`, nested calendar data, no code, no server) from the guide alone, and it installed and worked. Their six notes (the date in RIGHT NOW, what steps cannot compare, nested values, aliases, the checker outside the repository, loading modes) were folded into `docs/plugins.md` (session 33). P10-T09 done; Phase 10 done.
 - **D-75 · R-71: the app on Debian** — Rick 2026-11-10: **passed**. Debian 13.7, KDE Wayland, RTX 5060 Ti, `nvidia-open` 620.70.06 from NVIDIA's CUDA repo, Chrome 157.0.8103.50. `chrome://gpu`: **WebGPU hardware accelerated**, Vulkan disabled; **`--disable-gpu-sandbox` not needed** (Spike E on Fedora in September needed it). The hosted app's voice and avatar ran; the companion built from source and paired. One step not written before: the first run failed with "Error creating WebGL context" after an `apt upgrade` moved the driver under the running kernel and brought a kernel with no headers; `linux-headers-amd64` and a reboot fixed it (session 32). ADR-07's Linux path (hosted app in Chrome + companion from source) is now measured end to end.
 - **D-74 · R-69: Office in the desktop app** — Rick 2026-11-06: **passed**, in LibreOffice (installed after all). The folder switch and its dialog as described; the grocery budget made with its numbers filled in, and adding $25 to a Spent cell changed the total; the landlord note drafted, changed by voice, and opened with no issues; unticking the folder refused the next spreadsheet. Two things fixed from it: the Left column (all formulas) showed `###`, because columns were fitted while formulas had no value yet, so widths now allow for formula results (checked by rendering in LibreOffice); and she listed folders after guessing a file name wrong, so a "not there" now names the files that are. The morning plan was made; its first firing is still to be seen. P10-T08 done; ADR-73 accepted.
 - **D-73 · R-68: a tarot reading in a call** — Rick 2026-11-06: **passed** on the second try ("worked perfectly"). The first try (nemotron-3-nano Celtic cross fine; a glm-5.2 three-card spread hidden behind the open transcript drawer) led to a one-board layout moving to the whiteboard while the drawer is open. P10-T06 done.

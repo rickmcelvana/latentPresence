@@ -41,7 +41,8 @@ runs in the page, and what she remembers stays in your browser. Talking out loud
 which Chrome and Edge have and most other browsers do not yet; typing works anywhere.
 
 macOS and Linux have no app yet. On those, use the browser, and build the companion from source if
-you want its extras (below).
+you want its extras (below). On Linux this has been run end to end on Debian 13 with an NVIDIA card in
+Chrome; keep the graphics driver and the kernel headers in step (reboot after a driver update).
 
 ## What you need
 
@@ -83,8 +84,16 @@ character. A recent integrated GPU works, and a dedicated one is smoother.
 - **Use tools, with your permission.** Home Assistant (lights, sensors, scenes), folders of notes
   she may read, documents she can search and cite, a read-only database, web search, and any MCP
   server you add. Each tool asks before it acts until you tell it otherwise.
-- **Two characters, or your own.** Alice and Theo each have their own memories and voice. Either
-  can wear a `.vrm` model you provide, swapped live in the Body panel.
+- **Alice, Theo, or a character you make.** Make your own in Settings → Character: who they are,
+  how they talk, what they will not do, their voice and body. Each character has its own memories,
+  and any of them can wear a `.vrm` model you provide, swapped live in the Body panel. Share one as
+  a file: Export, send it, Import. Whatever a character says, she tells anyone who sincerely asks that
+  she is an AI. ([guide](docs/characters.md))
+- **Plugins.** Add abilities a character can use: a tarot deck drawn onto the wall behind her,
+  Word documents and spreadsheets (in the Windows app), or one a friend wrote. Browse the list in
+  Settings → Plugins, or install from a folder, a `.zip` or an address. Plugins run no code in the
+  app, and the consent screen shows who made one and everything it may reach before it is installed.
+  ([write your own](docs/plugins.md))
 - **Stay in the tray.** In the Windows app, closing the window keeps her running by the clock, so
   reminders still arrive. "Small window, always on top" keeps her in a corner of your screen.
 
@@ -137,7 +146,7 @@ pairing code, printed when it starts, under Settings → Companion.
 ## Characters
 
 Alice wears a placeholder model and Theo a VRoid Studio model until you give them your own: any
-VRM 1.0 file, added in the Body panel.
+VRM 1.0 file, added in the Body panel. A character you make picks its body in the editor.
 
 **Made your character in Daz 3D or Character Creator?**
 [ccdz2vrm](https://github.com/rickmcelvana/ccdz2vrm) turns a Daz 3D (Genesis 3, 8 or 8.1) or
@@ -163,7 +172,9 @@ pnpm gate         # every check CI runs: types, lint, tests, build, Rust
 The companion keeps its memory in MariaDB 11.8 or newer: copy `.env.example` to `.env` and set
 `DATABASE_URL`, or enter the address in the app. How the project is built and decided is in
 [`docs/`](docs): [`DECISIONS.md`](docs/DECISIONS.md) for the architecture,
-[`PLAN.md`](docs/PLAN.md) for the roadmap, [`release.md`](docs/release.md) for releases.
+[`PLAN.md`](docs/PLAN.md) for the roadmap, [`release.md`](docs/release.md) for releases,
+[`plugins.md`](docs/plugins.md) and [`characters.md`](docs/characters.md) for writing plugins and
+characters.
 Contributions are welcome: open an issue first for anything large.
 
 ## Licence

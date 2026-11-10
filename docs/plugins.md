@@ -67,6 +67,24 @@ Give every row an `id` if a tool looks rows up. A table may have up to 5,000 row
 field you put in a row is handed to the model when the row is drawn, so a field like `meaning` is
 how you tell her what a card means.
 
+**A field can hold any JSON value**, not only text: a list, or a list of objects. A calendar can be
+one row holding its holidays in order, and a record can carry its other names:
+
+```json
+[
+  { "id": "north", "holidays": [
+      { "id": "imbolc", "name": "Imbolc", "start": "01-31", "end": "02-02" },
+      { "id": "ostara", "name": "Ostara", "start": "03-19", "end": "03-21" } ] },
+  { "id": "lughnasadh", "name": "Lughnasadh", "alternate_names": ["Lammas"] }
+]
+```
+
+The model gets the whole row, nested values included. In a template or a caption, a list is written
+as its items joined with commas and an object as JSON, so keep fields you put in sentences flat.
+`lookup`, `enumFrom`, `draw`'s rows and a board's fields all read **top-level fields only**:
+`enumFrom` on `holidays`' `id` column offers `lughnasadh`, never the ids inside a nested list, and
+nothing matches by `alternate_names` (see "What steps do not do").
+
 ## 3. Tools
 
 A tool has a `name` (lowercase letters, digits and underscores), a `description` the model reads, its
@@ -102,7 +120,7 @@ parameter), `$settings.reversals` (a setting), or `$<step>` and a path into what
 |---|---|---|
 | `draw` | Draws rows from a table without putting them back. Each drawn row gets `reversed` (true or false) and `slot`. | `table`; `count` (default: the number of slots, else 1); `slots` (labels in order, like a spread's positions); `reversed` (the chance a row comes up reversed: `0` to `1`, or `true` for a half) |
 | `roll` | Rolls dice: `d20`, `3d6`, `2d10+1`. Makes `{ total, rolls }`. | `dice` |
-| `lookup` | Finds the row whose `by` field (default `id`) equals `key`. | `table`, `key`, `by` |
+| `lookup` | Finds the one row whose `by` field (default `id`) is exactly `key`: case matters, and a number matches its text. No match is an error naming up to 20 of the values there are. | `table`, `key`, `by` |
 | `template` | Fills `{{ }}` paths into a sentence. | `text` |
 | `state` | Keeps a value for this character, kept with her memory. | `op`: `get` (needs `as`), `set` or `append` (need `value`), `clear`; `key` |
 | `show` | Puts what a `draw` or `lookup` made on the wall. | `board`, `items` (like `"$cards"`), `title` |
@@ -113,6 +131,36 @@ remembered belongs in a step, not in the model's imagination.
 
 A tool runs without asking by default (`"policy": "auto"`), because steps touch nothing outside the
 plugin. Set `"policy": "ask"` to have the person asked before each use.
+
+### What steps do not do
+
+Steps draw, roll, look up one row, fill in a sentence, remember a value and show things. They do
+not filter a table, sort it, compare values or work with dates, and there is no clock step.
+
+- **The date.** She already knows it: every request's prompt has a line under `RIGHT NOW` like "It
+  is Monday 9 November 2026, 14:05 in the afternoon.", read again each turn from the clock of the
+  device the app runs on, in its own time zone (the zone is not named). Tell her in the instructions
+  to use that date, and a date the person gives instead when they give one.
+- **Comparing and choosing.** Return the data in a useful order and let her compare. Wheel of the
+  Year returns its calendar January to December with each holiday's window, and its instructions
+  say how to find the current, next and last one, including the turn of the year. That works well
+  on capable models and less reliably on small ones, because the comparison is the model's, not
+  the tool's. When it must be exact, it needs an MCP server (see "Beyond steps").
+- **Other names.** `lookup` matches one field's value exactly, so "Lammas" does not find a row
+  whose `id` is `lughnasadh` because the row lists it in `alternate_names`. Either map the names in
+  the instructions and the parameter's description ("Lammas is lughnasadh"), and give the parameter
+  `enumFrom` the `id` column so only real ids can be sent; or keep a second table of names and look
+  up twice:
+
+```json
+"steps": [
+  { "use": "lookup", "as": "alias", "table": "names", "by": "name", "key": "$args.name" },
+  { "use": "lookup", "as": "holiday", "table": "holidays", "key": "$alias.holiday" }
+]
+```
+
+  with `names` holding rows like `{ "name": "Lammas", "holiday": "lughnasadh" }` and the parameter's
+  `enumFrom` on `names`' `name` column, so the model chooses from the exact spellings.
 
 ### Boards: showing things on the wall
 
@@ -182,16 +230,36 @@ What worked for Tarot and Office:
 - Say how to use what comes back: which field to read, and how long the answer should be.
 - Write it for someone talking aloud: no tables, no headings she would read out.
 
+### When she sees it
+
+By default a plugin is **loaded directly**: while it is on for the character, its instructions are
+in the prompt and its tools are offered in every request, from the first. This was measured faster
+and more reliable than the alternative, on small models especially (ADR-72).
+
+The person can set a plugin to **load only when needed** in Settings → Plugins, to save its tokens.
+Then the prompt carries one line, your `summary`, and one shared tool, `use_plugin`. When she calls
+`use_plugin` with your plugin's id, its instructions come back in that tool's result (and are in the
+prompt from the next turn), and its tools are offered from the next round of the same answer. So in
+this mode your `summary` alone decides whether she reaches for the plugin: say what it does and
+when to use it. `use_plugin` is the app's, not a step, and nothing in a plugin calls it.
+
+Test both: try the plugin as installed, then tick "Load only when needed" for it in Settings →
+Plugins and ask again. The consent screen and the check give both costs.
+
 ## 5. Check it and try it
 
-If you have the repository, check the folder as the app will:
+If you have the repository (a clone, Node 22 or newer and `pnpm install`), check the folder as the
+app will. The folder can be anywhere, inside the repository or not:
 
 ```bash
 pnpm plugin:check plugins/my-dice
+pnpm plugin:check ../my-plugins/wheel_of_the_year
 ```
 
-It names every problem in a sentence, with where it is. `--fetch` also downloads and checks each
-picture at an address.
+It names every problem in a sentence, with where it is, and says what the plugin adds to each
+request. `--fetch` also downloads and checks each picture at an address. There is no checker to
+download on its own yet; the editor check from `"$schema"` and the app's install (below) need
+nothing else.
 
 Without the repository, the app runs the same check: in latentPresence open **Settings → Plugins →
 Install from a folder…** and pick your folder. If something is wrong, it lists the same problems

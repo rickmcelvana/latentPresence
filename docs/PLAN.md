@@ -152,7 +152,7 @@ Goal: abilities a few people want, without everyone paying for them in the app, 
 
 Deliverables
 - A public plugin format (`plugin.json`, JSON Schema, `pnpm plugin:check`) with declarative tools built on primitives in core; no plugin code in the page.
-- Install from a folder, zip or URL behind a consent screen; assets pinned and hash-checked; per-character enablement; lazy loading with a context estimate and warnings.
+- Install from a folder, zip or URL behind a consent screen; assets pinned and hash-checked; per-character enablement; loaded directly by default, or only when needed, with a context estimate and warnings (ADR-72 item 4, amended after measuring).
 - Plugin layouts on the back-wall boards; plugin MCP servers and schedule presets, asked for and removed with the plugin.
 - Two first-party plugins at opposite ends: Tarot (declarative) and Office (MCP and schedules).
 - A static index on latentpresence.com, fetched only when the person asks; an authoring guide and template.
