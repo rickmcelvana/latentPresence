@@ -1187,3 +1187,9 @@ Did: recorded R-72 (D-77: someone else made a character, chatted, exported, impo
 Left: push both repositories. A 1.1 release, so testers get Phases 10 and 11 (the installer is 1.0.0). Office's morning plan firing is still unseen. The home page's "six things" do not mention plugins or characters (a design change, left for Rick). Wheel of the Year could go in the index if its author wants.
 Decisions: none.
 Lessons: a friend writing from the guide found six gaps in an afternoon that months of the architect's own use did not; R-70's kind of check is worth repeating for characters.
+
+## 2026-11-10 claude (34) — the home page, Wheel of the Year, 1.1.0 prepared
+Did: the site's home page gains two cards, characters you make and plugins, and its grid goes to 14rem so eight cards are two rows of four in the 1080 px container (16rem gave 3, 3, 2; worked from the CSS, as the hidden pane measured nothing); committed in the site repository (4172e8c), not pushed. Wheel of the Year copied into `plugins/wheel-of-the-year` (without the author's notes) and checked by the gate with the others. 1.1.0: `tauri.conf.json`, `Cargo.toml` and the lock, `docs/releases/v1.1.0.md` (plugins, the three listed, own characters, export and import, keep or forget, the disclosure, the body list fix, the MariaDB index fix and its one rebuild), README says 1.1. `launch.json` has `site` for previewing the product site. Gate green, 2424 TS tests.
+Left: Rick pushes; the architect runs `pnpm plugin:index --out ../latentpresence.com/plugins/index.json plugins/wheel-of-the-year`, adds tags, lists it on the site's plugins page; Rick pushes the site, then tags `v1.1.0`. The site's "Version 1.0" fine print changes when 1.1 is published. Office's morning plan: Rick reports the next firing.
+Decisions: none.
+Lessons: none new.
