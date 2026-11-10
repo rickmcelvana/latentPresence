@@ -1,0 +1,50 @@
+{
+  "$schema": "https://latentpresence.com/plugins/plugin.schema.json",
+  "format": 1,
+  "id": "wheel-of-the-year",
+  "name": "Wheel of the Year",
+  "version": "1.0.0",
+  "author": "midnight",
+  "licence": "Apache-2.0",
+  "summary": "Looks up the eight Wheel of the Year holidays, dates, types and modern observances; use for upcoming or recently passed Pagan holidays, Yule, Mabon and other seasonal festivals.",
+  "minApp": "1.0.0",
+  "instructions": "instructions.md",
+  "data": {
+    "calendars": "data/calendars.json",
+    "holidays": "data/holidays.json"
+  },
+  "tools": [
+    {
+      "name": "get_calendar",
+      "description": "Returns the eight seasonal holidays in calendar order for a hemisphere. Use the current local date from RIGHT NOW to identify upcoming, recent or current holidays; date comparison is yours. Solar date ranges are approximate, not exact annual dates. Default north; use south for a seasonally shifted Southern Hemisphere wheel.",
+      "parameters": {
+        "hemisphere": {
+          "type": "string",
+          "description": "Seasonal calendar to use: north or south. Follow the user's stated practice or location; if unknown use north and state that assumption.",
+          "enum": ["north", "south"],
+          "default": "north"
+        }
+      },
+      "steps": [
+        { "use": "lookup", "as": "calendar", "table": "calendars", "key": "$args.hemisphere" }
+      ],
+      "returns": ["calendar"]
+    },
+    {
+      "name": "get_holiday",
+      "description": "Looks up one Wheel of the Year holiday: name, alternate names, dates for both hemispheres, Fire Festival or Solar Festival type, detailed theme and modern observances. Use after get_calendar identifies a nearby holiday, or for a question about a named holiday. Map Lammas to lughnasadh and Midsummer to litha.",
+      "parameters": {
+        "holiday": {
+          "type": "string",
+          "description": "Canonical holiday id. Map alternate names to the corresponding id: Lammas = lughnasadh, spring equinox = ostara, summer solstice = litha, autumn equinox = mabon, winter solstice = yule.",
+          "enumFrom": { "table": "holidays", "column": "id" },
+          "required": true
+        }
+      },
+      "steps": [
+        { "use": "lookup", "as": "holiday", "table": "holidays", "key": "$args.holiday" }
+      ],
+      "returns": ["holiday"]
+    }
+  ]
+}

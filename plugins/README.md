@@ -1,6 +1,7 @@
 # Plugins
 
-First-party plugins for latentPresence (ADR-72), one folder each: `plugin.json`, its instructions and
+The plugins listed in latentPresence's index (ADR-72), one folder each: Tarot and Office (Rick's) and
+Wheel of the Year (by midnight, Apache-2.0, written from `docs/plugins.md` alone; R-70). Each has `plugin.json`, its instructions and
 data, and its assets or their pinned addresses. The format is `PluginManifest` in
 `packages/protocol/src/plugin.ts`; editors validate against
 `packages/protocol/src/generated/plugin.schema.json`.
@@ -11,6 +12,10 @@ pnpm plugin:check plugins/tarot
 
 ```bash
 pnpm plugin:check plugins/office
+```
+
+```bash
+pnpm plugin:check plugins/wheel-of-the-year
 ```
 
 `--fetch` also downloads and checks every asset at an address; `--pin` writes each asset's size and

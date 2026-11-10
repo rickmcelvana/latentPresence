@@ -1,0 +1,146 @@
+[
+  {
+    "id": "yule",
+    "name": "Yule",
+    "alternate_names": ["Midwinter", "Winter Solstice"],
+    "type": "Solar Festival - Winter Solstice",
+    "dates_north": "Winter solstice, around December 20-23; some celebrate a longer Yuletide",
+    "dates_south": "Winter solstice, around June 20-22; some celebrate a longer Yuletide",
+    "date_basis": "solar_approximate",
+    "date_notes": "The astronomical instant and local calendar date vary by year and timezone. Yuletide duration varies by tradition.",
+    "theme": "Yule marks the winter solstice, the shortest daylight period and longest night of the seasonal year. Its central themes are renewal, endurance and the return of light as days begin to lengthen. Many modern Pagans greet the returning sun, while others focus on the quiet of winter, household warmth and care for their community. Evergreen decorations can express continuing life through the dark season. Celebrations may be intimate or communal, combining reflection with hospitality. The modern Wheel observance shares a name and some imagery with other Yule traditions, whose calendars and religious meanings can differ.",
+    "modern_observances": [
+      "Welcome the solstice sunrise or hold a candlelit reflection on renewal.",
+      "Decorate with evergreens, wreaths and lights.",
+      "Share a meal, gifts or greetings with loved ones.",
+      "Collect food or clothing for community support."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Winter-Solstice", "https://aa.usno.navy.mil/faq/seasons_orbit"]
+  },
+  {
+    "id": "imbolc",
+    "name": "Imbolc",
+    "alternate_names": ["Imbolg", "Oimelc"],
+    "type": "Fire Festival - Cross-quarter Festival",
+    "dates_north": "February 1-2; some begin on the evening of January 31",
+    "dates_south": "August 1-2; some begin on the evening of July 31",
+    "date_basis": "customary",
+    "date_notes": "Common fixed-date customs; not a calculation of the exact astronomical midpoint. Brigid's Day is related but has distinct religious forms.",
+    "theme": "Imbolc celebrates the first promise of spring while winter may still be present. Its themes include purification, dedication, creative inspiration and the patient nurturing of new beginnings. Brigid is especially important in many observances, with associations of poetry, healing and the hearth. Modern practitioners may renew commitments, clean their homes or ritual spaces, and light candles as symbols of returning light. Attention to early seasonal changes makes the celebration personal to its setting: signs of renewal differ between climates. A simple household observance can be as meaningful as a larger ceremony, and devotion to Brigid is not universal.",
+    "modern_observances": [
+      "Light candles and reflect on a commitment for the coming season.",
+      "Clean and refresh the home or a personal sacred space.",
+      "Write poetry, make art or invite creative inspiration.",
+      "Take a walk to notice local signs of seasonal change."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Imbolc-Lore-and-Rituals", "https://druidry.org/druid-way/teaching-and-practice/druid-festivals"]
+  },
+  {
+    "id": "ostara",
+    "name": "Ostara",
+    "alternate_names": ["Spring Equinox", "Vernal Equinox"],
+    "type": "Solar Festival - Spring Equinox",
+    "dates_north": "Spring equinox, around March 19-21",
+    "dates_south": "Spring equinox, around September 21-24",
+    "date_basis": "solar_approximate",
+    "date_notes": "The astronomical instant and local calendar date vary. Day and night are approximately, rather than exactly, equal in length.",
+    "theme": "Ostara marks the spring equinox and the movement toward the brighter half of the seasonal year. Balance, emergence and new growth are central themes. Eggs, seeds and spring flowers often provide imagery for beginnings and the possibilities that need care to develop. Modern celebrations can connect spiritual intentions with practical acts such as planting, tending a garden or beginning a creative project. Some practitioners work with deities; others celebrate the land and seasonal change without them. The name Ostara is used in parts of modern Paganism, while other communities simply call the occasion the spring equinox.",
+    "modern_observances": [
+      "Plant seeds or bless a garden and its coming growth.",
+      "Decorate eggs as symbols of potential and new life.",
+      "Walk outdoors to observe emerging plants and changing daylight.",
+      "Reflect on balance and choose a project to nurture."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Spring-Equinox", "https://aa.usno.navy.mil/faq/seasons_orbit"]
+  },
+  {
+    "id": "beltane",
+    "name": "Beltane",
+    "alternate_names": ["Bealtaine", "Beltaine", "May Eve", "May Day"],
+    "type": "Fire Festival - Cross-quarter Festival",
+    "dates_north": "April 30-May 1",
+    "dates_south": "October 31-November 1",
+    "date_basis": "customary",
+    "date_notes": "Common eve/day observances, not the exact astronomical midpoint. May Day refers to northern dates; distinct May Day celebrations also exist.",
+    "theme": "Beltane celebrates the fullness of spring and the threshold of summer. Its themes include vitality, pleasure, connection, creativity and the flourishing of life. Fire and fresh greenery often express warmth and growth, while dancing and communal gatherings give the season a joyful social form. Some modern traditions emphasize fertility and the union of divine figures; others understand fertility more broadly as the creation of art, friendship, gardens or shared projects. Flower crowns, ribbons and maypole dancing are familiar modern images. Observances can be adapted to a household or community's values, without requiring one particular mythology or relationship model.",
+    "modern_observances": [
+      "Make flower crowns or decorate a space with seasonal greenery.",
+      "Join maypole or ribbon dancing, music and a shared feast.",
+      "Gather around a ceremonial fire where suitable.",
+      "Celebrate relationships, creative work and the growth of the local landscape."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Beltane-Lore-and-Rites", "https://druidry.org/druid-way/teaching-and-practice/druid-festivals"]
+  },
+  {
+    "id": "litha",
+    "name": "Litha",
+    "alternate_names": ["Midsummer", "Summer Solstice"],
+    "type": "Solar Festival - Summer Solstice",
+    "dates_north": "Summer solstice, around June 20-22",
+    "dates_south": "Summer solstice, around December 20-23",
+    "date_basis": "solar_approximate",
+    "date_notes": "The astronomical instant and local calendar date vary by year and timezone. Other Midsummer celebrations can use different dates.",
+    "theme": "Litha marks the summer solstice, when daylight reaches its seasonal maximum before the gradual return toward longer nights. Its themes are abundance, energy, celebration and appreciation of the living world. Modern Pagans may greet sunrise, share music and food, gather flowers or herbs, and hold community celebrations. Fire and solar imagery can express the sun's strength, while environmental service turns appreciation into practical care for the earth. The turning point also invites reflection on how to use a season of energy well. The name Litha is common in some modern Pagan settings; others prefer summer solstice or Midsummer.",
+    "modern_observances": [
+      "Watch sunrise or hold an outdoor solstice gathering.",
+      "Share songs, dancing and a community meal.",
+      "Make flower garlands or tend seasonal herbs.",
+      "Choose a practical act of environmental care."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Summer-Solstice-and-Midsummer", "https://aa.usno.navy.mil/faq/seasons_orbit"]
+  },
+  {
+    "id": "lughnasadh",
+    "name": "Lughnasadh / Lammas",
+    "alternate_names": ["Lughnasadh", "Lughnassadh", "Lunasa", "Lammas", "First Harvest"],
+    "type": "Fire Festival - Cross-quarter / First Harvest Festival",
+    "dates_north": "August 1-2; some begin on the evening of July 31",
+    "dates_south": "February 1-2; some begin on the evening of January 31",
+    "date_basis": "customary",
+    "date_notes": "Common fixed dates; harvest-based timing varies. Lughnasadh and Lammas have different histories but commonly name this point on the modern Wheel.",
+    "theme": "Lughnasadh celebrates the first harvest and the work that makes nourishment possible. The name connects the festival with Lugh in Irish tradition; Lammas, with a different history, is also used for this seasonal observance in the modern Wheel. Grain, bread and first fruits express gratitude for food and awareness that growth and harvest involve both effort and change. Modern practitioners may bake bread, share produce, gather for games or crafts, and recognize skills developed during the year. It is also an occasion to consider reciprocity: what has been received, what can be shared, and what still needs tending.",
+    "modern_observances": [
+      "Bake and share bread or prepare a meal from seasonal produce.",
+      "Give thanks for the first harvest and the people who grow food.",
+      "Hold games, craft demonstrations or a community gathering.",
+      "Reflect on developing skills and share the results of your work."
+    ],
+    "sources": ["https://druidry.org/druid-way/teaching-and-practice/druid-festivals/lughnasadh", "https://circlesanctuary.org/teachings/Celebrating-the-Seasons"]
+  },
+  {
+    "id": "mabon",
+    "name": "Mabon",
+    "alternate_names": ["Autumn Equinox", "Autumnal Equinox", "Fall Equinox", "Second Harvest"],
+    "type": "Solar Festival - Autumn Equinox / Harvest Festival",
+    "dates_north": "Autumn equinox, around September 21-24",
+    "dates_south": "Autumn equinox, around March 19-21",
+    "date_basis": "solar_approximate",
+    "date_notes": "The astronomical instant and local calendar date vary. Day and night are approximately equal; Mabon is a modern Pagan name for this observance.",
+    "theme": "Mabon marks the autumn equinox and the movement into the darker half of the seasonal year. Its themes include gratitude, harvest, balance and preparation for the quieter months. Modern celebrations often center on seasonal food and appreciation for the people, land and relationships that sustain daily life. A shared meal or thanksgiving circle can acknowledge both abundance and the need to share it. Preserving food and preparing the home connect reflection with practical seasonal work. Some practitioners call this the second harvest; others use autumn equinox without the name Mabon. The festival's emphasis can follow local harvest conditions rather than imported imagery.",
+    "modern_observances": [
+      "Share an autumn meal and speak thanks for the year's harvests.",
+      "Preserve seasonal food or prepare the home for colder months.",
+      "Decorate with local fruits, grains, nuts or leaves.",
+      "Reflect on balance, generosity and what is enough."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Fall-Equinox", "https://aa.usno.navy.mil/faq/seasons_orbit"]
+  },
+  {
+    "id": "samhain",
+    "name": "Samhain",
+    "alternate_names": ["Samhuinn", "Samhainn", "Final Harvest", "Ancestor Night"],
+    "type": "Fire Festival - Cross-quarter / Final Harvest Festival",
+    "dates_north": "October 31-November 1",
+    "dates_south": "April 30-May 1",
+    "date_basis": "customary",
+    "date_notes": "Common eve/day observances. Samhain and Halloween share connections but are not interchangeable religious or cultural celebrations.",
+    "theme": "Samhain marks the close of the harvest cycle and the threshold of winter in the seasonal Wheel. Its themes include remembrance, endings, transformation and making space for what comes next. Many modern Pagans honor ancestors and other beloved dead, sometimes through photographs, stories, candles or a place set at a shared meal. Some traditions regard this as a time when contact with the spirit world is especially meaningful; that is a spiritual belief, not an established physical fact. Reflection and divination may accompany the observance. Some communities treat Samhain as a new year, while others do not.",
+    "modern_observances": [
+      "Create a remembrance space for loved ones and chosen ancestors.",
+      "Share family or community stories and a commemorative meal.",
+      "Light candles or include an empty place at the table.",
+      "Reflect on endings and the coming year; some include divination."
+    ],
+    "sources": ["https://circlesanctuary.org/teachings/Samhain-Lore-and-Rituals", "https://druidry.org/druid-way/teaching-and-practice/druid-festivals"]
+  }
+]

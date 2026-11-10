@@ -1,0 +1,32 @@
+[
+  {
+    "id": "north",
+    "hemisphere": "Northern Hemisphere",
+    "convention": "Common modern Wheel of the Year dates. Customary windows include widely used eve/day and alternate-date customs; they do not prescribe a universal duration. Solar windows are approximate local-date ranges, not multi-day festivals or exact dates for a particular year. Local and tradition-specific practice may differ.",
+    "holidays": [
+      { "id": "imbolc", "name": "Imbolc", "start_month_day": "01-31", "end_month_day": "02-02", "dates": "February 1-2; some begin on the evening of January 31", "date_basis": "customary" },
+      { "id": "ostara", "name": "Ostara", "start_month_day": "03-19", "end_month_day": "03-21", "dates": "Spring equinox, around March 19-21", "date_basis": "solar_approximate" },
+      { "id": "beltane", "name": "Beltane", "start_month_day": "04-30", "end_month_day": "05-01", "dates": "April 30-May 1", "date_basis": "customary" },
+      { "id": "litha", "name": "Litha", "start_month_day": "06-20", "end_month_day": "06-22", "dates": "Summer solstice, around June 20-22", "date_basis": "solar_approximate" },
+      { "id": "lughnasadh", "name": "Lughnasadh / Lammas", "start_month_day": "07-31", "end_month_day": "08-02", "dates": "August 1-2; some begin on the evening of July 31", "date_basis": "customary" },
+      { "id": "mabon", "name": "Mabon", "start_month_day": "09-21", "end_month_day": "09-24", "dates": "Autumn equinox, around September 21-24", "date_basis": "solar_approximate" },
+      { "id": "samhain", "name": "Samhain", "start_month_day": "10-31", "end_month_day": "11-01", "dates": "October 31-November 1", "date_basis": "customary" },
+      { "id": "yule", "name": "Yule", "start_month_day": "12-20", "end_month_day": "12-23", "dates": "Winter solstice, around December 20-23; some celebrate a longer Yuletide", "date_basis": "solar_approximate" }
+    ]
+  },
+  {
+    "id": "south",
+    "hemisphere": "Southern Hemisphere",
+    "convention": "A common seasonally shifted modern Wheel of the Year. Some Southern Hemisphere practitioners keep northern dates or follow local ecology instead. Customary windows include eve/day and alternate-date customs; solar windows are approximate local-date ranges, not multi-day festivals or exact dates for a particular year.",
+    "holidays": [
+      { "id": "lughnasadh", "name": "Lughnasadh / Lammas", "start_month_day": "01-31", "end_month_day": "02-02", "dates": "February 1-2; some begin on the evening of January 31", "date_basis": "customary" },
+      { "id": "mabon", "name": "Mabon", "start_month_day": "03-19", "end_month_day": "03-21", "dates": "Autumn equinox, around March 19-21", "date_basis": "solar_approximate" },
+      { "id": "samhain", "name": "Samhain", "start_month_day": "04-30", "end_month_day": "05-01", "dates": "April 30-May 1", "date_basis": "customary" },
+      { "id": "yule", "name": "Yule", "start_month_day": "06-20", "end_month_day": "06-22", "dates": "Winter solstice, around June 20-22; some celebrate a longer Yuletide", "date_basis": "solar_approximate" },
+      { "id": "imbolc", "name": "Imbolc", "start_month_day": "07-31", "end_month_day": "08-02", "dates": "August 1-2; some begin on the evening of July 31", "date_basis": "customary" },
+      { "id": "ostara", "name": "Ostara", "start_month_day": "09-21", "end_month_day": "09-24", "dates": "Spring equinox, around September 21-24", "date_basis": "solar_approximate" },
+      { "id": "beltane", "name": "Beltane", "start_month_day": "10-31", "end_month_day": "11-01", "dates": "October 31-November 1", "date_basis": "customary" },
+      { "id": "litha", "name": "Litha", "start_month_day": "12-20", "end_month_day": "12-23", "dates": "Summer solstice, around December 20-23", "date_basis": "solar_approximate" }
+    ]
+  }
+]
