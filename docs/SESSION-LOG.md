@@ -1180,3 +1180,4 @@ Left: Rick runs `sudo apt install linux-headers-amd64` (sudo is blocked inside t
 Next: R-71's report; R-72; push the site repository.
 Decisions: none.
 Lessons: on Debian with the CUDA repo, every `apt upgrade` can move the driver; reboot after it, and install the headers metapackage, not one kernel's headers.
+Addendum, same session: after `linux-headers-amd64` and a reboot (kernel 6.12.116, `nvidia-smi` names the RTX 5060 Ti at 620.70.06) Rick re-ran R-71 and it **passed** (D-75): Chrome 157 `chrome://gpu` WebGPU hardware accelerated, Vulkan disabled, no `--disable-gpu-sandbox`; voice, avatar, companion built and paired. Recorded in SURFACE.md and as a measured note on ADR-07. Left: the site's Linux install steps could gain the headers and reboot advice.

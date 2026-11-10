@@ -234,6 +234,8 @@ Two things the Windows leg adds for Phase 8, neither of them a decision:
   page appears to contain.** `tauri-plugin-notification` polyfills `window.Notification`, so
   a page with no Tauri code in it still crosses the ACL.
 
+**Measured 2026-11-10 (R-71, D-75).** The Linux path this ADR settled on, the hosted app in Chrome plus the companion built from source, ran end to end on Debian 13.7: Chrome 157 gave a hardware WebGPU adapter as launched (no `--disable-gpu-sandbox`, which Fedora needed in Spike E), voice and the avatar ran, and the companion built and paired. No change to the decision.
+
 ## ADR-08 Smart home through Home Assistant
 
 Home Assistant's MCP server exposes devices and intents, and HA already bridges Google Home and Alexa. We never write vendor skills.

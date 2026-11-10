@@ -602,6 +602,8 @@ the RTX 5060 Ti as a conformant Vulkan 1.4 device. `--disable-gpu-sandbox` gives
 software and passes a naive presence check. One box, one distro, one very new driver —
 enough to decide Tauri-vs-Chrome, not enough to characterise Chrome on Linux.
 
+**Chrome 157.0.8103.50 on Debian 13.7 (KDE Wayland), 2026-11-10 (R-71, D-75):** same RTX 5060 Ti, `nvidia-open` 620.70.06 from NVIDIA's CUDA repo. `chrome://gpu` reports **WebGPU: Hardware accelerated** (Vulkan: Disabled) **as launched**, with no `--disable-gpu-sandbox`; the avatar and voice ran. So the sandbox failure above is not general to Chrome on Linux. A Debian caveat measured the same day: with the CUDA repo, `apt upgrade` can replace the driver's libraries under the loaded module (`nvidia-smi`: "Driver/library version mismatch"; WebGL context creation fails until a reboot), and DKMS builds for a new kernel only if `linux-headers-amd64` is installed.
+
 Full detail and the quoted errors: `docs/spikes/E-tauri.md`.
 
 ### WebGPU on WebKitGTK was **not established** before the spike — kept for the record

@@ -121,36 +121,6 @@ pnpm dev
 **3. Move it.** Ask them to press **Export** on their character, then open http://localhost:5173 in **Edge**, set up the same model, and **Import…** the downloaded `.persona.json` in Settings → Character. Then turn Tarot on for it there and talk to it.
 **4. Report**: did they make the character without help; did the import preview make sense; did the character sound the same in Edge; did they find that plugins have to be turned on again (the file carries none). Their memories stay in Chrome: that is expected without a shared companion database. Anything they had to ask goes into `docs/characters.md`.
 
-### R-71 · The app on Debian: Chrome first, then the companion · ~1 hour (ADR-07)
-Linux ships as **the hosted app in Chrome, plus the companion built from source** (no Linux desktop app: WebKitGTK has no WebGPU). That has been measured once, in Spike E on Fedora in September, and never end to end. The open question from then: Chrome on Linux gave **no WebGPU adapter as launched** and needed `--disable-gpu-sandbox`; forcing it on gave SwiftShader (software), which is slow and passes a naive check.
-**Progress (2026-11-10).** Steps 1–3 passed and the companion connected; then the avatar failed with "THREE.WebGLRenderer: Error creating WebGL context". Cause, read off the machine (Debian 13.7, RTX 5060 Ti, `nvidia-open` from NVIDIA's CUDA repo): an `apt upgrade` after boot moved the driver 615.71 → 620.70, so the loaded kernel module (615.71) no longer matched the libraries (`nvidia-smi`: "Driver/library version mismatch") and Chrome's GPU process could not make a GL context. The same upgrade brought kernel 6.12.116, but only `linux-headers-6.12.115…` was installed, so DKMS built no module for the kernel GRUB boots next (nouveau blacklisted: no GPU at all). Fix: `sudo apt install linux-headers-amd64`, then reboot. Not yet re-run after the fix.
-**1. The GPU driver.** In a terminal: `nvidia-smi`. It should name your card and a driver version. If it says the command is not found or no device, the NVIDIA driver is not installed: stop here and tell Claude what Debian version you have (`cat /etc/debian_version`). If it says **"Driver/library version mismatch"**, the driver was upgraded since boot: reboot. Make sure `linux-headers-amd64` is installed (`sudo apt install linux-headers-amd64`), so every new kernel gets the NVIDIA module built; without it, a kernel update boots with no GPU driver.
-**2. Chrome.** Install Google Chrome from google.com/chrome (the `.deb`), then:
-```bash
-sudo apt install ./google-chrome-stable_current_amd64.deb
-```
-**3. What Chrome gives.** Open `chrome://gpu` and copy the lines under "Graphics Feature Status" for **WebGPU** and **Vulkan**. Then open https://app.latentpresence.com, go through the welcome steps (model: your Ollama cloud key, or an endpoint you have), and in /chat press **Start voice** and talk for a minute. Note: does she hear you, how long before she answers, does the avatar move smoothly. If voice is refused or the page says no GPU, quit Chrome and start it from a terminal with:
-```bash
-google-chrome --disable-gpu-sandbox https://app.latentpresence.com
-```
-and try again. Write down which of the two worked.
-**4. The companion from source.** In a terminal:
-```bash
-sudo apt install -y build-essential git curl
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-(choose the default install, then close and reopen the terminal). Install Node 22 or newer from nodejs.org (or your usual way), then:
-```bash
-corepack enable
-git clone https://github.com/rickmcelvana/latentPresence.git
-cd latentPresence
-pnpm install
-pnpm companion
-```
-The first build takes several minutes. When it says `listening on http://127.0.0.1:8787` it prints a **pairing code**: in Chrome, Settings → Companion, enter it. Check that Memory works (tell her something, reload, ask her) and, if you want, put `DATABASE_URL` in a `.env` beside `package.json` to use the MariaDB.
-**5. Report**: the `nvidia-smi` line, the two `chrome://gpu` lines, whether `--disable-gpu-sandbox` was needed, how voice and the avatar felt, and whether the companion built and paired. Anything that needed a step not written here goes in the Linux docs.
-
-
 ### R-70 · The plugin index live, and a friend's plugin · ~20 minutes, then the friend (P10-T09)
 **Progress (2026-11-08).** Steps 1–3 passed: Caddy sends the header, Browse lists both, Tarot removed and re-added from the list. Removing Office first did nothing (the companion refused DELETE, fixed in dc314ea); in the rebuilt app it was removed and re-added on Alice and on Theo. Step 4 waits on the friend (this weekend, not rushed).
 **1. CORS on the site's `/plugins/`.** The app fetches `latentpresence.com/plugins/index.json` from
@@ -272,6 +242,7 @@ Ollama's own log for the request ending rather than trusting the client going qu
 Newest first. Each line is the outcome, not the instructions — the detail is in
 `docs/SESSION-LOG.md` and the facts are in `docs/SURFACE.md`.
 
+- **D-75 · R-71: the app on Debian** — Rick 2026-11-10: **passed**. Debian 13.7, KDE Wayland, RTX 5060 Ti, `nvidia-open` 620.70.06 from NVIDIA's CUDA repo, Chrome 157.0.8103.50. `chrome://gpu`: **WebGPU hardware accelerated**, Vulkan disabled; **`--disable-gpu-sandbox` not needed** (Spike E on Fedora in September needed it). The hosted app's voice and avatar ran; the companion built from source and paired. One step not written before: the first run failed with "Error creating WebGL context" after an `apt upgrade` moved the driver under the running kernel and brought a kernel with no headers; `linux-headers-amd64` and a reboot fixed it (session 32). ADR-07's Linux path (hosted app in Chrome + companion from source) is now measured end to end.
 - **D-74 · R-69: Office in the desktop app** — Rick 2026-11-06: **passed**, in LibreOffice (installed after all). The folder switch and its dialog as described; the grocery budget made with its numbers filled in, and adding $25 to a Spent cell changed the total; the landlord note drafted, changed by voice, and opened with no issues; unticking the folder refused the next spreadsheet. Two things fixed from it: the Left column (all formulas) showed `###`, because columns were fitted while formulas had no value yet, so widths now allow for formula results (checked by rendering in LibreOffice); and she listed folders after guessing a file name wrong, so a "not there" now names the files that are. The morning plan was made; its first firing is still to be seen. P10-T08 done; ADR-73 accepted.
 - **D-73 · R-68: a tarot reading in a call** — Rick 2026-11-06: **passed** on the second try ("worked perfectly"). The first try (nemotron-3-nano Celtic cross fine; a glm-5.2 three-card spread hidden behind the open transcript drawer) led to a one-board layout moving to the whiteboard while the drawer is open. P10-T06 done.
 - **D-72 · R-1: the bare avatar on a low-end laptop** — Rick 2026-11-05: Intel UHD Graphics 600, canvas 958×538: **59.9 fps median, 51.3 5th percentile**, avatar loaded in 2095 ms. It holds the panel's 60 Hz with about one frame in twenty late. 540p and without the room; R-13 is the stage. `docs/spikes/B-vrm-lipsync.md`.
