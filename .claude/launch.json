@@ -28,6 +28,21 @@
       "port": 4173
     },
     {
+      "name": "site",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@latentpresence/web",
+        "exec",
+        "vite",
+        "../../../latentpresence.com",
+        "--port",
+        "4321",
+        "--strictPort"
+      ],
+      "port": 4321
+    },
+    {
       "name": "companion",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
